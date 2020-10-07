@@ -48,6 +48,9 @@
 #include <linux/uaccess.h>
 #include <linux/mutex.h>
 
+#include <linux/io.h>
+
+
 #ifdef __KERNEL__
 	#include <linux/topology.h>
 	#include <mt-plat/mtk_chip.h>
@@ -178,23 +181,74 @@ unsigned int ptp3_smc_handle(
  * IPI between kernel and mcupm/cpu_eb
  ************************************************/
 #ifdef CONFIG_MTK_TINYSYS_MCUPM_SUPPORT
+//AP	0x0011BC00
+//03B4	PTP3_IPI_CMD
+//03B8	PTP3_IPI_CMD_ACK
+//03BC	PTP3_TX_DATA0
+//03C0	PTP3_TX_DATA1
+//03C4	PTP3_TX_DATA2
+//03C8	PTP3_RX_DATA0
+#define SYS_SRAM_BASE_ADDR              0x0011BC00
+#define PTP3_SYS_SRAM_SIZE              24
+#define PTP3_SYS_SRAM_BASE_OFFSET       0x3B4
+#define PTP3_IPI_CMD_OFFSET             0x0
+#define PTP3_IPI_CMD_ACK_OFFSET         0x4
+#define PTP3_TX_DATA0_OFFSET            0x8
+#define PTP3_TX_DATA1_OFFSET            0xC
+#define PTP3_TX_DATA2_OFFSET            0x10
+#define PTP3_RX_DATA0_OFFSET            0x14
+
+#define PTP3_POLLING_START              1
+#define PTP3_POLLING_DONE               0
+#define PTP3_IPI_CMD_ACK_SEND           1
+
+static phys_addr_t ptp3_sys_sram_base_virt;
+
 static DEFINE_MUTEX(ptp3_ipi_mutex);
 unsigned int ptp3_ipi_handle(struct ptp3_ipi_data *ptp3_data)
 {
-	int ret;
+	int ret = -1;
+	int retry = 1000;
 
 	mutex_lock(&ptp3_ipi_mutex);
+	if ((char *)ptp3_sys_sram_base_virt == NULL) {
+		ptp3_sys_sram_base_virt = (phys_addr_t)(uintptr_t)ioremap_wc(
+			SYS_SRAM_BASE_ADDR + PTP3_SYS_SRAM_BASE_OFFSET,
+			PTP3_SYS_SRAM_SIZE);
+	}
 
-	ret = mtk_ipi_send_compl(&mcupm_ipidev, CH_S_PLATFORM,
-		IPI_SEND_WAIT,
-		ptp3_data,
-		sizeof(struct ptp3_ipi_data) / PTP3_SLOT_NUM,
-		2000);
+	writel(ptp3_data->cmd,
+		(void __iomem *)(ptp3_sys_sram_base_virt + PTP3_TX_DATA0_OFFSET));
+	writel(ptp3_data->u.ptp3.cfg,
+		(void __iomem *)(ptp3_sys_sram_base_virt + PTP3_TX_DATA1_OFFSET));
+	writel(ptp3_data->u.ptp3.val,
+		(void __iomem *)(ptp3_sys_sram_base_virt + PTP3_TX_DATA2_OFFSET));
+	writel(PTP3_POLLING_START,
+		(void __iomem *)(ptp3_sys_sram_base_virt + PTP3_IPI_CMD_OFFSET));
+	while (retry > 0) {
+		msleep(50);
+		ret = readl((void __iomem *)(ptp3_sys_sram_base_virt + PTP3_IPI_CMD_ACK_OFFSET));
+		if (ret == PTP3_IPI_CMD_ACK_SEND)
+			break;
 
-	if (ret != 0)
-		ptp3_err("send init cmd(%d) error ret:%d\n",
-			ptp3_data->cmd, ret);
+		retry--;
+	}
 
+	/* polling done clear CMD_ACK */
+	writel(PTP3_POLLING_DONE,
+		(void __iomem *)(ptp3_sys_sram_base_virt + PTP3_IPI_CMD_ACK_OFFSET));
+	if (ret != PTP3_IPI_CMD_ACK_SEND)
+		ret = -1;
+	else
+		ret = readl((void __iomem *)(ptp3_sys_sram_base_virt + PTP3_RX_DATA0_OFFSET));
+
+	/* reset all */
+	writel(0, (void __iomem *)(ptp3_sys_sram_base_virt + PTP3_IPI_CMD_OFFSET));
+	writel(0, (void __iomem *)(ptp3_sys_sram_base_virt + PTP3_IPI_CMD_ACK_OFFSET));
+	writel(0, (void __iomem *)(ptp3_sys_sram_base_virt + PTP3_TX_DATA0_OFFSET));
+	writel(0, (void __iomem *)(ptp3_sys_sram_base_virt + PTP3_TX_DATA1_OFFSET));
+	writel(0, (void __iomem *)(ptp3_sys_sram_base_virt + PTP3_TX_DATA2_OFFSET));
+	writel(0, (void __iomem *)(ptp3_sys_sram_base_virt + PTP3_RX_DATA0_OFFSET));
 	mutex_unlock(&ptp3_ipi_mutex);
 	return ret;
 }
