@@ -21,13 +21,6 @@
 #include <linux/seq_file.h>
 #include "mt-plat/mtk_thermal_monitor.h"
 
-#ifdef CONFIG_MTK_TINYSYS_MCUPM_SUPPORT
-#include <mt-plat/mtk-mbox.h>
-#include <mt-plat/mtk_tinysys_ipi.h>
-#include <mcupm_ipi_id.h>
-//#include "mcupm_ipi_table.h"
-#endif
-
 #if THERMAL_ENABLE_TINYSYS_SSPM || THERMAL_ENABLE_ONLY_TZ_SSPM
 static kuid_t uid = KUIDT_INIT(0);
 static kgid_t gid = KGIDT_INIT(1000);
@@ -46,25 +39,21 @@ static int ack_data;
 
 static int register_thermal_ipi(void)
 {
-#ifndef THERMAL_CPUEB_USE_PLATFORM_IPI
 	int ret;
 
-	ret = mtk_ipi_register(&mcupm_ipidev, CH_S_PLATFORM, NULL, NULL,
+	ret = mtk_ipi_register(&sspm_ipidev, IPIS_C_THERMAL, NULL, NULL,
 		(void *)&ack_data);
 	if (ret != 0) {
 		tscpu_printk("%s error ret:%d\n", __func__, ret);
 		return -1;
 	}
-#endif
-
-	tscpu_printk("%s\n", __func__);
 
 	is_thermal_ipi_registered = 1;
 
 	return 0;
 }
 
-unsigned int thermal_to_mcupm(
+unsigned int thermal_to_sspm(
 	unsigned int cmd, struct thermal_ipi_data *thermal_data)
 {
 	int ackData = -1;
@@ -85,8 +74,8 @@ unsigned int thermal_to_mcupm(
 	case THERMAL_IPI_INIT_GRP5:
 	case THERMAL_IPI_INIT_GRP6:
 		thermal_data->cmd = cmd;
-		ret = mtk_ipi_send_compl(&mcupm_ipidev, CH_S_PLATFORM,
-			IPI_SEND_WAIT, thermal_data, THERMAL_SLOT_NUM, 2000);
+		ret = mtk_ipi_send_compl(&sspm_ipidev, IPIS_C_THERMAL,
+			IPI_SEND_POLLING, thermal_data, THERMAL_SLOT_NUM, 2000);
 		if (ret != 0)
 			tscpu_printk("send init cmd(%d) error ret:%d\n",
 				cmd, ret);
@@ -99,13 +88,13 @@ unsigned int thermal_to_mcupm(
 		break;
 	case THERMAL_IPI_LVTS_INIT_GRP1:
 		thermal_data->cmd = cmd;
-		tscpu_printk("cmd(%d) lvts efuse to MCUPM (%d)\n",
+		tscpu_printk("cmd(%d) lvts efuse to SSPM (%d)\n",
 				cmd, ack_data);
 
 		ackData = ack_data;
 
-		ret = mtk_ipi_send_compl(&mcupm_ipidev, CH_S_PLATFORM,
-			IPI_SEND_WAIT, thermal_data, THERMAL_SLOT_NUM, 2000);
+		ret = mtk_ipi_send_compl(&sspm_ipidev, IPIS_C_THERMAL,
+			IPI_SEND_POLLING, thermal_data, THERMAL_SLOT_NUM, 2000);
 
 
 		if (ret != 0)
@@ -118,8 +107,8 @@ unsigned int thermal_to_mcupm(
 
 	case THERMAL_IPI_GET_TEMP:
 		thermal_data->cmd = cmd;
-		ret = mtk_ipi_send_compl(&mcupm_ipidev, CH_S_PLATFORM,
-			IPI_SEND_WAIT, thermal_data, THERMAL_SLOT_NUM, 2000);
+		ret = mtk_ipi_send_compl(&sspm_ipidev, IPIS_C_THERMAL,
+			IPI_SEND_POLLING, thermal_data, THERMAL_SLOT_NUM, 2000);
 		if (ret != 0)
 			tscpu_printk("send get_temp cmd(%d) error ret:%d\n",
 				cmd, ret);
@@ -134,8 +123,8 @@ unsigned int thermal_to_mcupm(
 	case THERMAL_IPI_GET_BIG_FREQ_THRESHOLD:
 		thermal_data->cmd = cmd;
 
-		ret = mtk_ipi_send_compl(&mcupm_ipidev, CH_S_PLATFORM,
-			IPI_SEND_WAIT, thermal_data, THERMAL_SLOT_NUM, 2000);
+		ret = mtk_ipi_send_compl(&sspm_ipidev, IPIS_C_THERMAL,
+			IPI_SEND_POLLING, thermal_data, THERMAL_SLOT_NUM, 2000);
 
 		if (ret != 0)
 			tscpu_printk("mtk_ipi_send_compl error ret:%d - %d\n",
@@ -152,8 +141,8 @@ unsigned int thermal_to_mcupm(
 
 		ackData = ack_data;
 
-		ret = mtk_ipi_send_compl(&mcupm_ipidev, CH_S_PLATFORM,
-			IPI_SEND_WAIT, thermal_data, THERMAL_SLOT_NUM, 2000);
+		ret = mtk_ipi_send_compl(&sspm_ipidev, IPIS_C_THERMAL,
+			IPI_SEND_POLLING, thermal_data, THERMAL_SLOT_NUM, 2000);
 
 		if (ret != 0)
 			tscpu_printk("sspm_ipi_send err cmd %d,ret:%d - %d\n",
@@ -169,8 +158,8 @@ unsigned int thermal_to_mcupm(
 
 		ackData = ack_data;
 
-		ret = mtk_ipi_send_compl(&mcupm_ipidev, CH_S_PLATFORM,
-			IPI_SEND_WAIT, thermal_data, THERMAL_SLOT_NUM, 2000);
+		ret = mtk_ipi_send_compl(&sspm_ipidev, IPIS_C_THERMAL,
+			IPI_SEND_POLLING, thermal_data, THERMAL_SLOT_NUM, 2000);
 
 		if (ret != 0)
 			tscpu_printk("sspm_ipi_send err cmd %d,ret:%d - %d\n",
@@ -231,8 +220,8 @@ struct thermal_ipi_data *thermal_data, int *ackData)
 	case THERMAL_IPI_GET_ATM_CPU_LIMIT:
 	case THERMAL_IPI_GET_ATM_GPU_LIMIT:
 		thermal_data->cmd = cmd;
-		ret = mtk_ipi_send_compl(&mcupm_ipidev, CH_S_PLATFORM,
-			IPI_SEND_WAIT, thermal_data, (data_len+1), 2000);
+		ret = mtk_ipi_send_compl(&sspm_ipidev, IPIS_C_THERMAL,
+			IPI_SEND_POLLING, thermal_data, (data_len+1), 2000);
 		if ((ret != 0) || (ack_data < 0))
 			tscpu_printk("%s cmd %d ret %d ack %d\n",
 				__func__, cmd, ret, ack_data);
@@ -260,7 +249,7 @@ static int get_sspm_tz_temp_read(struct seq_file *m, void *v)
 	thermal_data.u.data.arg[1] = 0;
 	thermal_data.u.data.arg[2] = 0;
 
-	while (thermal_to_mcupm(THERMAL_IPI_GET_TEMP, &thermal_data) != 0)
+	while (thermal_to_sspm(THERMAL_IPI_GET_TEMP, &thermal_data) != 0)
 		udelay(500);
 
 	seq_puts(m, "Show current temperature in SSPM UART log\n");
@@ -309,7 +298,7 @@ static ssize_t set_sspm_big_limit_threshold_write
 		thermal_data.u.data.arg[1] = bigCoreTj;
 		thermal_data.u.data.arg[2] = bigCoreFreqUpperBound;
 
-		while (thermal_to_mcupm(THERMAL_IPI_SET_BIG_FREQ_THRESHOLD,
+		while (thermal_to_sspm(THERMAL_IPI_SET_BIG_FREQ_THRESHOLD,
 			&thermal_data) != 0)
 			udelay(500);
 
@@ -326,7 +315,7 @@ static ssize_t set_sspm_big_limit_threshold_write
 		thermal_data.u.data.arg[1] = bigCoreExitTj;
 		thermal_data.u.data.arg[2] = 0;
 
-		while (thermal_to_mcupm(THERMAL_IPI_SET_BIG_FREQ_THRESHOLD,
+		while (thermal_to_sspm(THERMAL_IPI_SET_BIG_FREQ_THRESHOLD,
 			&thermal_data) != 0)
 			udelay(500);
 
@@ -361,7 +350,7 @@ static int set_sspm_big_limit_threshold_read(struct seq_file *m, void *v)
 	thermal_data.u.data.arg[1] = 0;
 	thermal_data.u.data.arg[2] = 0;
 
-	while (thermal_to_mcupm(THERMAL_IPI_GET_BIG_FREQ_THRESHOLD,
+	while (thermal_to_sspm(THERMAL_IPI_GET_BIG_FREQ_THRESHOLD,
 		&thermal_data) != 0)
 		udelay(500);
 
