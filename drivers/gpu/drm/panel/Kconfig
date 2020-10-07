@@ -316,6 +316,18 @@ config DRM_PANEL_TRULY_FT8756_VDO
 	  and uses 24-bits RGB per pixel. It provides a MIPI DSI interface
 	  to host.
 
+config DRM_PANEL_TRULY_FT8756_VDO_FAKE_WCG
+	tristate "TRULY FHD+ vdo mode fake wcg panel"
+	depends on OF
+	depends on DRM_MIPI_DSI
+	depends on BACKLIGHT_CLASS_DEVICE
+	help
+	  Say Y here if you want to enable support for TRULY FT8756 VDO
+	  mode Full HD Plus fake wcg panel. The panel has a 1080x2300 resolution
+	  and uses 24-bits RGB per pixel. It provides a MIPI DSI interface
+	  to host.
+
+
 config DRM_PANEL_TIANMA_R66451_CMD_120HZ
 	tristate "TIANMA  FHD+ cmd mode panel"
 	depends on OF
