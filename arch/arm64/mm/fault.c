@@ -269,6 +269,7 @@ static void __do_kernel_fault(unsigned long addr, unsigned int esr,
 			      struct pt_regs *regs)
 {
 	const char *msg;
+	unsigned int i;
 
 	/*
 	 * Are we prepared to handle this kernel fault?
@@ -276,6 +277,34 @@ static void __do_kernel_fault(unsigned long addr, unsigned int esr,
 	 */
 	if (!is_el1_instruction_abort(esr) && fixup_exception(regs))
 		return;
+
+	/*
+	 * DFD fast trigger:kernel space translation fault or permission fault or alignment fault
+	 */
+	pr_info("Kernel Offset: 0x%llx", (kimage_vaddr - KIMAGE_VADDR));
+	pr_info("PC: %016llx\n", regs->pc);
+	pr_info("LR: %016llx\n", regs->regs[30]);
+
+	i = 29;
+
+	while (i >= 0) {
+		pr_info("x%-2d: %016llx ", i, regs->regs[i]);
+		i--;
+		if (i % 2 == 0) {
+			pr_info("x%-2d: %016llx ", i, regs->regs[i]);
+			i--;
+		}
+		pr_info("\n");
+	}
+	//DRV_WriteReg32(DFD_INTERNAL_SW_TRIGGER,(0x16881681));
+	asm volatile (
+		"mrs x0 , pmcr_el0\n\t"
+		"orr x0 , x0 , #0x100\n\t"
+		"msr pmcr_el0 , x0\n\t"
+		:
+		:
+		:
+	);
 
 	/*
 	 * No handler, we'll have to terminate things with extreme prejudice.
