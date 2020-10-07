@@ -21,7 +21,7 @@
 #define EARLY_PORTING		(0)
 #define DUMP_DATA_TO_DE		(1)
 #define EEMG_ENABLE		(1) /* enable; after pass HPT mini-SQC */
-#define EEMG_FAKE_EFUSE		(1)
+#define EEMG_FAKE_EFUSE		(0)
 //#define MT6885
 //#define MT6889
 //#define MC50_LOAD

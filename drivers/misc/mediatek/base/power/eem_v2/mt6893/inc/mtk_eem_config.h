@@ -21,7 +21,7 @@
 #define EARLY_PORTING		(0) /* for detecting real vboot in eem_init01 */
 #define DUMP_DATA_TO_DE		(1)
 #define EEM_ENABLE		(1) /* enable; after pass HPT mini-SQC */
-#define EEM_FAKE_EFUSE		(1)
+#define EEM_FAKE_EFUSE		(0)
 //#define MT6885
 //#define MT6889
 //#define MC50_LOAD
@@ -255,7 +255,7 @@ enum mt_cpu_dvfs_id {
 #define VBOOT_PMIC_CLR	(0)
 #define VBOOT_VAL		(0x38) /* volt domain: 0.75v */
 #define VMAX_VAL		(0x73) /* volt domain: 1.11875v*/
-#define VMIN_VAL		(0x10) /* volt domain: 0.5v*/
+#define VMIN_VAL		(0x18) /* volt domain: 0.55v*/
 #define VCO_VAL			(0x10)
 #define DVTFIXED_VAL	(0x6)
 
@@ -271,7 +271,7 @@ enum mt_cpu_dvfs_id {
 
 /* different for CCI */
 #define VMAX_VAL_CCI		(0x73) /* volt domain: 1.11875v*/
-#define VMIN_VAL_CCI		(0x10) /* volt domain: 0.5v*/
+#define VMIN_VAL_CCI		(0x18) /* volt domain: 0.55v*/
 #define VCO_VAL_CCI			(0x10) /* volt domain: 0.5v*/
 
 

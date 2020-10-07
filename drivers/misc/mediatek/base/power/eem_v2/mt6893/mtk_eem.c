@@ -832,17 +832,23 @@ void base_ops_set_phase(struct eem_det *det, enum eem_phase phase)
 	eem_write(EEM_DETWINDOW, (((det->DETWINDOW) & 0xffff)));
 	eem_write(EEMCONFIG, (((det->DETMAX) & 0xffff)));
 
-
-	eem_write(EEM_CHKSHIFT, 0x87);
-	if (eem_read(EEM_CHKSHIFT) != 0x87) {
-		aee_kernel_warning("mt_eem",
-		"@%s():%d, EEM_CHKSHIFT %x\n",
-		__func__,
-		__LINE__,
-		eem_read(EEM_CHKSHIFT));
-		WARN_ON(eem_read(EEM_CHKSHIFT) != 0x87);
+#if 0
+	if (det_to_id(det) == EEM_DET_BL)
+		eem_write(EEM_CHKSHIFT, 0xA7);
+	else {
+#endif
+		eem_write(EEM_CHKSHIFT, 0x87);
+		if (eem_read(EEM_CHKSHIFT) != 0x87) {
+			aee_kernel_warning("mt_eem",
+			"@%s():%d, EEM_CHKSHIFT %x\n",
+			__func__,
+			__LINE__,
+			eem_read(EEM_CHKSHIFT));
+			WARN_ON(eem_read(EEM_CHKSHIFT) != 0x87);
+		}
+#if 0
 	}
-
+#endif
 	/* eem ctrl choose thermal sensors */
 	eem_write(EEM_CTL0, det->EEMCTL0);
 	/* clear all pending EEM interrupt & config EEMINTEN */
@@ -859,13 +865,7 @@ void base_ops_set_phase(struct eem_det *det, enum eem_phase phase)
 		/* enable EEM monitor mode */
 		eem_write(EEMEN, 0x00000002 | SEC_MOD_SEL);
 	} else {
-		/* check if DCVALUES is minus and set DCVOFFSETIN to zero */
-		if ((det->DCVOFFSETIN & 0x8000) || (eem_devinfo.FT_PGM == 0))
-			det->DCVOFFSETIN = 0;
-
-#if ENABLE_MINIHQA
 		det->DCVOFFSETIN = 0;
-#endif
 
 		eem_debug("EEM_SET_PHASE02\n ");
 		eem_write(EEMINTEN, 0x00005f01);
@@ -1258,25 +1258,6 @@ static void get_volt_table_in_thread(struct eem_det *det)
 		}
 #endif
 
-/* angus todo */
-#if 0
-		if ((i > 0) && ((i % 4) != 0) &&
-			(ndet->volt_tbl[i] > ndet->volt_tbl[i-1])) {
-
-			verr = 1;
-			aee_kernel_warning("mt_eem",
-				"@%s():%d; (%s) [%d] = [%x] > [%d] = [%x]\n",
-				__func__, __LINE__, ((char *)(ndet->name) + 8),
-				i, ndet->volt_tbl[i], i-1, ndet->volt_tbl[i-1]);
-#if 0
-			aee_kernel_warning("mt_eem",
-			"@%s():%d; (%s) V30_[0x%x], V74_[0x%x],",
-				__func__, __LINE__, ((char *)(det->name) + 8),
-				ndet->mon_vop30, ndet->mon_vop74);
-#endif
-			WARN_ON(ndet->volt_tbl[i] > ndet->volt_tbl[i-1]);
-		}
-#endif
 		/*
 		 *eem_debug("mon_[%s].volt_tbl[%d] = 0x%X (%d)\n",
 		 *	det->name, i, det->volt_tbl[i],
@@ -1367,14 +1348,14 @@ static void get_volt_table_in_thread(struct eem_det *det)
 		eem_debug("low_temp_offset:%d, id:%d\n",
 			low_temp_offset, det->ctrl_id);
 #endif
-
-		if ((i > 0) && (ndet->volt_tbl_pmic[i] >
-			ndet->volt_tbl_pmic[i-1]))
-			ndet->volt_tbl_pmic[i] =
-				ndet->volt_tbl_pmic[i-1];
-
 	}
 
+	/* Check volt */
+	for (i = ndet->num_freq_tbl; i > 0; i--) {
+		if (ndet->volt_tbl_pmic[i] > ndet->volt_tbl_pmic[i - 1])
+			ndet->volt_tbl_pmic[i - 1] =
+				ndet->volt_tbl_pmic[i];
+	}
 	eem_save_final_volt_aee(ndet);
 
 #if UPDATE_TO_UPOWER
@@ -1903,14 +1884,17 @@ static void eem_fill_freq_table(struct eem_det *det,
 
 
 	tmpfreq30 =
-		(det->phase_ef[ef_idx].is_str_fnd) ?
 		((det->freq_tbl[det->phase_ef[ef_idx].str_pt] |
 		det->freq_tbl[det->phase_ef[ef_idx].end_pt] << 8) &
-		0xFFFF) :
-		0x3264;
+		0xFFFF);
+	if (det->phase_ef[ef_idx].is_str_fnd == 0) {
+		if (det_to_id(det) == EEM_DET_BL)
+			tmpfreq30 = 0xEA;
+		else if (det_to_id(det) == EEM_DET_B)
+			tmpfreq30 = 0x90;
+	}
 
 	eem_write(EEM_FREQPCT30, tmpfreq30);
-	eem_write(EEM_FREQPCT74, 0x20);
 }
 
 static void read_volt_from_VOP(struct eem_det *det)
