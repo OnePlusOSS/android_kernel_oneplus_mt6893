@@ -113,8 +113,10 @@ static unsigned int ctt_smc_handle(unsigned int key,
 {
 	unsigned int ret;
 
+	/*
 	ctt_info("[%s]:key(%d) val(%d) cpu(%d)\n",
 		__func__, key, val, cpu);
+	*/
 
 	/* update atf via smc */
 	ret = ptp3_smc_handle(
