@@ -23,6 +23,14 @@ enum mt_cpu_dvfs_id {
 	NR_MT_CPU_DVFS,
 };
 
+enum dsu_mode {
+	NORMAL_CLAMP,
+	PERF,
+	FREE_RUN,
+
+	NR_MODE_NUM,
+};
+
 enum cpu_level {
 	CPU_LEVEL_0, /* FY */
 	CPU_LEVEL_1,
