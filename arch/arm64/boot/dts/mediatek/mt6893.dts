@@ -102,7 +102,7 @@ page_owner=on loop.max_part=7";
 
 		cpu4: cpu@100 {
 			device_type = "cpu";
-			compatible = "arm,cortex-a75";
+			compatible = "arm,cortex-a78";
 			reg = <0x0400>;
 			enable-method = "psci";
 			clock-frequency = <2171000000>;
@@ -111,7 +111,7 @@ page_owner=on loop.max_part=7";
 
 		cpu5: cpu@101 {
 			device_type = "cpu";
-			compatible = "arm,cortex-a75";
+			compatible = "arm,cortex-a78";
 			reg = <0x0500>;
 			enable-method = "psci";
 			clock-frequency = <2171000000>;
@@ -120,7 +120,7 @@ page_owner=on loop.max_part=7";
 
 		cpu6: cpu@102 {
 			device_type = "cpu";
-			compatible = "arm,cortex-a75";
+			compatible = "arm,cortex-a78";
 			reg = <0x0600>;
 			enable-method = "psci";
 			clock-frequency = <2171000000>;
@@ -129,7 +129,7 @@ page_owner=on loop.max_part=7";
 
 		cpu7: cpu@200 {
 			device_type = "cpu";
-			compatible = "arm,cortex-a75";
+			compatible = "arm,cortex-a78";
 			reg = <0x0700>;
 			enable-method = "psci";
 			clock-frequency = <2171000000>;
