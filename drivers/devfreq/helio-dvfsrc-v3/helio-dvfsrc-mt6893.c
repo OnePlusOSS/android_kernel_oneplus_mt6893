@@ -449,6 +449,7 @@ void get_opp_info(char *p)
 	p += sprintf(p, "%s: 0x%08x\n", "INFO1", get_devinfo_with_index(134));
 	p += sprintf(p, "%s: 0x%08x\n", "INFO2", get_devinfo_with_index(140));
 	p += sprintf(p, "%s: 0x%08x\n", "INFO3", get_devinfo_with_index(69));
+	p += sprintf(p, "%s: 0x%08x\n", "V_MODE", dvfsrc_read(DVFSRC_RSRV_4));
 }
 
 
