@@ -22,6 +22,7 @@
 
 #define UFS_REF_CLK_CTRL_BY_UFSHCI
 #define HIE_CHANGE_KEY_IN_NORMAL_WORLD
+#define UFS_HOST_TACITVATE_NOT_CHANGE_FOR_SAMSUNG
 
 /*
  * Platform dependent quirks
