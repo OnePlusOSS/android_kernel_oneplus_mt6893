@@ -97,8 +97,7 @@ static int qos_prefetch_cpuhp_online(unsigned int cpu)
 
 	if (is_qos_prefetch_enabled()) {
 		val = QOS_PREFETCH_VALUE(prefetch_val, cpu);
-		if (val)
-			qos_prefetch_update_single(cpu, val);
+		qos_prefetch_update_single(cpu, val);
 	}
 
 	spin_unlock_irqrestore(&qos_prefetch_cpumask_lock,
@@ -349,9 +348,7 @@ void qos_prefetch_update_all(void)
 		cpu_live = qos_prefetch_cpumask & BIT(i);
 		if (cpu_live) {
 			val = QOS_PREFETCH_VALUE(prefetch_val, i);
-
-			if (val)
-				qos_prefetch_update_single(i, val);
+			qos_prefetch_update_single(i, val);
 		}
 	}
 
@@ -423,9 +420,7 @@ void qos_prefetch_tick(int cpu)
 		return;
 
 	val = QOS_PREFETCH_VALUE(prefetch_val, cpu);
-
-	if (val)
-		qos_prefetch_update_single(cpu, val);
+	qos_prefetch_update_single(cpu, val);
 }
 EXPORT_SYMBOL(qos_prefetch_tick);
 
