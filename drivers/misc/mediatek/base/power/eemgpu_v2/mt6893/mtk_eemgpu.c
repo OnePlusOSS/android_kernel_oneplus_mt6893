@@ -212,7 +212,7 @@ static int get_devinfo(void)
 	}
 
 
-	efuse_val = (get_devinfo_with_index(209)
+	efuse_val = (get_devinfo_with_index(72)
 		>> 21) & 0xf;
 	if (efuse_val && efuse_val <= 6)
 		gpu_vb_volt =
