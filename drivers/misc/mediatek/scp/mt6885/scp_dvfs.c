@@ -1236,7 +1236,7 @@ static void set_ulposc_cali_value(unsigned int cali_val)
 	udelay(50);
 }
 
-static unsigned int ulposc_cali_process(int idx)
+static unsigned int ulposc_cali_process(unsigned int idx)
 {
 	unsigned int target_val = 0, current_val = 0;
 	unsigned int min = CAL_MIN_VAL, max = CAL_MAX_VAL, middle;
@@ -1300,7 +1300,7 @@ static unsigned int ulposc_cali_process(int idx)
 void ulposc_cali_init(void)
 {
 	struct device_node *node;
-	int i;
+	unsigned int i;
 
 	pr_info("%s\n", __func__);
 
