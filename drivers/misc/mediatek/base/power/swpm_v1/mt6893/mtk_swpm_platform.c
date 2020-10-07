@@ -73,6 +73,7 @@ static unsigned int idx_output_size;
 static phys_addr_t rec_phys_addr, rec_virt_addr;
 static unsigned long long rec_size;
 #endif
+bool pmu_enable = 1;
 
 __weak int mt_spower_get_leakage_uW(int dev, int voltage, int deg)
 {
@@ -541,12 +542,16 @@ static void swpm_pmu_start(int cpu)
 
 static void swpm_pmu_stop(int cpu)
 {
+#if 0
 	struct perf_event *l3_event = per_cpu(l3dc_events, cpu);
+#endif
 	struct perf_event *i_event = per_cpu(inst_spec_events, cpu);
 	struct perf_event *c_event = per_cpu(cycle_events, cpu);
 
+#if 0
 	if (l3_event)
 		perf_event_disable(l3_event);
+#endif
 	if (i_event)
 		perf_event_disable(i_event);
 	if (c_event)
@@ -592,11 +597,12 @@ static void swpm_pmu_set_enable(int cpu, int enable)
 		swpm_pmu_start(cpu);
 	} else {
 		swpm_pmu_stop(cpu);
-
+#if 0
 		if (l3_event) {
 			per_cpu(l3dc_events, cpu) = NULL;
 			perf_event_release_kernel(l3_event);
 		}
+#endif
 		if (i_event) {
 			per_cpu(inst_spec_events, cpu) = NULL;
 			perf_event_release_kernel(i_event);
@@ -1225,11 +1231,42 @@ static ssize_t core_static_replace_proc_write(struct file *file,
 	return count;
 }
 
+static int pmu_enable_proc_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "\nSWPM PMU is %s\n",
+		(pmu_enable == true) ? "enabled" : "disabled");
+
+	return 0;
+}
+
+static ssize_t pmu_enable_proc_write(struct file *file,
+		const char __user *buffer, size_t count, loff_t *pos)
+{
+	int enable = 0;
+
+	char *buf = _copy_from_user_for_proc(buffer, count);
+
+	if (!buf)
+		return -EINVAL;
+
+	if (!kstrtouint(buf, 10, &enable)) {
+		pmu_enable = (enable) ? true : false;
+		if (pmu_enable)
+			swpm_pmu_set_enable_all(1);
+		else
+			swpm_pmu_set_enable_all(0);
+	} else
+		swpm_err("echo 1/0 > /proc/swpm/pmu_enable\n");
+
+	return count;
+}
+
 
 PROC_FOPS_RW(idd_tbl);
 PROC_FOPS_RO(dram_bw);
 PROC_FOPS_RW(pmu_ms_mode);
 PROC_FOPS_RW(core_static_replace);
+PROC_FOPS_RW(pmu_enable);
 /***************************************************************************
  *  API
  ***************************************************************************/
@@ -1327,11 +1364,13 @@ static void swpm_platform_procfs(void)
 	struct swpm_entry dram_bw = PROC_ENTRY(dram_bw);
 	struct swpm_entry pmu_mode = PROC_ENTRY(pmu_ms_mode);
 	struct swpm_entry core_lkg_rp = PROC_ENTRY(core_static_replace);
+	struct swpm_entry pmu_enable = PROC_ENTRY(pmu_enable);
 
 	swpm_append_procfs(&idd_tbl);
 	swpm_append_procfs(&dram_bw);
 	swpm_append_procfs(&pmu_mode);
 	swpm_append_procfs(&core_lkg_rp);
+	swpm_append_procfs(&pmu_enable);
 }
 
 static int __init swpm_platform_init(void)
