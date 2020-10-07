@@ -140,9 +140,6 @@ static int get_vb_volt(int vcore_opp, int info_mode)
 	else
 		ptpod = 0;
 
-	info = 3;
-	ptpod = 5;
-
 	if ((info > 0) && (info <= 4) && (info_mode & (1 << VCORE_VB_TYPEA_EN_SHIFT))) {
 		if (vcore_opp == VCORE_OPP_0)
 			ret = (ptpod <= 3) ? ptpod : 3;
