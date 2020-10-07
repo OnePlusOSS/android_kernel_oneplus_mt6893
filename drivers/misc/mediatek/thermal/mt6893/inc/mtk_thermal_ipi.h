@@ -14,24 +14,39 @@
 #ifndef __MTK_THERMAL_IPI_H__
 #define __MTK_THERMAL_IPI_H__
 
-#ifdef CONFIG_MTK_TINYSYS_SSPM_SUPPORT
+#ifdef CONFIG_MTK_TINYSYS_MCUPM_SUPPORT
 #define THERMAL_ENABLE_TINYSYS_SSPM (0)
 #define THERMAL_ENABLE_ONLY_TZ_SSPM (1)
-#define THERMAL_SSPM_THERMAL_THROTTLE_SWITCH
 
+
+#if THERMAL_ENABLE_ONLY_TZ_SSPM
+#define THERMAL_SSPM_THERMAL_THROTTLE_SWITCH
+#endif
 /*Only Big SW need to enable this definition
  *Big SW suspend/resume flow:
  *    suspend: kernel suspend => SSPM suspend
  *    resume: SSPM resume => kernel resume
  */
+#if THERMAL_ENABLE_ONLY_TZ_SSPM
 #define THERMAL_KERNEL_SUSPEND_RESUME_NOTIFY
+#endif
+
+/* THERMAL_KERNEL_SUSPEND_RESUME_NOTIFY_ONLY_AT_SHUTDOWN means
+ * notify tinysys to stop reading temperature only when kernel shutodown
+ */
+#ifdef THERMAL_KERNEL_SUSPEND_RESUME_NOTIFY
+#define THERMAL_KERNEL_SUSPEND_RESUME_NOTIFY_ONLY_AT_SHUTDOWN
+#endif
+
+#define THERMAL_CPUEB_USE_PLATFORM_IPI
+
 #else
 #define THERMAL_ENABLE_TINYSYS_SSPM (0)
 #define THERMAL_ENABLE_ONLY_TZ_SSPM (0)
 #endif
 
 #if THERMAL_ENABLE_TINYSYS_SSPM || THERMAL_ENABLE_ONLY_TZ_SSPM
-#include <sspm_ipi_id.h>
+//#include <mcupm_ipi_id.h>
 
 #define THERMAL_SLOT_NUM (4)
 #define BIG_CORE_THRESHOLD_ARRAY_SIZE (3)
@@ -73,7 +88,7 @@ struct thermal_ipi_data {
 		} data;
 	} u;
 };
-extern unsigned int thermal_to_sspm(unsigned int cmd,
+extern unsigned int thermal_to_mcupm(unsigned int cmd,
 	struct thermal_ipi_data *thermal_data);
 extern int atm_to_sspm(unsigned int cmd, int data_len,
 	struct thermal_ipi_data *thermal_data, int *ackData);
