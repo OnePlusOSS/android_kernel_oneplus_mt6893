@@ -262,47 +262,28 @@ static void swpm_sp_timer_init(void)
 static int swpm_sp_test_proc_show(struct seq_file *m, void *v)
 {
 	int i, j;
-	int32_t core_vol_num, core_ip_num, ddr_freq_num, ddr_bc_ip_num;
+	int32_t core_vol_num, core_ip_num;
 
-	/* example code */
-	struct ddr_act_times *ddr_act_times_ptr;
-	struct ddr_sr_pd_times *ddr_sr_pd_times_ptr;
 	struct ip_stats *core_ip_stats_ptr;
-	struct ddr_ip_bc_stats *ddr_ip_stats_ptr;
 	struct vol_duration *core_duration_ptr;
 
 	core_vol_num = get_vcore_vol_num();
 	core_ip_num = get_vcore_ip_num();
-	ddr_freq_num = get_ddr_freq_num();
-	ddr_bc_ip_num = get_ddr_data_ip_num();
 
-	ddr_act_times_ptr =
-	kmalloc_array(ddr_freq_num, sizeof(struct ddr_act_times), GFP_KERNEL);
-	ddr_sr_pd_times_ptr =
-	kmalloc(sizeof(struct ddr_sr_pd_times), GFP_KERNEL);
 	core_duration_ptr =
 	kmalloc_array(core_vol_num, sizeof(struct vol_duration), GFP_KERNEL);
 	core_ip_stats_ptr =
 	kmalloc_array(core_ip_num, sizeof(struct ip_stats), GFP_KERNEL);
-	ddr_ip_stats_ptr =
-	kmalloc_array(ddr_bc_ip_num,
-		sizeof(struct ddr_ip_bc_stats), GFP_KERNEL);
 
-	get_ddr_act_times(ddr_freq_num, ddr_act_times_ptr);
-	get_ddr_sr_pd_times(ddr_sr_pd_times_ptr);
-	get_ddr_freq_data_ip_stats(ddr_bc_ip_num,
-				   ddr_freq_num,
-				   ddr_ip_stats_ptr);
+	swpm_sp_dispatcher(SYNC_DATA, 0);
+
 	get_vcore_vol_duration(core_vol_num, core_duration_ptr);
 	get_vcore_ip_vol_stats(core_ip_num, core_vol_num,
 			       core_ip_stats_ptr);
 
 	seq_printf(m, "VCORE_VOL_NUM = %d\n", core_vol_num);
 	seq_printf(m, "VCORE_IP_NUM = %d\n", core_ip_num);
-	seq_printf(m, "DRAM_FREQ_NUM = %d\n", ddr_freq_num);
-	seq_printf(m, "DRAM_BW_IP_NUM = %d\n", ddr_bc_ip_num);
 
-	swpm_sp_dispatcher(SYNC_DATA, 0);
 
 	for (i = 0; i < core_vol_num; i++) {
 		seq_printf(m, "VCORE %d mV : %lld ms\n",
@@ -323,38 +304,78 @@ static int swpm_sp_test_proc_show(struct seq_file *m, void *v)
 			core_ip_stats_ptr[i].vol_times[j].off_time);
 		}
 	}
-	seq_printf(m, "DDR sr_time : %lld ms\n",
-		   ddr_sr_pd_times_ptr->sr_time);
-	seq_printf(m, "DDR pd_time : %lld ms\n",
-		   ddr_sr_pd_times_ptr->pd_time);
-	for (i = 0; i < ddr_freq_num; i++) {
-		seq_printf(m, "DDR %d Mhz :\n",
-			   ddr_act_times_ptr[i].freq);
-		seq_printf(m, "active_time : %lld ms\n",
-			   ddr_act_times_ptr[i].active_time);
-		for (j = 0; j < ddr_bc_ip_num; j++) {
-			seq_printf(m, "%s : %llu bytes\n",
-				ddr_ip_stats_ptr[j].ip_name,
-				ddr_ip_stats_ptr[j].bc_stats[i].value);
-		}
-	}
-	kfree(ddr_act_times_ptr);
-	kfree(ddr_sr_pd_times_ptr);
 	kfree(core_ip_stats_ptr);
-	kfree(ddr_ip_stats_ptr);
 	kfree(core_duration_ptr);
 
 	return 0;
 }
 PROC_FOPS_RO(swpm_sp_test);
+#endif
+
+static int swpm_sp_ddr_idx_proc_show(struct seq_file *m, void *v)
+{
+	int i, j;
+	int32_t ddr_freq_num, ddr_bc_ip_num;
+
+	struct ddr_act_times *ddr_act_times_ptr;
+	struct ddr_sr_pd_times *ddr_sr_pd_times_ptr;
+	struct ddr_ip_bc_stats *ddr_ip_stats_ptr;
+
+	ddr_freq_num = get_ddr_freq_num();
+	ddr_bc_ip_num = get_ddr_data_ip_num();
+
+	ddr_act_times_ptr =
+	kmalloc_array(ddr_freq_num, sizeof(struct ddr_act_times), GFP_KERNEL);
+	ddr_sr_pd_times_ptr =
+	kmalloc(sizeof(struct ddr_sr_pd_times), GFP_KERNEL);
+	ddr_ip_stats_ptr =
+	kmalloc_array(ddr_bc_ip_num,
+		sizeof(struct ddr_ip_bc_stats), GFP_KERNEL);
+
+	swpm_sp_dispatcher(SYNC_DATA, 0);
+
+	get_ddr_act_times(ddr_freq_num, ddr_act_times_ptr);
+	get_ddr_sr_pd_times(ddr_sr_pd_times_ptr);
+	get_ddr_freq_data_ip_stats(ddr_bc_ip_num,
+				   ddr_freq_num,
+				   ddr_ip_stats_ptr);
+
+	seq_printf(m, "SR time(msec): %lld\n",
+		   ddr_sr_pd_times_ptr->sr_time);
+	seq_printf(m, "PD time(msec): %lld\n",
+		   ddr_sr_pd_times_ptr->pd_time);
+
+	for (i = 0; i < ddr_freq_num; i++) {
+		seq_printf(m, "Freq %dMhz: ",
+			   ddr_act_times_ptr[i].freq);
+		seq_printf(m, "Time(msec):%lld ",
+			   ddr_act_times_ptr[i].active_time);
+		for (j = 0; j < ddr_bc_ip_num; j++) {
+			seq_printf(m, "%llu/",
+				ddr_ip_stats_ptr[j].bc_stats[i].value);
+		}
+		seq_putc(m, '\n');
+	}
+	kfree(ddr_act_times_ptr);
+	kfree(ddr_sr_pd_times_ptr);
+	kfree(ddr_ip_stats_ptr);
+
+	return 0;
+}
+PROC_FOPS_RO(swpm_sp_ddr_idx);
 
 static void swpm_sp_procfs_init(void)
 {
+#if SWPM_INTERNAL_TEST
 	struct swpm_entry swpm_sp_test = PROC_ENTRY(swpm_sp_test);
-
-	swpm_append_procfs(&swpm_sp_test);
-}
 #endif
+	struct swpm_entry swpm_sp_ddr_idx = PROC_ENTRY(swpm_sp_ddr_idx);
+
+#if SWPM_INTERNAL_TEST
+	swpm_append_procfs(&swpm_sp_test);
+#endif
+	swpm_append_procfs(&swpm_sp_ddr_idx);
+}
 
 void swpm_sp_init(phys_addr_t ref_addr,
 		  phys_addr_t ctrl_addr)
@@ -414,14 +435,13 @@ void swpm_sp_init(phys_addr_t ref_addr,
 		(struct share_index_ext *)ref_addr;
 	share_idx_ctrl_ext =
 		(struct share_ctrl_ext *)ctrl_addr;
-
-	swpm_sp_timer_init();
-#if SWPM_INTERNAL_TEST
-	swpm_sp_procfs_init();
-
 	swpm_err("share_index_ext size = %zu bytes\n",
 		sizeof(struct share_index_ext));
-#endif
+
+	swpm_sp_timer_init();
+
+	swpm_sp_procfs_init();
+
 	mtk_register_swpm_ops(&plat_ops);
 }
 
