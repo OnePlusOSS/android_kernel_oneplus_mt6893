@@ -634,6 +634,13 @@ struct ion_handle *ion_alloc(struct ion_client *client, size_t len,
 	pr_debug("%s: len %zu align %zu heap_id_mask %u flags %x\n", __func__,
 		 len, align, heap_id_mask, flags);
 
+#if defined(CONFIG_MACH_MT6893)
+	if (heap_id_mask == ION_HEAP_MULTIMEDIA_MAP_MVA_MASK) {
+		IONMSG("%s fail, not support MAP_MVA heap\n", __func__);
+		return ERR_PTR(-EINVAL);
+	}
+#endif
+
 	/* For some case(C2 audio decoder), it can not set heap id in AOSP,
 	 * so mtk ion will set this heap to ion_mm_heap.
 	 */
