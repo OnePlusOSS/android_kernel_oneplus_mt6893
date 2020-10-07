@@ -1351,7 +1351,7 @@ static void get_volt_table_in_thread(struct eem_det *det)
 	}
 
 	/* Check volt */
-	for (i = ndet->num_freq_tbl; i > 0; i--) {
+	for (i = ndet->num_freq_tbl - 1; i > 0; i--) {
 		if (ndet->volt_tbl_pmic[i] > ndet->volt_tbl_pmic[i - 1])
 			ndet->volt_tbl_pmic[i - 1] =
 				ndet->volt_tbl_pmic[i];
@@ -1882,16 +1882,16 @@ static void eem_fill_freq_table(struct eem_det *det,
 
 	ef_idx = (phase == EEM_PHASE_MON) ? 0 : det->init2_phase;
 
-
-	tmpfreq30 =
-		((det->freq_tbl[det->phase_ef[ef_idx].str_pt] |
-		det->freq_tbl[det->phase_ef[ef_idx].end_pt] << 8) &
-		0xFFFF);
 	if (det->phase_ef[ef_idx].is_str_fnd == 0) {
 		if (det_to_id(det) == EEM_DET_BL)
 			tmpfreq30 = 0xEA;
 		else if (det_to_id(det) == EEM_DET_B)
 			tmpfreq30 = 0x90;
+	} else if (det->phase_ef[ef_idx].end_pt != 255) {
+		tmpfreq30 =
+			((det->freq_tbl[det->phase_ef[ef_idx].str_pt] |
+			det->freq_tbl[det->phase_ef[ef_idx].end_pt] << 8) &
+			0xFFFF);
 	}
 
 	eem_write(EEM_FREQPCT30, tmpfreq30);
