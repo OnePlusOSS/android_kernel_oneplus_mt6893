@@ -1043,6 +1043,9 @@ static ssize_t mt_scp_resrc_req_proc_write(
 	int len = 0;
 	int ret = 0;
 
+	if (count <= 0)
+		return 0;
+
 	len = (count < (sizeof(desc) - 1)) ? count : (sizeof(desc) - 1);
 	if (copy_from_user(desc, buffer, len))
 		return 0;
