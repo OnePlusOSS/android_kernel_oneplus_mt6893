@@ -41,6 +41,7 @@
 #include <mtk_swpm_sp_platform.h>
 #include <mtk_swpm_interface.h>
 
+#undef swpm_pmu_enable
 
 /****************************************************************************
  *  Macro Definitions
@@ -73,7 +74,12 @@ static unsigned int idx_output_size;
 static phys_addr_t rec_phys_addr, rec_virt_addr;
 static unsigned long long rec_size;
 #endif
-static unsigned int pmu_ref_cnt;
+
+#define swpm_pmu_get_sta(u)  ((swpm_pmu_sta & (1 << u)) >> u)
+#define swpm_pmu_set_sta(u)  (swpm_pmu_sta |= (1 << u))
+#define swpm_pmu_clr_sta(u)  (swpm_pmu_sta &= ~(1 << u))
+static struct mutex swpm_pmu_mutex;
+static unsigned int swpm_pmu_sta;
 
 __weak int mt_spower_get_leakage_uW(int dev, int voltage, int deg)
 {
@@ -612,30 +618,45 @@ static void swpm_pmu_set_enable(int cpu, int enable)
 static void swpm_pmu_set_enable_all(unsigned int enable)
 {
 	int i;
+	unsigned int swpm_pmu_user, swpm_pmu_en;
 
-	if (enable) {
-		if (!pmu_ref_cnt) {
+	swpm_pmu_user = enable >> SWPM_CODE_USER_BIT;
+	swpm_pmu_en = enable & 0x1;
+
+	if (swpm_pmu_user > NR_SWPM_PMU_USER) {
+		swpm_err("pmu_user invalid = %d\n",
+			 swpm_pmu_user);
+		return;
+	}
+
+	swpm_lock(&swpm_pmu_mutex);
+	if (swpm_pmu_en) {
+		if (!swpm_pmu_sta) {
 #ifdef CONFIG_MTK_CACHE_CONTROL
 			ca_force_stop_set_in_kernel(1);
 #endif
 			for (i = 0; i < num_possible_cpus(); i++)
-				swpm_pmu_set_enable(i, 1);
+				swpm_pmu_set_enable(i, swpm_pmu_en);
 		}
-		swpm_err("pmu_enable: %d, ref_cnt: %d(++)\n",
-			 enable, pmu_ref_cnt);
-		pmu_ref_cnt++;
+		if (!swpm_pmu_get_sta(swpm_pmu_user))
+			swpm_pmu_set_sta(swpm_pmu_user);
+
 	} else {
-		if (pmu_ref_cnt == 1) {
+		if (swpm_pmu_get_sta(swpm_pmu_user))
+			swpm_pmu_clr_sta(swpm_pmu_user);
+
+		if (!swpm_pmu_sta) {
 			for (i = 0; i < num_possible_cpus(); i++)
-				swpm_pmu_set_enable(i, 0);
+				swpm_pmu_set_enable(i, swpm_pmu_en);
 #ifdef CONFIG_MTK_CACHE_CONTROL
 			ca_force_stop_set_in_kernel(0);
 #endif
 		}
-		swpm_err("pmu_enable: %d, ref_cnt: %d(--)\n",
-			 enable, pmu_ref_cnt);
-		pmu_ref_cnt--;
 	}
+	swpm_unlock(&swpm_pmu_mutex);
+
+	swpm_err("pmu_enable: %d, user_sta: %d\n",
+		 swpm_pmu_en, swpm_pmu_sta);
 }
 
 #ifdef CONFIG_MTK_TINYSYS_SSPM_SUPPORT
@@ -1202,7 +1223,8 @@ static ssize_t pmu_ms_mode_proc_write(struct file *file,
 		pmu_ms_mode = enable;
 
 		/* TODO: remove this path after qos commander ready */
-		swpm_set_update_cnt(0, (0x1 << 16 | pmu_ms_mode));
+		swpm_set_update_cnt(0, (0x1 << SWPM_CODE_USER_BIT) |
+				    pmu_ms_mode);
 	} else
 		swpm_err("echo <0/1> > /proc/swpm/pmu_ms_mode\n");
 
@@ -1273,14 +1295,14 @@ void swpm_set_enable(unsigned int type, unsigned int enable)
 					continue;
 
 				if (i == CPU_POWER_METER)
-					swpm_pmu_set_enable_all(1);
+					swpm_pmu_enable(SWPM_PMU_INTERNAL, 1);
 				swpm_set_status(i);
 			} else {
 				if (!swpm_get_status(i))
 					continue;
 
 				if (i == CPU_POWER_METER)
-					swpm_pmu_set_enable_all(0);
+					swpm_pmu_enable(SWPM_PMU_INTERNAL, 0);
 				swpm_clr_status(i);
 			}
 		}
@@ -1288,11 +1310,11 @@ void swpm_set_enable(unsigned int type, unsigned int enable)
 	} else if (type < NR_POWER_METER) {
 		if (enable && !swpm_get_status(type)) {
 			if (type == CPU_POWER_METER)
-				swpm_pmu_set_enable_all(1);
+				swpm_pmu_enable(SWPM_PMU_INTERNAL, 1);
 			swpm_set_status(type);
 		} else if (!enable && swpm_get_status(type)) {
 			if (type == CPU_POWER_METER)
-				swpm_pmu_set_enable_all(0);
+				swpm_pmu_enable(SWPM_PMU_INTERNAL, 0);
 			swpm_clr_status(type);
 		}
 		swpm_send_enable_ipi(type, enable);
@@ -1405,13 +1427,13 @@ static int __init swpm_platform_init(void)
 
 	swpm_init_pwr_data();
 
-	swpm_pmu_set_enable_all(1);
-
 	swpm_core_ops_register(&plat_ops);
 
 #if SWPM_TEST
 	swpm_interface_unit_test();
 #endif
+
+	swpm_pmu_enable(SWPM_PMU_CPU_DVFS, 1);
 
 #ifdef CONFIG_MTK_TINYSYS_SSPM_SUPPORT
 	swpm_pass_to_sspm();

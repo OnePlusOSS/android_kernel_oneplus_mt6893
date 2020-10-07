@@ -84,6 +84,9 @@
 #define swpm_clr_status(type)  (swpm_status &= ~(1 << type))
 #define for_each_pwr_mtr(i)    for (i = 0; i < NR_POWER_METER; i++)
 
+/* SWPM command dispatcher with user bits */
+#define SWPM_CODE_USER_BIT (16)
+
 struct swpm_entry {
 	const char *name;
 	const struct file_operations *fops;

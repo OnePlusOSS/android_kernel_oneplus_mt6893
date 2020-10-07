@@ -464,12 +464,21 @@ int swpm_core_ops_register(struct swpm_core_internal_ops *ops)
 	return 0;
 }
 
-int swpm_pmu_enable(unsigned int enable)
+#undef swpm_pmu_enable
+int swpm_pmu_enable(enum swpm_pmu_user id,
+		    unsigned int enable)
 {
-	if (swpm_m.plat_ready)
-		SWPM_OPS->cmd(SET_PMU, enable);
+	unsigned int cmd_code;
 
-	return 0;
+	if (!swpm_m.plat_ready)
+		return SWPM_INIT_ERR;
+	else if (id >= NR_SWPM_PMU_USER)
+		return SWPM_ARGS_ERR;
+
+	cmd_code = (!!enable) | (id << SWPM_CODE_USER_BIT);
+	SWPM_OPS->cmd(SET_PMU, cmd_code);
+
+	return SWPM_SUCCESS;
 }
 
 int swpm_append_procfs(struct swpm_entry *p)
