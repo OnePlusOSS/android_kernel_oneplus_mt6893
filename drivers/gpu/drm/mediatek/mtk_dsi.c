@@ -741,16 +741,18 @@ static int mtk_dsi_set_LFR(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
 	unsigned int lfr_enable = 1;
 	unsigned int lfr_skip_num = 0;
 
+	if (dsi->ext->params->lfr_enable == 0)
+		return -1;
+
 	if (mtk_dsi_is_cmd_mode(&dsi->ddp_comp))
 		return -1;
 
 	//Settings lfr settings to LFR_CON_REG
 	if (dsi->ext && dsi->ext->params &&
-		dsi->ext->params->dyn_fps.lfr_minimum_fps != 0 &&
-		dsi->ext->params->dyn_fps.lfr_enable == 1) {
+		dsi->ext->params->lfr_minimum_fps != 0) {
 		lfr_skip_num =
 			(dsi->ext->params->dyn_fps.vact_timing_fps /
-			dsi->ext->params->dyn_fps.lfr_minimum_fps) - 1;
+			dsi->ext->params->lfr_minimum_fps) - 1;
 	}
 
 	if (lfr_dbg) {
@@ -782,6 +784,9 @@ static int mtk_dsi_LFR_update(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
 	void *handle)
 {
 	u32 val = 0, mask = 0;
+
+	if (dsi->ext->params->lfr_enable == 0)
+		return -1;
 
 	if (mtk_dsi_is_cmd_mode(&dsi->ddp_comp))
 		return -1;
