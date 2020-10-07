@@ -101,9 +101,10 @@ const struct of_device_id mt_thermal_of_match[2] = {
 /*
  * module			LVTS Plan
  *=====================================================
- * MCU_BIG(T1,T2)		LVTS1-0, LVTS1-1
+ * MCU_BIG(T1)			LVTS1-0
+ * MCU_BIGBIG(T2)		LVTS1-1
  * MCU_BIG(T3,T4)		LVTS2-0, LVTS2-1
- * MCU_LITTLE(T5,T6,T7,T8)	LVTS3-0, LVTS3-1, LVTS3-2, LVTS3-3
+ * MCU_LITTLE(T5,T6,T7,T8)		LVTS3-0, LVTS3-1, LVTS3-2, LVTS3-3
  * VPU_MLDA(T9,T10)		LVTS4-0, LVTS4-1
  * GPU(T11,T12)			LVTS5-0, LVTS5-1
  * INFA(T13)			LVTS6-0
@@ -127,7 +128,7 @@ struct lvts_thermal_controller lvts_tscpu_g_tc[LVTS_CONTROLLER_NUM] = {
 	[1] = {/*(MCU)*/
 		.ts = {L_TS_LVTS2_0, L_TS_LVTS2_1},
 		.ts_number = 2,
-		.dominator_ts_idx = 1,
+		.dominator_ts_idx = 0,
 		.tc_offset = 0x26D100,
 		.tc_speed = {
 			0x001,
@@ -163,7 +164,7 @@ struct lvts_thermal_controller lvts_tscpu_g_tc[LVTS_CONTROLLER_NUM] = {
 	[4] = {/*(AP)*/
 		.ts = {L_TS_LVTS5_0, L_TS_LVTS5_1},
 		.ts_number = 2,
-		.dominator_ts_idx = 0,
+		.dominator_ts_idx = 1,
 		.tc_offset = 0x100,
 		.tc_speed = {
 			0x001,
@@ -175,7 +176,7 @@ struct lvts_thermal_controller lvts_tscpu_g_tc[LVTS_CONTROLLER_NUM] = {
 	[5] = {/*(AP)*/
 		.ts = {L_TS_LVTS6_0, L_TS_LVTS6_1},
 		.ts_number = 2,
-		.dominator_ts_idx = 1,
+		.dominator_ts_idx = 0,
 		.tc_offset = 0x200,
 		.tc_speed = {
 			0x001,
@@ -187,7 +188,7 @@ struct lvts_thermal_controller lvts_tscpu_g_tc[LVTS_CONTROLLER_NUM] = {
 	[6] = {/*(AP)*/
 		.ts = {L_TS_LVTS7_0, L_TS_LVTS7_1, L_TS_LVTS7_2},
 		.ts_number = 3,
-		.dominator_ts_idx = 1,
+		.dominator_ts_idx = 0,
 		.tc_offset = 0x300,
 		.tc_speed = {
 			0x001,
@@ -402,8 +403,8 @@ int lvts_raw_to_temp(unsigned int msr_raw, enum lvts_sensor_enum ts_name)
 {
 	/* This function returns degree mC
 	 * temp[i] = a * MSR_RAW/16384 + GOLDEN_TEMP/2 + b
-	 * a = -204.65
-	 * b =  204.65
+	 * a = -252.5
+	 * b =  252.5
 	 */
 	int temp_mC = 0;
 	int temp1 = 0;
@@ -1096,54 +1097,47 @@ void lvts_thermal_cal_prepare(void)
 	lvts_printk("[lvts_call] 20: 0x%x,  21: 0x%x\n", temp[20], temp[21]);
 
 
-	g_golden_temp = ((temp[0] & _BITMASK_(31:24)) >> 24);//0x11C1_01B4
-	g_count_r[0] = (temp[1] & _BITMASK_(23:0)); //0x11C1_01C4,LVTS1_0
-	g_count_r[1] = (temp[2] & _BITMASK_(23:0)); //0x11C1_01C8,LVTS1_1
-	g_count_r[2] = (temp[3] & _BITMASK_(23:0)); //0x11C1_01CC,LVTS2_0
-	g_count_r[3] = (temp[4] & _BITMASK_(23:0)); //0x11C1_01D0,LVTS2_1
-	g_count_r[4] = (temp[5] & _BITMASK_(23:0)); //0x11C1_01D4,LVTS3_0
-	g_count_r[5] = (temp[6] & _BITMASK_(23:0)); //0x11C1_01D8,LVTS3_1
-	g_count_r[6] = (temp[7] & _BITMASK_(23:0)); //0x11C1_01DC,LVTS3_2
-	g_count_r[7] = (temp[8] & _BITMASK_(23:0)); //0x11C1_01E0,LVTS3_3
-	g_count_r[8] = (temp[9] & _BITMASK_(23:0)); //0x11C1_01E4,LVTS4_0
-	g_count_r[9] = (temp[10] & _BITMASK_(23:0)); //0x11C1_01E8,LVTS4_1
-	g_count_r[10] = (temp[11] & _BITMASK_(23:0));//0x11C1_01EC,LVTS5_0
-	g_count_r[11] = (temp[12] & _BITMASK_(23:0));//0x11C1_01F0,LVTS5_1
-	g_count_r[12] = (temp[13] & _BITMASK_(23:0));//0x11C1_01F4,LVTS6_0
-	g_count_r[13] = (temp[14] & _BITMASK_(23:0));//0x11C1_01F8,LVTS6_1
-	g_count_r[14] = (temp[15] & _BITMASK_(23:0));//0x11C1_01FC,LVTS7_0
-	g_count_r[15] = (temp[16] & _BITMASK_(23:0));//0x11C1_0200,LVTS7_1
-	g_count_r[16] = (temp[17] & _BITMASK_(23:0));//0x11C1_0204,LVTS7_2
+	g_golden_temp = ((temp[0] & _BITMASK_(31:24)) >> 24);
+	g_count_r[0] = (temp[1] & _BITMASK_(23:0));
+	g_count_r[1] = (temp[2] & _BITMASK_(23:0));
+	g_count_r[2] = (temp[3] & _BITMASK_(23:0));
+	g_count_r[3] = (temp[4] & _BITMASK_(23:0));
+	g_count_r[4] = (temp[5] & _BITMASK_(23:0));
+	g_count_r[5] = (temp[6] & _BITMASK_(23:0));
+	g_count_r[6] = (temp[7] & _BITMASK_(23:0));
+	g_count_r[7] = (temp[8] & _BITMASK_(23:0));
+	g_count_r[8] = (temp[9] & _BITMASK_(23:0));
+	g_count_r[9] = (temp[10] & _BITMASK_(23:0));
+	g_count_r[10] = (temp[11] & _BITMASK_(23:0));
+	g_count_r[11] = (temp[12] & _BITMASK_(23:0));
+	g_count_r[12] = (temp[13] & _BITMASK_(23:0));
+	g_count_r[13] = (temp[14] & _BITMASK_(23:0));
+	g_count_r[14] = (temp[15] & _BITMASK_(23:0));
+	g_count_r[15] = (temp[16] & _BITMASK_(23:0));
+	g_count_r[16] = (temp[17] & _BITMASK_(23:0));
 
-	/*0214, LVTS1_0_COUNT_RC*/
 	g_count_rc[0] = (temp[21] & _BITMASK_(23:0));
 
-	/*01C4, 01C8, 01CC, LVTS2_0_COUNT_RC*/
 	g_count_rc[1] = ((temp[1] & _BITMASK_(31:24)) >> 8) +
 		((temp[2] & _BITMASK_(31:24)) >> 16)+
 		((temp[3] & _BITMASK_(31:24)) >> 24);
 
-	/*01D0, 01D4, 01D8, LVTS3_0_COUNT_RC*/
 	g_count_rc[2] = ((temp[4] & _BITMASK_(31:24)) >> 8) +
 		((temp[5] & _BITMASK_(31:24)) >> 16) +
 		((temp[6] & _BITMASK_(31:24)) >> 24);
 
-	/*01DC, 01E0, 01E4, LVTS4_0_COUNT_RC*/
 	g_count_rc[3] = ((temp[7] & _BITMASK_(31:24)) >> 8) +
 		((temp[8] & _BITMASK_(31:24)) >> 16) +
 		((temp[9] & _BITMASK_(31:24)) >> 24);
 
-	/*01E8, 01EC, 01F0, LVTS5_0_COUNT_RC*/
 	g_count_rc[4] = ((temp[10] & _BITMASK_(31:24)) >> 8) +
 		((temp[11] & _BITMASK_(31:24)) >> 16) +
 		((temp[12] & _BITMASK_(31:24)) >> 24);
 
-	/*01F4, 01F8, 01FC, LVTS6_0_COUNT_RC*/
 	g_count_rc[5] = ((temp[13] & _BITMASK_(31:24)) >> 8) +
 		((temp[14] & _BITMASK_(31:24)) >> 16) +
 		((temp[15] & _BITMASK_(31:24)) >> 24);
 
-	/*0200, 0204, 0208, LVTS7_0_COUNT_RC*/
 	g_count_rc[6] = ((temp[16] & _BITMASK_(31:24)) >> 8) +
 		((temp[17] & _BITMASK_(31:24)) >> 16) +
 		((temp[18] & _BITMASK_(31:24)) >> 24);
@@ -1237,8 +1231,8 @@ void lvts_ipi_send_sspm_thermal_suspend_resume(int is_suspend)
 static unsigned int lvts_temp_to_raw(int temp, enum lvts_sensor_enum ts_name)
 {
 	/* MSR_RAW = ((temp[i] - GOLDEN_TEMP/2 - b) * 16384) / a
-	 * a = -204.65
-	 * b =  204.65
+	 * a = -252.5
+	 * b =  252.5
 	 */
 	unsigned int msr_raw = 0;
 
@@ -1367,21 +1361,28 @@ static void lvts_interrupt_handler(int tc_num)
 
 irqreturn_t lvts_tscpu_thermal_all_tc_interrupt_handler(int irq, void *dev_id)
 {
-	unsigned int ret = 0, i, mask = 1;
+	unsigned int ret = 0, ret_mcu = 0, i, mask = 1;
 
-	ret = readl(THERMINTST);
-	ret = ret & 0x7F;
+	ret = readl(THERMINTST +
+		lvts_tscpu_g_tc[LVTS_AP_CONTROLLER0].tc_offset);
+	ret = ret & 0x1E;
+	ret_mcu = readl(THERMINTST +
+		lvts_tscpu_g_tc[LVTS_MCU_CONTROLLER0].tc_offset);
+	ret_mcu = ret_mcu & 0x1E;
+
 	/* MSB LSB NAME
-	 * 6   6   LVTSINT3
-	 * 5   5   LVTSINT2
-	 * 4   4   LVTSINT1
-	 * 3   3   LVTSINT0
-	 * 2   2   THERMINT2
-	 * 1   1   THERMINT1
+	 * 4   4   LVTSINT3
+	 * 3   3   LVTSINT2
+	 * 2   2   LVTSINT1
+	 * 1   1   LVTSINT0
 	 * 0   0   THERMINT0
 	 */
+	lvts_printk("%s : THERMINTST = 0x%x THERMINTST_MCU = 0x%x\n",
+		__func__, ret, ret_mcu);
 
-	lvts_printk("%s : THERMINTST = 0x%x\n", __func__, ret);
+	ret = ((ret_mcu >> 1) << LVTS_MCU_CONTROLLER0) |
+		((ret >> 1) << LVTS_AP_CONTROLLER0);
+
 	for (i = 0; i < ARRAY_SIZE(lvts_tscpu_g_tc); i++) {
 		mask = 1 << i;
 
