@@ -290,6 +290,7 @@ int fll_reserve_memory_dump(char *buf, unsigned long long ptp3_mem_size,
 /************************************************
  * IPI between kernel and mcupm/cpu_eb
  ************************************************/
+#if 0 //xxx
 #ifdef CONFIG_MTK_TINYSYS_MCUPM_SUPPORT
 static void fll_ipi_handle(unsigned int cpu, unsigned int group,
 	unsigned int bits, unsigned int shift, unsigned int val)
@@ -313,6 +314,7 @@ static void fll_ipi_handle(unsigned int cpu, unsigned int group,
 {
 	fll_msg("IPI from kernel to MCUPM not exist\n");
 }
+#endif
 #endif
 
 /************************************************
@@ -377,9 +379,6 @@ static ssize_t fll_ctrl_proc_write(struct file *file,
 		fll_err("ret(%d). access atf fail\n", ret);
 		goto out;
 	}
-
-	/* update via mcupm or cpu_eb */
-	fll_ipi_handle(0, 0, 0, 0, 0);
 
 out:
 	free_page((unsigned long)buf);
@@ -565,9 +564,6 @@ static ssize_t fll_reg_proc_write(struct file *file,
 		goto out;
 	}
 
-	/* update via mcupm or cpu_eb */
-	fll_ipi_handle(0, 0, 0, 0, 0);
-
 out:
 	free_page((unsigned long)buf);
 	return count;
@@ -748,9 +744,6 @@ static ssize_t fll_eventCount_proc_write(struct file *file,
 		fll_err("ret(%d). access atf fail\n", ret);
 		goto out;
 	}
-
-	/* update via mcupm or cpu_eb */
-	fll_ipi_handle(0, 0, 0, 0, 0);
 
 out:
 	free_page((unsigned long)buf);
@@ -955,9 +948,6 @@ static ssize_t fll_eventFreeze_proc_write(struct file *file,
 		fll_err("ret(%d). access atf fail\n", ret);
 		goto out;
 	}
-
-	/* update via mcupm or cpu_eb */
-	fll_ipi_handle(0, 0, 0, 0, 0);
 
 out:
 	free_page((unsigned long)buf);
