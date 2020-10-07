@@ -1730,6 +1730,9 @@ static void xgf_calculate_u_avg2sd(struct xgf_render *render)
 	int i, interval, divisor;
 	unsigned long long diff, total, avg, stddev;
 
+	if (render->frame_count < 2)
+		return;
+
 	/* First calculate the average */
 	divisor = 0;
 	total = 0;
@@ -1748,8 +1751,10 @@ static void xgf_calculate_u_avg2sd(struct xgf_render *render)
 		total += render->u_runtime[i];
 		divisor++;
 	}
-	avg = div_u64(total, divisor);
-	render->u_avg_runtime = avg;
+	if (divisor > 0) {
+		avg = div_u64(total, divisor);
+		render->u_avg_runtime = avg;
+	}
 
 	/* Then try to determine standard deviation */
 	stddev = 0;
@@ -1767,9 +1772,11 @@ static void xgf_calculate_u_avg2sd(struct xgf_render *render)
 
 		stddev += diff * diff;
 	}
-	stddev = div_u64(stddev, divisor);
-	stddev = xgf_sqrt(stddev);
-	render->u_runtime_sd = stddev;
+	if (divisor > 0) {
+		stddev = div_u64(stddev, divisor);
+		stddev = xgf_sqrt(stddev);
+		render->u_runtime_sd = stddev;
+	}
 }
 
 int fpsgo_comp2xgf_qudeq_notify(int rpid, unsigned long long bufID, int cmd,
