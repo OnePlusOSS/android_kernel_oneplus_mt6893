@@ -265,6 +265,11 @@ static void *__arm_v7s_alloc_table(int lvl, gfp_t gfp,
 	else if (lvl == 2)
 		table = kmem_cache_zalloc(data->l2_tables, gfp | GFP_DMA);
 
+	if (!table) {
+		pr_info("%s table is NULL, lvl:%d\n", __func__, lvl);
+		return NULL;
+	}
+
 	phys = virt_to_phys(table);
 	if (phys != (arm_v7s_iopte)phys) {
 		/* Doesn't fit in PTE */

@@ -1257,9 +1257,16 @@ int iommu_dma_get_iovad_info(struct device *dev,
 	unsigned long *base, unsigned long *max)
 {
 	struct iommu_domain *domain = iommu_get_domain_for_dev(dev);
-	struct iommu_dma_cookie *cookie = domain->iova_cookie;
-	struct iova_domain *iovad = &cookie->iovad;
+	struct iommu_dma_cookie *cookie;
+	struct iova_domain *iovad;
 
+	if (!domain) {
+		pr_info("%s get domain is fail, dev:%s\n", __func__, dev_name(dev));
+		return -1;
+	}
+
+	cookie = domain->iova_cookie;
+	iovad = &cookie->iovad;
 	*base = iovad->start_pfn << iova_shift(iovad);
 	*max = domain->geometry.aperture_end;
 
