@@ -666,13 +666,10 @@ int mrdump_modules_info(unsigned char *buffer, size_t sz_buf)
 #endif
 }
 
-static void mrdump_mini_clear_loads(void);
 void mrdump_mini_add_hang_raw(unsigned long vaddr, unsigned long size)
 {
 	LOGE("mrdump: hang data 0x%lx size:0x%lx\n", vaddr, size);
 	mrdump_mini_add_misc(vaddr, size, 0, "_HANG_DETECT_");
-	/* hang only remove mini rdump loads info to save storage space */
-	mrdump_mini_clear_loads();
 }
 
 #define EXTRA_MISC(func, name, max_size) \
@@ -893,20 +890,6 @@ static void mrdump_mini_add_loads(void)
 			mrdump_mini_add_entry((unsigned long)ti,
 					MRDUMP_MINI_SECTION_SIZE);
 		}
-	}
-}
-
-static void mrdump_mini_clear_loads(void)
-{
-	struct elf_phdr *phdr;
-	int i;
-
-	for (i = 0; i < MRDUMP_MINI_NR_SECTION; i++) {
-		phdr = &mrdump_mini_ehdr->phdrs[i];
-		if (phdr->p_type == PT_NULL)
-			continue;
-		if (phdr->p_type == PT_LOAD)
-			phdr->p_type = PT_NULL;
 	}
 }
 
