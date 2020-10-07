@@ -70,7 +70,7 @@ static struct mrdump_mini_elf_header *mrdump_mini_ehdr;
 static char modules_info_buf[MODULES_INFO_BUF_SIZE];
 #endif
 
-static bool dump_all_cpus;
+static bool dump_all_cpus = 1;
 
 __weak void get_gz_log_buffer(unsigned long *addr, unsigned long *paddr,
 			unsigned long *size, unsigned long *start)
