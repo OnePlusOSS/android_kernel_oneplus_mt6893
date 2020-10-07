@@ -41,5 +41,11 @@ enum swpm_type {
 extern int swpm_mem_addr_request(enum swpm_type id,
 				 phys_addr_t **ptr);
 
+/* swpm interface to enable/disable swpm related pmu */
+/* return:	0  (SWPM_SUCCESS)
+ *		otherwise (ERROR)
+ */
+extern int swpm_pmu_enable(unsigned int enable);
+
 #endif /* __MTK_SWPM_INTERFACE_H__ */
 

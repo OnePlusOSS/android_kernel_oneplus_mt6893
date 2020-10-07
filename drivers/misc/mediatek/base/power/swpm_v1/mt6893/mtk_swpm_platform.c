@@ -73,7 +73,7 @@ static unsigned int idx_output_size;
 static phys_addr_t rec_phys_addr, rec_virt_addr;
 static unsigned long long rec_size;
 #endif
-bool pmu_enable = 1;
+static unsigned int pmu_ref_cnt;
 
 __weak int mt_spower_get_leakage_uW(int dev, int voltage, int deg)
 {
@@ -542,16 +542,12 @@ static void swpm_pmu_start(int cpu)
 
 static void swpm_pmu_stop(int cpu)
 {
-#if 0
 	struct perf_event *l3_event = per_cpu(l3dc_events, cpu);
-#endif
 	struct perf_event *i_event = per_cpu(inst_spec_events, cpu);
 	struct perf_event *c_event = per_cpu(cycle_events, cpu);
 
-#if 0
 	if (l3_event)
 		perf_event_disable(l3_event);
-#endif
 	if (i_event)
 		perf_event_disable(i_event);
 	if (c_event)
@@ -597,12 +593,11 @@ static void swpm_pmu_set_enable(int cpu, int enable)
 		swpm_pmu_start(cpu);
 	} else {
 		swpm_pmu_stop(cpu);
-#if 0
+
 		if (l3_event) {
 			per_cpu(l3dc_events, cpu) = NULL;
 			perf_event_release_kernel(l3_event);
 		}
-#endif
 		if (i_event) {
 			per_cpu(inst_spec_events, cpu) = NULL;
 			perf_event_release_kernel(i_event);
@@ -619,17 +614,27 @@ static void swpm_pmu_set_enable_all(unsigned int enable)
 	int i;
 
 	if (enable) {
+		if (!pmu_ref_cnt) {
 #ifdef CONFIG_MTK_CACHE_CONTROL
-		ca_force_stop_set_in_kernel(1);
+			ca_force_stop_set_in_kernel(1);
 #endif
-		for (i = 0; i < num_possible_cpus(); i++)
-			swpm_pmu_set_enable(i, 1);
+			for (i = 0; i < num_possible_cpus(); i++)
+				swpm_pmu_set_enable(i, 1);
+		}
+		swpm_err("pmu_enable: %d, ref_cnt: %d(++)\n",
+			 enable, pmu_ref_cnt);
+		pmu_ref_cnt++;
 	} else {
-		for (i = 0; i < num_possible_cpus(); i++)
-			swpm_pmu_set_enable(i, 0);
+		if (pmu_ref_cnt == 1) {
+			for (i = 0; i < num_possible_cpus(); i++)
+				swpm_pmu_set_enable(i, 0);
 #ifdef CONFIG_MTK_CACHE_CONTROL
-		ca_force_stop_set_in_kernel(0);
+			ca_force_stop_set_in_kernel(0);
 #endif
+		}
+		swpm_err("pmu_enable: %d, ref_cnt: %d(--)\n",
+			 enable, pmu_ref_cnt);
+		pmu_ref_cnt--;
 	}
 }
 
@@ -1231,42 +1236,25 @@ static ssize_t core_static_replace_proc_write(struct file *file,
 	return count;
 }
 
-static int pmu_enable_proc_show(struct seq_file *m, void *v)
-{
-	seq_printf(m, "\nSWPM PMU is %s\n",
-		(pmu_enable == true) ? "enabled" : "disabled");
-
-	return 0;
-}
-
-static ssize_t pmu_enable_proc_write(struct file *file,
-		const char __user *buffer, size_t count, loff_t *pos)
-{
-	int enable = 0;
-
-	char *buf = _copy_from_user_for_proc(buffer, count);
-
-	if (!buf)
-		return -EINVAL;
-
-	if (!kstrtouint(buf, 10, &enable)) {
-		pmu_enable = (enable) ? true : false;
-		if (pmu_enable)
-			swpm_pmu_set_enable_all(1);
-		else
-			swpm_pmu_set_enable_all(0);
-	} else
-		swpm_err("echo 1/0 > /proc/swpm/pmu_enable\n");
-
-	return count;
-}
-
-
 PROC_FOPS_RW(idd_tbl);
 PROC_FOPS_RO(dram_bw);
 PROC_FOPS_RW(pmu_ms_mode);
 PROC_FOPS_RW(core_static_replace);
-PROC_FOPS_RW(pmu_enable);
+
+static void swpm_cmd_dispatcher(unsigned int type,
+				unsigned int val)
+{
+	switch (type) {
+	case SET_PMU:
+		swpm_pmu_set_enable_all(val);
+		break;
+	}
+}
+
+static struct swpm_core_internal_ops plat_ops = {
+	.cmd = swpm_cmd_dispatcher,
+};
+
 /***************************************************************************
  *  API
  ***************************************************************************/
@@ -1284,20 +1272,29 @@ void swpm_set_enable(unsigned int type, unsigned int enable)
 				if (swpm_get_status(i))
 					continue;
 
+				if (i == CPU_POWER_METER)
+					swpm_pmu_set_enable_all(1);
 				swpm_set_status(i);
 			} else {
 				if (!swpm_get_status(i))
 					continue;
 
+				if (i == CPU_POWER_METER)
+					swpm_pmu_set_enable_all(0);
 				swpm_clr_status(i);
 			}
 		}
 		swpm_send_enable_ipi(type, enable);
 	} else if (type < NR_POWER_METER) {
 		if (enable && !swpm_get_status(type)) {
+			if (type == CPU_POWER_METER)
+				swpm_pmu_set_enable_all(1);
 			swpm_set_status(type);
-		} else if (!enable && swpm_get_status(type))
+		} else if (!enable && swpm_get_status(type)) {
+			if (type == CPU_POWER_METER)
+				swpm_pmu_set_enable_all(0);
 			swpm_clr_status(type);
+		}
 		swpm_send_enable_ipi(type, enable);
 	}
 }
@@ -1364,13 +1361,11 @@ static void swpm_platform_procfs(void)
 	struct swpm_entry dram_bw = PROC_ENTRY(dram_bw);
 	struct swpm_entry pmu_mode = PROC_ENTRY(pmu_ms_mode);
 	struct swpm_entry core_lkg_rp = PROC_ENTRY(core_static_replace);
-	struct swpm_entry pmu_enable = PROC_ENTRY(pmu_enable);
 
 	swpm_append_procfs(&idd_tbl);
 	swpm_append_procfs(&dram_bw);
 	swpm_append_procfs(&pmu_mode);
 	swpm_append_procfs(&core_lkg_rp);
-	swpm_append_procfs(&pmu_enable);
 }
 
 static int __init swpm_platform_init(void)
@@ -1383,8 +1378,6 @@ static int __init swpm_platform_init(void)
 #endif
 
 	swpm_create_procfs();
-
-	swpm_pmu_set_enable_all(1);
 
 	swpm_platform_procfs();
 
@@ -1411,6 +1404,10 @@ static int __init swpm_platform_init(void)
 	ret |= swpm_interface_manager_init(mem_ref_tbl, NR_SWPM_TYPE);
 
 	swpm_init_pwr_data();
+
+	swpm_pmu_set_enable_all(1);
+
+	swpm_core_ops_register(&plat_ops);
 
 #if SWPM_TEST
 	swpm_interface_unit_test();

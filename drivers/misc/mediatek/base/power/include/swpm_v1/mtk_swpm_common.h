@@ -104,6 +104,12 @@ enum swpm_num_type {
 enum swpm_cmd_type {
 	SYNC_DATA,
 	SET_INTERVAL,
+	SET_PMU,
+};
+
+struct swpm_core_internal_ops {
+	void (*const cmd)(unsigned int type,
+			  unsigned int val);
 };
 
 /* swpm extension internal ops structure */
@@ -136,6 +142,7 @@ extern struct mutex swpm_mutex;
 extern unsigned int swpm_log_mask;
 extern struct timer_list swpm_timer;
 
+extern int swpm_core_ops_register(struct swpm_core_internal_ops *ops);
 extern int swpm_append_procfs(struct swpm_entry *p);
 extern int swpm_create_procfs(void);
 extern void swpm_update_periodic_timer(void);
