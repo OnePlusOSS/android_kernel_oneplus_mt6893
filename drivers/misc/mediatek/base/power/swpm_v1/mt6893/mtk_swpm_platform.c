@@ -1247,29 +1247,20 @@ void swpm_set_enable(unsigned int type, unsigned int enable)
 				if (swpm_get_status(i))
 					continue;
 
-				if (i == CPU_POWER_METER)
-					swpm_pmu_set_enable_all(1);
 				swpm_set_status(i);
 			} else {
 				if (!swpm_get_status(i))
 					continue;
 
-				if (i == CPU_POWER_METER)
-					swpm_pmu_set_enable_all(0);
 				swpm_clr_status(i);
 			}
 		}
 		swpm_send_enable_ipi(type, enable);
 	} else if (type < NR_POWER_METER) {
 		if (enable && !swpm_get_status(type)) {
-			if (type == CPU_POWER_METER)
-				swpm_pmu_set_enable_all(1);
 			swpm_set_status(type);
-		} else if (!enable && swpm_get_status(type)) {
-			if (type == CPU_POWER_METER)
-				swpm_pmu_set_enable_all(0);
+		} else if (!enable && swpm_get_status(type))
 			swpm_clr_status(type);
-		}
 		swpm_send_enable_ipi(type, enable);
 	}
 }
@@ -1353,6 +1344,8 @@ static int __init swpm_platform_init(void)
 #endif
 
 	swpm_create_procfs();
+
+	swpm_pmu_set_enable_all(1);
 
 	swpm_platform_procfs();
 

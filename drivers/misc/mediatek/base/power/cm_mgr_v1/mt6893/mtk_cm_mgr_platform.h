@@ -18,6 +18,8 @@
 #include <dramc.h>
 #endif /* CONFIG_MEDIATEK_DRAMC */
 
+
+#define CM_TRIGEAR
 #define PER_CPU_STALL_RATIO
 #define LIGHT_LOAD
 /* #define USE_AVG_PMU */
@@ -29,8 +31,10 @@
 /* #define USE_SINGLE_CLUSTER */
 /* #define USE_CPU_TO_DRAM_MAP */
 /* #define USE_BCPU_WEIGHT */
+#define USE_CPU_TO_DRAM_MAP
+#define USE_CPU_TO_DRAM_MAP_NEW
 
-#define CM_MGR_EMI_OPP 5
+#define CM_MGR_EMI_OPP 6
 #define CM_MGR_LOWER_OPP 6
 #define CM_MGR_CPU_CLUSTER 3
 #define CM_MGR_CPU_COUNT 8

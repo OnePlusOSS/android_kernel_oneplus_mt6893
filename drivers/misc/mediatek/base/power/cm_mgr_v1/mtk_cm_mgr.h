@@ -51,6 +51,8 @@ struct cm_mgr_data {
 #define IPI_CM_MGR_OPP_VOLT_SET 23
 #define IPI_CM_MGR_BCPU_WEIGHT_MAX_SET 24
 #define IPI_CM_MGR_BCPU_WEIGHT_MIN_SET 25
+#define IPI_CM_MGR_BBCPU_WEIGHT_MAX_SET 26
+#define IPI_CM_MGR_BBCPU_WEIGHT_MIN_SET 27
 
 extern spinlock_t cm_mgr_lock;
 extern int cm_mgr_disable_fb;
