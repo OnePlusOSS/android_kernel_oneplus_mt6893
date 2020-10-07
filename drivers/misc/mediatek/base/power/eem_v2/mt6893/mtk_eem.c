@@ -1975,7 +1975,9 @@ static inline void handle_init02_isr(struct eem_det *det)
 	eem_write(EEMINTSTS, 0x1);
 
 	det->init2_phase =
-		((det->init2_phase == EEM_PHASE_INIT020)) ?
+		((det->init2_phase == EEM_PHASE_INIT020) ||
+		((det->init2_phase == EEM_PHASE_INIT021) &&
+		(det->phase_ef[EEM_PHASE_INIT020].is_str_fnd == 0))) ?
 		EEM_PHASE_MON : (det->init2_phase - 1);
 
 #if 1
@@ -2786,9 +2788,9 @@ static int eem_resume(void)
 		eem_write(INFRA_EEM_RST, (1 << 9));
 		eem_write(INFRA_EEM_CLR, (1 << 9));
 
-		/* Set cur phose to INIT020, next is MON */
+		/* Set cur phose to INIT021, next is MON */
 		for_each_det(det)
-			det->init2_phase = EEM_PHASE_INIT020;
+			det->init2_phase = EEM_PHASE_INIT021;
 
 		eem_init02(__func__);
 	}
