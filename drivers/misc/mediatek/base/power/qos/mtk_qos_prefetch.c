@@ -454,7 +454,7 @@ void qos_prefetch_init(void)
 			qos_cpu_power_ratio_dn);
 #endif /* CONFIG_MTK_TINYSYS_SSPM_SUPPORT */
 
-	qos_prefetch_enable(0);
+	qos_prefetch_enable(1);
 }
 EXPORT_SYMBOL(qos_prefetch_init);
 
