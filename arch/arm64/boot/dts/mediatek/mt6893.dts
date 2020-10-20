@@ -2821,7 +2821,7 @@ page_owner=on loop.max_part=7";
 		 * index 2 for peri2 bus tracer
 		 */
 		mediatek,num_tracer = <3>;
-		mediatek,enabled_tracer = <0 1 1>;
+		mediatek,enabled_tracer = <0 1 0>;
 		mediatek,at_id = <0x10 0x30 0x70>;
 
 		/* filters: disabled by default */
