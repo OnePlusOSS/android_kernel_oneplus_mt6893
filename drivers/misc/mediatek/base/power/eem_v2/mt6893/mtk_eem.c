@@ -1378,11 +1378,17 @@ static void get_volt_table_in_thread(struct eem_det *det)
 static int eem_volt_thread_handler(void *data)
 {
 	struct eem_ctrl *ctrl = (struct eem_ctrl *)data;
-	struct eem_det *det = id_to_eem_det(ctrl->det_id);
+	struct eem_det *det;
 #ifdef CONFIG_EEM_AEE_RR_REC
 	int temp = -1;
 #endif
 
+	if (ctrl == NULL)
+		return 0;
+
+	det = id_to_eem_det(ctrl->det_id);
+	if (det == NULL)
+		return 0;
 	FUNC_ENTER(FUNC_LV_HELP);
 	do {
 		eem_debug("In thread handler\n");

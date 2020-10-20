@@ -1360,7 +1360,12 @@ static int eemg_volt_thread_handler(void *data)
 	/* struct eemg_det *new_det; */
 	/* unsigned int init2chk = 0; */
 #endif
+	if (ctrl == NULL)
+		return 0;
 
+	det = id_to_eemg_det(ctrl->det_id);
+	if (det == NULL)
+		return 0;
 	FUNC_ENTER(FUNC_LV_HELP);
 	do {
 		eemg_debug("In thread handler\n");
