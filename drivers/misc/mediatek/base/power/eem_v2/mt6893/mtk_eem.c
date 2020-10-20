@@ -152,8 +152,9 @@ static int eem_aging;
 
 /* Global variable for slow idle*/
 unsigned int ptp_data[3] = {0, 0, 0};
-static char *cpu_name[3] = {
+static char *cpu_name[4] = {
 	"L",
+	"BL",
 	"BIG",
 	"CCI"
 };
@@ -783,6 +784,9 @@ void base_ops_set_phase(struct eem_det *det, enum eem_phase phase)
 	FUNC_ENTER(FUNC_LV_HELP);
 	eem_debug("Bank%d, (%s) Set phase %d\n", det->ctrl_id,
 		((char *)(det->name) + 8), phase);
+
+	if (phase < 0)
+		return;
 
 	det->ops->switch_bank(det, phase);
 
@@ -3219,7 +3223,8 @@ static int eem_freq_proc_show(struct seq_file *m, void *v)
 	for_each_det(det) {
 		cpudvfsindex = detid_to_dvfsid(det);
 		for (i = 0; i < NR_FREQ_CPU; i++) {
-			if (det->ctrl_id <= EEM_CTRL_CCI) {
+			if ((det->ctrl_id <= EEM_CTRL_CCI) &&
+			(cpudvfsindex >= 0)) {
 				seq_printf(m,
 					"%s[DVFS][CPU_%s][OPP%d] volt:%d, freq:%d\n",
 					EEM_TAG, cpu_name[cpudvfsindex], i,
