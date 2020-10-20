@@ -506,6 +506,9 @@
 /* #define MSDC_HQA */
 /* #define SDIO_HQA */
 
+/*enable NMCARD*/
+#define NMCARD_SUPPORT
+
 /* sd read/write crc error happen in mt6885 when vcore changes,
  * sd can't support autok merge by fix vcore(like emmc),
  * so add runtime autok merge function

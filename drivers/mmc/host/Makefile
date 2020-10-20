@@ -102,7 +102,11 @@ obj-$(CONFIG_MMC_MTK_PRO)		+= mediatek/
 ifeq ($(CONFIG_MTK_EMMC_HW_CQ), y)
 ccflags-y += -I$(srctree)/drivers/mmc/core
 ccflags-y += -I$(srctree)/drivers/mmc/host/mediatek/ComboA
+ifeq ($(CONFIG_MTK_PLATFORM), "mt6893")
+ccflags-y += -I$(srctree)/drivers/mmc/host/mediatek/ComboA/mt6885
+else
 ccflags-y += -I$(srctree)/drivers/mmc/host/mediatek/ComboA/$(CONFIG_MTK_PLATFORM)
+endif
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/include
 ccflags-y += -I$(srctree)/drivers/devfreq
