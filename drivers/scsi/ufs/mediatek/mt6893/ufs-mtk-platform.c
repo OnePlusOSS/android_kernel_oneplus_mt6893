@@ -138,13 +138,12 @@ struct device_node *msdc_gpio_node;
 void __iomem *msdc_gpio_base;
 static struct regulator *vmc;
 
-#define MSDC1_GPIO_MODE17           (msdc_gpio_base + 0x410)
-#define MSDC1_GPIO_DIR4             (msdc_gpio_base + 0x40)
-#define MSDC1_GPIO_DOUT4            (msdc_gpio_base + 0x140)
+#define MSDC1_GPIO_MODE           (msdc_gpio_base + 0x360)
+#define MSDC1_GPIO_DIR             (msdc_gpio_base + 0x10)
+#define MSDC1_GPIO_DOUT            (msdc_gpio_base + 0x110)
 
-#define MSDC1_GPIO_DOUT             (MSDC1_GPIO_DOUT4)
-#define MSDC1_GPIO_DOUT_DIR_FIELD   (0x00000F00)
-#define MSDC1_GPIO_DOUT_DIR_VAL_SET (0x0000000F)
+#define MSDC1_GPIO_DOUT_DIR_FIELD   (0x01F00000)
+#define MSDC1_GPIO_DOUT_DIR_VAL_SET (0x0000001F)
 #define MSDC1_GPIO_DOUT_DIR_VAL_CLR (0x00000000)
 
 #define MSDC_READ32(reg)          __raw_readl(reg)
@@ -217,12 +216,13 @@ void ufs_mtk_pltfrm_gpio_trigger_init(struct ufs_hba *hba)
 	 * Be sure remove msdc_set_pin_mode in msdc_cust.c set mode
 	 * back to msdc.
 	 */
-	MSDC_SET_FIELD(MSDC1_GPIO_MODE17, 0x0000FFFF, 0x0);
+	MSDC_SET_FIELD(MSDC1_GPIO_MODE, 0xFFFF0000, 0x0);
+	MSDC_SET_FIELD(MSDC1_GPIO_MODE + 0x10, 0x0000000F, 0x0);
 
 	/*
 	 * Set gpio dir output. (dat0/dat1/dat2/dat3 in GPIO)
 	 */
-	MSDC_SET_FIELD(MSDC1_GPIO_DIR4,
+	MSDC_SET_FIELD(MSDC1_GPIO_DIR,
 		MSDC1_GPIO_DOUT_DIR_FIELD,
 		MSDC1_GPIO_DOUT_DIR_VAL_SET);
 
@@ -260,8 +260,8 @@ void ufs_mtk_pltfrm_gpio_trigger(int value)
 	pr_info("%s vmc=%d uv\n", __func__, regulator_get_voltage(vmc));
 
 	pr_info("%s mode=0x%x, dir=0x%x, out=0x%x\n", __func__,
-		MSDC_READ32(MSDC1_GPIO_MODE17),
-		MSDC_READ32(MSDC1_GPIO_DIR4),
+		MSDC_READ32(MSDC1_GPIO_MODE),
+		MSDC_READ32(MSDC1_GPIO_DIR),
 		MSDC_READ32(MSDC1_GPIO_DOUT));
 }
 #endif

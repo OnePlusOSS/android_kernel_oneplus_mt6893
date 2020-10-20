@@ -2570,7 +2570,8 @@ static void ufs_mtk_abort_handler(struct ufs_hba *hba, int tag,
 #endif
 }
 
-int ufs_mtk_perf_heurisic_if_allow_cmd(struct ufs_hba *hba, struct scsi_cmnd *cmd)
+int ufs_mtk_perf_heurisic_if_allow_cmd(struct ufs_hba *hba,
+	struct scsi_cmnd *cmd)
 {
 	if (!(hba->quirks & UFSHCD_QUIRK_UFS_HCI_PERF_HEURISTIC))
 		return 0;
@@ -2588,13 +2589,6 @@ int ufs_mtk_perf_heurisic_if_allow_cmd(struct ufs_hba *hba, struct scsi_cmnd *cm
 				ufs_mtk_qcmd_r_cmd_cnt++;
 
 		} else {
-
-			/*
-			 * Case: we have on-going r or w commands.
-			 *
-			 * Do not allow issueing w command if on-going commands are read.
-			 * Do not allow issueing r command if on-going commands are write.
-			 */
 
 			if (ufs_mtk_is_data_write_cmd(cmd->cmnd[0])) {
 
