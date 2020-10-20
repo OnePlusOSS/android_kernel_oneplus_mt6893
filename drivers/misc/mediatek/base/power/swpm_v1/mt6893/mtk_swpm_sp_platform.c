@@ -57,7 +57,6 @@ struct suspend_time suspend_time;
 static uint64_t total_suspend_us;
 
 /* core ip (cam, img1, img2, ipe, disp venc, vdec, gpu, scp, adsp */
-#define MAX_IP_NAME_LENGTH (16)
 static char core_ip_str[NR_CORE_IP][MAX_IP_NAME_LENGTH] = {
 	"CAM", "IMG1", "IMG2", "IPE", "DISP",
 	"VENC", "VDEC", "SCP",
@@ -334,6 +333,17 @@ static int swpm_sp_ddr_idx_proc_show(struct seq_file *m, void *v)
 
 	swpm_sp_dispatcher(SYNC_DATA, 0);
 
+	if (!ddr_act_times_ptr) {
+		seq_puts(m, "ddr_act_times_idx failure\n");
+		return 0;
+	} else if (!ddr_sr_pd_times_ptr) {
+		seq_puts(m, "ddr_sr_pd_times_idx failure\n");
+		return 0;
+	} else if (!ddr_ip_stats_ptr) {
+		seq_puts(m, "ddr_ip_idx failure\n");
+		return 0;
+	}
+
 	get_ddr_act_times(ddr_freq_num, ddr_act_times_ptr);
 	get_ddr_sr_pd_times(ddr_sr_pd_times_ptr);
 	get_ddr_freq_data_ip_stats(ddr_bc_ip_num,
@@ -385,7 +395,7 @@ void swpm_sp_init(phys_addr_t ref_addr,
 	/* core_ip_stats initialize */
 	for (i = 0; i < NR_CORE_IP; i++) {
 		strncpy(core_ip_stats[i].ip_name,
-			core_ip_str[i], MAX_IP_NAME_LENGTH);
+			core_ip_str[i], MAX_IP_NAME_LENGTH - 1);
 		core_ip_stats[i].vol_times =
 		kmalloc(sizeof(struct ip_vol_times) * NR_CORE_VOLT, GFP_KERNEL);
 		if (core_ip_stats[i].vol_times) {
@@ -418,7 +428,7 @@ void swpm_sp_init(phys_addr_t ref_addr,
 	/* ddr bc ip initialize */
 	for (i = 0; i < NR_DDR_BC_IP; i++) {
 		strncpy(ddr_ip_stats[i].ip_name,
-			ddr_bc_ip_str[i], MAX_IP_NAME_LENGTH);
+			ddr_bc_ip_str[i], MAX_IP_NAME_LENGTH - 1);
 		ddr_ip_stats[i].bc_stats =
 		kmalloc(sizeof(struct ddr_bc_stats) * NR_DDR_FREQ, GFP_KERNEL);
 		if (ddr_ip_stats[i].bc_stats) {
