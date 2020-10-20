@@ -537,7 +537,6 @@ static void dump_lvts_register_value(void)
 					tc_offset + g_lvts_controller_addrs[j],
 					g_lvts_controller_value_b[i][j]);
 
-		buffer[offset] = '\0';
 		lvts_printk("%s\n", buffer);
 
 		offset = snprintf(buffer, sizeof(buffer),
@@ -548,7 +547,6 @@ static void dump_lvts_register_value(void)
 					g_lvts_device_addrs[j],
 					g_lvts_device_value_b[i][j]);
 
-		buffer[offset] = '\0';
 		lvts_printk("%s\n", buffer);
 	}
 
@@ -564,7 +562,6 @@ static void dump_lvts_register_value(void)
 					tc_offset + g_lvts_controller_addrs[j],
 					g_lvts_controller_value_e[i][j]);
 
-		buffer[offset] = '\0';
 		lvts_printk("%s\n", buffer);
 
 		offset = snprintf(buffer, sizeof(buffer),
@@ -575,7 +572,6 @@ static void dump_lvts_register_value(void)
 					g_lvts_device_addrs[j],
 					g_lvts_device_value_e[i][j]);
 
-		buffer[offset] = '\0';
 		lvts_printk("%s\n", buffer);
 	}
 }
@@ -716,7 +712,6 @@ void lvts_device_read_count_RC_N_resume(void)
 		offset += snprintf(buffer + offset, sizeof(buffer) - offset,
 				"%d:%d ", i, g_count_rc_now[i]);
 
-	buffer[offset] = '\0';
 	lvts_printk("%s\n", buffer);
 
 #if DUMP_LVTS_REGISTER_FOR_ZERO_RAW_ISSUE
@@ -871,7 +866,6 @@ void lvts_device_read_count_RC_N(void)
 		offset += snprintf(buffer + offset, sizeof(buffer) - offset,
 				"%d:%d ", i, g_count_rc_now[i]);
 
-	buffer[offset] = '\0';
 	lvts_printk("%s\n", buffer);
 
 #if DUMP_LVTS_REGISTER_FOR_ZERO_RAW_ISSUE
@@ -1200,7 +1194,6 @@ void lvts_thermal_cal_prepare(void)
 		offset += snprintf(buffer + offset, sizeof(buffer) - offset,
 				"%d:%d:%d ", i, g_count_r[i], g_count_rc[i]);
 
-	buffer[offset] = '\0';
 	lvts_printk("%s\n", buffer);
 }
 
