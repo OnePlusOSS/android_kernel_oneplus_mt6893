@@ -825,6 +825,11 @@ static struct mtk_panel_params ext_params = {
 	.lfr_minimum_fps = 60,
 	.dyn_fps = {
 		.switch_en = 1,
+#if HFP_SUPPORT
+		.vact_timing_fps = 60,
+#else
+		.vact_timing_fps = 120,
+#endif
 		.dfps_cmd_table[0] = {0, 2, {0xFF, 0x25} },
 		.dfps_cmd_table[1] = {0, 2, {0xFB, 0x01} },
 		.dfps_cmd_table[2] = {0, 2, {0x18, 0x21} },
@@ -892,6 +897,11 @@ static struct mtk_panel_params ext_params_90hz = {
 	.lfr_minimum_fps = 60,
 	.dyn_fps = {
 		.switch_en = 1,
+#if HFP_SUPPORT
+		.vact_timing_fps = 90,
+#else
+		.vact_timing_fps = 120,
+#endif
 		.dfps_cmd_table[0] = {0, 2, {0xFF, 0x25} },
 		.dfps_cmd_table[1] = {0, 2, {0xFB, 0x01} },
 		.dfps_cmd_table[2] = {0, 2, {0x18, 0x20} },
@@ -958,6 +968,7 @@ static struct mtk_panel_params ext_params_120hz = {
 	.lfr_minimum_fps = 60,
 	.dyn_fps = {
 		.switch_en = 1,
+		.vact_timing_fps = 120,
 		.dfps_cmd_table[0] = {0, 2, {0xFF, 0x25} },
 		.dfps_cmd_table[1] = {0, 2, {0xFB, 0x01} },
 		.dfps_cmd_table[2] = {0, 2, {0x18, 0x22} },

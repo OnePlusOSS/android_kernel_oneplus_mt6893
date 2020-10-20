@@ -765,7 +765,8 @@ static int mtk_dsi_set_LFR(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
 
 	//Settings lfr settings to LFR_CON_REG
 	if (dsi->ext && dsi->ext->params &&
-		dsi->ext->params->lfr_minimum_fps != 0) {
+		dsi->ext->params->lfr_minimum_fps != 0 &&
+		dsi->ext->params->dyn_fps.vact_timing_fps != 0) {
 		lfr_skip_num =
 			(dsi->ext->params->dyn_fps.vact_timing_fps /
 			dsi->ext->params->lfr_minimum_fps) - 1;
