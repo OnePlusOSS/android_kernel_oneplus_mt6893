@@ -118,6 +118,7 @@ enum cpu_type {
 enum cpu_lkg_type {
 	CPU_L_LKG,
 	CPU_B_LKG,
+	CPU_BB_LKG,
 	DSU_LKG,
 
 	NR_CPU_LKG_TYPE

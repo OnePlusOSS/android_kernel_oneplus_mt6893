@@ -801,6 +801,9 @@ static int swpm_get_spower_devid(enum cpu_lkg_type type)
 	case CPU_B_LKG:
 		devid = MTK_SPOWER_CPUL;
 		break;
+	case CPU_BB_LKG:
+		devid = MTK_SPOWER_CPUB;
+		break;
 	case DSU_LKG:
 	default:
 		devid = MTK_SPOWER_CCI;

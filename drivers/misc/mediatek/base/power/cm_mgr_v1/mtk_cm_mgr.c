@@ -49,7 +49,7 @@
 #include <mtk_cm_mgr.h>
 #include <mtk_cm_mgr_platform_data.h>
 #ifdef CONFIG_MTK_CPU_FREQ
-#include <mtk_cpufreq_api.h>
+//#include <mtk_cpufreq_common_api.h>
 #endif /* CONFIG_MTK_CPU_FREQ */
 
 #include <linux/pm_qos.h>
@@ -728,6 +728,32 @@ int cm_mgr_to_sspm_command(u32 cmd, int val)
 	case IPI_CM_MGR_OPP_VOLT_SET:
 	case IPI_CM_MGR_BCPU_WEIGHT_MAX_SET:
 	case IPI_CM_MGR_BCPU_WEIGHT_MIN_SET:
+#ifdef CM_TRIGEAR
+	/* FALLTHROUGH */
+	case IPI_CM_MGR_BBCPU_WEIGHT_MAX_SET:
+		/* FALLTHROUGH */
+	case IPI_CM_MGR_BBCPU_WEIGHT_MIN_SET:
+		/* FALLTHROUGH */
+#endif
+#ifdef DSU_DVFS_ENABLE
+		/* FALLTHROUGH */
+	case IPI_CM_MGR_DSU_DEBOUNCE_UP_SET:
+		/* FALLTHROUGH */
+	case IPI_CM_MGR_DSU_DEBOUNCE_DOWN_SET:
+		/* FALLTHROUGH */
+	case IPI_CM_MGR_DSU_DIFF_PWR_UP_SET:
+		/* FALLTHROUGH */
+	case IPI_CM_MGR_DSU_DIFF_PWR_DOWN_SET:
+		/* FALLTHROUGH */
+	case IPI_CM_MGR_DSU_L_PWR_RATIO_SET:
+		/* FALLTHROUGH */
+	case IPI_CM_MGR_DSU_B_PWR_RATIO_SET:
+		/* FALLTHROUGH */
+#ifdef CM_TRIGEAR
+	case IPI_CM_MGR_DSU_BB_PWR_RATIO_SET:
+		/* FALLTHROUGH */
+#endif
+#endif /* DSU_DVFS_ENABLE */
 		cm_mgr_d.cmd = cmd;
 		cm_mgr_d.arg = val;
 		ret = mtk_ipi_send_compl(&sspm_ipidev, IPIS_C_CM,
@@ -779,12 +805,31 @@ int cm_mgr_to_sspm_command(u32 cmd, int val)
 	case IPI_CM_MGR_BCPU_WEIGHT_MAX_SET:
 	case IPI_CM_MGR_BCPU_WEIGHT_MIN_SET:
 #ifdef CM_TRIGEAR
-		/* FALLTHROUGH */
+	/* FALLTHROUGH */
 	case IPI_CM_MGR_BBCPU_WEIGHT_MAX_SET:
 		/* FALLTHROUGH */
 	case IPI_CM_MGR_BBCPU_WEIGHT_MIN_SET:
 		/* FALLTHROUGH */
 #endif
+#ifdef DSU_DVFS_ENABLE
+		/* FALLTHROUGH */
+	case IPI_CM_MGR_DSU_DEBOUNCE_UP_SET:
+		/* FALLTHROUGH */
+	case IPI_CM_MGR_DSU_DEBOUNCE_DOWN_SET:
+		/* FALLTHROUGH */
+	case IPI_CM_MGR_DSU_DIFF_PWR_UP_SET:
+		/* FALLTHROUGH */
+	case IPI_CM_MGR_DSU_DIFF_PWR_DOWN_SET:
+		/* FALLTHROUGH */
+	case IPI_CM_MGR_DSU_L_PWR_RATIO_SET:
+		/* FALLTHROUGH */
+	case IPI_CM_MGR_DSU_B_PWR_RATIO_SET:
+		/* FALLTHROUGH */
+#ifdef CM_TRIGEAR
+	case IPI_CM_MGR_DSU_BB_PWR_RATIO_SET:
+		/* FALLTHROUGH */
+#endif
+#endif /* DSU_DVFS_ENABLE */
 		cm_mgr_d.cmd = cmd;
 		cm_mgr_d.arg = val;
 		ret = sspm_ipi_send_sync(IPI_ID_CM, IPI_OPT_POLLING,
@@ -944,7 +989,24 @@ static int dbg_cm_mgr_proc_show(struct seq_file *m, void *v)
 	seq_printf(m, "cpu_power_bbcpu_weight_min %d\n",
 			cpu_power_bbcpu_weight_min);
 #endif
-
+#ifdef DSU_DVFS_ENABLE
+	seq_printf(m, "dsu_dvfs_debounce_up %d\n",
+			dsu_debounce_up);
+	seq_printf(m, "dsu_dvfs_debounce_down %d\n",
+			dsu_debounce_down);
+	seq_printf(m, "dsu_dvfs_diff_pwr_up %d\n",
+			dsu_diff_pwr_up);
+	seq_printf(m, "dsu_dvfs_diff_pwr_down %d\n",
+			dsu_diff_pwr_down);
+	seq_printf(m, "dsu_dvfs_l_pwr_ratio %d\n",
+			dsu_l_pwr_ratio);
+	seq_printf(m, "dsu_dvfs_b_pwr_ratio %d\n",
+			dsu_b_pwr_ratio);
+#ifdef CM_TRIGEAR
+	seq_printf(m, "dsu_dvfs_bb_pwr_ratio %d\n",
+			dsu_bb_pwr_ratio);
+#endif
+#endif
 	seq_puts(m, "debounce_times_up_adb");
 	for (i = 0; i < CM_MGR_EMI_OPP; i++)
 		seq_printf(m, " %d", debounce_times_up_adb[i]);
@@ -1374,7 +1436,53 @@ static ssize_t dbg_cm_mgr_proc_write(struct file *file,
 					val_1);
 #endif /* CONFIG_MTK_TINYSYS_SSPM_SUPPORT */
 		}
-#endif
+#endif /* CM_TRIGEAR */
+#ifdef DSU_DVFS_ENABLE
+	} else if (!strcmp(cmd, "dsu_dvfs_debounce_up")) {
+		dsu_debounce_up = val_1;
+#if defined(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && defined(USE_CM_MGR_AT_SSPM)
+		cm_mgr_to_sspm_command(IPI_CM_MGR_DSU_DEBOUNCE_UP_SET,
+				val_1);
+#endif /* CONFIG_MTK_TINYSYS_SSPM_SUPPORT */
+	} else if (!strcmp(cmd, "dsu_dvfs_debounce_down")) {
+		dsu_debounce_down = val_1;
+#if defined(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && defined(USE_CM_MGR_AT_SSPM)
+		cm_mgr_to_sspm_command(IPI_CM_MGR_DSU_DEBOUNCE_DOWN_SET,
+				val_1);
+#endif /* CONFIG_MTK_TINYSYS_SSPM_SUPPORT */
+	} else if (!strcmp(cmd, "dsu_dvfs_diff_pwr_up")) {
+		dsu_diff_pwr_up = val_1;
+#if defined(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && defined(USE_CM_MGR_AT_SSPM)
+		cm_mgr_to_sspm_command(IPI_CM_MGR_DSU_DIFF_PWR_UP_SET,
+				val_1);
+#endif /* CONFIG_MTK_TINYSYS_SSPM_SUPPORT */
+	} else if (!strcmp(cmd, "dsu_dvfs_diff_pwr_down")) {
+		dsu_diff_pwr_down = val_1;
+#if defined(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && defined(USE_CM_MGR_AT_SSPM)
+		cm_mgr_to_sspm_command(IPI_CM_MGR_DSU_DIFF_PWR_DOWN_SET,
+				val_1);
+#endif /* CONFIG_MTK_TINYSYS_SSPM_SUPPORT */
+	} else if (!strcmp(cmd, "dsu_dvfs_l_pwr_ratio")) {
+		dsu_l_pwr_ratio = val_1;
+#if defined(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && defined(USE_CM_MGR_AT_SSPM)
+		cm_mgr_to_sspm_command(IPI_CM_MGR_DSU_L_PWR_RATIO_SET,
+				val_1);
+#endif /* CONFIG_MTK_TINYSYS_SSPM_SUPPORT */
+	} else if (!strcmp(cmd, "dsu_dvfs_b_pwr_ratio")) {
+		dsu_b_pwr_ratio = val_1;
+#if defined(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && defined(USE_CM_MGR_AT_SSPM)
+		cm_mgr_to_sspm_command(IPI_CM_MGR_DSU_B_PWR_RATIO_SET,
+				val_1);
+#endif /* CONFIG_MTK_TINYSYS_SSPM_SUPPORT */
+#ifdef CM_TRIGEAR
+	} else if (!strcmp(cmd, "dsu_dvfs_bb_pwr_ratio")) {
+		dsu_bb_pwr_ratio = val_1;
+#if defined(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && defined(USE_CM_MGR_AT_SSPM)
+		cm_mgr_to_sspm_command(IPI_CM_MGR_DSU_BB_PWR_RATIO_SET,
+				val_1);
+#endif /* CONFIG_MTK_TINYSYS_SSPM_SUPPORT */
+#endif /* CM_TRIGEAR */
+#endif /* DSU_DVFS_ENABLE */
 	} else if (!strcmp(cmd, "debounce_times_perf_down")) {
 		debounce_times_perf_down = val_1;
 	} else if (!strcmp(cmd, "debounce_times_perf_force_down")) {
@@ -1547,6 +1655,29 @@ int __init cm_mgr_module_init(void)
 	cm_mgr_to_sspm_command(IPI_CM_MGR_BBCPU_WEIGHT_MIN_SET,
 			cpu_power_bbcpu_weight_min);
 #endif
+#ifdef DSU_DVFS_ENABLE
+	cm_mgr_to_sspm_command(IPI_CM_MGR_DSU_DEBOUNCE_UP_SET,
+			dsu_debounce_up);
+
+	cm_mgr_to_sspm_command(IPI_CM_MGR_DSU_DEBOUNCE_DOWN_SET,
+			dsu_debounce_down);
+
+	cm_mgr_to_sspm_command(IPI_CM_MGR_DSU_DIFF_PWR_UP_SET,
+			dsu_diff_pwr_up);
+
+	cm_mgr_to_sspm_command(IPI_CM_MGR_DSU_DIFF_PWR_DOWN_SET,
+			dsu_diff_pwr_down);
+
+	cm_mgr_to_sspm_command(IPI_CM_MGR_DSU_L_PWR_RATIO_SET,
+			dsu_l_pwr_ratio);
+
+	cm_mgr_to_sspm_command(IPI_CM_MGR_DSU_B_PWR_RATIO_SET,
+			dsu_b_pwr_ratio);
+#ifdef CM_TRIGEAR
+	cm_mgr_to_sspm_command(IPI_CM_MGR_DSU_BB_PWR_RATIO_SET,
+			dsu_bb_pwr_ratio);
+#endif /* CM_TRIGEAR */
+#endif /* DSU_DVFS_ENABLE */
 #endif /* CONFIG_MTK_TINYSYS_SSPM_SUPPORT */
 
 	return 0;

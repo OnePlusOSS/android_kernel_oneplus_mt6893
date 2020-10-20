@@ -1466,11 +1466,14 @@ void cpuhvfs_update_cci_mode(unsigned int mode, unsigned int use_id)
 {
 
 	/* mode = 0(Normal as 50%) mode = 1(Perf as 70%) */
+
 #ifdef DSU_DVFS_ENABLE
-	if (mode == PERF)
-		swpm_pmu_enable(0);
-	else
-		swpm_pmu_enable(1);
+	if (!use_id) {
+		if (mode == PERF)
+			swpm_pmu_enable(0);
+		else
+			swpm_pmu_enable(1);
+	}
 #endif
 	csram_write(OFFS_CCI_TBL_USER, use_id);
 	csram_write(OFFS_CCI_TBL_MODE, mode);

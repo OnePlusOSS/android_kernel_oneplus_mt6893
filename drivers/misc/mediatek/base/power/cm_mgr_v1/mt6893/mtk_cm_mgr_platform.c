@@ -51,6 +51,7 @@
 #include <linux/of_address.h>
 #include <mtk_cm_mgr.h>
 
+
 #define CREATE_TRACE_POINTS
 #include "mtk_cm_mgr_platform_events.h"
 
@@ -666,6 +667,8 @@ static struct delayed_work cm_mgr_timeout_work;
 
 static void cm_mgr_timeout_process(struct work_struct *work)
 {
+	/* timeout set normal mode */
+	/* mt_cpufreq_update_cci_mode(0, 1); */
 	pm_qos_update_request(&ddr_opp_req,
 			PM_QOS_DDR_OPP_DEFAULT_VALUE);
 }
@@ -689,6 +692,7 @@ static void cm_mgr_perf_timeout_timer_fn(unsigned long data)
 
 #define PERF_TIME 100
 
+
 static ktime_t perf_now;
 void cm_mgr_perf_platform_set_status(int enable)
 {
@@ -698,6 +702,9 @@ void cm_mgr_perf_platform_set_status(int enable)
 		expires = jiffies + CM_MGR_PERF_TIMEOUT_MS;
 		mod_timer(&cm_mgr_perf_timeout_timer, expires);
 	}
+
+	/* set dsu mode */
+	/* mt_cpufreq_update_cci_mode(enable, 1); */
 
 	if (enable) {
 		if (cm_mgr_perf_enable == 0)
@@ -773,6 +780,9 @@ void cm_mgr_perf_platform_set_force_status(int enable)
 		expires = jiffies + CM_MGR_PERF_TIMEOUT_MS;
 		mod_timer(&cm_mgr_perf_timeout_timer, expires);
 	}
+
+	/* set dsu mode */
+	/* mt_cpufreq_update_cci_mode(enable, 1); */
 
 	if (enable) {
 		if (cm_mgr_perf_enable == 0)

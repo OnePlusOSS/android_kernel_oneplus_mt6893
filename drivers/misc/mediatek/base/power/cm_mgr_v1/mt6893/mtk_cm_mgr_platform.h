@@ -53,6 +53,7 @@
 #define CM_MGR_INIT_DELAY_MS 1
 #define CM_MGR_BW_VALUE 0
 #define CM_MGR_VCORE_OPP_COUNT 22
+#define DSU_DVFS_ENABLE
 
 enum {
 	CM_MGR_LP4 = 0,
