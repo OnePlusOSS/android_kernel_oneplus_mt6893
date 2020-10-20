@@ -218,6 +218,8 @@ static ssize_t __subsys_ctl_show(char *buf, enum sys_id id)
 	if (id > 0)
 		shift = 1;
 
+	len = strlen(buf);
+
 	sys_sta = srclken_read(RC_M00_REQ_STA_0 + ((id + shift) * 4));
 	filter = (sys_sta >> REQ_FILT_SHFT) & REQ_FILT_MSK;
 	cmd_ok = (sys_sta >> CMD_OK_SHFT) & CMD_OK_MSK;
@@ -367,13 +369,19 @@ void srclken_dump_cfg_log(void)
 static int __srclken_dump_last_sta(char *buf, u8 idx)
 {
 	int len = 0;
+	unsigned int loffset = idx * 8;
+	unsigned int moffset = idx * 8;
+
+	len = strlen(buf);
+	loffset = (idx > 2)?(loffset + 8):(idx > 0)?(loffset + 4):loffset;
+	moffset = (idx > 1)?(moffset + 8):(idx > 0)?(moffset + 4):moffset;
 
 	len += snprintf(buf+len, PAGE_SIZE-len,
 		"TRACE%d LSB : 0x%x, ", idx,
-		srclken_read(DBG_TRACE_0_LSB + (idx * 8)));
+		srclken_read(DBG_TRACE_0_LSB + loffset));
 	len += snprintf(buf+len, PAGE_SIZE-len,
 		"TRACE%d MSB : 0x%x\n", idx,
-		srclken_read(DBG_TRACE_0_MSB + (idx * 8)));
+		srclken_read(DBG_TRACE_0_MSB + moffset));
 
 	len += snprintf(buf+len, PAGE_SIZE-len,
 		"TIME%d LSB : 0x%x, ", idx,
