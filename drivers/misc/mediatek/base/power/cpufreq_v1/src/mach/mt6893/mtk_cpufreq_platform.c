@@ -741,6 +741,8 @@ void _dfd_workaround(void)
 	struct buck_ctrl_t *b_vsram_p = id_to_buck_ctrl(p_b->Vsram_buck_id);
 	int val = mt_get_chip_sw_ver();
 
+	if (b_vproc_p == NULL || b_vsram_p == NULL)
+		return;
 	ktime_t ktime = ktime_set(0, 0);
 	ktime_t start = ktime_set(0, 0);
 

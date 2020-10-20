@@ -1086,6 +1086,8 @@ int cpuhvfs_set_init_volt(void)
 	for_each_cpu_dvfs(j, p) {
 		vproc_p = id_to_buck_ctrl(p->Vproc_buck_id);
 		vsram_p = id_to_buck_ctrl(p->Vsram_buck_id);
+		if (vproc_p == NULL || vsram_p == NULL)
+			return 0;
 		cdvfs_d.u.set_fv.arg[0] = j;
 		cdvfs_d.u.set_fv.arg[1] = (p->dvfs_disable_by_suspend) ?
 				vproc_p->cur_volt :
