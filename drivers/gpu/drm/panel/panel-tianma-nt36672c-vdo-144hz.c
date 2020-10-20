@@ -349,6 +349,8 @@ static struct mtk_panel_params ext_params = {
 		.switch_en = 0,
 		.vact_timing_fps = MODE_0_FPS,
 	},
+	.lfr_enable = 1,
+	.lfr_minimum_fps = 60,
 	.data_rate = DATA_RATE,
 };
 
@@ -407,6 +409,8 @@ static struct mtk_panel_params ext_params_90hz = {
 		.switch_en = 0,
 		.vact_timing_fps = MODE_1_FPS,
 	},
+	.lfr_enable = 1,
+	.lfr_minimum_fps = 60,
 	.data_rate = DATA_RATE,
 };
 
@@ -464,28 +468,10 @@ static struct mtk_panel_params ext_params_60hz = {
 		.switch_en = 0,
 		.vact_timing_fps = MODE_2_FPS,
 	},
+	.lfr_enable = 1,
+	.lfr_minimum_fps = 60,
 	.data_rate = DATA_RATE,
 };
-
-static void check_is_lfr_enable(struct device *dev)
-{
-	unsigned int lfr_enable = 0;
-	unsigned int lfr_minimum_fps = 0;
-	unsigned int ret;
-
-	ret = of_property_read_u32(dev->of_node, "lfr_minimum_fps", &lfr_minimum_fps);
-
-	if (ret == 0) {
-		lfr_enable = 1;
-		ext_params.lfr_enable = lfr_enable;
-		ext_params_90hz.lfr_enable = lfr_enable;
-		ext_params_60hz.lfr_enable = lfr_enable;
-
-		ext_params.lfr_minimum_fps = lfr_minimum_fps;
-		ext_params_90hz.lfr_minimum_fps = lfr_minimum_fps;
-		ext_params_60hz.lfr_minimum_fps = lfr_minimum_fps;
-	}
-}
 
 static int tianma_setbacklight_cmdq(void *dsi, dcs_write_gce cb,
 	void *handle, unsigned int level)
@@ -686,8 +672,6 @@ static int tianma_probe(struct mipi_dsi_device *dsi)
 	if (ret < 0)
 		return ret;
 #endif
-
-	check_is_lfr_enable(dev);
 
 	pr_err("%s-\n", __func__);
 

@@ -544,6 +544,9 @@ static struct mtk_panel_params ext_params = {
 		.hfp = 161,
 		.vfp = 2528,
 	},
+	.lfr_enable = 1,
+	.lfr_minimum_fps = 60,
+
 };
 
 static struct mtk_panel_params ext_params_90hz = {
@@ -602,6 +605,8 @@ static struct mtk_panel_params ext_params_90hz = {
 		.hfp = 161,
 		.vfp = 879,
 	},
+	.lfr_enable = 1,
+	.lfr_minimum_fps = 60,
 };
 
 static struct mtk_panel_params ext_params_120hz = {
@@ -659,6 +664,9 @@ static struct mtk_panel_params ext_params_120hz = {
 		.hfp = 161,
 		.vfp = 54,
 	},
+	.lfr_enable = 1,
+	.lfr_minimum_fps = 60,
+
 };
 
 static int panel_ext_reset(struct drm_panel *panel, int on)
@@ -870,24 +878,6 @@ static const struct drm_panel_funcs lcm_drm_funcs = {
 	.enable = lcm_enable,
 	.get_modes = lcm_get_modes,
 };
-static void check_is_lfr_enable(struct device *dev)
-{
-	unsigned int lfr_enable = 0;
-	unsigned int lfr_minimum_fps = 0;
-	unsigned int ret;
-
-	ret = of_property_read_u32(dev->of_node, "lfr_minimum_fps", &lfr_minimum_fps);
-	if (ret == 0) {
-		lfr_enable = 1;
-		ext_params.lfr_enable = lfr_enable;
-		ext_params_90hz.lfr_enable = lfr_enable;
-		ext_params_120hz.lfr_enable = lfr_enable;
-
-		ext_params.lfr_minimum_fps = lfr_minimum_fps;
-		ext_params_90hz.lfr_minimum_fps = lfr_minimum_fps;
-		ext_params_120hz.lfr_minimum_fps = lfr_minimum_fps;
-	}
-}
 
 static void check_is_need_fake_resolution(struct device *dev)
 {
@@ -984,7 +974,6 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 #endif
 	check_is_need_fake_resolution(dev);
 	pr_info("%s-\n", __func__);
-	check_is_lfr_enable(dev);
 	return ret;
 }
 
