@@ -64,7 +64,7 @@ u32  ufs_mtk_qcmd_r_cmd_cnt;
 u32  ufs_mtk_qcmd_w_cmd_cnt;
 struct ufs_hba *ufs_mtk_hba;
 
-static bool ufs_mtk_is_data_cmd(char cmd_op);
+static bool ufs_mtk_is_data_cmd(char cmd_op, bool isolation);
 static bool ufs_mtk_is_unmap_cmd(char cmd_op);
 
 #if defined(PMIC_RG_LDO_VUFS_LP_ADDR) && defined(pmic_config_interface)
@@ -311,7 +311,7 @@ static int ufs_mtk_di_cmp(struct ufs_hba *hba, struct scsi_cmnd *cmd)
 			if (crc == 0)
 				crc++;
 
-			if (ufs_mtk_is_data_write_cmd(cmd->cmnd[0])) {
+			if (ufs_mtk_is_data_write_cmd(cmd->cmnd[0], false)) {
 				/* For write, update crc value */
 				di_crc[lba] = crc;
 				di_priv[lba] = priv;
@@ -346,7 +346,7 @@ int ufs_mtk_di_inspect(struct ufs_hba *hba, struct scsi_cmnd *cmd)
 	if (ufshcd_scsi_to_upiu_lun(cmd->device->lun) != 0x2)
 		return -ENODEV;
 
-	if (ufs_mtk_is_data_cmd(cmd->cmnd[0]))
+	if (ufs_mtk_is_data_cmd(cmd->cmnd[0], false))
 		return ufs_mtk_di_cmp(hba, cmd);
 
 	if (ufs_mtk_is_unmap_cmd(cmd->cmnd[0]))
@@ -2390,14 +2390,18 @@ void ufs_mtk_crypto_cal_dun(u32 alg_id, u64 iv, u32 *dunl, u32 *dunu)
 	*dunu = (iv >> 32) & 0xffffffff;
 }
 
-bool ufs_mtk_is_data_write_cmd(char cmd_op)
+bool ufs_mtk_is_data_write_cmd(char cmd_op, bool isolation)
 {
 	if (cmd_op == WRITE_10 || cmd_op == WRITE_16 || cmd_op == WRITE_6)
 		return true;
 
 #if defined(CONFIG_UFSHPB)
-	if (cmd_op == UFSHPB_WRITE_BUFFER)
-		return true;
+	/* All data out operation need check */
+	if (isolation) {
+		if ((cmd_op == UFSHPB_WRITE_BUFFER) ||
+		    (cmd_op == WRITE_BUFFER))
+			return true;
+	}
 #endif
 
 	return false;
@@ -2411,7 +2415,7 @@ static inline bool ufs_mtk_is_unmap_cmd(char cmd_op)
 	return false;
 }
 
-static bool ufs_mtk_is_data_cmd(char cmd_op)
+static bool ufs_mtk_is_data_cmd(char cmd_op, bool isolation)
 {
 	if (cmd_op == WRITE_10 || cmd_op == READ_10 ||
 	    cmd_op == WRITE_16 || cmd_op == READ_16 ||
@@ -2419,8 +2423,14 @@ static bool ufs_mtk_is_data_cmd(char cmd_op)
 		return true;
 
 #if defined(CONFIG_UFSHPB)
-	if (cmd_op == UFSHPB_READ_BUFFER || cmd_op == UFSHPB_WRITE_BUFFER)
-		return true;
+	/* All data in/out operation need check */
+	if (isolation) {
+		if ((cmd_op == UFSHPB_READ_BUFFER) ||
+		    (cmd_op == UFSHPB_WRITE_BUFFER) ||
+		    (cmd_op == READ_BUFFER) ||
+		    (cmd_op == WRITE_BUFFER))
+			return true;
+	}
 #endif
 
 	return false;
@@ -2481,7 +2491,7 @@ void ufs_mtk_dbg_dump_scsi_cmd(struct ufs_hba *hba,
 		ufs_cmd_str_tbl[ufs_mtk_get_cmd_str_idx(cmd->cmnd[0])].str,
 		32 - 1);
 
-	if (ufs_mtk_is_data_cmd(cmd->cmnd[0])) {
+	if (ufs_mtk_is_data_cmd(cmd->cmnd[0], false)) {
 		lba = cmd->cmnd[5] | (cmd->cmnd[4] << 8) |
 			(cmd->cmnd[3] << 16) | (cmd->cmnd[2] << 24);
 		blk_cnt = cmd->cmnd[8] | (cmd->cmnd[7] << 8);
@@ -2577,20 +2587,20 @@ int ufs_mtk_perf_heurisic_if_allow_cmd(struct ufs_hba *hba,
 		return 0;
 
 	/* Check rw commands only and allow all other commands. */
-	if (ufs_mtk_is_data_cmd(cmd->cmnd[0])) {
+	if (ufs_mtk_is_data_cmd(cmd->cmnd[0], true)) {
 
 		if (!ufs_mtk_qcmd_r_cmd_cnt && !ufs_mtk_qcmd_w_cmd_cnt) {
 
 			/* Case: no on-going r or w commands. */
 
-			if (ufs_mtk_is_data_write_cmd(cmd->cmnd[0]))
+			if (ufs_mtk_is_data_write_cmd(cmd->cmnd[0], true))
 				ufs_mtk_qcmd_w_cmd_cnt++;
 			else
 				ufs_mtk_qcmd_r_cmd_cnt++;
 
 		} else {
 
-			if (ufs_mtk_is_data_write_cmd(cmd->cmnd[0])) {
+			if (ufs_mtk_is_data_write_cmd(cmd->cmnd[0], true)) {
 
 				if (ufs_mtk_qcmd_r_cmd_cnt)
 					return 1;
@@ -2615,8 +2625,8 @@ void ufs_mtk_perf_heurisic_req_done(struct ufs_hba *hba, struct scsi_cmnd *cmd)
 	if (!(hba->quirks & UFSHCD_QUIRK_UFS_HCI_PERF_HEURISTIC))
 		return;
 
-	if (ufs_mtk_is_data_cmd(cmd->cmnd[0])) {
-		if (ufs_mtk_is_data_write_cmd(cmd->cmnd[0]))
+	if (ufs_mtk_is_data_cmd(cmd->cmnd[0], true)) {
+		if (ufs_mtk_is_data_write_cmd(cmd->cmnd[0], true))
 			ufs_mtk_qcmd_w_cmd_cnt--;
 		else
 			ufs_mtk_qcmd_r_cmd_cnt--;
