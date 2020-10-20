@@ -145,7 +145,9 @@ static int get_vb_volt(int vcore_opp, int info_mode)
 
 	if (vcore_opp == VCORE_OPP_4) {
 		ptpod = (ptpod >> 24) & 0xF;
-		if ((info > 0) && (info <= 5) && (info_mode & (1 << VCORE_VB_TYPEA_EN_SHIFT)))
+		if (ptpod <= 1)
+			ret = 0;
+		else if ((info > 0) && (info <= 5) && (info_mode & (1 << VCORE_VB_TYPEA_EN_SHIFT)))
 			ret = (ptpod <= 4) ? ptpod : 4;
 		else if ((info > 5) && (info <= 10) && (info_mode & (1 << VCORE_VB_TYPEB_EN_SHIFT)))
 			ret = (ptpod <= 2) ? ptpod : 2;
