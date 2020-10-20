@@ -221,7 +221,7 @@ static int get_devinfo(void)
 		gpu_vb_volt =
 			gpu_opp0_t_volt[0];
 #ifdef MC50_LOAD
-	gpu_vb_volt = gpu_opp0_t_volt[3];
+	gpu_vb_volt = gpu_opp0_t_volt[6];
 	eemg_error("mc50 load setting\n");
 
 #endif
