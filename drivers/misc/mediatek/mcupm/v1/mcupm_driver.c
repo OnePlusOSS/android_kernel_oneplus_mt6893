@@ -762,8 +762,10 @@ static char *pin_name[MCUPM_IPI_COUNT] = {
 /* platform callback when ipi timeout */
 void mcupm_ipi_timeout_cb(int ipi_id)
 {
-	pr_info("Error: possible error IPI %d pin=%s\n",
-		ipi_id, pin_name[ipi_id]);
+	pr_info("Error: possible error IPI=%d pin=%s\n",
+		ipi_id,
+		((ipi_id >= 0 && ipi_id <= MCUPM_IPI_COUNT) ?
+		pin_name[ipi_id] : "NA"));
 
 	ipi_monitor_dump(&mcupm_ipidev);
 	mtk_emidbg_dump();
