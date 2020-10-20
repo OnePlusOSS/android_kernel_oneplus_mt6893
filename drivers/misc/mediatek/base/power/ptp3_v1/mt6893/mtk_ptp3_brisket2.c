@@ -237,6 +237,7 @@ int brisket2_reserve_memory_dump(char *buf, unsigned long long ptp3_mem_size,
 /************************************************
  * IPI between kernel and mcupm/cpu_eb
  ************************************************/
+#if 0
 #ifdef CONFIG_MTK_TINYSYS_MCUPM_SUPPORT
 static void brisket2_ipi_handle(unsigned int cfg, unsigned int val)
 {
@@ -249,9 +250,11 @@ static void brisket2_ipi_handle(unsigned int cfg, unsigned int val)
 	brisket2_msg("[%s]:cfg(%d) val(%d)\n",
 		__func__, cfg, val);
 
+#if 0
 	/* update mcupm or cpueb via ipi */
 	while (ptp3_ipi_handle(&brisket2_data) != 0)
 		udelay(500);
+#endif
 }
 #else
 static void brisket2_ipi_handle(unsigned int cpu, unsigned int group,
@@ -259,6 +262,7 @@ static void brisket2_ipi_handle(unsigned int cpu, unsigned int group,
 {
 	brisket2_msg("IPI from kernel to MCUPM not exist\n");
 }
+#endif
 #endif
 
 /************************************************
@@ -727,8 +731,10 @@ static ssize_t brisket2_pollingEn_proc_write(struct file *file,
 		return ret;
 	}
 
+#if 0
 	/* update via mcupm or cpu_eb */
 	brisket2_ipi_handle(BRISKET2_IPI_CFG_POLLING, pollingEn);
+#endif
 
 out:
 	free_page((unsigned long)buf);
