@@ -2859,9 +2859,26 @@ static int ufshcd_queuecommand(struct Scsi_Host *host, struct scsi_cmnd *cmd)
 		goto out;
 	}
 
+
+	/* MTK Patch: Check if performance heuristic is applied */
+	spin_lock_irqsave(hba->host->host_lock, flags);
+	err = ufs_mtk_perf_heurisic_if_allow_cmd(hba, cmd);
+
+	if (err) {
+		err = SCSI_MLQUEUE_HOST_BUSY;
+		clear_bit_unlock(tag, &hba->lrb_in_use);
+		spin_unlock_irqrestore(hba->host->host_lock, flags);
+		ufshcd_release(hba);
+		goto out;
+	}
+	spin_unlock_irqrestore(hba->host->host_lock, flags);
+
 #if defined(CONFIG_UFSFEATURE) && defined(CONFIG_UFSHPB)
 	/* Micron version 2.0 not support write buffer id 2 */
 	if (hba->card->wmanufacturerid != UFS_VENDOR_SAMSUNG)
+		goto send_orig_cmd;
+
+	if ((hba->quirks & UFSHCD_QUIRK_UFS_HCI_PERF_HEURISTIC))
 		goto send_orig_cmd;
 
 	add_tag = ufsf_hpb_prepare_pre_req(&hba->ufsf, cmd, lun);
@@ -5555,6 +5572,8 @@ static int __ufshcd_transfer_req_compl(struct ufs_hba *hba,
 		lrbp = &hba->lrb[index];
 		cmd = lrbp->cmd;
 		if (cmd) {
+			/* MTK Patch: handler of performance heuristic */
+			ufs_mtk_perf_heurisic_req_done(hba, cmd);
 			/* MTK PATCH */
 			ufshcd_cond_add_cmd_trace(hba, index,
 				UFS_TRACE_COMPLETED);

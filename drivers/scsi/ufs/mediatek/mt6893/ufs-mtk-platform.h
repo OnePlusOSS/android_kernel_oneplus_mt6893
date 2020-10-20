@@ -15,6 +15,12 @@
 #include "ufs.h"
 #include "ufshcd.h"
 
+/*
+ * Platform dependent quirks
+ */
+
+#define UFS_MTK_PLATFORM_UFS_HCI_PERF_HEURISTIC
+
 #ifndef CONFIG_FPGA_EARLY_PORTING
 /* If UPMU function not ready, comment this define */
 #define UPMU_READY
