@@ -78,6 +78,7 @@ struct fbt_boost_info {
 	int weight_cnt;
 	int hit_cnt;
 	int deb_cnt;
+	int hit_cluster;
 
 	/* rescue*/
 	struct fbt_proc proc;

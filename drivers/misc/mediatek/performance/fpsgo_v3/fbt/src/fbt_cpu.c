@@ -133,6 +133,12 @@ enum FPSGO_LIMIT_POLICY {
 	FPSGO_LIMIT_MAX,
 };
 
+enum FPSGO_ADJ_STATE {
+	FPSGO_ADJ_NONE = 0,
+	FPSGO_ADJ_LITTLE,
+	FPSGO_ADJ_MIDDLE,
+};
+
 static struct kobject *fbt_kobj;
 
 static int bhr;
@@ -2316,11 +2322,25 @@ static void fbt_check_max_blc_locked(void)
 static int fbt_overest_loading(int blc_wt, unsigned long long running_time,
 				unsigned long long target_time)
 {
-	if (blc_wt < cpu_dvfs[min_cap_cluster].capacity_ratio[0]
-		&& running_time < (target_time - loading_time_diff))
-		return 1;
+	int next_cluster;
 
-	return 0;
+	if (running_time >= (target_time - loading_time_diff))
+		return FPSGO_ADJ_NONE;
+
+	if (blc_wt < cpu_dvfs[min_cap_cluster].capacity_ratio[0])
+		return FPSGO_ADJ_LITTLE;
+
+	next_cluster = (max_cap_cluster > min_cap_cluster)
+			? min_cap_cluster + 1 : max_cap_cluster + 1;
+
+	if (next_cluster == max_cap_cluster
+		|| next_cluster < 0 || next_cluster >= cluster_num)
+		return FPSGO_ADJ_NONE;
+
+	if (blc_wt < cpu_dvfs[next_cluster].capacity_ratio[0])
+		return FPSGO_ADJ_MIDDLE;
+
+	return FPSGO_ADJ_NONE;
 }
 
 static int fbt_adjust_loading(struct render_info *thr, unsigned long long ts,
@@ -2362,7 +2382,7 @@ static int fbt_adjust_loading(struct render_info *thr, unsigned long long ts,
 
 		if (!adjust_loading || cluster_num == 1
 			|| !thr->pLoading->loading_cl) {
-			adjust = 0;
+			adjust = FPSGO_ADJ_NONE;
 			goto SKIP;
 		}
 
@@ -2389,19 +2409,29 @@ SKIP:
 	}
 	spin_unlock_irqrestore(&loading_slock, flags);
 
-	if (adjust) {
-		int big_cluster = (max_cap_cluster > min_cap_cluster)
+	if (adjust != FPSGO_ADJ_NONE) {
+		int first_cluster, sec_cluster;
+
+		if (adjust == FPSGO_ADJ_LITTLE)
+			first_cluster = min_cap_cluster;
+		else {
+			first_cluster = (max_cap_cluster > min_cap_cluster)
 				? min_cap_cluster + 1
 				: max_cap_cluster + 1;
+		}
 
-		if (big_cluster >= cluster_num || big_cluster < 0)
-			big_cluster = max_cap_cluster;
+		sec_cluster = (max_cap_cluster > min_cap_cluster)
+				? first_cluster + 1
+				: first_cluster - 1;
+
+		first_cluster = clamp(first_cluster, 0, cluster_num - 1);
+		sec_cluster = clamp(sec_cluster, 0, cluster_num - 1);
 
 		loading_result = thr->boost_info.loading_weight;
 		loading_result = loading_result *
-					loading_cl[big_cluster];
+					loading_cl[sec_cluster];
 		loading_result += (100 - thr->boost_info.loading_weight) *
-					loading_cl[min_cap_cluster];
+					loading_cl[first_cluster];
 		do_div(loading_result, 100);
 		loading = (long)loading_result;
 	}
@@ -2434,9 +2464,10 @@ static int fbt_adjust_loading_weight(struct fbt_frame_info *frame_info,
 static long fbt_get_loading(struct render_info *thr, unsigned long long ts)
 {
 	long loading = 0L;
-	int adjust = 0;
+	int adjust = FPSGO_ADJ_NONE;
 	struct fbt_boost_info *boost = NULL;
 	int last_blc = 0;
+	int cur_hit = FPSGO_ADJ_NONE;
 
 	if (!adjust_loading || cluster_num == 1)
 		goto SKIP;
@@ -2448,8 +2479,10 @@ static long fbt_get_loading(struct render_info *thr, unsigned long long ts)
 		last_blc = thr->p_blc->blc;
 	mutex_unlock(&blc_mlock);
 
-	if (fbt_overest_loading(last_blc,
-			thr->running_time, boost->target_time))
+	cur_hit = fbt_overest_loading(last_blc,
+			thr->running_time, boost->target_time);
+
+	if (cur_hit != FPSGO_ADJ_NONE && cur_hit == boost->hit_cluster)
 		boost->hit_cnt++;
 	else {
 		boost->hit_cnt = 0;
@@ -2458,7 +2491,8 @@ static long fbt_get_loading(struct render_info *thr, unsigned long long ts)
 	}
 
 	if (boost->hit_cnt >= loading_adj_cnt) {
-		adjust = 1;
+		adjust = cur_hit;
+		boost->hit_cluster = cur_hit;
 		boost->hit_cnt = loading_adj_cnt;
 		boost->deb_cnt = loading_debnc_cnt;
 		boost->weight_cnt++;
@@ -2471,22 +2505,30 @@ static long fbt_get_loading(struct render_info *thr, unsigned long long ts)
 			boost->weight_cnt = 0;
 		}
 	} else if (boost->deb_cnt > 0) {
-		adjust = 1;
+		adjust = boost->hit_cluster;
 		boost->weight_cnt = 0;
 	} else {
+		adjust = FPSGO_ADJ_NONE;
 		boost->loading_weight = LOADING_WEIGHT;
 		boost->weight_cnt = 0;
+		boost->hit_cluster = cur_hit;
 	}
 
-	if (adjust)
+	if (adjust != FPSGO_ADJ_NONE) {
+		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id,
+				adjust, "adjust");
 		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id,
 				boost->loading_weight, "weight");
+	}
+
 	fpsgo_systrace_c_fbt_gm(thr->pid, thr->buffer_id,
 		boost->weight_cnt, "weight_cnt");
 	fpsgo_systrace_c_fbt_gm(thr->pid, thr->buffer_id,
 		boost->hit_cnt, "hit_cnt");
 	fpsgo_systrace_c_fbt_gm(thr->pid, thr->buffer_id,
 		boost->deb_cnt, "deb_cnt");
+	fpsgo_systrace_c_fbt_gm(thr->pid, thr->buffer_id,
+		boost->hit_cluster, "hit_cluster");
 
 SKIP:
 	loading = fbt_adjust_loading(thr, ts, adjust);
