@@ -8063,6 +8063,17 @@ static int __init ISP_Init(void)
 			isp_m4u_fault_callback,
 			NULL);
 
+	/* for RRZO debug usage */
+	mtk_iommu_register_fault_callback(M4U_PORT_L16_CAM_RRZO_R1_A_MDP,
+			isp_m4u_fault_callback,
+			NULL);
+	mtk_iommu_register_fault_callback(M4U_PORT_L17_CAM_RRZO_R1_B_DISP,
+			isp_m4u_fault_callback,
+			NULL);
+	mtk_iommu_register_fault_callback(M4U_PORT_L18_CAM_RRZO_R1_C_MDP,
+			isp_m4u_fault_callback,
+			NULL);
+
 	LOG_DBG("- E. Ret: %d.", Ret);
 	return Ret;
 }
