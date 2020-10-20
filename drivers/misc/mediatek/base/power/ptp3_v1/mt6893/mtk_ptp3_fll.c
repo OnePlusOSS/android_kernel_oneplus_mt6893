@@ -997,6 +997,118 @@ static int fll_freq_proc_show(struct seq_file *m, void *v)
 	return 0;
 }
 
+static ssize_t fll_eventCount_mode_proc_write(struct file *file,
+	const char __user *buffer, size_t count, loff_t *pos)
+{
+	/* parameter input */
+	unsigned int cfg = 0;
+	unsigned int cpu, value;
+	int ret = 0;
+
+	/* proc template for check */
+	char *buf = (char *) __get_free_page(GFP_USER);
+
+	if (!buf) {
+		fll_err("buf is illegal\n");
+		goto out;
+	}
+
+	if (count >= PAGE_SIZE) {
+		fll_err("count(%u) >= PAGE_SIZE\n", (unsigned int)count);
+		goto out;
+	}
+
+	if (copy_from_user(buf, buffer, count)) {
+		fll_err("buffer copy fail\n");
+		goto out;
+	}
+
+	buf[count] = '\0';
+
+	/* parameter check */
+	if (sscanf(buf, "%u %u",
+		&cpu, &value) != 2) {
+
+		fll_err("bad argument!! Should input 2 arguments.\n");
+		goto out;
+	}
+
+	/* encode cfg */
+	/*
+	 *	cfg[15:8] option
+	 *	cfg[31:28] cpu
+	 */
+	cfg = (0 << FLL_CFG_OFFSET_OPTION) & FLL_CFG_BITMASK_OPTION;
+	cfg |= (cpu << FLL_CFG_OFFSET_CPU) & FLL_CFG_BITMASK_CPU; /* workaround for para check */
+
+	/* update via atf */
+	ret = ptp3_smc_handle(
+		PTP3_FEATURE_FLL,
+		FLL_NODE_EVT_MODE_WRITE,
+		cfg,
+		value);
+
+	if (ret < 0) {
+		fll_err("ret(%d). access atf fail\n", ret);
+		goto out;
+	}
+
+out:
+	free_page((unsigned long)buf);
+	return count;
+
+}
+
+
+static int fll_eventCount_mode_proc_show(struct seq_file *m, void *v)
+{
+	unsigned int cfg = 0;
+	unsigned int cpu, value;
+
+	for (cpu = BRISKET2_CPU_START_ID; cpu <= BRISKET2_CPU_END_ID; cpu++) {
+		seq_printf(m, FLL_TAG"[CPU%d]", cpu);
+
+		/* encode cfg */
+		/*
+		 *	cfg[15:8] option
+		 *	cfg[31:28] cpu
+		 */
+		cfg = (0 << FLL_CFG_OFFSET_OPTION) & FLL_CFG_BITMASK_OPTION;
+		cfg |= (cpu << FLL_CFG_OFFSET_CPU) & FLL_CFG_BITMASK_CPU;
+
+		/* update via atf */
+		value = ptp3_smc_handle(
+			PTP3_FEATURE_FLL,
+			FLL_NODE_EVT_MODE_READ,
+			cfg,
+			0);
+
+		switch (value) {
+		case FLL_EVT_CNT_MODE_DEFAULT:
+			seq_printf(m,
+				" Mode(%u): overshoot/undershoot by 2.6Ghz +- 52Mhz\n",
+				value);
+			break;
+		case FLL_EVT_CNT_MODE_SHOOT_DVFS:
+			seq_printf(m,
+				" Mode(%u): overshoot/undershoot by FllInFreq +- 52Mhz\n",
+				value);
+			break;
+		case FLL_EVT_CNT_MODE_SHOOT_DVFS_SLOWREQ:
+			seq_printf(m,
+				" Mode(%u): overshoot by FllInFreq+52Mhz, undershoot by FllInFreq*0.9\n",
+				value);
+			break;
+		default:
+			seq_printf(m,
+				" Mode(%u): unavailable mode status\n",
+				value);
+			break;
+		}
+	}
+	return 0;
+}
+
 
 PROC_FOPS_RW(fll_ctrl);
 PROC_FOPS_RO(fll_list);
@@ -1006,6 +1118,7 @@ PROC_FOPS_RW(fll_eventCount);
 PROC_FOPS_RW(fll_cfg);
 PROC_FOPS_RW(fll_eventFreeze);
 PROC_FOPS_RO(fll_freq);
+PROC_FOPS_RW(fll_eventCount_mode);
 
 int fll_create_procfs(const char *proc_name, struct proc_dir_entry *dir)
 {
@@ -1026,6 +1139,7 @@ int fll_create_procfs(const char *proc_name, struct proc_dir_entry *dir)
 		PROC_ENTRY(fll_cfg),
 		PROC_ENTRY(fll_eventFreeze),
 		PROC_ENTRY(fll_freq),
+		PROC_ENTRY(fll_eventCount_mode),
 	};
 
 	fll_dir = proc_mkdir("fll", dir);
