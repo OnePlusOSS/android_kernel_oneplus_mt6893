@@ -2369,6 +2369,7 @@ static int mt6360_tcpcdev_init(struct mt6360_chip *chip, struct device *dev)
 	struct device_node *np = dev->of_node;
 	u32 val, len;
 	const char *name = "default";
+	int err;
 
 	desc = devm_kzalloc(dev, sizeof(*desc), GFP_KERNEL);
 	if (!desc)
@@ -2420,7 +2421,9 @@ static int mt6360_tcpcdev_init(struct mt6360_chip *chip, struct device *dev)
 	}
 #endif	/* CONFIG_TCPC_VCONN_SUPPLY_MODE */
 
-	of_property_read_string(np, "mt-tcpc,name", (char const **)&name);
+	err = of_property_read_string(np, "mt-tcpc,name", (char const **)&name);
+	if (err < 0)
+		dev_info(dev, "%s no tcpc name\n", __func__);
 	len = strlen(name);
 	desc->name = kzalloc(len + 1, GFP_KERNEL);
 	if (!desc->name)
