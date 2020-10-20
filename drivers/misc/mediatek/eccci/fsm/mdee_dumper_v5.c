@@ -21,6 +21,8 @@
 #include "mdee_dumper_v5.h"
 #include "ccci_config.h"
 #include "ccci_fsm_sys.h"
+#include "ccci_fsm.h"
+#include "modem_sys.h"
 
 #ifndef DB_OPT_DEFAULT
 #define DB_OPT_DEFAULT    (0)	/* Dummy macro define to avoid build error */
@@ -883,7 +885,18 @@ static void mdee_dumper_v5_emimpu_callback(
 {
 	int i, s;
 	int c = 0;
+	int md_state;
 	struct ccci_fsm_ctl *ctl = fsm_get_entity_by_md_id(0);
+	struct ccci_modem *md = ccci_md_get_modem_by_id(0);
+
+	if (md) {
+		md_state = ccci_fsm_get_md_state(md->index);
+		if (md_state != INVALID || md_state != GATED ||
+			md_state != WAITING_TO_STOP) {
+			if (md->ops->dump_info)
+				md->ops->dump_info(md, DUMP_FLAG_REG, NULL, 0);
+		}
+	}
 
 	if (!dump) {
 		CCCI_ERROR_LOG(0, FSM,
