@@ -42,6 +42,10 @@ ifeq ($(PROJECT_DTB_NAMES),mediatek/k6893v1_64_mcl50)
 subdir-ccflags-y += -DMC50_LOAD
 endif
 
+ifeq ($(PROJECT_DTB_NAMES),mediatek/k6893v1_64_cmd)
+subdir-ccflags-y += -DMC50_LOAD
+endif
+
 ifeq ($(PROJECT_DTB_NAMES),mediatek/k6893v1_64_144hz_vdo_mcl50)
 subdir-ccflags-y += -DMC50_LOAD
 endif
