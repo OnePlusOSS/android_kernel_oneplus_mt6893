@@ -383,12 +383,13 @@ static int nr_isp_devs;
 static unsigned int m_CurrentPPB;
 static struct isp_sec_dapc_reg lock_reg;
 static unsigned int sec_on;
+static int irq3a_wait_cnt = 1;
+static int irq3a_print_vf_off[ISP_IRQ_TYPE_AMOUNT] = {-1};
 
 #ifdef CONFIG_PM_SLEEP
 struct wakeup_source isp_wake_lock;
 #endif
 static int g_WaitLockCt;
-static int irq3a_wait_cnt = 1;
 
 /*prevent isp race condition in vulunerbility test*/
 static struct mutex open_isp_mutex;
@@ -725,7 +726,13 @@ enum RAW_IDX {
 	CAM_C,
 	CAM_MAX,
 };
-
+#define P1DONE_STR_LEN (256)
+struct RAW_LOG {
+	char module;
+	char _str[P1DONE_STR_LEN];
+};
+static struct RAW_LOG gPass1doneLog[ISP_IRQ_TYPE_AMOUNT];
+static struct RAW_LOG gLostPass1doneLog[ISP_IRQ_TYPE_AMOUNT];
 #define NORMAL_STR_LEN (512)
 #define ERR_PAGE 2
 #define DBG_PAGE 2
@@ -3779,8 +3786,18 @@ static int ISP_WaitIrq(struct ISP_WAIT_IRQ_STRUCT *WaitIrq)
 		WaitIrq->EventInfo.UserKey);
 #endif
 
-	if (WaitIrq->EventInfo.UserKey == 1)
+	if (WaitIrq->EventInfo.UserKey == 1) {
 		irq3a_wait_cnt++;
+		if (irq3a_print_vf_off[WaitIrq->Type]) {
+			LOG_NOTICE(
+			"Viewfinder off IRQ 3A  irq3a_wait_cnt++ =%d Clear(%d) Type(%d) StType(%d) Status(0x%08X) WaitStatus(0x%08X) Timeout(%d) key(%d)\n",
+			irq3a_wait_cnt,
+			WaitIrq->EventInfo.Clear, WaitIrq->Type,
+			WaitIrq->EventInfo.St_type, irqStatus,
+			WaitIrq->EventInfo.Status, WaitIrq->EventInfo.Timeout,
+			WaitIrq->EventInfo.UserKey);
+		}
+	}
 
 	/* 2. start to wait signal */
 	if (ISP_CheckUseCamWaitQ(WaitIrq->Type, WaitIrq->EventInfo.St_type,
@@ -3820,9 +3837,18 @@ static int ISP_WaitIrq(struct ISP_WAIT_IRQ_STRUCT *WaitIrq)
 			ISP_MsToJiffies(WaitIrq->EventInfo.Timeout));
 	}
 
-	if (WaitIrq->EventInfo.UserKey == 1)
+	if (WaitIrq->EventInfo.UserKey == 1) {
 		irq3a_wait_cnt--;
-
+		if (irq3a_print_vf_off[WaitIrq->Type]) {
+			LOG_NOTICE(
+			"Viewfinder off IRQ 3A  irq3a_wait_cnt-- =%d Clear(%d) Type(%d) StType(%d) Status(0x%08X) WaitStatus(0x%08X) Timeout(%d) key(%d)\n",
+			irq3a_wait_cnt,
+			WaitIrq->EventInfo.Clear, WaitIrq->Type,
+			WaitIrq->EventInfo.St_type, irqStatus,
+			WaitIrq->EventInfo.Status, WaitIrq->EventInfo.Timeout,
+			WaitIrq->EventInfo.UserKey);
+		}
+	}
 	/* check if user is interrupted by system signal */
 	if ((Timeout != 0) &&
 	    (!ISP_GetIRQState(WaitIrq->Type, WaitIrq->EventInfo.St_type,
@@ -4386,17 +4412,26 @@ static long ISP_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 
 				IrqInfo.EventInfo.UserKey = 0;
 			}
-#ifdef ENABLE_WAITIRQ_LOG
-			LOG_INF(
-				"IRQ type(%d), userKey(%d), timeout(%d), userkey(%d), st_status(%d), status(%d)\n",
+
+
+			if ((IrqInfo.EventInfo.UserKey == 1) &&
+				irq3a_print_vf_off[IrqInfo.Type]) {
+				LOG_NOTICE(
+				"Viewfinder offIRQ type(%d), userKey(%d), timeout(%d), userkey(%d), st_status(%d), status(%d)\n",
 				IrqInfo.Type,
 				IrqInfo.EventInfo.UserKey,
 				IrqInfo.EventInfo.Timeout,
 				IrqInfo.EventInfo.UserKey,
 				IrqInfo.EventInfo.St_type,
 				IrqInfo.EventInfo.Status);
-#endif
+			}
 			Ret = ISP_WaitIrq(&IrqInfo);
+			if ((IrqInfo.EventInfo.UserKey == 1)
+				&& irq3a_print_vf_off[IrqInfo.Type]) {
+				LOG_NOTICE(
+				"viewfinder off 3A IRQ return irq3a_wait_cnt =%d\n",
+				irq3a_wait_cnt);
+			}
 		} else {
 			LOG_NOTICE("copy_from_user failed\n");
 			Ret = -EFAULT;
@@ -4622,7 +4657,7 @@ static long ISP_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 					cam_dmao = ISP_RD32(CAM_REG_CTL_DMA_EN(
 						DebugFlag[1]));
 				}
-
+				irq3a_print_vf_off[module] = 0;
 				LOG_INF(
 					"CAM_%d viewFinder is ON (SecOn:0x%x)\n",
 					module, sec_on);
@@ -4677,6 +4712,7 @@ static long ISP_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 				break;
 			}
 			case 0: {
+				irq3a_print_vf_off[module] = 1;
 				LOG_INF("CAM_%d viewFinder is OFF\n", module);
 
 				if (vf & 0x1) {
@@ -11032,6 +11068,8 @@ irqreturn_t ISP_Irq_CAM(enum ISP_IRQ_TYPE_ENUM irq_module)
 	struct timeval time_frmb;
 	unsigned long long sec = 0;
 	unsigned long usec = 0;
+	static unsigned int sec_sof[ISP_IRQ_TYPE_INT_CAMSV_0_ST] = {0};
+	static unsigned int usec_sof[ISP_IRQ_TYPE_INT_CAMSV_0_ST] = {0};
 	ktime_t time;
 	unsigned int IrqEnableOrig, IrqEnableNew;
 	union CAMCTL_TWIN_STATUS_ twinStatus;
@@ -11349,9 +11387,10 @@ irqreturn_t ISP_Irq_CAM(enum ISP_IRQ_TYPE_ENUM irq_module)
 		if (IspInfo.DebugMask & ISP_DBG_INT) {
 			/*SW p1_don is not reliable */
 			if (FrameStatus[module] != CAM_FST_DROP_FRAME) {
-				IRQ_LOG_KEEPER(
-		module, m_CurrentPPB, _LOG_INF,
-		"CAM_%c P1_DON_%d(0x%08x_0x%08x,0x%08x_0x%08x)dma done(0x%x,0x%x,0x%x)int(0x%x,0x%x,0x%x)FLKBA(0x%x,0x%x,0x%x)THR14(0x%x,0x%x,0x%x)FBC(0x%x,0x%x,0x%x)\n",
+				gPass1doneLog[module].module = module;
+				snprintf(gPass1doneLog[module]._str,
+				P1DONE_STR_LEN,
+				"CAM_%c P1_DON_%d(0x%08x_0x%08x,0x%08x_0x%08x)dma done(0x%x,0x%x,0x%x)int(0x%x,0x%x,0x%x)FLKBA(0x%x,0x%x,0x%x)THR14(0x%x,0x%x,0x%x)FBC(0x%x,0x%x,0x%x)exe_us:%d ",
 		'A' + cardinalNum,
 		(sof_count[module])
 			? (sof_count[module] - 1)
@@ -11382,7 +11421,10 @@ irqreturn_t ISP_Irq_CAM(enum ISP_IRQ_TYPE_ENUM irq_module)
 		ISP_RD32(CAM_REG_CQ_THR14_BASEADDR(ISP_CAM_C_INNER_IDX)),
 		ISP_RD32(CAM_REG_FBC_FLKO_CTL2(ISP_CAM_A_INNER_IDX)),
 		ISP_RD32(CAM_REG_FBC_FLKO_CTL2(ISP_CAM_B_INNER_IDX)),
-		ISP_RD32(CAM_REG_FBC_FLKO_CTL2(ISP_CAM_C_INNER_IDX)));
+		ISP_RD32(CAM_REG_FBC_FLKO_CTL2(ISP_CAM_C_INNER_IDX)),
+		(unsigned int)((sec * 1000000 + usec) -
+		(1000000 * sec_sof[module] +
+		usec_sof[module])));
 			}
 		}
 #if (TSTMP_SUBSAMPLE_INTPL == 1)
@@ -11482,10 +11524,17 @@ irqreturn_t ISP_Irq_CAM(enum ISP_IRQ_TYPE_ENUM irq_module)
 			FrameStatus[module] = CAM_FST_BLOCK_FRAME;
 
 		if (FrameStatus[module] == CAM_FST_DROP_FRAME) {
-			IRQ_LOG_KEEPER(module, m_CurrentPPB, _LOG_INF,
-				       "CAM%c Lost p1 done_%d (0x%x): ",
-				       'A' + cardinalNum, sof_count[module],
-				       cur_v_cnt);
+			gLostPass1doneLog[module].module = module;
+			snprintf(gLostPass1doneLog[module]._str, P1DONE_STR_LEN,
+				"CAM%c Lost p1 done_%d (0x%x): ",
+				'A' + cardinalNum, sof_count[module],
+				cur_v_cnt);
+			/*
+			 *IRQ_LOG_KEEPER(module, m_CurrentPPB, _LOG_INF,
+			 *	       "CAM%c Lost p1 done_%d (0x%x): ",
+			 *	       'A' + cardinalNum, sof_count[module],
+			 *	       cur_v_cnt);
+			 */
 		}
 
 		/* During SOF, re-enable that err/warn irq had been marked and
@@ -11506,7 +11555,8 @@ irqreturn_t ISP_Irq_CAM(enum ISP_IRQ_TYPE_ENUM irq_module)
 		}
 
 		if (IspInfo.DebugMask & ISP_DBG_INT) {
-			static unsigned int m_sec = 0, m_usec;
+			static unsigned int m_sec[ISP_IRQ_TYPE_AMOUNT] = {0};
+			static unsigned int m_usec[ISP_IRQ_TYPE_AMOUNT] = {0};
 			unsigned int magic_num;
 
 			if (pstRTBuf[module]->ring_buf[_imgo_].active) {
@@ -11518,8 +11568,8 @@ irqreturn_t ISP_Irq_CAM(enum ISP_IRQ_TYPE_ENUM irq_module)
 					CAM_REG_RRZO_FH_SPARE_2(reg_module));
 			}
 			if (g1stSof[module]) {
-				m_sec = sec;
-				m_usec = usec;
+				m_sec[module] = sec;
+				m_usec[module] = usec;
 				gSTime[module].sec = sec;
 				gSTime[module].usec = usec;
 			}
@@ -11815,7 +11865,9 @@ irqreturn_t ISP_Irq_CAM(enum ISP_IRQ_TYPE_ENUM irq_module)
 #if 0
 			IRQ_LOG_KEEPER(
 				module, m_CurrentPPB, _LOG_INF,
-				"CAM_%c P1_SOF_%d_%d(0x%08x_0x%08x,0x%08x_0x%08x,0x%08x,0x%08x,0x%x),int_us:%d,cq:0x%08x, DMA 0x%x,0x%x, LTMS/FLK/AA/AAH/TSFS(0x%x, 0x%x, 0x%x, 0x%x, 0x%x) pa(0x%x,0x%x,0x%x,0x%x,0x%x),0x%x,0x%x,0x%x)\n",
+				"%s,%s,CAM_%c P1_SOF_%d_%d(0x%08x_0x%08x,0x%08x_0x%08x,0x%08x,0x%08x,0x%x),int_us:%d,cq:0x%08x, DMA 0x%x,0x%x, LTMS/FLK/AA/AAH/TSFS(0x%x, 0x%x, 0x%x, 0x%x, 0x%x) pa(0x%x,0x%x,0x%x,0x%x,0x%x),0x%x,0x%x,0x%x)\n",
+				gPass1doneLog[module]._str,
+				gLostPass1doneLog[module]._str,
 				'A' + cardinalNum, sof_count[module], cur_v_cnt,
 				(unsigned int)(ISP_RD32(
 					CAM_REG_FBC_IMGO_CTL1(reg_module))),
@@ -11829,7 +11881,7 @@ irqreturn_t ISP_Irq_CAM(enum ISP_IRQ_TYPE_ENUM irq_module)
 				ISP_RD32(CAM_REG_RRZO_BASE_ADDR(reg_module)),
 				magic_num,
 				(unsigned int)((sec * 1000000 + usec) -
-						   (1000000 * m_sec + m_usec)),
+				(1000000 * m_sec[module] + m_usec[module])),
 				(unsigned int)ISP_RD32(
 					CAM_REG_CQ_THR0_BASEADDR(reg_module)),
 				(unsigned int)ISP_RD32(
@@ -11890,7 +11942,7 @@ irqreturn_t ISP_Irq_CAM(enum ISP_IRQ_TYPE_ENUM irq_module)
 				ISP_RD32(CAM_REG_RRZO_BASE_ADDR(reg_module)),
 				magic_num, pre_magic_num,
 				(unsigned int)((sec * 1000000 + usec) -
-					       (1000000 * m_sec + m_usec)),
+					       (1000000 * m_sec[module] + m_usec[module])),
 				(unsigned int)ISP_RD32(
 					CAM_REG_CQ_THR0_BASEADDR(reg_module)),
 				(unsigned int)ISP_RD32(
@@ -12010,7 +12062,9 @@ irqreturn_t ISP_Irq_CAM(enum ISP_IRQ_TYPE_ENUM irq_module)
 			else
 				IRQ_LOG_KEEPER(
 				module, m_CurrentPPB, _LOG_INF,
-				"CAM_%c P1_SOF_%d_%d(0x%08x_0x%08x,0x%08x_0x%08x,0x%08x,0x%08x,0x%x/0x%x),int_us:%d,cq:0x%08x_0x%08x 0x%08x_0x%08x,Don(0x%08x_0x%08x 0x%08x_0x%08x,0x%08x_0x%08x 0x%08x_0x%08x),DMA(0x%x_0x%x,0x%x_0x%x,0x%x_0x%x,0x%x_0x%x,0x%x_0x%x,0x%x_0x%x),CRZO(0x%x_0x%x,0x%x_0x%x,0x%x_0x%x,0x%x_0x%x,0x%x_0x%x,0x%x_0x%x),YUVO(0x%x_0x%x 0x%x_0x%x, 0x%x_0x%x 0x%x_0x%x, 0x%x_0x%x 0x%x_0x%x)\n",
+				"%s,%s,CAM_%c P1_SOF_%d_%d(0x%08x_0x%08x,0x%08x_0x%08x,0x%08x,0x%08x,0x%x/0x%x),int_us:%d,cq:0x%08x_0x%08x 0x%08x_0x%08x,Don(0x%08x_0x%08x 0x%08x_0x%08x,0x%08x_0x%08x 0x%08x_0x%08x),DMA(0x%x_0x%x,0x%x_0x%x,0x%x_0x%x,0x%x_0x%x,0x%x_0x%x,0x%x_0x%x),CRZO(0x%x_0x%x,0x%x_0x%x,0x%x_0x%x,0x%x_0x%x,0x%x_0x%x,0x%x_0x%x),YUVO(0x%x_0x%x 0x%x_0x%x, 0x%x_0x%x 0x%x_0x%x, 0x%x_0x%x 0x%x_0x%x)\n",
+				gPass1doneLog[module]._str,
+				gLostPass1doneLog[module]._str,
 				'A' + cardinalNum, sof_count[module], cur_v_cnt,
 				(unsigned int)(ISP_RD32(
 					CAM_REG_FBC_IMGO_CTL1(reg_module))),
@@ -12024,7 +12078,7 @@ irqreturn_t ISP_Irq_CAM(enum ISP_IRQ_TYPE_ENUM irq_module)
 				ISP_RD32(CAM_REG_RRZO_BASE_ADDR(reg_module)),
 				magic_num, pre_magic_num,
 				(unsigned int)((sec * 1000000 + usec) -
-					       (1000000 * m_sec + m_usec)),
+				(1000000 * m_sec[module] + m_usec[module])),
 				(unsigned int)ISP_RD32(
 					CAM_REG_CQ_THR0_BASEADDR(reg_module)),
 				(unsigned int)ISP_RD32(
@@ -12157,6 +12211,8 @@ irqreturn_t ISP_Irq_CAM(enum ISP_IRQ_TYPE_ENUM irq_module)
 					CAM_REG_YUVO_FH_BASE_ADDR(
 						ISP_CAM_C_INNER_IDX)));
 #endif
+snprintf(gPass1doneLog[module]._str, P1DONE_STR_LEN, "\\");
+snprintf(gLostPass1doneLog[module]._str, P1DONE_STR_LEN, "\\");
 
 #ifdef ENABLE_STT_IRQ_LOG /*STT addr */
 			IRQ_LOG_KEEPER(
@@ -12205,8 +12261,10 @@ irqreturn_t ISP_Irq_CAM(enum ISP_IRQ_TYPE_ENUM irq_module)
 					CAM_REG_FBC_LTMSO_CTL2(reg_module))));
 #endif
 			/* keep current time */
-			m_sec = sec;
-			m_usec = usec;
+			m_sec[module] = sec;
+			m_usec[module] = usec;
+			sec_sof[module] = sec;
+			usec_sof[module] = usec;
 
 			/* dbg information only */
 			if (cur_v_cnt !=
