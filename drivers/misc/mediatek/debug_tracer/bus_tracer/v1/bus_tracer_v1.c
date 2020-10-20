@@ -357,6 +357,42 @@ static int enable(struct bus_tracer_plt *plt, unsigned char force_enable,
 		/* set ID */
 		writel(plt->tracer[i].at_id, plt->tracer[i].base +
 				BUS_TRACE_ATID);
+
+#if 1
+		writel(0x0, plt->tracer[i].base + BUS_TRACE_ADDR_FILTER0_H);
+		writel(0x0C532400, plt->tracer[i].base + BUS_TRACE_ADDR_FILTER0_L);
+		writel(0x0, plt->tracer[i].base + BUS_TRACE_ADDR_MASK0_H);
+		writel(0x000000FF, plt->tracer[i].base + BUS_TRACE_ADDR_MASK0_L);
+
+		writel(0x0, plt->tracer[i].base + BUS_TRACE_ADDR_FILTER1_H);
+		writel(0x0C532C00, plt->tracer[i].base + BUS_TRACE_ADDR_FILTER1_L);
+		writel(0x0, plt->tracer[i].base + BUS_TRACE_ADDR_MASK1_H);
+		writel(0x000000FF, plt->tracer[i].base + BUS_TRACE_ADDR_MASK1_L);
+
+		writel(0x0, plt->tracer[i].base + BUS_TRACE_ADDR_FILTER2_H);
+		writel(0x0C533400, plt->tracer[i].base + BUS_TRACE_ADDR_FILTER2_L);
+		writel(0x0, plt->tracer[i].base + BUS_TRACE_ADDR_MASK2_H);
+		writel(0x000000FF, plt->tracer[i].base + BUS_TRACE_ADDR_MASK2_L);
+
+		writel(0x0, plt->tracer[i].base + BUS_TRACE_ADDR_FILTER3_H);
+		writel(0x0C533C00, plt->tracer[i].base + BUS_TRACE_ADDR_FILTER3_L);
+		writel(0x0, plt->tracer[i].base + BUS_TRACE_ADDR_MASK3_H);
+		writel(0x000000FF, plt->tracer[i].base + BUS_TRACE_ADDR_MASK3_L);
+
+		/*
+		 * Set these bits to enable address filter:
+		 *   bit[7]  -ADDR_FILTER0_EN
+		 *   bit[8]  -ADDR_FILTER1_EN
+		 *   bit[9]  -ADDR_FILTER2_EN
+		 *   bit[10] -ADDR_FILTER3_EN
+		 *   bit[11] -ADDR_WATCH_OR_BYPASS
+		 *   bit[12] -ADDR_FILTER_EN
+		 */
+
+		ret = readl(plt->tracer[i].base + BUS_TRACE_CON);
+		writel(ret|0x1F80, plt->tracer[i].base + BUS_TRACE_CON);
+#endif
+
 #if 0
 		/* setup filters */
 		if (plt->tracer[i].filter.watchpoint.enabled) {
