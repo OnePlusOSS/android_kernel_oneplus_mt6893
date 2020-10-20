@@ -5393,7 +5393,14 @@ static int ufshcd_is_resp_upiu_valid(struct ufs_hba *hba,
 	val = (word & 0x00ff0000) >> 16;
 	if (val) {
 		dev_info(hba->dev, "inv. flag: 0x%x\n", val);
-		err = true;
+		#ifdef CONFIG_MTK_AEE_FEATURE
+		ufs_mtk_dbg_stop_trace(hba);
+		aee_kernel_warning_api(file, line, DB_OPT_FS_IO_LOG,
+			"ufshcd_is_resp_upiu_valid",
+			"inv. flag: %d", val);
+		#endif
+
+		return DID_REQUEUE << 16;
 	}
 
 	val = (word & 0x0000ff00) >> 8;
