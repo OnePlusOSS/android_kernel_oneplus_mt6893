@@ -729,9 +729,28 @@ static unsigned int mtk_dsi_default_rate(struct mtk_dsi *dsi)
 
 	return data_rate;
 }
+static int mtk_dsi_is_LFR_Enable(struct mtk_dsi *dsi)
+{
+	struct mtk_drm_crtc *mtk_crtc = dsi->ddp_comp.mtk_crtc;
+	struct mtk_drm_private *priv = NULL;
+
+	if (mtk_crtc && mtk_crtc->base.dev)
+		priv = mtk_crtc->base.dev->dev_private;
+	if (!(priv && mtk_drm_helper_get_opt(priv->helper_opt,
+		MTK_DRM_OPT_LFR))) {
+		return -1;
+	}
+	if (dsi->ext->params->lfr_enable == 0)
+		return -1;
+
+	if (mtk_dsi_is_cmd_mode(&dsi->ddp_comp))
+		return -1;
+	return 0;
+}
 static int mtk_dsi_set_LFR(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
 	void *handle)
 {
+
 	u32 val = 0, mask = 0;
 
 	//lfr_dbg: setting value form debug mode
@@ -741,10 +760,7 @@ static int mtk_dsi_set_LFR(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
 	unsigned int lfr_enable = 1;
 	unsigned int lfr_skip_num = 0;
 
-	if (dsi->ext->params->lfr_enable == 0)
-		return -1;
-
-	if (mtk_dsi_is_cmd_mode(&dsi->ddp_comp))
+	if (mtk_dsi_is_LFR_Enable(dsi))
 		return -1;
 
 	//Settings lfr settings to LFR_CON_REG
@@ -785,15 +801,11 @@ static int mtk_dsi_LFR_update(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
 {
 	u32 val = 0, mask = 0;
 
-	if (dsi->ext->params->lfr_enable == 0)
-		return -1;
-
-	if (mtk_dsi_is_cmd_mode(&dsi->ddp_comp))
+	if (mtk_dsi_is_LFR_Enable(dsi))
 		return -1;
 
 	if (comp == NULL) {
 		DDPPR_ERR("%s mtk_ddp_comp is null\n", __func__);
-		return -1;
 	}
 
 	if (handle == NULL) {
