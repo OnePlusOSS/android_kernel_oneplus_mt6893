@@ -192,14 +192,18 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 		    (pd_sink_current_new != pd_sink_current_old)) {
 			pd_sink_voltage_old = pd_sink_voltage_new;
 			pd_sink_current_old = pd_sink_current_new;
-			if (pd_sink_voltage_new && pd_sink_current_new) {
+			if ((!pd_sink_voltage_old || !pd_sink_current_old) &&
+			    (pd_sink_voltage_new && pd_sink_current_new)) {
 #if CONFIG_MTK_GAUGE_VERSION == 30
 				charger_manager_enable_power_path(chg_consumer,
 					MAIN_CHARGER, true);
 #else
 				mtk_chr_pd_enable_power_path(1);
 #endif
-			} else if (!tcpc_kpoc) {
+			} else if ((pd_sink_voltage_old &&
+				    pd_sink_current_old) &&
+				   (!pd_sink_voltage_new ||
+				    !pd_sink_current_new) && !tcpc_kpoc) {
 #if CONFIG_MTK_GAUGE_VERSION == 30
 				charger_manager_enable_power_path(chg_consumer,
 					MAIN_CHARGER, false);

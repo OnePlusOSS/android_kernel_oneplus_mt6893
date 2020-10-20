@@ -47,6 +47,7 @@
 #include <mach/upmu_hw.h>
 #include <mt-plat/mtk_boot.h>
 #include <mt-plat/charger_type.h>
+#include <mt-plat/mtk_charger.h>
 #include <pmic.h>
 #include <tcpm.h>
 
@@ -236,6 +237,7 @@ static int mt_charger_set_property(struct power_supply *psy,
 	info = mtk_chg->extcon_info;
 #endif
 
+	cti = mtk_chg->cti;
 	switch (psp) {
 	case POWER_SUPPLY_PROP_ONLINE:
 		mtk_chg->chg_online = val->intval;
@@ -243,6 +245,12 @@ static int mt_charger_set_property(struct power_supply *psy,
 		return 0;
 	case POWER_SUPPLY_PROP_CHARGE_TYPE:
 		mtk_chg->chg_type = val->intval;
+		if (mtk_chg->chg_type != CHARGER_UNKNOWN)
+			charger_manager_force_disable_power_path(
+				cti->chg_consumer, MAIN_CHARGER, false);
+		else if (!cti->tcpc_kpoc)
+			charger_manager_force_disable_power_path(
+				cti->chg_consumer, MAIN_CHARGER, true);
 		break;
 	default:
 		return -EINVAL;
@@ -250,7 +258,6 @@ static int mt_charger_set_property(struct power_supply *psy,
 
 	dump_charger_name(mtk_chg->chg_type);
 
-	cti = mtk_chg->cti;
 	if (!cti->ignore_usb) {
 		/* usb */
 		if ((mtk_chg->chg_type == STANDARD_HOST) ||
