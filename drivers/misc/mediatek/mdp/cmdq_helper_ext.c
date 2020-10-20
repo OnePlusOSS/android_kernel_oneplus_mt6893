@@ -2282,7 +2282,7 @@ ssize_t cmdq_core_print_log_level(struct device *dev,
 ssize_t cmdq_core_write_log_level(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t size)
 {
-	int len = 0;
+	size_t len = 0;
 	int value = 0;
 	int status = 0;
 
