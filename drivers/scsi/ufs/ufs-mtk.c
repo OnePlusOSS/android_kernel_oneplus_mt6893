@@ -2395,11 +2395,18 @@ bool ufs_mtk_is_data_write_cmd(char cmd_op, bool isolation)
 	if (cmd_op == WRITE_10 || cmd_op == WRITE_16 || cmd_op == WRITE_6)
 		return true;
 
+	if (isolation) {
+		if ((cmd_op == WRITE_BUFFER) ||
+		    (cmd_op == UNMAP) ||
+		    (cmd_op == FORMAT_UNIT) ||
+		    (cmd_op == SECURITY_PROTOCOL_OUT))
+			return true;
+	}
+
 #if defined(CONFIG_UFSHPB)
 	/* All data out operation need check */
 	if (isolation) {
-		if ((cmd_op == UFSHPB_WRITE_BUFFER) ||
-		    (cmd_op == WRITE_BUFFER))
+		if (cmd_op == UFSHPB_WRITE_BUFFER)
 			return true;
 	}
 #endif
@@ -2422,13 +2429,18 @@ static bool ufs_mtk_is_data_cmd(char cmd_op, bool isolation)
 	    cmd_op == WRITE_6 || cmd_op == READ_6)
 		return true;
 
+	if (isolation) {
+		if ((cmd_op == WRITE_BUFFER) ||
+		    (cmd_op == UNMAP) ||
+		    (cmd_op == FORMAT_UNIT) ||
+		    (cmd_op == SECURITY_PROTOCOL_OUT))
+			return true;
+	}
+
 #if defined(CONFIG_UFSHPB)
 	/* All data in/out operation need check */
 	if (isolation) {
-		if ((cmd_op == UFSHPB_READ_BUFFER) ||
-		    (cmd_op == UFSHPB_WRITE_BUFFER) ||
-		    (cmd_op == READ_BUFFER) ||
-		    (cmd_op == WRITE_BUFFER))
+		if (cmd_op == UFSHPB_WRITE_BUFFER)
 			return true;
 	}
 #endif
