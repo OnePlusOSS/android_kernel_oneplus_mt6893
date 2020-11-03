@@ -1996,9 +1996,10 @@ static inline void handle_init02_isr(struct eem_det *det)
 		/* Define next phase */
 		eem_debug("ini2isr detid:%d, next phase init2:%d\n",
 			det->ctrl_id, det->init2_phase);
-		if (det->init2_phase == EEM_PHASE_MON)
+		if (det->init2_phase == EEM_PHASE_MON) {
+			eem_set_eem_volt(det);
 			det->ops->mon_mode(det);
-		else
+		} else
 			det->ops->init02(det);
 
 	} else {
