@@ -52,18 +52,6 @@ endif
 ifneq (,$(findstring aging,$(PROJECT_DTB_NAMES)))
 subdir-ccflags-y += -DAGING_MARGIN
 endif
-ifneq (,$(findstring _khwasan,$(PROJECT_DTB_NAMES)))
-subdir-ccflags-y += -DAGING_MARGIN
-endif
-ifneq (,$(findstring _kasan,$(PROJECT_DTB_NAMES)))
-subdir-ccflags-y += -DAGING_MARGIN
-endif
-ifneq (,$(findstring _hwasan,$(PROJECT_DTB_NAMES)))
-subdir-ccflags-y += -DAGING_MARGIN
-endif
-ifneq (,$(findstring _ubsan,$(PROJECT_DTB_NAMES)))
-subdir-ccflags-y += -DAGING_MARGIN
-endif
 
 #obj-y += vpu_dummy_driver.o
 #vpu_dummy_driver-objs:= $(PDIR)/dummy_vpu_driver.o
