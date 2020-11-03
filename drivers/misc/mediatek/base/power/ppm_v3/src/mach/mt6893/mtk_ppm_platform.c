@@ -239,8 +239,18 @@ int ppm_find_pwr_idx(struct ppm_cluster_status *cluster_status)
 				unsigned int bb_volt, bl_volt, sb_volt;
 				unsigned int pwr, sb_pwr;
 
-				bb_volt = volt_bb[cluster_status[2].freq_idx];
-				bl_volt = volt_bl[cluster_status[1].freq_idx];
+				bb_volt = 0;
+				bl_volt = 0;
+				sb_volt = 0;
+
+				if (cluster_status[2].freq_idx >= 0 &&
+					cluster_status[2].freq_idx < DVFS_OPP_NUM)
+					bb_volt = volt_bb[cluster_status[2].freq_idx];
+
+				if (cluster_status[1].freq_idx >= 0 &&
+					cluster_status[1].freq_idx < DVFS_OPP_NUM)
+					bl_volt = volt_bl[cluster_status[1].freq_idx];
+
 				sb_volt = MAX(bb_volt, bl_volt);
 
 				pwr =  cobra_tbl->basic_pwr_tbl

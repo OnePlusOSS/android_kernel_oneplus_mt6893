@@ -91,8 +91,8 @@ unsigned int get_sb_pwr(unsigned int tbl_pwr, unsigned int tbl_volt, unsigned in
 	u64 tbl_variant;
 	unsigned int actual_pwr = 0;
 
-	sb_variant = (sb_volt / 10) * (sb_volt / 10);
-	tbl_variant = (tbl_volt / 100) * (tbl_volt / 100);
+	sb_variant = (u64)(sb_volt / 10) * (u64)(sb_volt / 10);
+	tbl_variant = (u64)(tbl_volt / 100) * (u64)(tbl_volt / 100);
 	sb_variant = sb_variant / tbl_variant;
 
 	actual_pwr = tbl_pwr * sb_variant;
@@ -121,9 +121,13 @@ static short get_delta_pwr(enum ppm_cluster cluster,
 	bl_curr_volt = 0;
 	bl_next_volt = 0;
 
+	idx = get_idx_in_pwr_tbl(cluster);
+	cur_opp = opp;
+	prev_opp = opp + 1;
+
 	if ((opp == COBRA_OPP_NUM - 1) ||
-		g_curr_bl_opp > COBRA_OPP_NUM ||
-		g_curr_bb_opp > COBRA_OPP_NUM) {
+		g_curr_bl_opp >= COBRA_OPP_NUM ||
+		g_curr_bb_opp >= COBRA_OPP_NUM) {
 		delta_pwr = (core == 1)
 		? cobra_tbl->basic_pwr_tbl[idx+core-1][cur_opp].power_idx
 		: (cobra_tbl->basic_pwr_tbl[idx+core-1][cur_opp].power_idx -
@@ -165,16 +169,10 @@ static short get_delta_pwr(enum ppm_cluster cluster,
 	if (core == 0)
 		return 0;
 
-	idx = get_idx_in_pwr_tbl(cluster);
-
-	cur_opp = opp;
-	prev_opp = opp + 1;
-
-	if (opp == COBRA_OPP_NUM - 1) {
-		delta_pwr = (core == 1)
-		? cobra_tbl->basic_pwr_tbl[idx+core-1][cur_opp].power_idx
-		: (cobra_tbl->basic_pwr_tbl[idx+core-1][cur_opp].power_idx -
-		cobra_tbl->basic_pwr_tbl[idx+core-2][cur_opp].power_idx);
+	if (cluster == 0) {
+		delta_pwr =
+		cobra_tbl->basic_pwr_tbl[idx+core-1][cur_opp].power_idx -
+		cobra_tbl->basic_pwr_tbl[idx+core-1][prev_opp].power_idx;
 	} else {
 
 		delta_pwr =
