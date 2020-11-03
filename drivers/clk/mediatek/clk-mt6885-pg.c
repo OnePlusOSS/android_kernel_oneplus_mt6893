@@ -954,7 +954,14 @@ static struct subsys *id_to_sys(unsigned int id)
 #define STEP_MASK 0x000000FF
 
 #define INCREASE_STEPS \
-	do { DBG_STEP++; block_time = sched_clock(); loop_cnt = 0; } while (0)
+	do { \
+		DBG_STEP++; \
+		first_enter = true; \
+		loop_cnt = 0; \
+		log_over_cnt = false; \
+		log_timeout = false; \
+		log_dump = false; \
+	} while (0)
 
 static int DBG_ID;
 static int DBG_STA;
@@ -963,6 +970,11 @@ static int DBG_STEP;
 static unsigned long long block_time;
 static unsigned long long upd_block_time;
 static u32 loop_cnt;
+static bool log_over_cnt;
+static bool log_timeout;
+static bool log_dump;
+static bool first_enter = true;
+
 /*
  * ram console data0 define
  * [31:24] : DBG_ID
@@ -973,9 +985,6 @@ static void ram_console_update(void)
 {
 	unsigned long spinlock_save_flags;
 	struct pg_callbacks *pgcb;
-	static bool log_over_cnt;
-	static bool log_timeout;
-	static bool log_dump;
 	u32 data[8] = {0x0};
 	u32 i = 0;
 
@@ -991,6 +1000,10 @@ static void ram_console_update(void)
 	data[++i] = clk_readl(PWR_STATUS_2ND);
 	data[++i] = clk_readl(CAM_PWR_CON);
 
+	if (first_enter) {
+		first_enter = false;
+		block_time = sched_clock();
+	}
 	upd_block_time = sched_clock();
 	loop_cnt++;
 
@@ -1005,6 +1018,8 @@ static void ram_console_update(void)
 	if ((log_over_cnt && !log_dump) || (log_over_cnt && log_timeout)) {
 		pr_notice("%s: upd(%llu ns), ori(%llu ns)\n", __func__,
 				upd_block_time, block_time);
+		pr_notice("%s: over_cnt: %d, time_out: %d, log_dump: %d\n",
+				__func__, log_over_cnt, log_timeout, log_dump);
 
 		log_dump = true;
 
