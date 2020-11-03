@@ -399,7 +399,7 @@ static int mtk_drm_idlemgr_monitor_thread(void *data)
 			} else {
 				idlemgr_ctx->idlemgr_last_kick_time =
 					sched_clock();
-				idlemgr_vblank_check_internal = 10;
+				idlemgr_vblank_check_internal = 50;
 			}
 		}
 
