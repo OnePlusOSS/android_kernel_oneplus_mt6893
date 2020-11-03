@@ -32,15 +32,3 @@ obj-y += mtk_gpufreq_plat.o
 ifeq ($(findstring aging,$(PROJECT_DTB_NAMES)),aging)
 	subdir-ccflags-y += -DAGING_LOAD
 endif
-ifneq ($(findstring _khwasan,$(PROJECT_DTB_NAMES)),)
-	subdir-ccflags-y += -DAGING_LOAD
-endif
-ifneq ($(findstring _kasan,$(PROJECT_DTB_NAMES)),)
-	subdir-ccflags-y += -DAGING_LOAD
-endif
-ifneq ($(findstring _hwasan,$(PROJECT_DTB_NAMES)),)
-	subdir-ccflags-y += -DAGING_LOAD
-endif
-ifneq ($(findstring _ubsan,$(PROJECT_DTB_NAMES)),)
-	subdir-ccflags-y += -DAGING_LOAD
-endif
