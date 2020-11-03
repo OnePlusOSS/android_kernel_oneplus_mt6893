@@ -115,7 +115,7 @@
 /*#define ENABLE_WAITIRQ_LOG*/ /* wait irq debug logs */
 /*#define ENABLE_STT_IRQ_LOG*/ /*show STT irq debug logs */
 
-#define Lafi_WAM_CQ_ERR (0)
+#define Lafi_WAM_CQ_ERR (1)
 /* Queue timestamp for deque. Update when non-drop frame @SOF */
 #define TIMESTAMP_QUEUE_EN (0)
 #if (TIMESTAMP_QUEUE_EN == 1)
@@ -385,6 +385,7 @@ static struct isp_sec_dapc_reg lock_reg;
 static unsigned int sec_on;
 static int irq3a_wait_cnt = 1;
 static int irq3a_print_vf_off[ISP_IRQ_TYPE_AMOUNT] = {-1};
+static unsigned int cq_recovery;
 
 #ifdef CONFIG_PM_SLEEP
 struct wakeup_source isp_wake_lock;
@@ -4678,6 +4679,10 @@ static long ISP_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 					ISP_WR32(CAM_REG_DBG_SET(ISP_CAM_C_IDX),
 						0x00200000);
 				}
+				/*SCQ does not support CQ covery */
+				cq_recovery = (((ISP_RD32(CAM_REG_CAMCQ_CQ_EN(
+						DebugFlag[1])) >> 20)
+						& 0x1) ? 0 : 1);
 
 #if (TIMESTAMP_QUEUE_EN == 1)
 				memset((void *)&(IspInfo.TstpQInfo[module]), 0,
@@ -6602,6 +6607,8 @@ static int ISP_release(struct inode *pInode, struct file *pFile)
 
 	/* reset backup regs */
 	memset(g_BkReg, 0, sizeof(struct _isp_bk_reg_t) * ISP_IRQ_TYPE_AMOUNT);
+
+	cq_recovery = 0;
 
 	/*  */
 	for (i = ISP_CAMSV0_IDX; i <= ISP_CAMSV7_IDX; i++)
@@ -11149,7 +11156,8 @@ irqreturn_t ISP_Irq_CAM(enum ISP_IRQ_TYPE_ENUM irq_module)
 
 	ErrStatus = IrqStatus & IspInfo.IrqInfo.ErrMask[module][SIGNAL_INT];
 #if Lafi_WAM_CQ_ERR
-	if (((IrqStatus & SOF_INT_ST) == 0) && (IrqStatus & VS_INT_ST)) {
+	if (((IrqStatus & SOF_INT_ST) == 0) && (IrqStatus & VS_INT_ST)
+						&& (cq_recovery == 1)) {
 		if ((ISP_RD32(CAMX_REG_TG_VF_CON(reg_module)) == 0x1) &&
 		    (g1stSof[module] == MFALSE)) {
 			IRQ_LOG_KEEPER(module, m_CurrentPPB, _LOG_ERR,
