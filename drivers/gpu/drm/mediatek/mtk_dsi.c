@@ -4282,6 +4282,7 @@ void mtk_dsi_set_mmclk_by_datarate(struct mtk_dsi *dsi,
 {
 	struct mtk_panel_ext *ext = dsi->ext;
 	unsigned int compress_rate;
+	unsigned int bubble_rate = 105;
 	unsigned int data_rate;
 	unsigned int pixclk = 0;
 	u32 bpp = mipi_dsi_pixel_format_to_bpp(dsi->format);
@@ -4326,6 +4327,7 @@ void mtk_dsi_set_mmclk_by_datarate(struct mtk_dsi *dsi,
 		else
 			pixclk = pixclk * (vtotal * htotal * 100 /
 				(vact * hact)) / 100;
+		pixclk = pixclk * bubble_rate / 100;
 		pixclk = (unsigned int)(pixclk / 1000);
 		pixclk = (pixclk_min > pixclk) ? pixclk_min : pixclk;
 	}
