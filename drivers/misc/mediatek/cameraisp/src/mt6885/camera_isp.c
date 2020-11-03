@@ -11411,7 +11411,7 @@ irqreturn_t ISP_Irq_CAM(enum ISP_IRQ_TYPE_ENUM irq_module)
 				gPass1doneLog[module].module = module;
 				if (snprintf(gPass1doneLog[module]._str,
 				P1DONE_STR_LEN,
-				"CAM_%c P1_DON_%d(0x%08x_0x%08x,0x%08x_0x%08x)dma done(0x%x,0x%x,0x%x)int(0x%x,0x%x,0x%x)FLKBA(0x%x,0x%x,0x%x)THR14(0x%x,0x%x,0x%x)FBC(0x%x,0x%x,0x%x)exe_us:%d ",
+				"CAM_%c P1_DON_%d(0x%08x_0x%08x,0x%08x_0x%08x)dma done(0x%x,0x%x,0x%x)int(0x%x,0x%x,0x%x)FLKBA(0x%x,0x%x,0x%x)AAO(0x%x,0x%x,0x%x)THR14(0x%x,0x%x,0x%x)FBC(0x%x,0x%x,0x%x)exe_us:%d ",
 		'A' + cardinalNum,
 		(sof_count[module])
 			? (sof_count[module] - 1)
@@ -11437,6 +11437,9 @@ irqreturn_t ISP_Irq_CAM(enum ISP_IRQ_TYPE_ENUM irq_module)
 		ISP_RD32(CAM_REG_FLKO_BASE_ADDR(ISP_CAM_A_INNER_IDX)),
 		ISP_RD32(CAM_REG_FLKO_BASE_ADDR(ISP_CAM_B_INNER_IDX)),
 		ISP_RD32(CAM_REG_FLKO_BASE_ADDR(ISP_CAM_C_INNER_IDX)),
+		ISP_RD32(CAM_REG_AAO_BASE_ADDR(ISP_CAM_A_IDX)),
+		ISP_RD32(CAM_REG_AAO_BASE_ADDR(ISP_CAM_B_IDX)),
+		ISP_RD32(CAM_REG_AAO_BASE_ADDR(ISP_CAM_C_IDX)),
 		ISP_RD32(CAM_REG_CQ_THR14_BASEADDR(ISP_CAM_A_INNER_IDX)),
 		ISP_RD32(CAM_REG_CQ_THR14_BASEADDR(ISP_CAM_B_INNER_IDX)),
 		ISP_RD32(CAM_REG_CQ_THR14_BASEADDR(ISP_CAM_C_INNER_IDX)),
@@ -12087,7 +12090,7 @@ irqreturn_t ISP_Irq_CAM(enum ISP_IRQ_TYPE_ENUM irq_module)
 			else
 				IRQ_LOG_KEEPER(
 				module, m_CurrentPPB, _LOG_INF,
-				"%s,%s,CAM_%c P1_SOF_%d_%d(0x%08x_0x%08x,0x%08x_0x%08x,0x%08x,0x%08x,0x%x/0x%x),int_us:%d,cq:0x%08x_0x%08x 0x%08x_0x%08x 0x%08x_0x%08x,Don(0x%08x_0x%08x 0x%08x_0x%08x,0x%08x_0x%08x 0x%08x_0x%08x),DMA(0x%x_0x%x,0x%x_0x%x,0x%x_0x%x,0x%x_0x%x,0x%x_0x%x,0x%x_0x%x),CTL_EN(0x%x_0x%x 0x%x_0x%x 0x%x_0x%x) CTL_EN2(0x%x_0x%x 0x%x_0x%x 0x%x_0x%x) RAWI_R2_Y(0x%x_0x%x 0x%x_0x%x 0x%x_0x%x) FUS SIZE(0x%x_0x%x 0x%x_0x%x 0x%x_0x%x) FLKO BASE(0x%x_0x%x 0x%x_0x%x 0x%x_0x%x) FLKO FHBase(0x%x_0x%x 0x%x_0x%x 0x%x_0x%x)\n",
+				"%s,%s,CAM_%c P1_SOF_%d_%d(0x%08x_0x%08x,0x%08x_0x%08x,0x%08x,0x%08x,0x%x/0x%x),int_us:%d,cq:0x%08x_0x%08x 0x%08x_0x%08x 0x%08x_0x%08x,cq14:0x%08x_0x%08x 0x%08x_0x%08x 0x%08x_0x%08x,Don(0x%08x_0x%08x 0x%08x_0x%08x,0x%08x_0x%08x 0x%08x_0x%08x),DMA(0x%x_0x%x,0x%x_0x%x,0x%x_0x%x,0x%x_0x%x,0x%x_0x%x,0x%x_0x%x),CTL_EN(0x%x_0x%x 0x%x_0x%x 0x%x_0x%x),CTL_EN2(0x%x_0x%x 0x%x_0x%x 0x%x_0x%x),RAWI_R2_Y(0x%x_0x%x 0x%x_0x%x 0x%x_0x%x),FUS SIZE(0x%x_0x%x 0x%x_0x%x 0x%x_0x%x),FLKO BASE(0x%x_0x%x 0x%x_0x%x 0x%x_0x%x),FLKO FHBase(0x%x_0x%x 0x%x_0x%x 0x%x_0x%x),AAO(0x%x_0x%x 0x%x_0x%x 0x%x_0x%x)\n",
 				gPass1doneLog[module]._str,
 				gLostPass1doneLog[module]._str,
 				'A' + cardinalNum, sof_count[module], cur_v_cnt,
@@ -12120,6 +12123,23 @@ irqreturn_t ISP_Irq_CAM(enum ISP_IRQ_TYPE_ENUM irq_module)
 						ISP_CAM_C_IDX)),
 				(unsigned int)ISP_RD32(
 					CAM_REG_CQ_THR0_BASEADDR(
+						ISP_CAM_C_INNER_IDX)),
+				(unsigned int)ISP_RD32(
+					CAM_REG_CQ_THR14_BASEADDR(reg_module)),
+				(unsigned int)ISP_RD32(
+					CAM_REG_CQ_THR14_BASEADDR(
+						ISP_CAM_A_INNER_IDX)),
+				(unsigned int)ISP_RD32(
+					CAM_REG_CQ_THR14_BASEADDR(
+						ISP_CAM_B_IDX)),
+				(unsigned int)ISP_RD32(
+					CAM_REG_CQ_THR14_BASEADDR(
+						ISP_CAM_B_INNER_IDX)),
+				(unsigned int)ISP_RD32(
+					CAM_REG_CQ_THR14_BASEADDR(
+						ISP_CAM_C_IDX)),
+				(unsigned int)ISP_RD32(
+					CAM_REG_CQ_THR14_BASEADDR(
 						ISP_CAM_C_INNER_IDX)),
 				(unsigned int)ISP_RD32(
 					CAM_REG_CTL_MISC(reg_module)),
@@ -12266,6 +12286,24 @@ irqreturn_t ISP_Irq_CAM(enum ISP_IRQ_TYPE_ENUM irq_module)
 						ISP_CAM_C_IDX)),
 				(unsigned int)ISP_RD32(
 					CAM_REG_FLKO_FH_BASE_ADDR(
+						ISP_CAM_C_INNER_IDX)),
+				(unsigned int)ISP_RD32(
+					CAM_REG_AAO_BASE_ADDR(
+						reg_module)),
+				(unsigned int)ISP_RD32(
+					CAM_REG_AAO_BASE_ADDR(
+						ISP_CAM_A_INNER_IDX)),
+				(unsigned int)ISP_RD32(
+					CAM_REG_AAO_BASE_ADDR(
+						ISP_CAM_B_IDX)),
+				(unsigned int)ISP_RD32(
+					CAM_REG_AAO_BASE_ADDR(
+						ISP_CAM_B_INNER_IDX)),
+				(unsigned int)ISP_RD32(
+					CAM_REG_AAO_BASE_ADDR(
+						ISP_CAM_C_IDX)),
+				(unsigned int)ISP_RD32(
+					CAM_REG_AAO_BASE_ADDR(
 						ISP_CAM_C_INNER_IDX)));
 #endif
 
