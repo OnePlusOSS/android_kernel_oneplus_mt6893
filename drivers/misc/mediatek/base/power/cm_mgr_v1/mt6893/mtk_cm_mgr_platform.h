@@ -60,6 +60,15 @@ enum {
 	CM_MGR_MAX,
 };
 
+enum cm_mgr_cpu_cluster {
+	CM_MGR_L,
+	CM_MGR_B,
+	CM_MGR_BB,
+	CM_MGR_CCI,
+	CM_MGR_NUM,
+};
+
+
 extern void __iomem *mcucfg_mp0_counter_base;
 
 extern unsigned int cpu_power_up_array[CM_MGR_CPU_CLUSTER];

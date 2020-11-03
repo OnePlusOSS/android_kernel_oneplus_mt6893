@@ -649,6 +649,9 @@ cm_mgr_opp_end:
 
 void check_cm_mgr_status(unsigned int cluster, unsigned int freq)
 {
+#ifdef CM_TRIGEAR
+	unsigned int clamping_idx = CM_MGR_CPU_OPP_SIZE - 1;
+#endif
 #ifdef CONFIG_MTK_CPU_FREQ
 	int freq_idx = 0;
 	struct mt_cpu_dvfs *p;
@@ -670,7 +673,8 @@ void check_cm_mgr_status(unsigned int cluster, unsigned int freq)
 
 	/* if TRIGEAR use B cluster freq */
 #ifdef CM_TRIGEAR
-	cm_mgr_update_dram_by_cpu_opp(prev_freq_idx[CM_MGR_CPU_CLUSTER - 2]);
+	clamping_idx = MIN(prev_freq_idx[CM_MGR_B], prev_freq_idx[CM_MGR_BB]);
+	cm_mgr_update_dram_by_cpu_opp(clamping_idx);
 #else
 	cm_mgr_update_dram_by_cpu_opp(prev_freq_idx[CM_MGR_CPU_CLUSTER - 1]);
 #endif
