@@ -922,17 +922,20 @@ int xgf_uboost_case(struct xgf_render *render)
 	return ret;
 }
 
-void xgf_add_u2prev_dep(struct xgf_render *render)
+static void xgf_add_pid2prev_dep(struct xgf_render *render, int tid)
 {
 	struct xgf_dep *xd;
 	int curr_frame_index;
 
+	if (!tid || !render || tid < 0)
+		return;
+
 	curr_frame_index = xgf_dep_frames_mod(render, PREVI_DEPS);
-	xd = xgf_get_dep(render->parent, render, PREVI_DEPS, 0);
+	xd = xgf_get_dep(tid, render, PREVI_DEPS, 0);
 	if (xd)
 		xd->frame_idx = curr_frame_index;
 	else
-		xd = xgf_get_dep(render->parent, render, PREVI_DEPS, 1);
+		xd = xgf_get_dep(tid, render, PREVI_DEPS, 1);
 }
 
 int uboost2xgf_get_info(int pid, unsigned long long bufID,
@@ -1046,7 +1049,10 @@ int gbe2xgf_get_dep_list_num(int pid, unsigned long long bufID)
 			continue;
 
 		if (xgf_uboost_case(render_iter) && xgf_uboost)
-			xgf_add_u2prev_dep(render_iter);
+			xgf_add_pid2prev_dep(render_iter, render_iter->parent);
+
+		if (render_iter->spid)
+			xgf_add_pid2prev_dep(render_iter, render_iter->spid);
 
 		out_rbn = rb_first(&render_iter->out_deps_list);
 		pre_rbn = rb_first(&render_iter->prev_deps_list);
@@ -1117,7 +1123,10 @@ int fpsgo_fbt2xgf_get_dep_list_num(int pid, unsigned long long bufID)
 			continue;
 
 		if (xgf_uboost_case(render_iter) && xgf_uboost)
-			xgf_add_u2prev_dep(render_iter);
+			xgf_add_pid2prev_dep(render_iter, render_iter->parent);
+
+		if (render_iter->spid)
+			xgf_add_pid2prev_dep(render_iter, render_iter->spid);
 
 		out_rbn = rb_first(&render_iter->out_deps_list);
 		pre_rbn = rb_first(&render_iter->prev_deps_list);
@@ -1188,7 +1197,10 @@ int gbe2xgf_get_dep_list(int pid, int count,
 			continue;
 
 		if (xgf_uboost_case(render_iter) && xgf_uboost)
-			xgf_add_u2prev_dep(render_iter);
+			xgf_add_pid2prev_dep(render_iter, render_iter->parent);
+
+		if (render_iter->spid)
+			xgf_add_pid2prev_dep(render_iter, render_iter->spid);
 
 		out_rbn = rb_first(&render_iter->out_deps_list);
 		pre_rbn = rb_first(&render_iter->prev_deps_list);
@@ -1270,7 +1282,10 @@ int fpsgo_fbt2xgf_get_dep_list(int pid, int count,
 			continue;
 
 		if (xgf_uboost_case(render_iter) && xgf_uboost)
-			xgf_add_u2prev_dep(render_iter);
+			xgf_add_pid2prev_dep(render_iter, render_iter->parent);
+
+		if (render_iter->spid)
+			xgf_add_pid2prev_dep(render_iter, render_iter->spid);
 
 		out_rbn = rb_first(&render_iter->out_deps_list);
 		pre_rbn = rb_first(&render_iter->prev_deps_list);
@@ -1573,6 +1588,27 @@ static int xgf_enter_est_runtime(int rpid, struct xgf_render *render,
 	return ret;
 }
 
+static void xgf_get_runtime(pid_t tid, u64 *runtime)
+{
+	struct task_struct *p;
+
+	if (unlikely(!tid))
+		return;
+
+	rcu_read_lock();
+	p = find_task_by_vpid(tid);
+	if (!p) {
+		xgf_trace(" %5d not found to erase", tid);
+		rcu_read_unlock();
+		return;
+	}
+	get_task_struct(p);
+	rcu_read_unlock();
+
+	*runtime = (u64)task_sched_runtime(p);
+	put_task_struct(p);
+}
+
 static int xgf_get_spid(struct xgf_render *render)
 {
 	struct rb_root *r;
@@ -1581,6 +1617,7 @@ static int xgf_get_spid(struct xgf_render *render)
 	int len, ret = 0;
 	unsigned long long now_ts = xgf_get_time();
 	long long diff, scan_period;
+	unsigned long long spid_runtime, t_spid_runtime;
 
 	xgf_lockprove(__func__);
 
@@ -1612,6 +1649,11 @@ static int xgf_get_spid(struct xgf_render *render)
 		xgf_trace("xgf_sp_name len:%d has a change line terminal", len);
 	}
 
+	spid_runtime = 0;
+
+	if (render->spid && xgf_sp_name_id)
+		xgf_get_runtime(render->spid, &spid_runtime);
+
 	r = &render->deps_list;
 	for (rbn = rb_first(r); rbn != NULL; rbn = rb_next(rbn)) {
 		struct task_struct *tsk;
@@ -1631,7 +1673,13 @@ static int xgf_get_spid(struct xgf_render *render)
 
 			if (!strncmp(tsk->comm, xgf_sp_name,
 				len)) {
-				ret = task_pid_nr(tsk);
+				if (xgf_sp_name_id) {
+					t_spid_runtime = (u64)task_sched_runtime(tsk);
+					if (t_spid_runtime > spid_runtime)
+						ret = task_pid_nr(tsk);
+				} else
+					ret = task_pid_nr(tsk);
+
 				put_task_struct(tsk);
 				goto out;
 			}
@@ -1641,28 +1689,11 @@ tsk_out:
 	}
 out:
 	last_update2spid_ts = now_ts;
+
+	if (!ret && render->spid && xgf_sp_name_id && spid_runtime)
+		ret = render->spid;
+
 	return ret;
-}
-
-static void xgf_get_runtime(pid_t tid, u64 *runtime)
-{
-	struct task_struct *p;
-
-	if (unlikely(!tid))
-		return;
-
-	rcu_read_lock();
-	p = find_task_by_vpid(tid);
-	if (!p) {
-		xgf_trace(" %5d not found to erase", tid);
-		rcu_read_unlock();
-		return;
-	}
-	get_task_struct(p);
-	rcu_read_unlock();
-
-	*runtime = (u64)task_sched_runtime(p);
-	put_task_struct(p);
 }
 
 static void xgf_update_u_runtime_list(struct xgf_render *render,
@@ -1836,6 +1867,7 @@ int fpsgo_comp2xgf_qudeq_notify(int rpid, unsigned long long bufID, int cmd,
 		if (new_spid != -1) {
 			xgf_trace("xgf spid:%d => %d", r->spid, new_spid);
 			r->spid = new_spid;
+			fpsgo_systrace_c_fbt(rpid, bufID, new_spid, "spid");
 		}
 
 		t_dequeue_time = r->deque.end_ts - r->deque.start_ts;
