@@ -2928,6 +2928,16 @@ void fg_daemon_comm_INT_data(char *rcv, char *ret)
 				&force_full, sizeof(force_full));
 		}
 		break;
+	case FG_GET_ZCV_INTR_CURR:
+		{
+			int zcv_cur = 0;
+
+			gauge_get_zcv_current(&zcv_cur);
+			memcpy(&pret->output,
+				&zcv_cur, sizeof(zcv_cur));
+
+			bm_err("get FG_GET_ZCV_INTR_CURR %d\n", zcv_cur);
+		}
 
 	case FG_SET_SOC:
 		{
@@ -3324,6 +3334,13 @@ void bmd_ctrl_cmd_from_user(void *nl_data, struct fgd_nl_msg_t *ret_msg)
 			bm_debug("[fr] data len:%d custom data length = %d\n",
 				(int)sizeof(fg_cust_data),
 				ret_msg->fgd_data_len);
+		}
+		break;
+	case FG_DAEMON_CMD_GET_BH_DATA:
+		{
+			ret_msg->fgd_data_len += sizeof(struct ag_center_data_st);
+			memcpy(ret_msg->fgd_data,
+				&gm.bh_data, sizeof(struct ag_center_data_st));
 		}
 		break;
 

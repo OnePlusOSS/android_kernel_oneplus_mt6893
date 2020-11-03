@@ -100,9 +100,9 @@
 #define CALI_CAR_TUNE_AVG_NUM	60
 
 /* Aging Compensation 1*/
-#define AGING_FACTOR_MIN 75
+#define AGING_FACTOR_MIN 90
 #define AGING_FACTOR_DIFF 10
-#define DIFFERENCE_VOLTAGE_UPDATE 50
+#define DIFFERENCE_VOLTAGE_UPDATE 30
 #define AGING_ONE_EN 1
 #define AGING1_UPDATE_SOC 30
 #define AGING1_LOAD_SOC 70
@@ -120,14 +120,14 @@
 #define AGING_5_EN 1
 #define AGING_6_EN 1
 
-#define AGING4_UPDATE_SOC 40
+#define AGING4_UPDATE_SOC 10
 #define AGING4_LOAD_SOC 70
 
 #define AGING5_UPDATE_SOC 30
-#define AGING5_LOAD_SOC 70
+#define AGING5_LOAD_SOC 35
 
 #define AGING6_UPDATE_SOC 30
-#define AGING6_LOAD_SOC 70
+#define AGING6_LOAD_SOC 35
 
 /* threshold */
 #define HWOCV_SWOCV_DIFF	300
@@ -172,9 +172,9 @@
 #define DIFF_IAVG_TH 3000
 
 /* ZCV INTR */
-#define ZCV_SUSPEND_TIME 3
+#define ZCV_SUSPEND_TIME 7
 #define SLEEP_CURRENT_AVG 200 /*0.1mA*/
-#define ZCV_CAR_GAP_PERCENTAGE 5
+#define ZCV_CAR_GAP_PERCENTAGE 1
 
 /* Additional battery table */
 #define ADDITIONAL_BATTERY_TABLE_EN 1

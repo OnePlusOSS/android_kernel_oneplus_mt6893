@@ -210,6 +210,7 @@ enum Fg_daemon_cmds {
 	FG_DAEMON_CMD_SEND_DATA,
 	FG_DAEMON_CMD_COMMUNICATION_INT,
 	FG_DAEMON_CMD_SET_BATTERY_CAPACITY,
+	FG_DAEMON_CMD_GET_BH_DATA,
 
 	FG_DAEMON_CMD_FROM_USER_NUMBER
 };
@@ -230,6 +231,7 @@ enum Fg_kernel_cmds {
 	FG_KERNEL_CMD_REQ_CHANGE_AGING_DATA,
 	FG_KERNEL_CMD_AG_LOG_TEST,
 	FG_KERNEL_CMD_CHG_DECIMAL_RATE,
+	FG_KERNEL_CMD_SEND_BH_DATA,
 
 	FG_KERNEL_CMD_FROM_USER_NUMBER
 
@@ -316,6 +318,7 @@ enum daemon_cmd_int_data {
 	FG_GET_SOC_DECIMAL_RATE = 7,
 	FG_GET_DIFF_SOC_SET = 8,
 	FG_GET_IS_FORCE_FULL = 9,
+	FG_GET_ZCV_INTR_CURR = 10,
 	FG_GET_MAX,
 	FG_SET_ANCHOR = 999,
 	FG_SET_SOC = FG_SET_ANCHOR + 1,
@@ -707,6 +710,11 @@ struct zcv_filter {
 	struct zcv_log log[ZCV_LOG_LEN];
 };
 
+
+struct ag_center_data_st {
+	int data[43];
+	struct timespec times[3];
+};
 struct mtk_battery {
 
 	int fix_coverity;
@@ -748,6 +756,9 @@ struct mtk_battery {
 /* log */
 	int log_level;
 	int d_log_level;
+
+/* battery health */
+	struct ag_center_data_st bh_data;
 
 /* for test */
 	struct BAT_EC_Struct Bat_EC_ctrl;
@@ -895,6 +906,7 @@ enum {
 	SHUTDOWN_FACTOR_MAX
 };
 
+
 extern struct mtk_battery gm;
 extern struct battery_data battery_main;
 extern struct fuel_gauge_custom_data fg_cust_data;
@@ -928,8 +940,6 @@ extern void bmd_ctrl_cmd_from_user(void *nl_data, struct fgd_nl_msg_t *ret_msg);
 extern int interpolation(int i1, int b1, int i2, int b2, int i);
 extern struct mtk_battery *get_mtk_battery(void);
 extern void battery_update_psd(struct battery_data *bat_data);
-extern int wakeup_fg_algo(unsigned int flow_state);
-extern int wakeup_fg_algo_cmd(unsigned int flow_state, int cmd, int para1);
 extern int wakeup_fg_algo_atomic(unsigned int flow_state);
 extern unsigned int TempToBattVolt(int temp, int update);
 extern int fg_get_battery_temperature_for_zcv(void);

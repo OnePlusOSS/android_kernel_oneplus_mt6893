@@ -3586,6 +3586,89 @@ static ssize_t store_BAT_EC(
 }
 static DEVICE_ATTR(BAT_EC, 0664, show_BAT_EC, store_BAT_EC);
 
+
+
+static ssize_t show_BAT_HEALTH(
+	struct device *dev, struct device_attribute *attr, char *buf)
+{
+	bm_err("%s\n", __func__);
+
+	return 0;
+}
+
+
+static ssize_t store_BAT_HEALTH(
+	struct device *dev, struct device_attribute *attr,
+	const char *buf, size_t size)
+{
+	char copy_str[7], buf_str[350];
+	char *s = buf_str, *pch;
+	/* char *ori = buf_str; */
+	int chr_size = 0;
+	int i = 0, count = 0, value[50];
+
+
+	bm_err("%s, size =%d, str=%s\n", __func__, size, buf);
+
+	strncpy(buf_str, buf, size);
+	/* bm_err("%s, copy str=%s\n", __func__, buf_str); */
+
+	if (size > 350) {
+		bm_err("%s error, size mismatch\n", __func__);
+		return -1;
+	}
+
+	if (buf != NULL && size != 0) {
+
+		pch = strchr(s, ',');
+		while (pch != NULL) {
+			memset(copy_str, 0, 7);
+			copy_str[6] = '\0';
+
+			chr_size = pch - s;
+			if (count == 0)
+				strncpy(copy_str, s, chr_size);
+			else
+				strncpy(copy_str, s+1, chr_size-1);
+
+			kstrtoint(copy_str, 10, &value[count]);
+			/* bm_err("::%s::count:%d,%d\n", copy_str, count, value[count]); */
+			s = pch;
+			pch = strchr(pch + 1, ',');
+			count++;
+		}
+	}
+
+	if (count == 46) {
+		for (i = 0; i < 43; i++)
+			gm.bh_data.data[i] = value[i];
+
+		for (i = 0; i < 3; i++)
+			gm.bh_data.times[i].tv_sec = value[i+43];
+
+	bm_err("%s count=%d,serial=%d,source=%d,42:%d, value43:[%d, %ld],value45[%d %ld]\n",
+		__func__,
+		count, gm.bh_data.data[0], gm.bh_data.data[1],
+		gm.bh_data.data[42],
+		value[43], gm.bh_data.times[0].tv_sec,
+		value[45], gm.bh_data.times[2].tv_sec);
+
+		wakeup_fg_algo_cmd(
+			FG_INTR_KERNEL_CMD,
+			FG_KERNEL_CMD_SEND_BH_DATA, 0);
+
+		mdelay(4);
+		bm_err("%s wakeup DONE~~~\n", __func__);
+	} else
+		bm_err("%s count=%d, number not match\n", __func__, count);
+
+
+	return size;
+
+}
+
+static DEVICE_ATTR(BAT_HEALTH, 0664, show_BAT_HEALTH, store_BAT_HEALTH);
+
 static ssize_t show_FG_Battery_CurrentConsumption(
 struct device *dev, struct device_attribute *attr,
 						  char *buf)
@@ -4149,6 +4232,8 @@ static int __init battery_probe(struct platform_device *dev)
 		&dev_attr_FG_daemon_disable);
 	ret_device_file = device_create_file(&(dev->dev),
 		&dev_attr_BAT_EC);
+	ret_device_file = device_create_file(&(dev->dev),
+		&dev_attr_BAT_HEALTH);
 	ret_device_file = device_create_file(&(dev->dev),
 		&dev_attr_FG_Battery_CurrentConsumption);
 	ret_device_file = device_create_file(&(dev->dev),
