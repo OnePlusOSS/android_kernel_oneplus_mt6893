@@ -50,6 +50,10 @@ ifeq ($(PROJECT_DTB_NAMES),mediatek/k6893v1_64_144hz_vdo_mcl50)
 subdir-ccflags-y += -DMC50_LOAD
 endif
 
+ifeq ($(PROJECT_DTB_NAMES),mediatek/k6891v1_64_120hz_mcl50)
+subdir-ccflags-y += -DMC50_LOAD
+endif
+
 obj-y += mtk_eemgpu.o
 obj-y += mtk_eemgpu_platform.o
 obj-y += mtk_eemgpu_internal.o
