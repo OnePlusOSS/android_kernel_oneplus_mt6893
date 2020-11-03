@@ -166,6 +166,7 @@ static int rescue_percent_90;
 static int rescue_percent_120;
 static int fps_level_range;
 static int check_running;
+static int uboost_enhance_f;
 
 module_param(bhr, int, 0644);
 module_param(bhr_opp, int, 0644);
@@ -192,6 +193,7 @@ module_param(rescue_percent_90, int, 0644);
 module_param(rescue_percent_120, int, 0644);
 module_param(fps_level_range, int, 0644);
 module_param(check_running, int, 0644);
+module_param(uboost_enhance_f, int, 0644);
 
 static DEFINE_SPINLOCK(freq_slock);
 static DEFINE_MUTEX(fbt_mlock);
@@ -1077,7 +1079,7 @@ static int fbt_get_opp_by_normalized_cap(unsigned int cap, int cluster)
 	return tgt_opp;
 }
 
-static unsigned int fbt_enhance_floor(unsigned int blc_wt, int level)
+static unsigned int fbt_enhance_floor(unsigned int blc_wt, int level, int enh)
 {
 	int tgt_opp = 0;
 	int cluster;
@@ -1090,7 +1092,7 @@ static unsigned int fbt_enhance_floor(unsigned int blc_wt, int level)
 	tgt_opp = max((int)(tgt_opp - level), 0);
 	blc_wt1 = cpu_dvfs[cluster].capacity_ratio[tgt_opp];
 
-	blc_wt2 = blc_wt + rescue_enhance_f;
+	blc_wt2 = blc_wt + enh;
 	blc_wt2 = clamp(blc_wt2, 1, 100);
 
 	blc_wt = max(blc_wt1, blc_wt2);
@@ -1147,7 +1149,7 @@ static unsigned int fbt_get_new_base_blc(struct ppm_limit_data *pld, int floor)
 	else
 		base = floor;
 
-	blc_wt = fbt_enhance_floor(base, rescue_opp_f);
+	blc_wt = fbt_enhance_floor(base, rescue_opp_f, rescue_enhance_f);
 
 	mutex_unlock(&fbt_mlock);
 
@@ -3009,7 +3011,7 @@ static unsigned int fbt_get_uboost_blc(struct ppm_limit_data *pld, int floor)
 		return 0U;
 	}
 
-	blc_wt = fbt_enhance_floor(floor, rescue_opp_f);
+	blc_wt = fbt_enhance_floor(floor, rescue_opp_f, uboost_enhance_f);
 
 	for (cluster = 0 ; cluster < cluster_num; cluster++) {
 		pld[cluster].min = -1;
@@ -3996,6 +3998,7 @@ int __init fbt_cpu_init(void)
 	llf_task_policy = FPSGO_TPOLICY_NONE;
 	fps_level_range = 10;
 	check_running = 1;
+	uboost_enhance_f = 75;
 
 	_gdfrc_fps_limit = TARGET_DEFAULT_FPS;
 	vsync_period = GED_VSYNC_MISS_QUANTUM_NS;
