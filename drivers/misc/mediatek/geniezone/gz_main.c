@@ -71,9 +71,15 @@ uint64_t sdsp_elf_pa[2] = { 0, 0 };
 #include "mtee_ut/gz_sec_storage_ut.h"
 #endif
 
+#if IS_ENABLED(CONFIG_MTK_ENG_BUILD)
 #define KREE_DEBUG(fmt...) pr_debug("[KREE]" fmt)
 #define KREE_INFO(fmt...) pr_info("[KREE]" fmt)
 #define KREE_ERR(fmt...) pr_info("[KREE][ERR]" fmt)
+#else
+#define KREE_DEBUG(fmt...)
+#define KREE_INFO(fmt...) pr_info("[KREE]" fmt)
+#define KREE_ERR(fmt...) pr_info("[KREE][ERR]" fmt)
+#endif
 
 static const struct file_operations fops = {.owner = THIS_MODULE,
 	.open = gz_dev_open,

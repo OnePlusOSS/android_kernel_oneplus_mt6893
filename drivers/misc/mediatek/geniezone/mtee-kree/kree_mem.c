@@ -25,9 +25,15 @@
 #define MAX_MARY_SIZE MAX_PA_ENTRY
 #define MAX_NUM_OF_PARAM 3
 
+#if IS_ENABLED(CONFIG_MTK_ENG_BUILD)
 #define KREE_DEBUG(fmt...) pr_debug("[KREE_MEM]" fmt)
 #define KREE_INFO(fmt...) pr_info("[KREE_MEM]" fmt)
 #define KREE_ERR(fmt...) pr_info("[KREE_MEM][ERR]" fmt)
+#else
+#define KREE_DEBUG(fmt...)
+#define KREE_INFO(fmt...) pr_info("[KREE_MEM]" fmt)
+#define KREE_ERR(fmt...) pr_info("[KREE_MEM][ERR]" fmt)
+#endif
 
 DEFINE_MUTEX(shared_mem_mutex_trusty);
 DEFINE_MUTEX(shared_mem_mutex_nebula);
@@ -965,7 +971,6 @@ TZ_RESULT KREE_ION_QueryIONHandle(KREE_SESSION_HANDLE session,
 {
 	TZ_RESULT ret;
 	union MTEEC_PARAM p[4];
-	uint32_t ION_Handle = 0;
 
 	if (!mem_handle) {
 		KREE_ERR("[%s] Fail.invalid parameters\n", __func__);
@@ -983,7 +988,7 @@ TZ_RESULT KREE_ION_QueryIONHandle(KREE_SESSION_HANDLE session,
 	}
 
 	*IONHandle = p[1].value.a;
-	KREE_DEBUG("[%s] ok(ION_Handle=0x%x)\n", __func__, ION_Handle);
+	KREE_DEBUG("[%s] ok(IONHandle=0x%x)\n", __func__, *IONHandle);
 
 	return ret;
 }
