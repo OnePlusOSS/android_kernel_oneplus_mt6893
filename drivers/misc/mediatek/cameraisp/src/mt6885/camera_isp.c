@@ -11399,7 +11399,7 @@ irqreturn_t ISP_Irq_CAM(enum ISP_IRQ_TYPE_ENUM irq_module)
 			/*SW p1_don is not reliable */
 			if (FrameStatus[module] != CAM_FST_DROP_FRAME) {
 				gPass1doneLog[module].module = module;
-				snprintf(gPass1doneLog[module]._str,
+				if (snprintf(gPass1doneLog[module]._str,
 				P1DONE_STR_LEN,
 				"CAM_%c P1_DON_%d(0x%08x_0x%08x,0x%08x_0x%08x)dma done(0x%x,0x%x,0x%x)int(0x%x,0x%x,0x%x)FLKBA(0x%x,0x%x,0x%x)THR14(0x%x,0x%x,0x%x)FBC(0x%x,0x%x,0x%x)exe_us:%d ",
 		'A' + cardinalNum,
@@ -11435,7 +11435,9 @@ irqreturn_t ISP_Irq_CAM(enum ISP_IRQ_TYPE_ENUM irq_module)
 		ISP_RD32(CAM_REG_FBC_FLKO_CTL2(ISP_CAM_C_INNER_IDX)),
 		(unsigned int)((sec * 1000000 + usec) -
 		(1000000 * sec_sof[module] +
-		usec_sof[module])));
+		usec_sof[module]))) < 0) {
+					LOG_NOTICE("Error: snprintf fail\n");
+				}
 			}
 		}
 #if (TSTMP_SUBSAMPLE_INTPL == 1)
@@ -11536,10 +11538,12 @@ irqreturn_t ISP_Irq_CAM(enum ISP_IRQ_TYPE_ENUM irq_module)
 
 		if (FrameStatus[module] == CAM_FST_DROP_FRAME) {
 			gLostPass1doneLog[module].module = module;
-			snprintf(gLostPass1doneLog[module]._str, P1DONE_STR_LEN,
+			if (snprintf(gLostPass1doneLog[module]._str, P1DONE_STR_LEN,
 				"CAM%c Lost p1 done_%d (0x%x): ",
 				'A' + cardinalNum, sof_count[module],
-				cur_v_cnt);
+				cur_v_cnt) < 0) {
+				LOG_NOTICE("Error: snprintf fail\n");
+			}
 			/*
 			 *IRQ_LOG_KEEPER(module, m_CurrentPPB, _LOG_INF,
 			 *	       "CAM%c Lost p1 done_%d (0x%x): ",
@@ -12222,8 +12226,12 @@ irqreturn_t ISP_Irq_CAM(enum ISP_IRQ_TYPE_ENUM irq_module)
 					CAM_REG_YUVO_FH_BASE_ADDR(
 						ISP_CAM_C_INNER_IDX)));
 #endif
-snprintf(gPass1doneLog[module]._str, P1DONE_STR_LEN, "\\");
-snprintf(gLostPass1doneLog[module]._str, P1DONE_STR_LEN, "\\");
+
+if (snprintf(gPass1doneLog[module]._str, P1DONE_STR_LEN, "\\") < 0)
+	LOG_NOTICE("Error: snprintf fail\n");
+
+if (snprintf(gLostPass1doneLog[module]._str, P1DONE_STR_LEN, "\\") < 0)
+	LOG_NOTICE("Error: snprintf fail\n");
 
 #ifdef ENABLE_STT_IRQ_LOG /*STT addr */
 			IRQ_LOG_KEEPER(
