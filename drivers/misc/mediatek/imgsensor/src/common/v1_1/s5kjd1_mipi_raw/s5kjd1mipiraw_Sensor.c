@@ -197,7 +197,7 @@ static struct imgsensor_struct imgsensor = {
 /* Sensor output window information */
 static struct SENSOR_WINSIZE_INFO_STRUCT imgsensor_winsize_info[7] = {
 	/* Preview */
-	{6560, 4920, 0, 0, 6560, 4920, 6560, 4920,
+	{6560, 4920, 0, 0, 6560, 4920, 3280, 2460,
 	    0,   0, 3280, 2460, 0, 0, 3280, 2460},
 	/* capture */
 	{6560, 4920, 0, 0, 6560, 4920, 6560, 4920,
