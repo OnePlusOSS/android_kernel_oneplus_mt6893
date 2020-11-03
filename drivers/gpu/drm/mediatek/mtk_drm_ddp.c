@@ -1141,7 +1141,6 @@ const struct mtk_mmsys_reg_data mt6833_mmsys_reg_data = {
 	.rdma0_sout_sel_in = MT6833_DISP_REG_CONFIG_DISP_RDMA0_RSZ0_SOUT_SEL,
 	.rdma0_sout_color0 = RDMA0_SOUT_COLOR0,
 };
-
 static char *ddp_signal_0_mt6885(int bit)
 {
 	switch (bit) {
@@ -1710,6 +1709,25 @@ static char *ddp_signal_5_mt6885(int bit)
 	case 14:
 		return
 			"THP_LMT_DSI1__TO__DSI1";
+	default:
+		return NULL;
+	}
+}
+static char *ddp_signal_mt6885(int idx, int bit)
+{
+	switch (idx) {
+	case 0:
+		return ddp_signal_0_mt6885(bit);
+	case 1:
+		return ddp_signal_1_mt6885(bit);
+	case 2:
+		return ddp_signal_2_mt6885(bit);
+	case 3:
+		return ddp_signal_3_mt6885(bit);
+	case 4:
+		return ddp_signal_4_mt6885(bit);
+	case 5:
+		return ddp_signal_5_mt6885(bit);
 	default:
 		return NULL;
 	}
@@ -5997,8 +6015,8 @@ void mutex_dump_analysis(struct mtk_disp_mutex *mutex)
 			      mtk_ddp_get_mutex_sof_name(
 				      REG_FLD_VAL_GET(SOF_FLD_MUTEX0_EOF, val)),
 			      REG_FLD_VAL_GET(SOF_FLD_MUTEX0_SOF_WAIT, val));
-
-		p += len;
+		if (len >= 0)
+			p += len;
 		for (j = 0; j < 32; j++) {
 			unsigned int regval = readl_relaxed(
 				ddp->regs + DISP_REG_MUTEX_MOD(ddp->data, i));
@@ -6006,7 +6024,8 @@ void mutex_dump_analysis(struct mtk_disp_mutex *mutex)
 			if ((regval & (1 << j))) {
 				len = sprintf(p, "%s,",
 					      ddp_get_mutex_module0_name(j));
-				p += len;
+				if (len >= 0)
+					p += len;
 			}
 		}
 		DDPDUMP("%s)\n", mutex_module);
@@ -6326,47 +6345,48 @@ void mmsys_config_dump_reg(void __iomem *config_regs)
  */
 void mmsys_config_dump_analysis_mt6885(void __iomem *config_regs)
 {
-	unsigned int i = 0;
+	unsigned int idx = 0, bit = 0, len = 0;
 	unsigned int reg = 0;
 	char clock_on[512] = {'\0'};
 	char *pos = NULL;
 	char *name = NULL;
-
-	unsigned int valid0 =
-		readl_relaxed(config_regs + MT6885_DISP_REG_CONFIG_DL_VALID_0);
-	unsigned int valid1 =
-		readl_relaxed(config_regs + MT6885_DISP_REG_CONFIG_DL_VALID_1);
-	unsigned int valid2 =
-		readl_relaxed(config_regs + MT6885_DISP_REG_CONFIG_DL_VALID_2);
-	unsigned int valid3 =
-		readl_relaxed(config_regs + MT6885_DISP_REG_CONFIG_DL_VALID_3);
-	unsigned int valid4 =
-		readl_relaxed(config_regs + MT6885_DISP_REG_CONFIG_DL_VALID_4);
-	unsigned int valid5 =
-		readl_relaxed(config_regs + MT6885_DISP_REG_CONFIG_DL_VALID_5);
-
-	unsigned int ready0 =
-		readl_relaxed(config_regs + MT6885_DISP_REG_CONFIG_DL_READY_0);
-	unsigned int ready1 =
-		readl_relaxed(config_regs + MT6885_DISP_REG_CONFIG_DL_READY_1);
-	unsigned int ready2 =
-		readl_relaxed(config_regs + MT6885_DISP_REG_CONFIG_DL_READY_2);
-	unsigned int ready3 =
-		readl_relaxed(config_regs + MT6885_DISP_REG_CONFIG_DL_READY_3);
-	unsigned int ready4 =
-		readl_relaxed(config_regs + MT6885_DISP_REG_CONFIG_DL_READY_4);
-	unsigned int ready5 =
-		readl_relaxed(config_regs + MT6885_DISP_REG_CONFIG_DL_READY_5);
-
+	unsigned int valid[6] = {0};
+	unsigned int ready[6] = {0};
 	unsigned int greq =
 		readl_relaxed(config_regs +
 				MT6885_DISP_REG_CONFIG_SMI_LARB_GREQ);
 
+	valid[0] =
+		readl_relaxed(config_regs + MT6885_DISP_REG_CONFIG_DL_VALID_0);
+	valid[1] =
+		readl_relaxed(config_regs + MT6885_DISP_REG_CONFIG_DL_VALID_1);
+	valid[2] =
+		readl_relaxed(config_regs + MT6885_DISP_REG_CONFIG_DL_VALID_2);
+	valid[3] =
+		readl_relaxed(config_regs + MT6885_DISP_REG_CONFIG_DL_VALID_3);
+	valid[4] =
+		readl_relaxed(config_regs + MT6885_DISP_REG_CONFIG_DL_VALID_4);
+	valid[5] =
+		readl_relaxed(config_regs + MT6885_DISP_REG_CONFIG_DL_VALID_5);
+
+	ready[0] =
+		readl_relaxed(config_regs + MT6885_DISP_REG_CONFIG_DL_READY_0);
+	ready[1] =
+		readl_relaxed(config_regs + MT6885_DISP_REG_CONFIG_DL_READY_1);
+	ready[2] =
+		readl_relaxed(config_regs + MT6885_DISP_REG_CONFIG_DL_READY_2);
+	ready[3] =
+		readl_relaxed(config_regs + MT6885_DISP_REG_CONFIG_DL_READY_3);
+	ready[4] =
+		readl_relaxed(config_regs + MT6885_DISP_REG_CONFIG_DL_READY_4);
+	ready[5] =
+		readl_relaxed(config_regs + MT6885_DISP_REG_CONFIG_DL_READY_5);
+
 	DDPDUMP("== DISP MMSYS_CONFIG ANALYSIS ==\n");
 	reg = readl_relaxed(config_regs + DISP_REG_CONFIG_MMSYS_CG_CON0_MT6885);
-	for (i = 0; i < 32; i++) {
-		if ((reg & (1 << i)) == 0) {
-			name = ddp_clock_0_mt6885(i);
+	for (bit = 0; bit < 32; bit++) {
+		if ((reg & (1 << bit)) == 0) {
+			name = ddp_clock_0_mt6885(bit);
 			if (name)
 				strncat(clock_on, name, (sizeof(clock_on) -
 							 strlen(clock_on) - 1));
@@ -6374,9 +6394,9 @@ void mmsys_config_dump_analysis_mt6885(void __iomem *config_regs)
 	}
 
 	reg = readl_relaxed(config_regs + DISP_REG_CONFIG_MMSYS_CG_CON1_MT6885);
-	for (i = 0; i < 32; i++) {
-		if ((reg & (1 << i)) == 0) {
-			name = ddp_clock_1_mt6885(i);
+	for (bit = 0; bit < 32; bit++) {
+		if ((reg & (1 << bit)) == 0) {
+			name = ddp_clock_1_mt6885(bit);
 			if (name)
 				strncat(clock_on, name, (sizeof(clock_on) -
 							 strlen(clock_on) - 1));
@@ -6386,142 +6406,39 @@ void mmsys_config_dump_analysis_mt6885(void __iomem *config_regs)
 	DDPDUMP("clock on modules:%s\n", clock_on);
 
 	DDPDUMP("va0=0x%x,va1=0x%x,va2=0x%x,va3=0x%x,va4=0x%x,va5=0x%x\n",
-		valid0, valid1,	valid2, valid3, valid4, valid5);
+		valid[0], valid[1], valid[2], valid[3], valid[4], valid[5]);
 	DDPDUMP("rd0=0x%x,rd1=0x%x,rd2=0x%x,rd3=0x%x,rd4=0x%x,rd5=0x%x\n",
-		ready0, ready1, ready2, ready3, ready4, ready5);
+		ready[0], ready[1], ready[2], ready[3], ready[4], ready[5]);
 	DDPDUMP("greq=0x%x\n", greq);
-	for (i = 0; i < 32; i++) {
-		name = ddp_signal_0_mt6885(i);
-		if (!name)
-			continue;
+	for (idx = 0; idx < 6; idx++) {
+		for (bit = 0; bit < 32; bit++) {
+			name = ddp_signal_mt6885(idx, bit);
+			if (!name)
+				continue;
+			pos = clock_on;
 
-		pos = clock_on;
+			if ((valid[idx] & (1 << bit)))
+				len = sprintf(pos, "%s,", "v");
+			else
+				len = sprintf(pos, "%s,", "n");
 
-		if ((valid0 & (1 << i)))
-			pos += sprintf(pos, "%s,", "v");
-		else
-			pos += sprintf(pos, "%s,", "n");
+			if (len >= 0)
+				pos += len;
 
-		if ((ready0 & (1 << i)))
-			pos += sprintf(pos, "%s", "r");
-		else
-			pos += sprintf(pos, "%s", "n");
+			if ((ready[idx] & (1 << bit)))
+				len = sprintf(pos, "%s", "r");
+			else
+				len = sprintf(pos, "%s", "n");
+			if (len >= 0)
+				pos += len;
 
-		pos += sprintf(pos, ": %s", name);
+			len = sprintf(pos, ": %s", name);
+			if (len >= 0)
+				pos += len;
 
-		DDPDUMP("%s\n", clock_on);
+			DDPDUMP("%s\n", clock_on);
+		}
 	}
-
-	for (i = 0; i < 32; i++) {
-		name = ddp_signal_1_mt6885(i);
-		if (!name)
-			continue;
-
-		pos = clock_on;
-
-		if ((valid1 & (1 << i)))
-			pos += sprintf(pos, "%s,", "v");
-		else
-			pos += sprintf(pos, "%s,", "n");
-
-		if ((ready1 & (1 << i)))
-			pos += sprintf(pos, "%s", "r");
-		else
-			pos += sprintf(pos, "%s", "n");
-
-		pos += sprintf(pos, ": %s", name);
-
-		DDPDUMP("%s\n", clock_on);
-	}
-
-	for (i = 0; i < 32; i++) {
-		name = ddp_signal_2_mt6885(i);
-		if (!name)
-			continue;
-
-		pos = clock_on;
-
-		if ((valid2 & (1 << i)))
-			pos += sprintf(pos, "%s,", "v");
-		else
-			pos += sprintf(pos, "%s,", "n");
-
-		if ((ready2 & (1 << i)))
-			pos += sprintf(pos, "%s", "r");
-		else
-			pos += sprintf(pos, "%s", "n");
-
-		pos += sprintf(pos, ": %s", name);
-
-		DDPDUMP("%s\n", clock_on);
-	}
-
-	for (i = 0; i < 32; i++) {
-		name = ddp_signal_3_mt6885(i);
-		if (!name)
-			continue;
-
-		pos = clock_on;
-
-		if ((valid3 & (1 << i)))
-			pos += sprintf(pos, "%s,", "v");
-		else
-			pos += sprintf(pos, "%s,", "n");
-
-		if ((ready3 & (1 << i)))
-			pos += sprintf(pos, "%s", "r");
-		else
-			pos += sprintf(pos, "%s", "n");
-
-		pos += sprintf(pos, ": %s", name);
-
-		DDPDUMP("%s\n", clock_on);
-	}
-
-	for (i = 0; i < 32; i++) {
-		name = ddp_signal_4_mt6885(i);
-		if (!name)
-			continue;
-
-		pos = clock_on;
-
-		if ((valid4 & (1 << i)))
-			pos += sprintf(pos, "%s,", "v");
-		else
-			pos += sprintf(pos, "%s,", "n");
-
-		if ((ready4 & (1 << i)))
-			pos += sprintf(pos, "%s", "r");
-		else
-			pos += sprintf(pos, "%s", "n");
-
-		pos += sprintf(pos, ": %s", name);
-
-		DDPDUMP("%s\n", clock_on);
-	}
-
-	for (i = 0; i < 14; i++) {
-		name = ddp_signal_5_mt6885(i);
-		if (!name)
-			continue;
-
-		pos = clock_on;
-
-		if ((valid5 & (1 << i)))
-			pos += sprintf(pos, "%s,", "v");
-		else
-			pos += sprintf(pos, "%s,", "n");
-
-		if ((ready5 & (1 << i)))
-			pos += sprintf(pos, "%s", "r");
-		else
-			pos += sprintf(pos, "%s", "n");
-
-		pos += sprintf(pos, ": %s", name);
-
-		DDPDUMP("%s\n", clock_on);
-	}
-
 	/* greq: 1 means SMI dose not grant, maybe SMI hang */
 	if (greq) {
 		DDPDUMP("smi greq not grant module:\n");
@@ -6529,9 +6446,9 @@ void mmsys_config_dump_analysis_mt6885(void __iomem *config_regs)
 	}
 
 	clock_on[0] = '\0';
-	for (i = 0; i < 32; i++) {
-		if (greq & (1 << i)) {
-			name = ddp_greq_name_mt6885(i);
+	for (bit = 0; bit < 32; bit++) {
+		if (greq & (1 << bit)) {
+			name = ddp_greq_name_mt6885(bit);
 			if (!name)
 				continue;
 			strncat(clock_on, name,
