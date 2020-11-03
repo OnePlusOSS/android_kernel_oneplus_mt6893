@@ -3798,10 +3798,10 @@ static kal_uint32 seamless_switch(enum MSDK_SCENARIO_ID_ENUM scenario_id,
 				gain & 0xff;
 		}
 		if (shutter != 0) {
-			imx586_seamless_custom3[3] =
-				(gain >> 8) & 0xff;
-			imx586_seamless_custom3[5] =
-				gain & 0xff;
+			imx586_seamless_custom3[7] =
+				(shutter >> 8) & 0xff;
+			imx586_seamless_custom3[9] =
+				shutter & 0xff;
 		}
 
 		pr_info("seamless switch Full remosaic!\n");
