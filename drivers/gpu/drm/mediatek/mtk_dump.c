@@ -18,7 +18,11 @@ static const char * const ddp_comp_str[] = {DECLARE_DDP_COMP(DECLARE_STR)};
 
 const char *mtk_dump_comp_str(struct mtk_ddp_comp *comp)
 {
-	if (comp && comp->id < 0) {
+	if (!comp) {
+		DDPPR_ERR("%s: Invalid ddp comp\n", __func__);
+		return "invalid";
+	}
+	if (comp  && comp->id < 0) {
 		DDPPR_ERR("%s: Invalid ddp comp id:%d\n", __func__, comp->id);
 		comp->id = 0;
 	}
