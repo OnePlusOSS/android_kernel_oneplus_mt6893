@@ -1697,7 +1697,7 @@ void dumpAllRegs(enum ISP_DEV_NODE_ENUM module)
 }
 
 #define Rdy_ReqDump
-static void ISP_DumpDmaDeepDbg(enum ISP_IRQ_TYPE_ENUM module)
+static void ISP_DumpDmaDeepDbg(enum ISP_IRQ_TYPE_ENUM module, unsigned int ErrStatus)
 {
 #ifdef Rdy_ReqDump
 #define ISP_MODULE_GROUPS 7
@@ -1967,6 +1967,8 @@ static void ISP_DumpDmaDeepDbg(enum ISP_IRQ_TYPE_ENUM module)
 				}
 			}
 		}
+	} else if (ErrStatus & TG_ERR_ST) {
+		dumpAllRegs(innerRegModule);
 	}
 
 
@@ -8155,8 +8157,8 @@ void IRQ_INT_ERR_CHECK_CAM(unsigned int WarnStatus, unsigned int ErrStatus,
 				ErrStatus, WarnStatus, warnTwo);
 
 			/* DMA ERR print */
-			if (ErrStatus & DMA_ERR_ST)
-				ISP_DumpDmaDeepDbg(module);
+			if (ErrStatus & (DMA_ERR_ST | TG_ERR_ST))
+				ISP_DumpDmaDeepDbg(module, ErrStatus);
 
 			break;
 		case ISP_IRQ_TYPE_INT_CAM_B_ST:
@@ -8182,8 +8184,8 @@ void IRQ_INT_ERR_CHECK_CAM(unsigned int WarnStatus, unsigned int ErrStatus,
 				ErrStatus, WarnStatus, warnTwo);
 
 			/* DMA ERR print */
-			if (ErrStatus & DMA_ERR_ST)
-				ISP_DumpDmaDeepDbg(module);
+			if (ErrStatus & (DMA_ERR_ST | TG_ERR_ST))
+				ISP_DumpDmaDeepDbg(module, ErrStatus);
 
 			break;
 		case ISP_IRQ_TYPE_INT_CAM_C_ST:
@@ -8209,8 +8211,8 @@ void IRQ_INT_ERR_CHECK_CAM(unsigned int WarnStatus, unsigned int ErrStatus,
 				ErrStatus, WarnStatus, warnTwo);
 
 			/* DMA ERR print */
-			if (ErrStatus & DMA_ERR_ST)
-				ISP_DumpDmaDeepDbg(module);
+			if (ErrStatus & (DMA_ERR_ST | TG_ERR_ST))
+				ISP_DumpDmaDeepDbg(module, ErrStatus);
 
 			break;
 		case ISP_IRQ_TYPE_INT_CAMSV_0_ST:
@@ -12085,7 +12087,7 @@ irqreturn_t ISP_Irq_CAM(enum ISP_IRQ_TYPE_ENUM irq_module)
 			else
 				IRQ_LOG_KEEPER(
 				module, m_CurrentPPB, _LOG_INF,
-				"%s,%s,CAM_%c P1_SOF_%d_%d(0x%08x_0x%08x,0x%08x_0x%08x,0x%08x,0x%08x,0x%x/0x%x),int_us:%d,cq:0x%08x_0x%08x 0x%08x_0x%08x,Don(0x%08x_0x%08x 0x%08x_0x%08x,0x%08x_0x%08x 0x%08x_0x%08x),DMA(0x%x_0x%x,0x%x_0x%x,0x%x_0x%x,0x%x_0x%x,0x%x_0x%x,0x%x_0x%x),CRZO(0x%x_0x%x,0x%x_0x%x,0x%x_0x%x,0x%x_0x%x,0x%x_0x%x,0x%x_0x%x),YUVO(0x%x_0x%x 0x%x_0x%x, 0x%x_0x%x 0x%x_0x%x, 0x%x_0x%x 0x%x_0x%x)\n",
+				"%s,%s,CAM_%c P1_SOF_%d_%d(0x%08x_0x%08x,0x%08x_0x%08x,0x%08x,0x%08x,0x%x/0x%x),int_us:%d,cq:0x%08x_0x%08x 0x%08x_0x%08x 0x%08x_0x%08x,Don(0x%08x_0x%08x 0x%08x_0x%08x,0x%08x_0x%08x 0x%08x_0x%08x),DMA(0x%x_0x%x,0x%x_0x%x,0x%x_0x%x,0x%x_0x%x,0x%x_0x%x,0x%x_0x%x),CTL_EN(0x%x_0x%x 0x%x_0x%x 0x%x_0x%x) CTL_EN2(0x%x_0x%x 0x%x_0x%x 0x%x_0x%x) RAWI_R2_Y(0x%x_0x%x 0x%x_0x%x 0x%x_0x%x) FUS SIZE(0x%x_0x%x 0x%x_0x%x 0x%x_0x%x) FLKO BASE(0x%x_0x%x 0x%x_0x%x 0x%x_0x%x) FLKO FHBase(0x%x_0x%x 0x%x_0x%x 0x%x_0x%x)\n",
 				gPass1doneLog[module]._str,
 				gLostPass1doneLog[module]._str,
 				'A' + cardinalNum, sof_count[module], cur_v_cnt,
@@ -12113,6 +12115,12 @@ irqreturn_t ISP_Irq_CAM(enum ISP_IRQ_TYPE_ENUM irq_module)
 				(unsigned int)ISP_RD32(
 					CAM_REG_CQ_THR0_BASEADDR(
 						ISP_CAM_B_INNER_IDX)),
+				(unsigned int)ISP_RD32(
+					CAM_REG_CQ_THR0_BASEADDR(
+						ISP_CAM_C_IDX)),
+				(unsigned int)ISP_RD32(
+					CAM_REG_CQ_THR0_BASEADDR(
+						ISP_CAM_C_INNER_IDX)),
 				(unsigned int)ISP_RD32(
 					CAM_REG_CTL_MISC(reg_module)),
 				(unsigned int)ISP_RD32(
@@ -12170,68 +12178,94 @@ irqreturn_t ISP_Irq_CAM(enum ISP_IRQ_TYPE_ENUM irq_module)
 					CAM_REG_DMA_FRAME_HEADER_EN1(
 						ISP_CAM_C_INNER_IDX)),
 				(unsigned int)ISP_RD32(
-					CAM_REG_FBC_CRZO_CTL2(ISP_CAM_B_IDX)),
+					CAM_REG_CTL_EN(reg_module)),
 				(unsigned int)ISP_RD32(
-					CAM_REG_FBC_CRZO_CTL2(
+					CAM_REG_CTL_EN(
+						ISP_CAM_A_INNER_IDX)),
+				(unsigned int)ISP_RD32(
+					CAM_REG_CTL_EN(ISP_CAM_B_IDX)),
+				(unsigned int)ISP_RD32(
+					CAM_REG_CTL_EN(
 						ISP_CAM_B_INNER_IDX)),
 				(unsigned int)ISP_RD32(
-					CAM_REG_FBC_CRZO_CTL2(ISP_CAM_C_IDX)),
+					CAM_REG_CTL_EN(ISP_CAM_C_IDX)),
 				(unsigned int)ISP_RD32(
-					CAM_REG_FBC_CRZO_CTL2(
+					CAM_REG_CTL_EN(
 						ISP_CAM_C_INNER_IDX)),
 				(unsigned int)ISP_RD32(
-					CAM_REG_CRZO_BASE_ADDR(ISP_CAM_B_IDX)),
+					CAM_REG_CTL_EN2(reg_module)),
 				(unsigned int)ISP_RD32(
-					CAM_REG_CRZO_BASE_ADDR(
+					CAM_REG_CTL_EN2(
+						ISP_CAM_A_INNER_IDX)),
+				(unsigned int)ISP_RD32(
+					CAM_REG_CTL_EN2(ISP_CAM_B_IDX)),
+				(unsigned int)ISP_RD32(
+					CAM_REG_CTL_EN2(
 						ISP_CAM_B_INNER_IDX)),
 				(unsigned int)ISP_RD32(
-					CAM_REG_CRZO_BASE_ADDR(ISP_CAM_C_IDX)),
+					CAM_REG_CTL_EN2(ISP_CAM_C_IDX)),
 				(unsigned int)ISP_RD32(
-					CAM_REG_CRZO_BASE_ADDR(
+					CAM_REG_CTL_EN2(
 						ISP_CAM_C_INNER_IDX)),
+				(unsigned int) (ISP_RD32(
+				isp_devs[reg_module].regs + 0x4210)),
+				(unsigned int) (ISP_RD32(
+				isp_devs[ISP_CAM_A_INNER_IDX].regs + 0x4210)),
+				(unsigned int) (ISP_RD32(
+				isp_devs[ISP_CAM_B_IDX].regs + 0x4210)),
+				(unsigned int) (ISP_RD32(
+				isp_devs[ISP_CAM_B_INNER_IDX].regs + 0x4210)),
+				(unsigned int) (ISP_RD32(
+				isp_devs[ISP_CAM_C_IDX].regs + 0x4210)),
+				(unsigned int) (ISP_RD32(
+				isp_devs[ISP_CAM_C_INNER_IDX].regs + 0x4210)),
+				(unsigned int) (ISP_RD32(
+				isp_devs[reg_module].regs + 0x1ed8)),
+				(unsigned int) (ISP_RD32(
+				isp_devs[ISP_CAM_A_INNER_IDX].regs + 0x1ed8)),
+				(unsigned int) (ISP_RD32(
+				isp_devs[ISP_CAM_B_IDX].regs + 0x1ed8)),
+				(unsigned int) (ISP_RD32(
+				isp_devs[ISP_CAM_B_INNER_IDX].regs + 0x1ed8)),
+				(unsigned int) (ISP_RD32(
+				isp_devs[ISP_CAM_C_IDX].regs + 0x1ed8)),
+				(unsigned int) (ISP_RD32(
+				isp_devs[ISP_CAM_C_INNER_IDX].regs + 0x1ed8)),
 				(unsigned int)ISP_RD32(
-					CAM_REG_CRZO_FH_BASE_ADDR(
+					CAM_REG_FLKO_BASE_ADDR(
+						reg_module)),
+				(unsigned int)ISP_RD32(
+					CAM_REG_FLKO_BASE_ADDR(
+						ISP_CAM_A_INNER_IDX)),
+				(unsigned int)ISP_RD32(
+					CAM_REG_FLKO_BASE_ADDR(
 						ISP_CAM_B_IDX)),
 				(unsigned int)ISP_RD32(
-					CAM_REG_CRZO_FH_BASE_ADDR(
+					CAM_REG_FLKO_BASE_ADDR(
 						ISP_CAM_B_INNER_IDX)),
 				(unsigned int)ISP_RD32(
-					CAM_REG_CRZO_FH_BASE_ADDR(
+					CAM_REG_FLKO_BASE_ADDR(
 						ISP_CAM_C_IDX)),
 				(unsigned int)ISP_RD32(
-					CAM_REG_CRZO_FH_BASE_ADDR(
+					CAM_REG_FLKO_BASE_ADDR(
 						ISP_CAM_C_INNER_IDX)),
 				(unsigned int)ISP_RD32(
-					CAM_REG_FBC_YUVO_CTL2(ISP_CAM_B_IDX)),
+					CAM_REG_FLKO_FH_BASE_ADDR(
+						reg_module)),
 				(unsigned int)ISP_RD32(
-					CAM_REG_FBC_YUVO_CTL2(
-						ISP_CAM_B_INNER_IDX)),
+					CAM_REG_FLKO_FH_BASE_ADDR(
+						ISP_CAM_A_INNER_IDX)),
 				(unsigned int)ISP_RD32(
-					CAM_REG_FBC_YUVO_CTL2(ISP_CAM_C_IDX)),
-				(unsigned int)ISP_RD32(
-					CAM_REG_FBC_YUVO_CTL2(
-						ISP_CAM_C_INNER_IDX)),
-				(unsigned int)ISP_RD32(
-					CAM_REG_YUVO_BASE_ADDR(ISP_CAM_B_IDX)),
-				(unsigned int)ISP_RD32(
-					CAM_REG_YUVO_BASE_ADDR(
-						ISP_CAM_B_INNER_IDX)),
-				(unsigned int)ISP_RD32(
-					CAM_REG_YUVO_BASE_ADDR(ISP_CAM_C_IDX)),
-				(unsigned int)ISP_RD32(
-					CAM_REG_YUVO_BASE_ADDR(
-						ISP_CAM_C_INNER_IDX)),
-				(unsigned int)ISP_RD32(
-					CAM_REG_YUVO_FH_BASE_ADDR(
+					CAM_REG_FLKO_FH_BASE_ADDR(
 						ISP_CAM_B_IDX)),
 				(unsigned int)ISP_RD32(
-					CAM_REG_YUVO_FH_BASE_ADDR(
+					CAM_REG_FLKO_FH_BASE_ADDR(
 						ISP_CAM_B_INNER_IDX)),
 				(unsigned int)ISP_RD32(
-					CAM_REG_YUVO_FH_BASE_ADDR(
+					CAM_REG_FLKO_FH_BASE_ADDR(
 						ISP_CAM_C_IDX)),
 				(unsigned int)ISP_RD32(
-					CAM_REG_YUVO_FH_BASE_ADDR(
+					CAM_REG_FLKO_FH_BASE_ADDR(
 						ISP_CAM_C_INNER_IDX)));
 #endif
 
