@@ -3990,9 +3990,9 @@ int __init fbt_cpu_init(void)
 	loading_th = 0;
 	sampling_period_MS = 256;
 	rescue_enhance_f = 25;
-	loading_adj_cnt = 30;
+	loading_adj_cnt = 10;
 	loading_debnc_cnt = 30;
-	loading_time_diff = TIME_2MS;
+	loading_time_diff = TIME_1MS;
 	llf_task_policy = FPSGO_TPOLICY_NONE;
 	fps_level_range = 10;
 	check_running = 1;
