@@ -6283,7 +6283,7 @@ page_owner=on loop.max_part=7";
 	};
 
 #if (CONFIG_MTK_GAUGE_VERSION == 30)
-	#include "mediatek/bat_setting/mt6885_battery_prop.dtsi"
+	#include "mediatek/bat_setting/mt6893_battery_prop.dtsi"
 #endif
 
 	spmi_bus: spmi@10027000 {
