@@ -1653,7 +1653,7 @@ static void ISP_DumpRawiR2DebugData(enum ISP_IRQ_TYPE_ENUM module)
 		fifo_dbg_data_case2, fifo_dbg_data_case3);
 
 	/* Reset SNAPSHOT_SEL to dma_error for RAWI debug */
-	ISP_WR32(CAM_REG_DBG_SET(innerRegModule), 0x00200000);
+	ISP_WR32(CAM_REG_DBG_SET(innerRegModule), 0x00040000);
 }
 
 void dumpAllRegs(enum ISP_DEV_NODE_ENUM module)
@@ -4675,11 +4675,11 @@ static long ISP_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 						(vf + 0x1));
 					/*For RAWI DMA Err debug*/
 					ISP_WR32(CAM_REG_DBG_SET(ISP_CAM_A_IDX),
-						0x00200000);
+						0x00040000);
 					ISP_WR32(CAM_REG_DBG_SET(ISP_CAM_B_IDX),
-						0x00200000);
+						0x00040000);
 					ISP_WR32(CAM_REG_DBG_SET(ISP_CAM_C_IDX),
-						0x00200000);
+						0x00040000);
 				}
 				/*SCQ does not support CQ covery */
 				cq_recovery = (((ISP_RD32(CAM_REG_CAMCQ_CQ_EN(
