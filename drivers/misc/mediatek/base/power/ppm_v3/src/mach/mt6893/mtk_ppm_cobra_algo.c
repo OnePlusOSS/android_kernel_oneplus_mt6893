@@ -116,6 +116,11 @@ static short get_delta_pwr(enum ppm_cluster cluster,
 	unsigned int bl_next_volt;
 	//struct ppm_client_req *last_req = &(ppm_main_info.last_req);
 
+	bb_curr_volt = 0;
+	bb_next_volt = 0;
+	bl_curr_volt = 0;
+	bl_next_volt = 0;
+
 	if ((opp == COBRA_OPP_NUM - 1) ||
 		g_curr_bl_opp > COBRA_OPP_NUM ||
 		g_curr_bb_opp > COBRA_OPP_NUM) {
