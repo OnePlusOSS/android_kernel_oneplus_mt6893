@@ -385,7 +385,7 @@ static struct isp_sec_dapc_reg lock_reg;
 static unsigned int sec_on;
 static int irq3a_wait_cnt = 1;
 static int irq3a_print_vf_off[ISP_IRQ_TYPE_AMOUNT] = {-1};
-static unsigned int cq_recovery;
+static unsigned int cq_recovery[ISP_IRQ_TYPE_AMOUNT];
 
 #ifdef CONFIG_PM_SLEEP
 struct wakeup_source isp_wake_lock;
@@ -3793,7 +3793,7 @@ static int ISP_WaitIrq(struct ISP_WAIT_IRQ_STRUCT *WaitIrq)
 		irq3a_wait_cnt++;
 		if (irq3a_print_vf_off[WaitIrq->Type]) {
 			LOG_NOTICE(
-			"Viewfinder off IRQ 3A  irq3a_wait_cnt++ =%d Clear(%d) Type(%d) StType(%d) Status(0x%08X) WaitStatus(0x%08X) Timeout(%d) key(%d)\n",
+			"VF off IRQ 3A  irq3a_wait_cnt++ =%d Clear(%d) Type(%d) StType(%d) Status(0x%08X) WaitStatus(0x%08X) Timeout(%d) key(%d)\n",
 			irq3a_wait_cnt,
 			WaitIrq->EventInfo.Clear, WaitIrq->Type,
 			WaitIrq->EventInfo.St_type, irqStatus,
@@ -3844,7 +3844,7 @@ static int ISP_WaitIrq(struct ISP_WAIT_IRQ_STRUCT *WaitIrq)
 		irq3a_wait_cnt--;
 		if (irq3a_print_vf_off[WaitIrq->Type]) {
 			LOG_NOTICE(
-			"Viewfinder off IRQ 3A  irq3a_wait_cnt-- =%d Clear(%d) Type(%d) StType(%d) Status(0x%08X) WaitStatus(0x%08X) Timeout(%d) key(%d)\n",
+			"VF off IRQ 3A  irq3a_wait_cnt-- =%d Clear(%d) Type(%d) StType(%d) Status(0x%08X) WaitStatus(0x%08X) Timeout(%d) key(%d)\n",
 			irq3a_wait_cnt,
 			WaitIrq->EventInfo.Clear, WaitIrq->Type,
 			WaitIrq->EventInfo.St_type, irqStatus,
@@ -4415,26 +4415,7 @@ static long ISP_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 
 				IrqInfo.EventInfo.UserKey = 0;
 			}
-
-
-			if ((IrqInfo.EventInfo.UserKey == 1) &&
-				irq3a_print_vf_off[IrqInfo.Type]) {
-				LOG_NOTICE(
-				"Viewfinder offIRQ type(%d), userKey(%d), timeout(%d), userkey(%d), st_status(%d), status(%d)\n",
-				IrqInfo.Type,
-				IrqInfo.EventInfo.UserKey,
-				IrqInfo.EventInfo.Timeout,
-				IrqInfo.EventInfo.UserKey,
-				IrqInfo.EventInfo.St_type,
-				IrqInfo.EventInfo.Status);
-			}
 			Ret = ISP_WaitIrq(&IrqInfo);
-			if ((IrqInfo.EventInfo.UserKey == 1)
-				&& irq3a_print_vf_off[IrqInfo.Type]) {
-				LOG_NOTICE(
-				"viewfinder off 3A IRQ return irq3a_wait_cnt =%d\n",
-				irq3a_wait_cnt);
-			}
 		} else {
 			LOG_NOTICE("copy_from_user failed\n");
 			Ret = -EFAULT;
@@ -4682,7 +4663,7 @@ static long ISP_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 						0x00040000);
 				}
 				/*SCQ does not support CQ covery */
-				cq_recovery = (((ISP_RD32(CAM_REG_CAMCQ_CQ_EN(
+				cq_recovery[module] = (((ISP_RD32(CAM_REG_CAMCQ_CQ_EN(
 						DebugFlag[1])) >> 20)
 						& 0x1) ? 0 : 1);
 
@@ -4726,6 +4707,7 @@ static long ISP_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 					ISP_WR32(
 						CAM_REG_TG_VF_CON(DebugFlag[1]),
 						(vf - 0x1));
+					cq_recovery[module] = 0;
 				} else {
 					LOG_NOTICE(
 						"CAM_%d: vf already disabled\n",
@@ -6609,8 +6591,6 @@ static int ISP_release(struct inode *pInode, struct file *pFile)
 
 	/* reset backup regs */
 	memset(g_BkReg, 0, sizeof(struct _isp_bk_reg_t) * ISP_IRQ_TYPE_AMOUNT);
-
-	cq_recovery = 0;
 
 	/*  */
 	for (i = ISP_CAMSV0_IDX; i <= ISP_CAMSV7_IDX; i++)
@@ -11159,7 +11139,7 @@ irqreturn_t ISP_Irq_CAM(enum ISP_IRQ_TYPE_ENUM irq_module)
 	ErrStatus = IrqStatus & IspInfo.IrqInfo.ErrMask[module][SIGNAL_INT];
 #if Lafi_WAM_CQ_ERR
 	if (((IrqStatus & SOF_INT_ST) == 0) && (IrqStatus & VS_INT_ST)
-						&& (cq_recovery == 1)) {
+				&& (cq_recovery[module] == 1)) {
 		if ((ISP_RD32(CAMX_REG_TG_VF_CON(reg_module)) == 0x1) &&
 		    (g1stSof[module] == MFALSE)) {
 			IRQ_LOG_KEEPER(module, m_CurrentPPB, _LOG_ERR,
