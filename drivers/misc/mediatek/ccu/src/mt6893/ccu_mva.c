@@ -233,18 +233,16 @@ int ccu_deallocate_mem(struct CcuMemHandle *memHandle)
 {
 	uint32_t idx = (memHandle->meminfo.cached != 0) ? 1 : 0;
 
-	LOG_DBG_MUST("free idx(%d) mva(0x%x) fd(0x%x)\n", idx,
+	LOG_DBG_MUST("free idx(%d) mva(0x%x) fd(0x%x) cached(0x%x)\n", idx,
 		ccu_buffer_handle[idx].meminfo.mva,
-		ccu_buffer_handle[idx].meminfo.shareFd);
+		ccu_buffer_handle[idx].meminfo.shareFd,
+		memHandle->meminfo.cached);
 	if (ccu_buffer_handle[idx].ionHandleKd == 0) {
 		LOG_ERR("idx %d handle %d is empty\n", idx,
 			ccu_buffer_handle[idx].ionHandleKd);
 		return -EINVAL;
 	}
 
-	LOG_DBG_MUST("free idx(%d) mva(0x%x) fd(0x%x)\n", idx,
-		ccu_buffer_handle[idx].meminfo.mva,
-		ccu_buffer_handle[idx].meminfo.shareFd);
 	ion_unmap_kernel(_ccu_ion_client,
 		ccu_buffer_handle[idx].ionHandleKd);
 	__close_fd(current->files,
