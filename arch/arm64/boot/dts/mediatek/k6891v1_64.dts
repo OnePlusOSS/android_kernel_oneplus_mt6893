@@ -569,14 +569,10 @@
 	};
 };
 
-/* CAMERA specify sensor */
-&kd_camera_hw1 {
-	cam2_enable_sensor = "imx586_mipi_raw s5k3m5sx_mipi_raw";
-	cam4_enable_sensor = "imx586_mipi_raw imx481_mipi_raw";
-};
-/* CAMERA specify sensor end */
+
+
 
 #include "mediatek/cust_mt6893_touch_1080x2300.dtsi"
-#include "mediatek/cust_mt6885_camera.dtsi"
+#include "mediatek/cust_mt6893_camera.dtsi"
 #include <k6891v1_64/cust.dtsi>
 /*End of this file, DO NOT ADD ANYTHING HERE*/
