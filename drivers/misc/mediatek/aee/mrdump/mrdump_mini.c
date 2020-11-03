@@ -346,6 +346,11 @@ void mrdump_mini_add_misc(unsigned long addr, unsigned long size,
 
 int kernel_addr_valid(unsigned long addr)
 {
+#ifdef CONFIG_KASAN_SW_TAGS
+	/* KASAN_SW_TAGS only support arm64 */
+	addr = addr | 0xff00000000000000;
+#endif
+
 	if (addr < MIN_MARGIN)
 		return 0;
 
