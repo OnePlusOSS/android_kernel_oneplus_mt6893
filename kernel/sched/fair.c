@@ -3492,6 +3492,9 @@ update_cfs_rq_load_avg(u64 now, struct cfs_rq *cfs_rq)
 {
 	struct sched_avg *sa = &cfs_rq->avg;
 	int decayed, removed_load = 0, removed_util = 0;
+	struct rq *rq = rq_of(cfs_rq);
+	bool is_clamped = false;
+	int clamp_id = 0;
 
 	if (atomic_long_read(&cfs_rq->removed_load_avg)) {
 		s64 r = atomic_long_xchg(&cfs_rq->removed_load_avg, 0);
@@ -3516,7 +3519,12 @@ update_cfs_rq_load_avg(u64 now, struct cfs_rq *cfs_rq)
 	cfs_rq->load_last_update_time_copy = sa->last_update_time;
 #endif
 
-	if (decayed || removed_util)
+	for (clamp_id = UCLAMP_MIN; clamp_id < UCLAMP_CNT; clamp_id++) {
+		if (rq && rq->uclamp.value[clamp_id] != uclamp_none(clamp_id))
+			is_clamped = true;
+	}
+
+	if (decayed || removed_util || is_clamped)
 		cfs_rq_util_change(cfs_rq);
 
 	return decayed || removed_load;
