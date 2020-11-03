@@ -487,8 +487,14 @@ void tick_freeze(void)
 	raw_spin_lock(&tick_freeze_lock);
 
 	tick_freeze_depth++;
-	if (tick_freeze_depth < num_online_cpus())
+	if (tick_freeze_depth == num_online_cpus()) {
+		trace_suspend_resume(TPS("timekeeping_freeze"),
+				     smp_processor_id(), true);
+		sched_clock_suspend();
+		timekeeping_suspend();
+	} else {
 		tick_suspend_local();
+	}
 
 	raw_spin_unlock(&tick_freeze_lock);
 }
@@ -506,8 +512,14 @@ void tick_unfreeze(void)
 {
 	raw_spin_lock(&tick_freeze_lock);
 
-	if (tick_freeze_depth < num_online_cpus())
+	if (tick_freeze_depth == num_online_cpus()) {
+		timekeeping_resume();
+		sched_clock_resume();
+		trace_suspend_resume(TPS("timekeeping_freeze"),
+				     smp_processor_id(), false);
+	} else {
 		tick_resume_local();
+	}
 
 	tick_freeze_depth--;
 
