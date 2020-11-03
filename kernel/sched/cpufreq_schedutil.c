@@ -358,6 +358,9 @@ static void sugov_update_single(struct update_util_data *hook, u64 time,
 		next_f = policy->cpuinfo.max_freq;
 	} else {
 		sugov_get_util(&util, &max, sg_cpu->cpu);
+#ifdef CONFIG_UCLAMP_TASK
+		trace_schedutil_uclamp_util(sg_cpu->cpu, util);
+#endif
 
 		util = uclamp_util(cpu_rq(sg_cpu->cpu), util);
 		sugov_iowait_boost(sg_cpu, &util, &max);
