@@ -133,6 +133,9 @@ static int get_vb_volt(int vcore_opp, int info_mode)
 	pr_info("%s: PTPOD: 0x%x, 0x%x\n", __func__, info, ptpod);
 	info = (info >> 28) & 0xF;
 
+	if (info_mode & (1 << V_CT_TEST_SHIFT))
+		info = 1;
+
 	if (vcore_opp == VCORE_OPP_0) {
 		ptpod = (ptpod >> 8) & 0xF;
 		if ((info > 0) && (info <= 4) && (info_mode & (1 << VCORE_VB_TYPEA_EN_SHIFT)))
@@ -152,7 +155,7 @@ static int get_vb_volt(int vcore_opp, int info_mode)
 		else if ((info > 5) && (info <= 10) && (info_mode & (1 << VCORE_VB_TYPEB_EN_SHIFT)))
 			ret = (ptpod <= 2) ? ptpod : 2;
 		else if ((info > 10) && (info_mode & (1 << VCORE_VB_TYPEC_EN_SHIFT)))
-			ret = (ptpod <= 1) ? ptpod : 1;
+			ret = 0;
 	}
 
 	pr_info("%s: OPP = %d %d %d\n", __func__, vcore_opp, ptpod, ret);
