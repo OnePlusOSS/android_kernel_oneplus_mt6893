@@ -760,16 +760,18 @@ static int mtk_dsi_set_LFR(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
 	unsigned int lfr_enable = 1;
 	unsigned int lfr_skip_num = 0;
 
+	struct drm_crtc *crtc = dsi->encoder.crtc;
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	unsigned int refresh_rate = mtk_crtc->base.state->adjusted_mode.vrefresh;
+
 	if (mtk_dsi_is_LFR_Enable(dsi))
 		return -1;
 
 	//Settings lfr settings to LFR_CON_REG
 	if (dsi->ext && dsi->ext->params &&
-		dsi->ext->params->lfr_minimum_fps != 0 &&
-		dsi->ext->params->dyn_fps.vact_timing_fps != 0) {
+		dsi->ext->params->lfr_minimum_fps != 0) {
 		lfr_skip_num =
-			(dsi->ext->params->dyn_fps.vact_timing_fps /
-			dsi->ext->params->lfr_minimum_fps) - 1;
+			(refresh_rate / dsi->ext->params->lfr_minimum_fps) - 1;
 	}
 
 	if (lfr_dbg) {
