@@ -65,7 +65,9 @@ int eara_is_perf_first(void)
 
 void eara_pass_perf_first_hint(int enable)
 {
+	ppm_lock(&ppm_main_info.lock);
 	is_perf_fist = enable;
+	ppm_unlock(&ppm_main_info.lock);
 }
 
 static unsigned int get_idx_in_pwr_tbl(enum ppm_cluster cluster)
@@ -801,10 +803,10 @@ prepare_next_round:
 
 			if (ChoosenCl == -1) {
 				ppm_err("No lower OPP!(bgt/delta/cur)= ");
-				ppm_err("(%d/%d/%d),(opp/act)=(%d,%d/%d%d)\n",
+				ppm_err("(%d/%d/%d),(opp/act)=(%d,%d,%d/%d%d%d)\n",
 				power_budget, delta_power, curr_power,
-				opp[PPM_CLUSTER_L], opp[PPM_CLUSTER_B],
-				ACT_CORE(L), ACT_CORE(B));
+				opp[PPM_CLUSTER_L], opp[PPM_CLUSTER_B], opp[PPM_CLUSTER_BB],
+				ACT_CORE(L), ACT_CORE(B),  ACT_CORE(BB));
 
 				break;
 			}
