@@ -530,7 +530,7 @@ bool zcv_check(struct zcv_filter *zf)
 		log = &zf->log[idx];
 		dtime = timespec_sub(now_time, log->time);
 
-		bm_err("zcvf i:%d i_intime:%d idx:%d dtime_now:%ld avgc_prev:%d car:%d %d ot:%d\n",
+		bm_debug("zcvf i:%d i_intime:%d idx:%d dtime_now:%ld avgc_prev:%d car:%d %d ot:%d\n",
 			i, i_intime, idx, dtime.tv_sec, log->avgcurrent,
 			log->car, fg_coulomb,
 			dtime.tv_sec > time_thread);
@@ -540,7 +540,7 @@ bool zcv_check(struct zcv_filter *zf)
 
 			if (i_intime != i && log->avgcurrent > avgc_thread) {
 				oc = true;
-				bm_err("zcvf (1) idx:%d,%d avgc_prev:%d avgc_t:%d\n",
+				bm_debug("zcvf (1) idx:%d,%d avgc_prev:%d avgc_t:%d\n",
 					idx, i, log->avgcurrent, avgc_thread);
 			} else {
 				dcar = abs(fg_coulomb - log->car);
@@ -550,7 +550,7 @@ bool zcv_check(struct zcv_filter *zf)
 					avgc = 0;
 				if (avgc > avgc_thread) {
 					oc = true;
-					bm_err("zcvf (2) idx:%d:%d avgc_pre:%d avgc_now:%d avgc_t:%d cou:%d %d\n",
+					bm_debug("zcvf (2) idx:%d:%d avgc_pre:%d avgc_now:%d avgc_t:%d cou:%d %d\n",
 						idx, i, log->avgcurrent, avgc, avgc_thread,
 						fg_coulomb, log->car);
 				}
@@ -558,7 +558,7 @@ bool zcv_check(struct zcv_filter *zf)
 		}
 	}
 
-	bm_err("zcvf check:%d\n", oc);
+	bm_debug("zcvf check:%d\n", oc);
 
 	return oc;
 }
