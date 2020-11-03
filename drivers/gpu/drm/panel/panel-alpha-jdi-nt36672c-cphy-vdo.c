@@ -845,8 +845,9 @@ static struct mtk_panel_params ext_params = {
 		.dfps_cmd_table[3] = {0, 2, {0xFF, 0x10} },
 		.dfps_cmd_table[4] = {0, 2, {0xFB, 0x01} },
 	},
+	/* following MIPI hopping parameter might cause screen mess */
 	.dyn = {
-		.switch_en = 1,
+		.switch_en = 0,
 		.pll_clk = 428,
 		.vfp_lp_dyn = 4178,
 		.hfp = 396,
@@ -917,8 +918,9 @@ static struct mtk_panel_params ext_params_90hz = {
 		.dfps_cmd_table[3] = {0, 2, {0xFF, 0x10} },
 		.dfps_cmd_table[4] = {0, 2, {0xFB, 0x01} },
 	},
+	/* following MIPI hopping parameter might cause screen mess */
 	.dyn = {
-		.switch_en = 1,
+		.switch_en = 0,
 		.pll_clk = 428,
 		.vfp_lp_dyn = 2528,
 		.hfp = 396,
@@ -984,8 +986,9 @@ static struct mtk_panel_params ext_params_120hz = {
 		.dfps_cmd_table[3] = {0, 2, {0xFF, 0x10} },
 		.dfps_cmd_table[4] = {0, 2, {0xFB, 0x01} },
 	},
+	/* following MIPI hopping parameter might cause screen mess */
 	.dyn = {
-		.switch_en = 1,
+		.switch_en = 0,
 		.pll_clk = 428,
 		.vfp_lp_dyn = 2528,
 		.hfp = 396,
