@@ -1012,5 +1012,6 @@ int reg_VBATON_UNDET(void (*callback)(void));
 int zcv_filter_add(struct zcv_filter *zf);
 void zcv_filter_dump(struct zcv_filter *zf);
 bool zcv_check(struct zcv_filter *zf);
+void zcv_filter_init(struct zcv_filter *zf);
 
 #endif /* __MTK_BATTERY_INTF_H__ */

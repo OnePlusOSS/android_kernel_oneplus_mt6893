@@ -165,7 +165,7 @@ int gauge_reset_hw(void)
 	gm.sw_iavg_car = gauge_get_coulomb();
 
 	gm.bat_cycle_car = 0;
-
+	zcv_filter_init(&gm.zcvf);
 	return 0;
 }
 
@@ -443,7 +443,7 @@ int zcv_filter_add(struct zcv_filter *zf)
 	dtime.tv_sec = 0;
 	dtime.tv_nsec = 0;
 
-	time_thread = (fg_cust_data.zcv_suspend_time + 1) * 4 * 60 / 10;
+	time_thread = (fg_cust_data.zcv_suspend_time + 1) * 4 * 60 / 20;
 	avgc_thread = fg_cust_data.sleep_current_avg / 10;
 
 	if (zf->lidx != -1) {
@@ -455,7 +455,7 @@ int zcv_filter_add(struct zcv_filter *zf)
 		else
 			avgc = 0;
 
-		if (dtime.tv_sec < time_thread && avgc < avgc_thread) {
+		if (dtime.tv_sec < time_thread) {
 			bm_err("zcvf, no update time:%ld %d avgc:%d avgc_thread\n",
 				(long)dtime.tv_sec, time_thread,
 				avgc, avgc_thread);
@@ -521,7 +521,7 @@ bool zcv_check(struct zcv_filter *zf)
 
 	get_monotonic_boottime(&now_time);
 	time_thread = (fg_cust_data.zcv_suspend_time + 1) * 4 * 60;
-	avgc_thread = fg_cust_data.sleep_current_avg / 10;
+	avgc_thread = fg_cust_data.sleep_current_avg / 10 * 3 / 2;
 
 
 	for (i = 0; i < zf->size; i++) {
@@ -530,8 +530,9 @@ bool zcv_check(struct zcv_filter *zf)
 		log = &zf->log[idx];
 		dtime = timespec_sub(now_time, log->time);
 
-		bm_err("zcvf i:%d i_intime:%d idx:%d dtime_now:%ld avgc_prev:%d ot:%d\n",
+		bm_err("zcvf i:%d i_intime:%d idx:%d dtime_now:%ld avgc_prev:%d car:%d %d ot:%d\n",
 			i, i_intime, idx, dtime.tv_sec, log->avgcurrent,
+			log->car, fg_coulomb,
 			dtime.tv_sec > time_thread);
 		if (dtime.tv_sec <= time_thread) {
 			if (i_intime == -1)
