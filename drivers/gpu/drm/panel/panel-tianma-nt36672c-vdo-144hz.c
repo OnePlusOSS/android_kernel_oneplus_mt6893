@@ -355,7 +355,7 @@ static struct mtk_panel_params ext_params = {
 };
 
 
-static struct mtk_panel_params ext_params_90hz = {
+static struct mtk_panel_params ext_params_mode_1 = {
 	.cust_esd_check = 1,
 	.esd_check_enable = 1,
 	.lcm_esd_check_table[0] = {
@@ -414,7 +414,7 @@ static struct mtk_panel_params ext_params_90hz = {
 	.data_rate = DATA_RATE,
 };
 
-static struct mtk_panel_params ext_params_60hz = {
+static struct mtk_panel_params ext_params_mode_2 = {
 	.cust_esd_check = 1,
 	.esd_check_enable = 1,
 	.lcm_esd_check_table[0] = {
@@ -491,22 +491,39 @@ static int tianma_setbacklight_cmdq(void *dsi, dcs_write_gce cb,
 	return 0;
 }
 
+struct drm_display_mode *get_mode_by_id(struct drm_panel *panel,
+	unsigned int mode)
+{
+	struct drm_display_mode *m;
+	unsigned int i = 0;
+
+	list_for_each_entry(m, &panel->connector->modes, head) {
+		if (i == mode)
+			return m;
+		i++;
+	}
+	return NULL;
+}
+
 static int mtk_panel_ext_param_set(struct drm_panel *panel,
 			 unsigned int mode)
 {
 	struct mtk_panel_ext *ext = find_panel_ext(panel);
 	int ret = 0;
 
-	if (mode == 0)
+	struct drm_display_mode *m = get_mode_by_id(panel, mode);
+
+	if (m->vrefresh == MODE_0_FPS)
 		ext->params = &ext_params;
-	else if (mode == 1)
-		ext->params = &ext_params_90hz;
-	else if (mode == 2)
-		ext->params = &ext_params_60hz;
+	else if (m->vrefresh == MODE_1_FPS)
+		ext->params = &ext_params_mode_1;
+	else if (m->vrefresh == MODE_2_FPS)
+		ext->params = &ext_params_mode_2;
 	else
 		ret = 1;
 
 	return ret;
+
 }
 
 static int panel_ext_reset(struct drm_panel *panel, int on)
