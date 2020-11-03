@@ -43,6 +43,7 @@ struct fbt_jerk {
 struct fbt_proc {
 	int active_jerk_id;
 	struct fbt_jerk jerks[RESCUE_TIMER_NUM];
+	struct fbt_jerk sjerks[RESCUE_TIMER_NUM];
 };
 
 struct fbt_frame_info {
@@ -82,6 +83,7 @@ struct fbt_boost_info {
 
 	/* rescue*/
 	struct fbt_proc proc;
+	int cur_stage;
 
 	/* variance control */
 	struct fbt_frame_info frame_info[WINDOW];
