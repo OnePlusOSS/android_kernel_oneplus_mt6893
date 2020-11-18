@@ -31,7 +31,7 @@ ccflags-y  += -I$(srctree)/drivers/misc/mediatek/dfrc/
 ifeq ($(CONFIG_MTK_TINYSYS_SSPM_SUPPORT),y)
 ccflags-y  += -I$(srctree)/drivers/misc/mediatek/sspm
 ccflags-y  += -I$(srctree)/drivers/misc/mediatek/sspm/v1
-ccflags-y  += -I$(srctree)/drivers/misc/mediatek/sspm/$(PDIR)
+ccflags-y  += -I$(srctree)/drivers/misc/mediatek/sspm/$(MTK_PLATFORM)
 ccflags-y  += -I$(srctree)/drivers/misc/mediatek/mcupm/$(PDIR)
 endif
 ifeq ($(CONFIG_MTK_APUSYS_SUPPORT),y)
