@@ -553,6 +553,22 @@ struct fuel_gauge_custom_data {
 	int power_on_car_nochr;
 	int shutdown_car_ratio;
 
+	/* battery health */
+	int aging_diff_max_threshold;
+	int aging_diff_max_level;
+	int aging_factor_t_min;
+	int cycle_diff;
+	int aging_count_min;
+	int default_score;
+	int default_score_quantity;
+	int fast_cycle_set;
+	int level_max_change_bat;
+	int diff_max_change_bat;
+	int aging_tracking_start;
+	int max_aging_data;
+	int max_fast_data;
+	int fast_data_threshold_score;
+
 	/* log_level */
 	int daemon_log_level;
 	int record_log;
@@ -843,6 +859,7 @@ struct mtk_battery {
 
 	bool is_reset_aging_factor;
 	int aging_factor;
+	int health;
 	int soc_decimal_rate;
 
 	struct timespec uisoc_oldtime;

@@ -264,6 +264,7 @@ int gauge_enable_interrupt(int intr_number, int en)
 	return 0;
 }
 
+
 bool is_battery_init_done(void)
 {
 	return gm.is_probe_done;

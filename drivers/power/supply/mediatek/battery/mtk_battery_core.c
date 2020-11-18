@@ -1454,6 +1454,36 @@ void fg_custom_init_from_dts(struct platform_device *dev)
 	fg_read_dts_val(np, "MOVING_BATTEMP_THR",
 		&(fg_cust_data.moving_battemp_thr), 1);
 
+	/* battery health */
+	fg_read_dts_val(np, "AGING_DIFF_MAX_THRESHOLD",
+		&(fg_cust_data.aging_diff_max_threshold), 1);
+	fg_read_dts_val(np, "AGING_DIFF_MAX_LEVEL",
+		&(fg_cust_data.aging_diff_max_level), 1);
+	fg_read_dts_val(np, "AGING_FACTOR_T_MIN",
+		&(fg_cust_data.aging_factor_t_min), 1);
+	fg_read_dts_val(np, "CYCLE_DIFF",
+		&(fg_cust_data.cycle_diff), 1);
+	fg_read_dts_val(np, "AGING_COUNT_MIN",
+		&(fg_cust_data.aging_count_min), 1);
+	fg_read_dts_val(np, "DEFAULT_SCORE",
+		&(fg_cust_data.default_score), 1);
+	fg_read_dts_val(np, "DEFAULT_SCORE_QUANTITY",
+		&(fg_cust_data.default_score_quantity), 1);
+	fg_read_dts_val(np, "FAST_CYCLE_SET",
+		&(fg_cust_data.fast_cycle_set), 1);
+	fg_read_dts_val(np, "LEVEL_MAX_CHANGE_BAT",
+		&(fg_cust_data.level_max_change_bat), 1);
+	fg_read_dts_val(np, "DIFF_MAX_CHANGE_BAT",
+		&(fg_cust_data.diff_max_change_bat), 1);
+	fg_read_dts_val(np, "AGING_TRACKING_START",
+		&(fg_cust_data.aging_tracking_start), 1);
+	fg_read_dts_val(np, "MAX_AGING_DATA",
+		&(fg_cust_data.max_aging_data), 1);
+	fg_read_dts_val(np, "MAX_FAST_DATA",
+		&(fg_cust_data.max_fast_data), 1);
+	fg_read_dts_val(np, "FAST_DATA_THRESHOLD_SCORE",
+		&(fg_cust_data.fast_data_threshold_score), 1);
+
 	fg_read_dts_val(np, "DISABLE_MTKBATTERY",
 		(int *)&(gm.disable_mtkbattery), 1);
 	fg_read_dts_val(np, "MULTI_TEMP_GAUGE0",
@@ -4378,6 +4408,9 @@ void bmd_ctrl_cmd_from_user(void *nl_data, struct fgd_nl_msg_t *ret_msg)
 
 		memcpy(&param, &msg->fgd_data[0],
 			sizeof(struct fgd_cmd_param_t_8));
+
+		gm.health = param.data[11];
+
 		bm_debug(
 			"[fr] FG_DAEMON_CMD_SET_BATTERY_CAPACITY = %d %d %d %d %d %d %d %d %d %d RM:%d\n",
 			param.data[0],
