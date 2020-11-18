@@ -18,8 +18,8 @@
 #define DATA_RATE                   1140
 #define HSA                         4
 #define HBP                         16
-#define VSA                         4
-#define VBP                         16
+#define VSA                         8
+#define VBP                         20
 
 /*Parameter setting for mode 0 Start*/
 #define MODE_0_FPS                  60

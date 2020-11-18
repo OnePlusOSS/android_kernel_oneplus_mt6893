@@ -264,7 +264,7 @@ static const struct drm_display_mode default_mode = {
 	.vrefresh = MODE_0_FPS,
 };
 
-static const struct drm_display_mode performance_mode_90hz = {
+static const struct drm_display_mode performance_mode_1 = {
 	.clock = 414831,
 	.hdisplay = FRAME_WIDTH,
 	.hsync_start = FRAME_WIDTH + MODE_1_HFP,
@@ -279,7 +279,7 @@ static const struct drm_display_mode performance_mode_90hz = {
 
 };
 
-static const struct drm_display_mode performance_mode_60hz = {
+static const struct drm_display_mode performance_mode_2 = {
 	.clock = 414831,
 	.hdisplay = FRAME_WIDTH,
 	.hsync_start = FRAME_WIDTH + MODE_2_HFP,
@@ -578,8 +578,8 @@ struct panel_desc {
 static int tianma_get_modes(struct drm_panel *panel)
 {
 	struct drm_display_mode *mode;
-	struct drm_display_mode *mode_90hz;
-	struct drm_display_mode *mode_60hz;
+	struct drm_display_mode *mode_1;
+	struct drm_display_mode *mode_2;
 
 	mode = drm_mode_duplicate(panel->drm, &default_mode);
 	if (!mode) {
@@ -592,30 +592,30 @@ static int tianma_get_modes(struct drm_panel *panel)
 	mode->type = DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED;
 	drm_mode_probed_add(panel->connector, mode);
 
-	mode_90hz = drm_mode_duplicate(panel->drm, &performance_mode_90hz);
-	if (!mode_90hz) {
+	mode_1 = drm_mode_duplicate(panel->drm, &performance_mode_1);
+	if (!mode_1) {
 		dev_err(panel->drm->dev, "failed to add mode %ux%ux@%u\n",
-			performance_mode_90hz.hdisplay,
-			performance_mode_90hz.vdisplay,
-			performance_mode_90hz.vrefresh);
+			performance_mode_1.hdisplay,
+			performance_mode_1.vdisplay,
+			performance_mode_1.vrefresh);
 		return -ENOMEM;
 	}
-	drm_mode_set_name(mode_90hz);
-	mode_90hz->type = DRM_MODE_TYPE_DRIVER;
-	drm_mode_probed_add(panel->connector, mode_90hz);
+	drm_mode_set_name(mode_1);
+	mode_1->type = DRM_MODE_TYPE_DRIVER;
+	drm_mode_probed_add(panel->connector, mode_1);
 
 
-	mode_60hz = drm_mode_duplicate(panel->drm, &performance_mode_60hz);
-	if (!mode_60hz) {
+	mode_2 = drm_mode_duplicate(panel->drm, &performance_mode_2);
+	if (!mode_2) {
 		dev_err(panel->drm->dev, "failed to add mode %ux%ux@%u\n",
-			performance_mode_60hz.hdisplay,
-			performance_mode_60hz.vdisplay,
-			performance_mode_60hz.vrefresh);
+			performance_mode_2.hdisplay,
+			performance_mode_2.vdisplay,
+			performance_mode_2.vrefresh);
 		return -ENOMEM;
 	}
-	drm_mode_set_name(mode_60hz);
-	mode_60hz->type = DRM_MODE_TYPE_DRIVER;
-	drm_mode_probed_add(panel->connector, mode_60hz);
+	drm_mode_set_name(mode_2);
+	mode_2->type = DRM_MODE_TYPE_DRIVER;
+	drm_mode_probed_add(panel->connector, mode_2);
 
 	panel->connector->display_info.width_mm = 64;
 	panel->connector->display_info.height_mm = 129;
