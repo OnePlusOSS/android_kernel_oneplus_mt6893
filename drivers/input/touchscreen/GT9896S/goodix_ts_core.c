@@ -1294,12 +1294,6 @@ static void gt9896s_ts_set_input_params(struct input_dev *input_dev,
 			     0, ts_bdata->input_max_y, 0, 0);
 	input_set_abs_params(input_dev, ABS_MT_TOUCH_MAJOR,
 			     0, ts_bdata->panel_max_w, 0, 0);
-
-	if (ts_bdata->panel_max_key) {
-		for (i = 0; i < ts_bdata->panel_max_key; i++)
-			input_set_capability(input_dev, EV_KEY,
-					     ts_bdata->panel_key_map[i]);
-	}
 }
 
 /**
