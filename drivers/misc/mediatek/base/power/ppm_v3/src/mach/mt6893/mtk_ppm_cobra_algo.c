@@ -130,6 +130,7 @@ static short get_delta_pwr(enum ppm_cluster cluster,
 	bb_next_volt = 0;
 	bl_curr_volt = 0;
 	bl_next_volt = 0;
+	delta_pwr = 0;
 
 	idx = get_idx_in_pwr_tbl(cluster);
 	cur_opp = opp;
