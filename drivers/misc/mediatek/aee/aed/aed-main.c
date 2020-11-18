@@ -1705,15 +1705,14 @@ static long aed_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 				user_ret = task_pt_regs(task);
 				memcpy(&(tmp->regs), user_ret,
 						sizeof(struct pt_regs));
+				rcu_read_unlock();
 				if (copy_to_user
 				    ((struct aee_thread_reg __user *)arg, tmp,
 				     sizeof(struct aee_thread_reg))) {
 					kfree(tmp);
-					rcu_read_unlock();
 					ret = -EFAULT;
 					goto EXIT;
 				}
-				rcu_read_unlock();
 
 			} else {
 				pr_info(
