@@ -114,7 +114,17 @@ static short get_delta_pwr(enum ppm_cluster cluster,
 	unsigned int bb_next_volt;
 	unsigned int bl_curr_volt;
 	unsigned int bl_next_volt;
-	//struct ppm_client_req *last_req = &(ppm_main_info.last_req);
+
+	if (core > get_cluster_max_cpu_core(cluster)
+		 || opp > get_cluster_min_cpufreq_idx(cluster)) {
+		ppm_err("%s: Invalid input: core=%d, opp=%d\n",
+			__func__, core, opp);
+		WARN_ON(1);
+		return 0;
+	}
+
+	if (core == 0)
+		return 0;
 
 	bb_curr_volt = 0;
 	bb_next_volt = 0;
@@ -125,17 +135,22 @@ static short get_delta_pwr(enum ppm_cluster cluster,
 	cur_opp = opp;
 	prev_opp = opp + 1;
 
-	if ((opp == COBRA_OPP_NUM - 1) ||
-		g_curr_bl_opp >= COBRA_OPP_NUM ||
-		g_curr_bb_opp >= COBRA_OPP_NUM) {
+	if (opp == COBRA_OPP_NUM - 1) {
 		delta_pwr = (core == 1)
 		? cobra_tbl->basic_pwr_tbl[idx+core-1][cur_opp].power_idx
 		: (cobra_tbl->basic_pwr_tbl[idx+core-1][cur_opp].power_idx -
 		cobra_tbl->basic_pwr_tbl[idx+core-2][cur_opp].power_idx);
 
 		return delta_pwr;
-	}
+	} else if (cluster == 0 ||
+			g_curr_bl_opp >= COBRA_OPP_NUM ||
+			g_curr_bb_opp >= COBRA_OPP_NUM) {
+		delta_pwr =
+		cobra_tbl->basic_pwr_tbl[idx+core-1][cur_opp].power_idx -
+		cobra_tbl->basic_pwr_tbl[idx+core-1][prev_opp].power_idx;
 
+		return delta_pwr;
+	}
 
 	if (cluster == 2) {
 		/* BB's delta */
@@ -158,23 +173,7 @@ static short get_delta_pwr(enum ppm_cluster cluster,
 		next_shared_buck_volt = MAX(bb_next_volt, bl_next_volt);
 	}
 
-	if (core > get_cluster_max_cpu_core(cluster)
-		|| opp > get_cluster_min_cpufreq_idx(cluster)) {
-		ppm_err("%s: Invalid input: core=%d, opp=%d\n",
-			__func__, core, opp);
-		WARN_ON(1);
-		return 0;
-	}
-
-	if (core == 0)
-		return 0;
-
-	if (cluster == 0) {
-		delta_pwr =
-		cobra_tbl->basic_pwr_tbl[idx+core-1][cur_opp].power_idx -
-		cobra_tbl->basic_pwr_tbl[idx+core-1][prev_opp].power_idx;
-	} else {
-
+	if (cluster == 1 || cluster == 2) {
 		delta_pwr =
 		cobra_tbl->basic_pwr_tbl[idx+core-1][cur_opp].power_idx -
 		cobra_tbl->basic_pwr_tbl[idx+core-1][prev_opp].power_idx;
@@ -246,8 +245,8 @@ static short get_delta_pwr(enum ppm_cluster cluster,
 				unsigned int bl_next_sb_pwr;
 
 				bl_idx = get_idx_in_pwr_tbl(1);
-				bl_pwr = cobra_tbl->basic_pwr_tbl[bl_idx][g_curr_bl_opp].power_idx;
-
+				bl_pwr =
+				cobra_tbl->basic_pwr_tbl[bl_idx+2][g_curr_bl_opp].power_idx;
 				bl_curr_sb_pwr = get_sb_pwr(bl_pwr,
 							bl_curr_volt,
 							cur_shared_buck_volt);
@@ -506,6 +505,10 @@ void ppm_cobra_update_limit(void *user_req)
 	g_curr_bl_opp = opp[PPM_CLUSTER_B];
 	g_curr_bb_opp = opp[PPM_CLUSTER_BB];
 
+	if (ACT_CORE(BB) == 0) {
+		g_curr_bb_opp = -1;
+	}
+
 	/* increase ferquency limit */
 	if (delta_power >= 0) {
 		while (1) {
@@ -522,6 +525,7 @@ void ppm_cobra_update_limit(void *user_req)
 
 				if (delta_power >= target_delta_pwr) {
 					ACT_CORE(BB) = 1;
+					req->limit[PPM_CLUSTER_BB].max_cpu_core = ACT_CORE(BB);
 					delta_power -= target_delta_pwr;
 					opp[PPM_CLUSTER_BB] = COBRA_OPP_NUM - 1;
 				}
@@ -536,6 +540,7 @@ void ppm_cobra_update_limit(void *user_req)
 						COBRA_OPP_NUM-1);
 				if (delta_power >= target_delta_pwr) {
 					ACT_CORE(B) = 1;
+					req->limit[PPM_CLUSTER_B].max_cpu_core = ACT_CORE(B);
 					delta_power -= target_delta_pwr;
 					opp[PPM_CLUSTER_B] = COBRA_OPP_NUM - 1;
 				}
@@ -700,6 +705,8 @@ end:
 				CORE_LIMIT(L),
 				CORE_LIMIT(B),
 				CORE_LIMIT(BB));
+			g_curr_bl_opp = opp[PPM_CLUSTER_B];
+			g_curr_bb_opp = opp[PPM_CLUSTER_BB];
 			break;
 
 prepare_next_round:
@@ -717,6 +724,8 @@ prepare_next_round:
 				delta_power, ChoosenCl, ChoosenPwr,
 				opp[PPM_CLUSTER_L], opp[PPM_CLUSTER_B]
 				, opp[PPM_CLUSTER_BB]);
+			g_curr_bl_opp = opp[PPM_CLUSTER_B];
+			g_curr_bb_opp = opp[PPM_CLUSTER_BB];
 		}
 	} else {
 		while (delta_power < 0) {
@@ -857,6 +866,9 @@ prepare_next_round:
 				opp[PPM_CLUSTER_L],
 				opp[PPM_CLUSTER_B], opp[PPM_CLUSTER_BB],
 				ACT_CORE(L), ACT_CORE(B), ACT_CORE(BB));
+
+			g_curr_bl_opp = opp[PPM_CLUSTER_B];
+			g_curr_bb_opp = opp[PPM_CLUSTER_BB];
 		}
 	}
 
