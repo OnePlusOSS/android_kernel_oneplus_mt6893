@@ -125,7 +125,7 @@ enum mt_cpu_dvfs_id {
 
 #elif defined(MC50_LOAD)
 
-#define DEVINFO_0 0x00000002
+#define DEVINFO_0 0x0
 #define DEVINFO_1 0x965F259B
 #define DEVINFO_2 0x8AA725ED
 #define DEVINFO_3 0xC677258B
@@ -176,6 +176,7 @@ enum mt_cpu_dvfs_id {
 #define L_M2_FREQ_BASE		1600
 
 #define BL_MAX_FREQ_BASE	1200
+#define BL_MAX_FREQ_BASE_V2	2600
 #define BL_FREQ_BASE		2800
 #define BL_M2_FREQ_BASE		2600
 #define BL_M3_FREQ_BASE		1740

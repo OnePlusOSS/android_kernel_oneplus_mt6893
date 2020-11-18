@@ -1610,6 +1610,8 @@ static void eem_init_det(struct eem_det *det, struct eem_devinfo *devinfo)
 		det->phase_ef[EEM_PHASE_INIT023].MTDES =
 			devinfo->CPU_BL_ULV_MTDES;
 #endif
+		if (eem_devinfo.FT_PGM >= 2)
+			det->max_freq_khz = BL_MAX_FREQ_BASE_V2;
 		break;
 
 	case EEM_DET_B:
