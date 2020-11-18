@@ -30,6 +30,11 @@ enum dsu_mode {
 
 	NR_MODE_NUM,
 };
+enum dsu_user {
+	DSU_CMD,
+	SWPM,
+	FPS_PERF,
+};
 
 enum cpu_level {
 	CPU_LEVEL_0, /* FY */

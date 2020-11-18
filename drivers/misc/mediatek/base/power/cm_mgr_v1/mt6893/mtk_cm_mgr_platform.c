@@ -668,7 +668,7 @@ static struct delayed_work cm_mgr_timeout_work;
 static void cm_mgr_timeout_process(struct work_struct *work)
 {
 	/* timeout set normal mode */
-	mt_cpufreq_update_cci_mode(0, 1);
+	mt_cpufreq_update_cci_mode(0, 2);
 	pm_qos_update_request(&ddr_opp_req,
 			PM_QOS_DDR_OPP_DEFAULT_VALUE);
 }
@@ -704,7 +704,7 @@ void cm_mgr_perf_platform_set_status(int enable)
 	}
 
 	/* set dsu mode */
-	mt_cpufreq_update_cci_mode(enable, 1);
+	mt_cpufreq_update_cci_mode(enable, 2);
 
 	if (enable) {
 		if (cm_mgr_perf_enable == 0)
@@ -782,7 +782,7 @@ void cm_mgr_perf_platform_set_force_status(int enable)
 	}
 
 	/* set dsu mode */
-	mt_cpufreq_update_cci_mode(enable, 1);
+	mt_cpufreq_update_cci_mode(enable, 2);
 
 	if (enable) {
 		if (cm_mgr_perf_enable == 0)

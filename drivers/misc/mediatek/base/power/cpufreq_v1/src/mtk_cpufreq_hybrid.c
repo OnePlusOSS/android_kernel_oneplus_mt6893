@@ -114,6 +114,9 @@ static void __iomem *csram_base;
 #endif
 /* log_box_parsed[MAX_LOG_FETCH] is also used to save last log entry */
 static struct cpu_dvfs_log_box log_box_parsed[1 + MAX_LOG_FETCH];
+#ifdef DSU_DVFS_ENABLE
+unsigned int force_disable;
+#endif
 
 void parse_time_log_content(unsigned int time_stamp_l_log,
 	unsigned int time_stamp_h_log, int idx)
@@ -1473,11 +1476,16 @@ void cpuhvfs_update_cci_mode(unsigned int mode, unsigned int use_id)
 	/* mode = 0(Normal as 50%) mode = 1(Perf as 70%) */
 
 #ifdef DSU_DVFS_ENABLE
+	if (use_id == FPS_PERF && force_disable)
+		return;
 	if (!use_id) {
-		if (mode == PERF)
+		if (mode == PERF) {
 			swpm_pmu_enable(0);
-		else
+			force_disable = 1;
+		} else {
 			swpm_pmu_enable(1);
+			force_disable = 0;
+		}
 	}
 #endif
 	csram_write(OFFS_CCI_TBL_USER, use_id);
