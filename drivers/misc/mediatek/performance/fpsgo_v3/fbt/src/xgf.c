@@ -431,10 +431,7 @@ struct xgf_dep *xgf_get_dep(
 		return NULL;
 
 	xd->tid = tid;
-	if (xgf_spid_sub == 1 && tid == render->spid)
-		xd->render_dep = 0;
-	else
-		xd->render_dep = 1;
+	xd->render_dep = 1;
 	xd->frame_idx = xgf_dep_frames_mod(render, pos);
 
 	rb_link_node(&xd->rb_node, parent, p);
@@ -1861,6 +1858,7 @@ int fpsgo_comp2xgf_qudeq_notify(int rpid, unsigned long long bufID, int cmd,
 	int new_spid;
 	unsigned long long t_dequeue_time = 0;
 	int do_extra_sub = 0;
+	unsigned long long q2q_time = 0;
 
 	if (rpid <= 0 || ts == 0)
 		return XGF_PARAM_ERR;
@@ -1897,7 +1895,7 @@ int fpsgo_comp2xgf_qudeq_notify(int rpid, unsigned long long bufID, int cmd,
 			xgf_calculate_u_avg2sd(r);
 			r->pre_u_runtime = u_runtime;
 		}
-
+		q2q_time = ts - r->queue.end_ts;
 		r->queue.end_ts = ts;
 		cur_xgf_extra_sub = xgf_extra_sub;
 
@@ -1926,6 +1924,11 @@ int fpsgo_comp2xgf_qudeq_notify(int rpid, unsigned long long bufID, int cmd,
 		if (!raw_runtime)
 			*run_time = raw_runtime;
 		else {
+			xgf_trace("xgf raw_runtime:%llu q2qtime:%llu", raw_runtime, q2q_time);
+			/* error handling for raw_t_cpu */
+			if (q2q_time && raw_runtime > q2q_time)
+				raw_runtime = q2q_time;
+
 			r->ema_runtime =
 				xgf_ema_cal(raw_runtime, r->ema_runtime);
 
