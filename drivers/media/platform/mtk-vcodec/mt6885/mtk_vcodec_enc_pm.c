@@ -30,6 +30,8 @@
 #include "smi_port.h"
 #endif
 
+#include "swpm_me.h"
+
 #define USE_GCE 1
 #ifdef ENC_DVFS
 #include <linux/pm_qos.h>
@@ -260,6 +262,7 @@ void mtk_vcodec_enc_clock_on(struct mtk_vcodec_ctx *ctx, int core_id)
 #endif
 
 #ifndef FPGA_PWRCLK_API_DISABLE
+	set_swpm_venc_active(true);
 	time_check_start(MTK_FMT_ENC, core_id);
 	if (core_id == MTK_VENC_CORE_0 ||
 		core_id == MTK_VENC_CORE_1) {
@@ -327,6 +330,7 @@ void mtk_vcodec_enc_clock_off(struct mtk_vcodec_ctx *ctx, int core_id)
 		slbc_power_off(&ctx->sram_data);
 
 #ifndef FPGA_PWRCLK_API_DISABLE
+	set_swpm_venc_active(false);
 	if (core_id == MTK_VENC_CORE_0 ||
 		core_id == MTK_VENC_CORE_1) {
 		clk_disable_unprepare(pm->clk_MT_CG_VENC0);

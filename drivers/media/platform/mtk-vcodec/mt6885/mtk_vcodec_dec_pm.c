@@ -29,6 +29,8 @@
 #include "smi_port.h"
 #endif
 
+#include "swpm_me.h"
+
 #if DEC_DVFS
 #include <linux/pm_qos.h>
 #include <mmdvfs_pmqos.h>
@@ -173,6 +175,7 @@ void mtk_vcodec_dec_clock_on(struct mtk_vcodec_pm *pm, int hw_id)
 	struct mtk_vcodec_dev *dev;
 	void __iomem *vdec_racing_addr;
 
+	set_swpm_vdec_active(true);
 	time_check_start(MTK_FMT_DEC, hw_id);
 	if (hw_id == MTK_VDEC_CORE) {
 		smi_bus_prepare_enable(SMI_LARB4, "VDEC_CORE");
@@ -267,6 +270,8 @@ void mtk_vcodec_dec_clock_off(struct mtk_vcodec_pm *pm, int hw_id)
 
 	dev = container_of(pm, struct mtk_vcodec_dev, pm);
 	mtk_vdec_hw_break(dev, hw_id);
+
+	set_swpm_vdec_active(false);
 
 	if (hw_id == MTK_VDEC_CORE) {
 		clk_disable_unprepare(pm->clk_MT_CG_VDEC0);
