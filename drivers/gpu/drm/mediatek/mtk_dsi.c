@@ -756,8 +756,9 @@ static int mtk_dsi_set_LFR(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
 	//lfr_dbg: setting value form debug mode
 	unsigned int lfr_dbg = mtk_dbg_get_lfr_dbg_value();
 	unsigned int lfr_mode = LFR_MODE_BOTH_MODE;
-	unsigned int lfr_type = 0;
+	unsigned int lfr_type = 2;
 	unsigned int lfr_enable = 1;
+	unsigned int lfr_vse_dis = 1;
 	unsigned int lfr_skip_num = 0;
 
 	struct drm_crtc *crtc = dsi->encoder.crtc;
@@ -778,6 +779,7 @@ static int mtk_dsi_set_LFR(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
 		lfr_mode = mtk_dbg_get_lfr_mode_value();
 		lfr_type = mtk_dbg_get_lfr_type_value();
 		lfr_enable = mtk_dbg_get_lfr_enable_value();
+		lfr_vse_dis = mtk_dbg_get_lfr_vse_dis_value();
 		lfr_skip_num = mtk_dbg_get_lfr_skip_num_value();
 	}
 
@@ -786,7 +788,7 @@ static int mtk_dsi_set_LFR(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
 	SET_VAL_MASK(val, mask, lfr_type, LFR_CON_FLD_REG_LFR_TYPE);
 	SET_VAL_MASK(val, mask, lfr_enable, LFR_CON_FLD_REG_LFR_EN);
 	SET_VAL_MASK(val, mask, 0, LFR_CON_FLD_REG_LFR_UPDATE);
-	SET_VAL_MASK(val, mask, 1, LFR_CON_FLD_REG_LFR_VSE_DIS);
+	SET_VAL_MASK(val, mask, lfr_vse_dis, LFR_CON_FLD_REG_LFR_VSE_DIS);
 	SET_VAL_MASK(val, mask, lfr_skip_num, LFR_CON_FLD_REG_LFR_SKIP_NUM);
 
 	if (handle == NULL)
@@ -824,6 +826,7 @@ static int mtk_dsi_LFR_update(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
 	SET_VAL_MASK(val, mask, 1, LFR_CON_FLD_REG_LFR_UPDATE);
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DSI_LFR_CON, val, mask);
+
 	return 0;
 }
 static int mtk_dsi_LFR_status_check(struct mtk_dsi *dsi)

@@ -1641,6 +1641,7 @@ static void process_dbg_opt(const char *opt)
 		lfr_con.lfr_mode     = mtk_dbg_get_lfr_mode_value();
 		lfr_con.lfr_type     = mtk_dbg_get_lfr_type_value();
 		lfr_con.lfr_enable   = mtk_dbg_get_lfr_enable_value();
+		lfr_con.lfr_vse_dis  = mtk_dbg_get_lfr_vse_dis_value();
 		lfr_con.lfr_skip_num = mtk_dbg_get_lfr_skip_num_value();
 
 		/* this debug cmd only for crtc0 */
