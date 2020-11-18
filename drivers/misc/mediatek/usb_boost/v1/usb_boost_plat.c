@@ -24,8 +24,7 @@
 #if defined(CONFIG_MACH_MT6771) || defined(CONFIG_MACH_MT6768) \
 	|| defined(CONFIG_MACH_MT6785) || defined(CONFIG_MACH_MT6833) \
 	|| defined(CONFIG_MACH_MT6853) || defined(CONFIG_MACH_MT6873) \
-	|| defined(CONFIG_MACH_MT6885) || defined(CONFIG_MACH_MT6893)
-
+	|| defined(CONFIG_MACH_MT6885)
 static int cpu_freq_test_para[] = {1, 5, 500, 0};
 static int cpu_core_test_para[] = {1, 5, 500, 0};
 static int dram_vcore_test_para[] = {1, 5, 500, 0};
@@ -34,7 +33,15 @@ static int dram_vcore_test_para[] = {1, 5, 500, 0};
 struct act_arg_obj cpu_freq_test_arg = {2500000, -1, -1};
 struct act_arg_obj cpu_core_test_arg = {4, -1, -1};
 struct act_arg_obj dram_vcore_test_arg = {DDR_OPP_0, -1, -1};
+#elif defined(CONFIG_MACH_MT6893)
+static int cpu_freq_test_para[] = {1, 5, 500, 0};
+static int cpu_core_test_para[] = {1, 5, 500, 0};
+static int dram_vcore_test_para[] = {1, 5, 500, 0};
 
+/* -1 denote not used*/
+struct act_arg_obj cpu_freq_test_arg = {3000000, -1, -1};
+struct act_arg_obj cpu_core_test_arg = {4, -1, -1};
+struct act_arg_obj dram_vcore_test_arg = {DDR_OPP_0, -1, -1};
 #elif defined(CONFIG_MACH_MT6739)
 static int cpu_freq_test_para[] = {1, 5, 500, 0};
 static int cpu_core_test_para[] = {1, 5, 500, 0};
