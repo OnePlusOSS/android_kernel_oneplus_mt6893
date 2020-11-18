@@ -60,7 +60,9 @@ enum MTK_DRM_HELPER_OPT {
 	/*ARR4*/
 	MTK_DRM_OPT_LFR,
 	MTK_DRM_OPT_SF_PF,
-	MTK_DRM_OPT_NUM
+	/*PQ*/
+	MTK_DRM_OPT_PQ_34_COLOR_MATRIX,
+	MTK_DRM_OPT_NUM,
 };
 
 struct mtk_drm_helper {

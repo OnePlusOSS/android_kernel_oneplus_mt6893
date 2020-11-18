@@ -74,6 +74,7 @@ static struct mtk_drm_helper help_info[] = {
 	{MTK_DRM_OPT_VDS_PATH_SWITCH, 0, "MTK_DRM_OPT_VDS_PATH_SWITCH"},
 	{MTK_DRM_OPT_LFR, 0, "MTK_DRM_OPT_LFR"},
 	{MTK_DRM_OPT_SF_PF, 0, "MTK_DRM_OPT_SF_PF"},
+	{MTK_DRM_OPT_PQ_34_COLOR_MATRIX, 0, "MTK_DRM_OPT_PQ_34_COLOR_MATRIX"},
 };
 
 static const char *mtk_drm_helper_opt_spy(struct mtk_drm_helper *helper_opt,
