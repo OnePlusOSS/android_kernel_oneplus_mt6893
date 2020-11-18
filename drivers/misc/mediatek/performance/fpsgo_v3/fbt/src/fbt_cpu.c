@@ -2326,6 +2326,9 @@ static int fbt_overest_loading(int blc_wt, unsigned long long running_time,
 {
 	int next_cluster;
 
+	if (!blc_wt)
+		return FPSGO_ADJ_NONE;
+
 	if (running_time >= (target_time - loading_time_diff))
 		return FPSGO_ADJ_NONE;
 
@@ -2538,12 +2541,44 @@ SKIP:
 	return loading;
 }
 
+static void fbt_reset_boost(struct render_info *thr)
+{
+	struct fbt_boost_info *boost = NULL;
+
+	if (!thr)
+		return;
+
+	mutex_lock(&blc_mlock);
+	if (thr->p_blc)
+		thr->p_blc->blc = 0;
+	mutex_unlock(&blc_mlock);
+
+	boost = &(thr->boost_info);
+
+	boost->last_blc = 0;
+	boost->target_time = 0;
+
+	memset(boost->frame_info, 0, WINDOW * sizeof(struct fbt_frame_info));
+	boost->f_iter = 0;
+	boost->floor_count = 0;
+	boost->floor = 0;
+	boost->reset_floor_bound = 0;
+
+	mutex_lock(&fbt_mlock);
+	if (!boost_ta)
+		fbt_set_min_cap_locked(thr, 0, 0, 0);
+	fbt_check_max_blc_locked();
+	mutex_unlock(&fbt_mlock);
+
+	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, 0, "perf idx");
+}
+
 static void fbt_frame_start(struct render_info *thr, unsigned long long ts)
 {
 	struct fbt_boost_info *boost;
-	unsigned long long runtime;
+	long long runtime;
 	int targettime, targetfps;
-	unsigned int limited_cap;
+	unsigned int limited_cap = 0;
 	int blc_wt = 0;
 	long loading = 0L;
 
@@ -2568,6 +2603,13 @@ static void fbt_frame_start(struct render_info *thr, unsigned long long ts)
 	fpsgo_systrace_c_fbt_gm(thr->pid, thr->buffer_id,
 		loading, "compute_loading");
 
+	/* unreliable targetfps */
+	if (targetfps == -1) {
+		fbt_reset_boost(thr);
+		runtime = -1;
+		goto EXIT;
+	}
+
 	blc_wt = fbt_boost_policy(runtime,
 			targettime, targetfps,
 			thr, ts, loading);
@@ -2577,6 +2619,7 @@ static void fbt_frame_start(struct render_info *thr, unsigned long long ts)
 	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id,
 		limited_cap, "limited_cap");
 
+EXIT:
 	fpsgo_fbt2fstb_update_cpu_frame_info(thr->pid, thr->buffer_id,
 		thr->tgid, thr->frame_type,
 		thr->Q2Q_time, runtime,
@@ -2857,10 +2900,8 @@ void fpsgo_base2fbt_item_del(struct fbt_thread_loading *obj,
 	fbt_clear_dep_list(pdep);
 }
 
-int fpsgo_base2fbt_get_max_blc_pid(void)
+int fpsgo_base2fbt_get_max_blc_pid(int *pid, unsigned long long *buffer_id)
 {
-	int temp_pid;
-
 	mutex_lock(&fbt_mlock);
 
 	if (!fbt_enable) {
@@ -2868,27 +2909,12 @@ int fpsgo_base2fbt_get_max_blc_pid(void)
 		return 0;
 	}
 
-	temp_pid = max_blc_pid;
+	*pid = max_blc_pid;
+	*buffer_id = max_blc_buffer_id;
+
 	mutex_unlock(&fbt_mlock);
 
-	return temp_pid;
-}
-
-unsigned long long fpsgo_base2fbt_get_max_blc_buffer_id(void)
-{
-	unsigned long long temp_buffer_id;
-
-	mutex_lock(&fbt_mlock);
-
-	if (!fbt_enable) {
-		mutex_unlock(&fbt_mlock);
-		return 0;
-	}
-
-	temp_buffer_id = max_blc_buffer_id;
-	mutex_unlock(&fbt_mlock);
-
-	return temp_buffer_id;
+	return 1;
 }
 
 void fpsgo_base2fbt_check_max_blc(void)
