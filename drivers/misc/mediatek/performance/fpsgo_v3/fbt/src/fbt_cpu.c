@@ -72,6 +72,7 @@
 #include "fps_composer.h"
 #include "eara_job.h"
 #include "mtk_upower.h"
+#include "thermal_aware.h"
 
 #define GED_VSYNC_MISS_QUANTUM_NS 16666666
 #define TIME_3MS  3000000
@@ -1876,6 +1877,7 @@ static void fbt_set_limit(unsigned int blc_wt,
 
 EXIT:
 	fbt_do_boost(final_blc, final_blc_pid, final_blc_buffer_id);
+	thrm_aware_frame_start((bhr_opp == (NR_FREQ_CPU - 1)) ? 1 : 0);
 
 	max_blc = final_blc;
 	max_blc_pid = final_blc_pid;
@@ -3961,6 +3963,7 @@ static KOBJ_ATTR_RW(limit_policy);
 void __exit fbt_cpu_exit(void)
 {
 	minitop_exit();
+	thrm_aware_exit();
 	fbt_reg_dram_request(0);
 
 	fpsgo_sysfs_remove_file(fbt_kobj,
@@ -4086,6 +4089,7 @@ int __init fbt_cpu_init(void)
 	/* sub-module initialization */
 	init_xgf();
 	minitop_init();
+	thrm_aware_init(fbt_kobj);
 	fbt_reg_dram_request(1);
 
 	return 0;
