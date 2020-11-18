@@ -180,6 +180,8 @@ static int fps_level_range;
 static int check_running;
 static int uboost_enhance_f;
 static int boost_affinity;
+static int boost_affinity_90;
+static int boost_affinity_120;
 static int cm_big_cap;
 static int cm_tdiff;
 
@@ -210,6 +212,8 @@ module_param(fps_level_range, int, 0644);
 module_param(check_running, int, 0644);
 module_param(uboost_enhance_f, int, 0644);
 module_param(boost_affinity, int, 0644);
+module_param(boost_affinity_90, int, 0644);
+module_param(boost_affinity_120, int, 0644);
 module_param(cm_big_cap, int, 0644);
 module_param(cm_tdiff, int, 0644);
 
@@ -733,6 +737,25 @@ static void fbt_free_bhr(void)
 	kfree(pld);
 }
 
+#define FPS_LEVEL 3
+static const int fbt_fps_level[FPS_LEVEL] = {60, 90, 120};
+static int fbt_get_fps_level(int target_fps)
+{
+	int tol_fps;
+	int i;
+
+	if (_gdfrc_fps_limit && _gdfrc_fps_limit <= fbt_fps_level[0])
+		return fbt_fps_level[0];
+
+	for (i = 0; i < FPS_LEVEL - 1; i++) {
+		tol_fps = fbt_fps_level[i] * (100+fps_level_range) / 100;
+		if (target_fps < tol_fps)
+			return fbt_fps_level[i];
+	}
+
+	return fbt_fps_level[FPS_LEVEL - 1];
+}
+
 static void fbt_set_task_policy(struct fpsgo_loading *fl,
 			int policy, unsigned int prefer_type)
 {
@@ -1004,6 +1027,8 @@ static void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 	char *dep_str = NULL;
 	int ret;
 	int heavy_pid = 0;
+	int do_affinity = 0;
+	unsigned long long target_time;
 
 	if (!thr)
 		return;
@@ -1028,11 +1053,28 @@ static void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 	if (!size || !thr->dep_arr)
 		return;
 
+	target_time = thr->boost_info.target_time;
+
+	if (target_time &&
+		(boost_affinity || boost_affinity_90 || boost_affinity_120)) {
+		int tfps_level, target_fps;
+
+		target_fps = div64_u64(FBTCPU_SEC_DIVIDER, target_time);
+		tfps_level = fbt_get_fps_level(target_fps);
+
+		if (tfps_level == fbt_fps_level[0])
+			do_affinity = boost_affinity;
+		else if (tfps_level == fbt_fps_level[1])
+			do_affinity = boost_affinity_90;
+		else
+			do_affinity = boost_affinity_120;
+	}
+
 	if (loading_th
-		|| (boost_affinity && limit_policy == FPSGO_LIMIT_CAPACITY))
+		|| (do_affinity && limit_policy == FPSGO_LIMIT_CAPACITY))
 		fbt_query_dep_list_loading(thr);
 
-	if (boost_affinity && limit_policy == FPSGO_LIMIT_CAPACITY)
+	if (do_affinity && limit_policy == FPSGO_LIMIT_CAPACITY)
 		heavy_pid = fbt_get_heavy_pid(thr->dep_valid_size, thr->dep_arr);
 
 	dep_str = kcalloc(size + 1, MAX_PID_DIGIT * sizeof(char),
@@ -1048,7 +1090,7 @@ static void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 			continue;
 
 		if (loading_th
-			|| (boost_affinity && limit_policy == FPSGO_LIMIT_CAPACITY)) {
+			|| (do_affinity && limit_policy == FPSGO_LIMIT_CAPACITY)) {
 			fpsgo_systrace_c_fbt_gm(fl->pid, thr->buffer_id,
 				fl->loading, "dep-loading");
 
@@ -1070,12 +1112,12 @@ static void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 			fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id,
 					heavy_pid, "heavy_pid");
 			fbt_set_per_task_min_cap(fl->pid, min_cap);
-			if (boost_affinity)
+			if (do_affinity)
 				fbt_set_task_policy(fl, FPSGO_TPOLICY_AFFINITY,
 						FPSGO_PREFER_BIG);
 		} else {
 			fbt_set_per_task_min_cap(fl->pid, min_cap);
-			if (boost_affinity && heavy_pid && heavy_pid != fl->pid)
+			if (do_affinity && heavy_pid && heavy_pid != fl->pid)
 				fbt_set_task_policy(fl, FPSGO_TPOLICY_AFFINITY,
 						FPSGO_PREFER_L_M);
 			else
@@ -2018,25 +2060,6 @@ static int fbt_maybe_vsync_aligned(unsigned long long queue_start)
 	if (diff > TIME_1MS)
 		return 0;
 	return 1;
-}
-
-#define FPS_LEVEL 3
-static const int fbt_fps_level[FPS_LEVEL] = {60, 90, 120};
-static int fbt_get_fps_level(int target_fps)
-{
-	int tol_fps;
-	int i;
-
-	if (_gdfrc_fps_limit && _gdfrc_fps_limit <= fbt_fps_level[0])
-		return fbt_fps_level[0];
-
-	for (i = 0; i < FPS_LEVEL - 1; i++) {
-		tol_fps = fbt_fps_level[i] * (100+fps_level_range) / 100;
-		if (target_fps < tol_fps)
-			return fbt_fps_level[i];
-	}
-
-	return fbt_fps_level[FPS_LEVEL - 1];
 }
 
 static unsigned long long fbt_get_t2wnt(int target_fps,
