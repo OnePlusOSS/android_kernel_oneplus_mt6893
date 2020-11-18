@@ -649,6 +649,7 @@ cm_mgr_opp_end:
 
 void check_cm_mgr_status(unsigned int cluster, unsigned int freq)
 {
+
 #ifdef CM_TRIGEAR
 	unsigned int clamping_idx = CM_MGR_CPU_OPP_SIZE - 1;
 #endif
