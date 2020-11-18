@@ -301,6 +301,8 @@ static irqreturn_t mtk_disp_rdma_irq_handler(int irq, void *dev_id)
 
 	if (val & (1 << 2)) {
 		set_swpm_disp_work(); /* counting fps for swpm */
+		if (rdma->id == DDP_COMPONENT_RDMA0)
+			DRM_MMP_EVENT_END(rdma0, val, 0);
 		DDPIRQ("[IRQ] %s: frame done!\n", mtk_dump_comp_str(rdma));
 		if (rdma->mtk_crtc && rdma->mtk_crtc->esd_ctx)
 			atomic_set(&rdma->mtk_crtc->esd_ctx->target_time, 0);
@@ -311,15 +313,12 @@ static irqreturn_t mtk_disp_rdma_irq_handler(int irq, void *dev_id)
 					   priv->ddp_comp.mtk_crtc->base.index,
 					   1);
 		}
-		if (mtk_crtc &&
-		    !mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
-			atomic_set(&mtk_crtc->sf_pf_event, 1);
-			wake_up_interruptible(&mtk_crtc->sf_present_fence_wq);
-		}
 		mtk_drm_refresh_tag_end(&priv->ddp_comp);
 	}
 
 	if (val & (1 << 1)) {
+		if (rdma->id == DDP_COMPONENT_RDMA0)
+			DRM_MMP_EVENT_START(rdma0, val, 0);
 		DDPIRQ("[IRQ] %s: frame start!\n", mtk_dump_comp_str(rdma));
 		mtk_drm_refresh_tag_start(&priv->ddp_comp);
 		MMPathTraceDRM(rdma);
@@ -371,6 +370,11 @@ static irqreturn_t mtk_disp_rdma_irq_handler(int irq, void *dev_id)
 	}
 	if (val & (1 << 5)) {
 		DDPIRQ("[IRQ] %s: target line!\n", mtk_dump_comp_str(rdma));
+		if (mtk_crtc &&
+		    !mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
+			atomic_set(&mtk_crtc->sf_pf_event, 1);
+			wake_up_interruptible(&mtk_crtc->sf_present_fence_wq);
+		}
 		if (rdma->mtk_crtc && rdma->mtk_crtc->esd_ctx &&
 			(!(val & (1 << 2)))) {
 			atomic_set(&rdma->mtk_crtc->esd_ctx->target_time, 1);

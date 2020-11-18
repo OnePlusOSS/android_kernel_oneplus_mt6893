@@ -588,33 +588,37 @@ int mtk_release_sf_present_fence(unsigned int session_id,
 		return -1;
 	}
 
-	mutex_lock(&layer_info->sync_lock);
-
-	fence_increment = fence_idx - layer_info->timeline->value;
-
-	if (fence_increment <= 0)
-		goto done;
-
-	if (fence_increment >= 2)
-		DDPFENCE("Warning, R/%s%d/L%d/timeline idx:%d/fence:%d\n",
-			 mtk_fence_session_mode_spy(session_id),
-			 MTK_SESSION_DEV(session_id), timeline_id,
-			 layer_info->timeline->value, fence_idx);
-
-	mtk_drm_trace_begin("present_fence_rel:%s-%d",
-		mtk_fence_session_mode_spy(session_id), fence_idx);
-
-	mtk_sync_timeline_inc(layer_info->timeline, fence_increment);
-	DDPFENCE("RL+/%s%d/T%d/id%d\n",
-		 mtk_fence_session_mode_spy(session_id),
-		 MTK_SESSION_DEV(session_id), timeline_id, fence_idx);
-
 	if (MTK_SESSION_TYPE(session_id) == MTK_SESSION_PRIMARY)
 		idx = 0;
 	else if (MTK_SESSION_TYPE(session_id) == MTK_SESSION_EXTERNAL)
 		idx = 1;
 	else
 		idx = 2;
+
+	mutex_lock(&layer_info->sync_lock);
+
+	fence_increment = fence_idx - layer_info->timeline->value;
+
+	if (fence_increment <= 0) {
+		CRTC_MMP_MARK(idx, warn_sf_pf_0, fence_idx, fence_increment);
+		goto done;
+	}
+
+	if (fence_increment >= 2) {
+		CRTC_MMP_MARK(idx, warn_sf_pf_2, fence_idx, fence_increment);
+		DDPFENCE("Warning, R/%s%d/L%d/timeline idx:%d/fence:%d\n",
+			 mtk_fence_session_mode_spy(session_id),
+			 MTK_SESSION_DEV(session_id), timeline_id,
+			 layer_info->timeline->value, fence_idx);
+	}
+
+	mtk_drm_trace_begin("sf_present_fence_rel:%s-%d",
+		mtk_fence_session_mode_spy(session_id), fence_idx);
+
+	mtk_sync_timeline_inc(layer_info->timeline, fence_increment);
+	DDPFENCE("RL+/%s%d/T%d/id%d\n",
+		 mtk_fence_session_mode_spy(session_id),
+		 MTK_SESSION_DEV(session_id), timeline_id, fence_idx);
 
 	CRTC_MMP_MARK(idx, release_sf_present_fence, 0, fence_idx);
 
