@@ -5501,8 +5501,8 @@ void mutex_dump_analysis_mt6853(struct mtk_disp_mutex *mutex)
 			      mtk_ddp_get_mutex_sof_name(
 				      REG_FLD_VAL_GET(SOF_FLD_MUTEX0_EOF, val)),
 			      REG_FLD_VAL_GET(SOF_FLD_MUTEX0_SOF_WAIT, val));
-
-		p += len;
+		if (len >= 0)
+			p += len;
 		for (j = 0; j < 32; j++) {
 			unsigned int regval = readl_relaxed(
 				ddp->regs + DISP_REG_MUTEX_MOD(ddp->data, i));
@@ -5510,7 +5510,8 @@ void mutex_dump_analysis_mt6853(struct mtk_disp_mutex *mutex)
 			if ((regval & (1 << j))) {
 				len = sprintf(p, "%s,",
 					ddp_get_mutex_module0_name_mt6853(j));
-				p += len;
+				if (len >= 0)
+					p += len;
 			}
 		}
 		DDPDUMP("%s)\n", mutex_module);
