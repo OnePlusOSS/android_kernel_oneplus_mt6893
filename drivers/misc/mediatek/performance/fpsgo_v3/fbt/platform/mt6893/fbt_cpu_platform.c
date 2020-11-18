@@ -169,18 +169,16 @@ int fbt_get_default_adj_loading(void)
 	return 1;
 }
 
-int fbt_get_cluster_limit(int *cluster, int *freq, int *limit_floor)
+int fbt_get_cluster_limit(int *cluster, int *freq, int *r_freq)
 {
 /*
  * when return value is zero -> no limit
- * when cluster is set but freq is zero -> isolation
+ * when cluster is not set -> no limit
  * when cluster is set and freq is set -> ceiling limit
- * when cluster is set and limit_floor is set -> soft floor limit,
- * allow only one of critical list to break the floor limit
+ * when cluster is set and r_freq is set -> rescue ceiling limit
  */
 	*cluster = 2;
-	*freq = INT_MAX;
-	*limit_floor = 2600000;
+	*freq = 2600000;
 	return 1;
 }
 

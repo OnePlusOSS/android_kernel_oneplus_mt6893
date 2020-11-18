@@ -932,6 +932,17 @@ static ssize_t render_info_show(struct kobject *kobj,
 	}
 
 	rcu_read_unlock();
+
+	for (n = rb_first(&linger_tree); n != NULL; n = rb_next(n)) {
+		iter = rb_entry(n, struct render_info, linger_node);
+		length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
+			"(%5d %4llu) linger %d uboost %d timer %d\n",
+			iter->pid, iter->buffer_id, iter->linger,
+			iter->uboost_info.uboosting,
+			fpsgo_base2fbt_is_finished(iter));
+		pos += length;
+	}
+
 	fpsgo_render_tree_unlock(__func__);
 
 	return scnprintf(buf, PAGE_SIZE, "%s", temp);

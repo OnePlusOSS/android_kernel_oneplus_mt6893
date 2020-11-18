@@ -82,6 +82,7 @@ struct fbt_boost_info {
 
 	/* rescue*/
 	struct fbt_proc proc;
+	int cur_stage;
 
 	/* variance control */
 	struct fbt_frame_info frame_info[WINDOW];
