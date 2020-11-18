@@ -115,7 +115,6 @@ static int __mt6885_suspend_prompt(int type, int cpu,
 {
 	int ret = 0;
 	unsigned int spm_res = 0;
-	int is_resume_enter = 0;
 
 	mt6885_suspend_status = 0;
 
@@ -136,13 +135,6 @@ static int __mt6885_suspend_prompt(int type, int cpu,
 	/* Record md sleep time */
 	before_md_sleep_time = get_md_sleep_time();
 
-#ifdef CONFIG_MTK_CCCI_DEVICES
-	printk_deferred("[name:spm&][%s:%d] - notify MD that AP suspend\n",
-		__func__, __LINE__);
-	is_resume_enter = 1 << 0;
-	exec_ccci_kern_func_by_md_id(MD_SYS1, ID_AP2MD_LOWPWR,
-			(char *)&is_resume_enter, 4);
-#endif
 PLAT_LEAVE_SUSPEND:
 	return ret;
 }
@@ -150,18 +142,9 @@ PLAT_LEAVE_SUSPEND:
 static void __mt6885_suspend_reflect(int type, int cpu,
 					const struct mtk_lpm_issuer *issuer)
 {
-	int is_resume_enter = 0;
-
 	printk_deferred("[name:spm&][%s:%d] - prepare resume\n",
 			__func__, __LINE__);
 
-#ifdef CONFIG_MTK_CCCI_DEVICES
-	printk_deferred("[name:spm&][%s:%d] - notify MD that AP resume\n",
-		__func__, __LINE__);
-	is_resume_enter = 1 << 1;
-	exec_ccci_kern_func_by_md_id(MD_SYS1, ID_AP2MD_LOWPWR,
-		(char *)&is_resume_enter, 4);
-#endif
 	mt6885_suspend_common_resume(mt6885_suspend_status);
 	mt6885_do_mcusys_prepare_on();
 
@@ -184,6 +167,15 @@ static void __mt6885_suspend_reflect(int type, int cpu,
 int mt6885_suspend_system_prompt(int cpu,
 					const struct mtk_lpm_issuer *issuer)
 {
+	int is_resume_enter = 0;
+#ifdef CONFIG_MTK_CCCI_DEVICES
+	printk_deferred("[name:spm&][%s:%d] - notify MD that AP suspend\n",
+		__func__, __LINE__);
+	is_resume_enter = 1 << 0;
+	exec_ccci_kern_func_by_md_id(MD_SYS1, ID_AP2MD_LOWPWR,
+		(char *)&is_resume_enter, 4);
+#endif
+
 	return __mt6885_suspend_prompt(MTK_LPM_SUSPEND_S2IDLE,
 				       cpu, issuer);
 }
@@ -191,6 +183,15 @@ int mt6885_suspend_system_prompt(int cpu,
 void mt6885_suspend_system_reflect(int cpu,
 					const struct mtk_lpm_issuer *issuer)
 {
+	int is_resume_enter = 0;
+#ifdef CONFIG_MTK_CCCI_DEVICES
+	printk_deferred("[name:spm&][%s:%d] - notify MD that AP resume\n",
+		__func__, __LINE__);
+	is_resume_enter = 1 << 1;
+	exec_ccci_kern_func_by_md_id(MD_SYS1, ID_AP2MD_LOWPWR,
+		(char *)&is_resume_enter, 4);
+#endif
+
 	return __mt6885_suspend_reflect(MTK_LPM_SUSPEND_S2IDLE,
 					cpu, issuer);
 }
@@ -277,6 +278,37 @@ struct mtk_lpm_model mt6885_model_suspend = {
 	}
 };
 
+static int mtk_lpm_suspend_prepare_late(void)
+{
+	int is_resume_enter = 0;
+#ifdef CONFIG_MTK_CCCI_DEVICES
+	printk_deferred("[name:spm&][%s:%d] - notify MD that AP suspend\n",
+		__func__, __LINE__);
+	is_resume_enter = 1 << 0;
+	exec_ccci_kern_func_by_md_id(MD_SYS1, ID_AP2MD_LOWPWR,
+		(char *)&is_resume_enter, 4);
+#endif
+
+	return 0;
+}
+
+static void mtk_lpm_suspend_restore(void)
+{
+	int is_resume_enter = 0;
+#ifdef CONFIG_MTK_CCCI_DEVICES
+	printk_deferred("[name:spm&][%s:%d] - notify MD that AP resume\n",
+		__func__, __LINE__);
+	is_resume_enter = 1 << 1;
+	exec_ccci_kern_func_by_md_id(MD_SYS1, ID_AP2MD_LOWPWR,
+		(char *)&is_resume_enter, 4);
+#endif
+}
+
+static struct platform_s2idle_ops mtk_lpm_suspend_s2idle_ops = {
+	.prepare = mtk_lpm_suspend_prepare_late,
+	.restore = mtk_lpm_suspend_restore,
+};
+
 #ifdef CONFIG_PM
 static int mt6885_spm_suspend_pm_event(struct notifier_block *notifier,
 			unsigned long pm_event, void *unused)
@@ -352,5 +384,9 @@ int __init mt6885_model_suspend_init(void)
 #ifdef CONFIG_PM_SLEEP_DEBUG
 	pm_print_times_enabled = false;
 #endif
+
+	/* set s2idle ops */
+	s2idle_set_ops(&mtk_lpm_suspend_s2idle_ops);
+
 	return 0;
 }
