@@ -630,6 +630,7 @@ static void swpm_pmu_set_enable_all(unsigned int enable)
 	}
 
 	swpm_lock(&swpm_pmu_mutex);
+	get_online_cpus();
 	if (swpm_pmu_en) {
 		if (!swpm_pmu_sta) {
 #ifdef CONFIG_MTK_CACHE_CONTROL
@@ -653,6 +654,7 @@ static void swpm_pmu_set_enable_all(unsigned int enable)
 #endif
 		}
 	}
+	put_online_cpus();
 	swpm_unlock(&swpm_pmu_mutex);
 
 	swpm_err("pmu_enable: %d, user_sta: %d\n",

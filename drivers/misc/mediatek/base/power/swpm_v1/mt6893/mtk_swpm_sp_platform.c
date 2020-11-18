@@ -180,12 +180,19 @@ static int32_t swpm_ddr_freq_data_ip_stats(int32_t data_ip_num,
 					   void *stats)
 {
 	unsigned long flags;
+	int i;
+	struct ddr_ip_bc_stats *p = stats;
 
-	if (stats && data_ip_num == NR_DDR_BC_IP &&
-	    freq_num == NR_DDR_FREQ) {
+	if (p && data_ip_num == NR_DDR_BC_IP && freq_num == NR_DDR_FREQ) {
 		spin_lock_irqsave(&swpm_sp_spinlock, flags);
-		memcpy(stats, ddr_ip_stats,
-		       sizeof(struct ddr_ip_bc_stats) * NR_DDR_BC_IP);
+		for (i = 0; i < NR_DDR_BC_IP && p[i].bc_stats; i++) {
+			strncpy(p[i].ip_name,
+				ddr_ip_stats[i].ip_name,
+				MAX_IP_NAME_LENGTH - 1);
+			memcpy(p[i].bc_stats,
+			       ddr_ip_stats[i].bc_stats,
+			       sizeof(struct ddr_bc_stats) * NR_DDR_FREQ);
+		}
 		spin_unlock_irqrestore(&swpm_sp_spinlock, flags);
 	}
 	return 0;
@@ -195,12 +202,19 @@ static int32_t swpm_vcore_ip_vol_stats(int32_t ip_num,
 				       void *stats)
 {
 	unsigned long flags;
+	int i;
+	struct ip_stats *p = stats;
 
-	if (stats && ip_num == NR_CORE_IP &&
-	    vol_num == NR_CORE_VOLT) {
+	if (p && ip_num == NR_CORE_IP && vol_num == NR_CORE_VOLT) {
 		spin_lock_irqsave(&swpm_sp_spinlock, flags);
-		memcpy(stats, core_ip_stats,
-		       sizeof(struct ip_stats) * NR_CORE_IP);
+		for (i = 0; i < NR_CORE_IP && p[i].vol_times; i++) {
+			strncpy(p[i].ip_name,
+				core_ip_stats[i].ip_name,
+				MAX_IP_NAME_LENGTH - 1);
+			memcpy(p[i].vol_times,
+			       core_ip_stats[i].vol_times,
+			       sizeof(struct ip_vol_times) * NR_CORE_VOLT);
+		}
 		spin_unlock_irqrestore(&swpm_sp_spinlock, flags);
 	}
 	return 0;
@@ -273,6 +287,10 @@ static int swpm_sp_test_proc_show(struct seq_file *m, void *v)
 	kmalloc_array(core_vol_num, sizeof(struct vol_duration), GFP_KERNEL);
 	core_ip_stats_ptr =
 	kmalloc_array(core_ip_num, sizeof(struct ip_stats), GFP_KERNEL);
+	for (i = 0; i < core_ip_num; i++)
+		core_ip_stats_ptr[i].vol_times =
+		kmalloc_array(core_vol_num,
+			      sizeof(struct ip_vol_times), GFP_KERNEL);
 
 	swpm_sp_dispatcher(SYNC_DATA, 0);
 
@@ -312,8 +330,11 @@ static int swpm_sp_test_proc_show(struct seq_file *m, void *v)
 		}
 	}
 End:
-	kfree(core_ip_stats_ptr);
 	kfree(core_duration_ptr);
+
+	for (i = 0; i < core_ip_num; i++)
+		kfree(core_ip_stats_ptr[i].vol_times);
+	kfree(core_ip_stats_ptr);
 
 	return 0;
 }
@@ -339,6 +360,10 @@ static int swpm_sp_ddr_idx_proc_show(struct seq_file *m, void *v)
 	ddr_ip_stats_ptr =
 	kmalloc_array(ddr_bc_ip_num,
 		sizeof(struct ddr_ip_bc_stats), GFP_KERNEL);
+	for (i = 0; i < ddr_bc_ip_num; i++)
+		ddr_ip_stats_ptr[i].bc_stats =
+		kmalloc_array(ddr_freq_num,
+			      sizeof(struct ddr_bc_stats), GFP_KERNEL);
 
 	swpm_sp_dispatcher(SYNC_DATA, 0);
 
@@ -378,6 +403,9 @@ static int swpm_sp_ddr_idx_proc_show(struct seq_file *m, void *v)
 End:
 	kfree(ddr_act_times_ptr);
 	kfree(ddr_sr_pd_times_ptr);
+
+	for (i = 0; i < ddr_bc_ip_num; i++)
+		kfree(ddr_ip_stats_ptr[i].bc_stats);
 	kfree(ddr_ip_stats_ptr);
 
 	return 0;
