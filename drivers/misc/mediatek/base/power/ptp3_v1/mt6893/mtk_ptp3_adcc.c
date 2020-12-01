@@ -238,11 +238,13 @@ int adcc_reserve_memory_dump(char *buf, unsigned long long ptp3_mem_size,
 
 		str_len += scnprintf(aee_log_buf + str_len,
 			(unsigned long long)adcc_mem_size - str_len,
-			" PLL_efuse:0x%x,", adcc_smc_handle(ADCC_DUMP_INFO, core, 11));
+			" efuse_d:0x%x,", adcc_smc_handle(ADCC_DUMP_INFO, core, 11));
 		str_len += scnprintf(aee_log_buf + str_len,
 			(unsigned long long)adcc_mem_size - str_len,
-			" FLL_efuse:0x%x\n", adcc_smc_handle(ADCC_DUMP_INFO, core, 3));
-
+			" efuse_v:0x%x,", adcc_smc_handle(ADCC_DUMP_INFO, core, 3));
+		str_len += scnprintf(aee_log_buf + str_len,
+			(unsigned long long)adcc_mem_size - str_len,
+			" DBG:0x%x\n", adcc_smc_handle(ADCC_DUMP_INFO, core, 12));
 	}
 
 	if (str_len > 0)
@@ -481,8 +483,9 @@ static int adcc_dump_proc_show(struct seq_file *m, void *v)
 					(5000-(((512-temp)*10000)/512)));
 		}
 
-		seq_printf(m, " PLL_efuse:0x%x,", adcc_smc_handle(ADCC_DUMP_INFO, core, 11));
-		seq_printf(m, " FLL_efuse:0x%x\n", adcc_smc_handle(ADCC_DUMP_INFO, core, 3));
+		seq_printf(m, " efuse_d:0x%x,", adcc_smc_handle(ADCC_DUMP_INFO, core, 11));
+		seq_printf(m, " efuse_v:0x%x,", adcc_smc_handle(ADCC_DUMP_INFO, core, 3));
+		seq_printf(m, " DBG:0x%x\n", adcc_smc_handle(ADCC_DUMP_INFO, core, 12));
 
 
 	}
@@ -499,8 +502,8 @@ static int adcc_dump_reg_proc_show(struct seq_file *m, void *v)
 		seq_printf(m, "SET:0x%x,", adcc_smc_handle(ADCC_DUMP_INFO, core, 0));
 		seq_printf(m, "PLL:0x%x,", adcc_smc_handle(ADCC_DUMP_INFO, core, 1));
 		seq_printf(m, "FLL:0x%x,", adcc_smc_handle(ADCC_DUMP_INFO, core, 2));
-		seq_printf(m, "FTF:0x%x,", adcc_smc_handle(ADCC_DUMP_INFO, core, 3));
-		seq_printf(m, "FTP:0x%x,", adcc_smc_handle(ADCC_DUMP_INFO, core, 11));
+		seq_printf(m, "EFV:0x%x,", adcc_smc_handle(ADCC_DUMP_INFO, core, 3));
+		seq_printf(m, "EFD:0x%x,", adcc_smc_handle(ADCC_DUMP_INFO, core, 11));
 		seq_printf(m, "109:0x%x,", adcc_smc_handle(ADCC_DUMP_INFO, core, 4));
 		seq_printf(m, "110:0x%x,", adcc_smc_handle(ADCC_DUMP_INFO, core, 5));
 		seq_printf(m, "114:0x%x,", adcc_smc_handle(ADCC_DUMP_INFO, core, 6));
