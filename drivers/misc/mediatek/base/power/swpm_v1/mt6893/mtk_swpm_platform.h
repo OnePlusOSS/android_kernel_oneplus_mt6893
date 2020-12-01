@@ -111,6 +111,7 @@ enum dram_pwr_type {
 enum cpu_type {
 	CPU_TYPE_L,
 	CPU_TYPE_B,
+	CPU_TYPE_BB,
 
 	NR_CPU_TYPE
 };
