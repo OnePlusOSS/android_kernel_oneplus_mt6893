@@ -20,6 +20,7 @@
  */
 
 #define UFS_MTK_PLATFORM_UFS_HCI_PERF_HEURISTIC
+#define UFS_MTK_PLATFORM_VCC_ALWAYS_ON
 
 #ifndef CONFIG_FPGA_EARLY_PORTING
 /* If UPMU function not ready, comment this define */
