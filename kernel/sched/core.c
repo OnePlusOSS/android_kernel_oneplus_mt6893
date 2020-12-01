@@ -6915,6 +6915,14 @@ static void migrate_tasks(struct rq *dead_rq, struct rq_flags *rf,
 			break;
 
 		/*
+		 * put_prev_task() and pick_next_task() sched
+		 * class method both need to have an up-to-date
+		 * value of rq->clock[_task],
+		 * this value may be changed, so must update again.
+		 */
+		if (!(rq->clock_update_flags & RQCF_UPDATED))
+			update_rq_clock(rq);
+		/*
 		 * pick_next_task() assumes pinned rq->lock:
 		 */
 		next = pick_next_task(rq, &fake_task, rf);
