@@ -748,7 +748,7 @@ static int mtk_dsi_is_LFR_Enable(struct mtk_dsi *dsi)
 	return 0;
 }
 static int mtk_dsi_set_LFR(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
-	void *handle)
+	void *handle, int en)
 {
 
 	u32 val = 0, mask = 0;
@@ -757,8 +757,8 @@ static int mtk_dsi_set_LFR(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
 	unsigned int lfr_dbg = mtk_dbg_get_lfr_dbg_value();
 	unsigned int lfr_mode = LFR_MODE_BOTH_MODE;
 	unsigned int lfr_type = 2;
-	unsigned int lfr_enable = 1;
-	unsigned int lfr_vse_dis = 1;
+	unsigned int lfr_enable = en;
+	unsigned int lfr_vse_dis = 0;
 	unsigned int lfr_skip_num = 0;
 
 	struct drm_crtc *crtc = dsi->encoder.crtc;
@@ -894,7 +894,7 @@ static int mtk_dsi_poweron(struct mtk_dsi *dsi)
 		dev_err(dev, "Failed to enable digital clock: %d\n", ret);
 		goto err_disable_engine_clk;
 	}
-	mtk_dsi_set_LFR(dsi, NULL, NULL);
+	mtk_dsi_set_LFR(dsi, NULL, NULL, 1);
 #if defined(CONFIG_DRM_MTK_SHADOW_REGISTER_SUPPORT)
 	if (dsi->driver_data->support_shadow) {
 		/* Enable shadow register and read shadow register */
@@ -5029,7 +5029,9 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		break;
 	case DSI_LFR_SET:
 	{
-		mtk_dsi_set_LFR(dsi, comp, handle);
+		int *en = (int *)params;
+
+		mtk_dsi_set_LFR(dsi, comp, handle, *en);
 	}
 		break;
 	case DSI_LFR_UPDATE:
