@@ -176,16 +176,20 @@ static inline int32_t spi_read_write(struct spi_device *client, uint8_t *buf, si
 		.len = len,
 	};
 
-	memcpy(ts->xbuf, buf, len + DUMMY_BYTES);
-
 	switch (rw) {
 	case NVTREAD:
+		if (len + DUMMY_BYTES > NVT_TRANSFER_LEN + 1)
+			return -EINVAL;
+		memcpy(ts->xbuf, buf, len + DUMMY_BYTES);
 		t.tx_buf = ts->xbuf;
 		t.rx_buf = ts->rbuf;
 		t.len = (len + DUMMY_BYTES);
 		break;
 
 	case NVTWRITE:
+		if (len > NVT_TRANSFER_LEN + 1)
+			return -EINVAL;
+		memcpy(ts->xbuf, buf, len);
 		t.tx_buf = ts->xbuf;
 		break;
 	}

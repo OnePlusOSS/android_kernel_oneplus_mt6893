@@ -547,7 +547,7 @@ static int32_t nvt_write_sram(const u8 *fwdata,
 		count = (size / NVT_TRANSFER_LEN);
 
 	for (i = 0; i < count; i++) {
-		len = (size < NVT_TRANSFER_LEN) ? size : NVT_TRANSFER_LEN - 1;
+		len = (size < NVT_TRANSFER_LEN) ? size : NVT_TRANSFER_LEN;
 
 		//---set xdata index to start address of SRAM---
 		ret = nvt_set_page(SRAM_addr);
