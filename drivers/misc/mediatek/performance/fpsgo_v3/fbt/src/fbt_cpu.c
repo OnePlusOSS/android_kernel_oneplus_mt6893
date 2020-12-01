@@ -50,6 +50,7 @@
 #include <linux/sched/topology.h>
 #include <sched/sched.h>
 #include <linux/list_sort.h>
+#include <linux/sched/prio.h>
 
 #include <mt-plat/mtk_perfobserver.h>
 #include <mt-plat/eas_ctrl.h>
@@ -756,15 +757,59 @@ static int fbt_get_fps_level(int target_fps)
 	return fbt_fps_level[FPS_LEVEL - 1];
 }
 
-static void fbt_set_task_policy(struct fpsgo_loading *fl,
-			int policy, unsigned int prefer_type)
+static int fbt_set_priority(int pid, long nice)
 {
+	struct task_struct *tsk;
+	int ori_nice = -1;
+
+	rcu_read_lock();
+
+	tsk = find_task_by_vpid(pid);
+	if (!tsk)
+		goto EXIT;
+
+	get_task_struct(tsk);
+
+	ori_nice = task_nice(tsk);
+
+	set_user_nice(tsk, nice);
+
+	put_task_struct(tsk);
+
+EXIT:
+	rcu_read_unlock();
+
+	fpsgo_systrace_c_fbt(pid, 0, nice, "nice");
+
+	return ori_nice;
+}
+
+static void fbt_set_task_policy(struct fpsgo_loading *fl,
+			int policy, unsigned int prefer_type, int set_nice)
+{
+	int ori_nice = -1;
+	int cur_nice = MIN_NICE;
+
 	if (!fl || !fl->pid)
 		return;
 
 	/* policy changes, reset */
 	if (fl->policy != policy && fl->prefer_type != FPSGO_PREFER_NONE)
-		fbt_set_task_policy(fl, fl->policy, FPSGO_PREFER_NONE);
+		fbt_set_task_policy(fl, fl->policy, FPSGO_PREFER_NONE, 0);
+
+	if (set_nice) {
+		ori_nice = fbt_set_priority(fl->pid, cur_nice);
+		if (ori_nice != -1) {
+			int orig_bk = (fl->nice_bk) >> 1;
+
+			if (!fl->nice_bk ||
+				(ori_nice != orig_bk && ori_nice != cur_nice))
+				fl->nice_bk = (ori_nice << 1) | 1;
+		}
+	} else if (fl->nice_bk) {
+		fbt_set_priority(fl->pid, (fl->nice_bk) >> 1);
+		fl->nice_bk = 0;
+	}
 
 	switch (policy) {
 	case FPSGO_TPOLICY_PREFER:
@@ -792,7 +837,7 @@ static void fbt_reset_task_setting(struct fpsgo_loading *fl, int reset_boost)
 	if (reset_boost)
 		fbt_set_per_task_min_cap(fl->pid, 0);
 
-	fbt_set_task_policy(fl, FPSGO_TPOLICY_NONE, FPSGO_PREFER_NONE);
+	fbt_set_task_policy(fl, FPSGO_TPOLICY_NONE, FPSGO_PREFER_NONE, 0);
 }
 
 static void fbt_dep_list_filter(struct fpsgo_loading *arr, int size)
@@ -927,6 +972,7 @@ static int fbt_get_dep_list(struct render_info *thr)
 			fl_new->loading = fl_old->loading;
 			fl_new->prefer_type = fl_old->prefer_type;
 			fl_new->policy = fl_old->policy;
+			fl_new->nice_bk = fl_old->nice_bk;
 			incr_i = incr_j = 1;
 		} else if (fl_new->pid > fl_old->pid) {
 			if (j < thr->dep_valid_size)
@@ -1107,19 +1153,19 @@ static void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 				(!loading_policy) ? 0
 				: min_cap * loading_policy / 100);
 			fbt_set_task_policy(fl, llf_task_policy,
-					FPSGO_PREFER_LITTLE);
+					FPSGO_PREFER_LITTLE, 0);
 		} else if (heavy_pid && heavy_pid == fl->pid) {
 			fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id,
 					heavy_pid, "heavy_pid");
 			fbt_set_per_task_min_cap(fl->pid, min_cap);
 			if (do_affinity)
 				fbt_set_task_policy(fl, FPSGO_TPOLICY_AFFINITY,
-						FPSGO_PREFER_BIG);
+						FPSGO_PREFER_BIG, 1);
 		} else {
 			fbt_set_per_task_min_cap(fl->pid, min_cap);
 			if (do_affinity && heavy_pid && heavy_pid != fl->pid)
 				fbt_set_task_policy(fl, FPSGO_TPOLICY_AFFINITY,
-						FPSGO_PREFER_L_M);
+						FPSGO_PREFER_L_M, 0);
 			else
 				fbt_reset_task_setting(fl, 0);
 		}

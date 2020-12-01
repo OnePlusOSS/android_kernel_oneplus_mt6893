@@ -160,6 +160,7 @@ struct fpsgo_loading {
 	int loading;
 	int prefer_type;
 	int policy;
+	long nice_bk;
 };
 
 struct gbe_runtime {
