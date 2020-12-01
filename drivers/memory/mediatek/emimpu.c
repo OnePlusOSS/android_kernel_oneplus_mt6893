@@ -692,6 +692,14 @@ int mtk_emimpu_init_region(
 	unsigned int size;
 	unsigned int i;
 
+	if (rg_info) {
+		rg_info->start = 0;
+		rg_info->end = 0;
+		rg_info->rg_num = rg_num;
+		rg_info->lock = false;
+		rg_info->apc = NULL;
+	}
+
 	if (!emimpu_pdev)
 		return -1;
 
@@ -702,11 +710,6 @@ int mtk_emimpu_init_region(
 		pr_info("%s: fail, out-of-range region\n", __func__);
 		return -1;
 	}
-
-	rg_info->start = 0;
-	rg_info->end = 0;
-	rg_info->rg_num = rg_num;
-	rg_info->lock = false;
 
 	size = sizeof(unsigned int) * emimpu_dev_ptr->domain_cnt;
 	rg_info->apc = kmalloc(size, GFP_KERNEL);
@@ -727,8 +730,11 @@ EXPORT_SYMBOL(mtk_emimpu_init_region);
  */
 int mtk_emimpu_free_region(struct emimpu_region_t *rg_info)
 {
-	kfree(rg_info->apc);
-	return 0;
+	if (rg_info && rg_info->apc) {
+		kfree(rg_info->apc);
+		return 0;
+	} else
+		return -EINVAL;
 }
 EXPORT_SYMBOL(mtk_emimpu_free_region);
 
