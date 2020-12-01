@@ -404,7 +404,7 @@ static void mtk_atomic_force_doze_switch(struct drm_device *dev,
 				mtk_crtc->gce_obj.event[EVENT_STREAM_EOF]);
 		else
 			cmdq_pkt_wait_no_clear(handle,
-				mtk_crtc->gce_obj.event[EVENT_VDO_EOF]);
+				mtk_crtc->gce_obj.event[EVENT_CMD_EOF]);
 		cmdq_pkt_flush(handle);
 		cmdq_pkt_destroy(handle);
 
