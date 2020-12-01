@@ -23,10 +23,13 @@
 #include "fpsgo_sysfs.h"
 
 #define TIME_1S  1000000000
+#define TARGET_UNLIMITED_FPS 240
 
 static int temp_th;
 static int debnc_time;
 static int limit_cpu;
+static int sub_cpu;
+static int activate_fps;
 
 static struct kobject *thrm_aware_kobj;
 static struct hrtimer hrt;
@@ -91,14 +94,16 @@ static enum hrtimer_restart thrm_timer_func(struct hrtimer *timer)
 
 static void thrm_reset(void)
 {
-	thrm_disable_timer();
-
 	last_frame_ts = 0;
-	last_active_ts = 0;
 
 	if (cur_state != THRM_AWARE_STATE_INACTIVE) {
+		thrm_disable_timer();
 		cur_state = THRM_AWARE_STATE_INACTIVE;
-		thrm_set_isolation(0, limit_cpu);
+		last_active_ts = 0;
+		if (limit_cpu != -1)
+			thrm_set_isolation(0, limit_cpu);
+		if (sub_cpu != -1)
+			thrm_set_isolation(0, sub_cpu);
 	}
 }
 
@@ -134,7 +139,7 @@ EXIT:
 	mutex_unlock(&thrm_aware_lock);
 }
 
-void thrm_aware_frame_start(int perf_hint)
+void thrm_aware_frame_start(int perf_hint, int target_fps)
 {
 	int temp;
 	unsigned long long cur_time;
@@ -144,7 +149,7 @@ void thrm_aware_frame_start(int perf_hint)
 	if (!thrm_aware_enable)
 		goto EXIT;
 
-	if (perf_hint) {
+	if (perf_hint || (target_fps < activate_fps)) {
 		thrm_reset();
 		goto EXIT;
 	}
@@ -162,6 +167,34 @@ void thrm_aware_frame_start(int perf_hint)
 			thrm_enable_timer();
 		}
 		last_active_ts = cur_time;
+	}
+
+EXIT:
+	mutex_unlock(&thrm_aware_lock);
+}
+
+void thrm_aware_switch(int enable)
+{
+	int is_active = 0;
+
+	mutex_lock(&thrm_aware_lock);
+
+	if (enable == thrm_aware_enable)
+		goto EXIT;
+
+	if (!enable) {
+		if (cur_state == THRM_AWARE_STATE_ACTIVE)
+			is_active = 1;
+
+		thrm_reset();
+		thrm_aware_enable = 0;
+
+		if ((sub_cpu != -1) && is_active)
+			thrm_set_isolation(1, sub_cpu);
+	} else if (limit_cpu != -1) {
+		thrm_aware_enable = 1;
+		if (sub_cpu != -1)
+			thrm_set_isolation(0, sub_cpu);
 	}
 
 EXIT:
@@ -247,8 +280,7 @@ static ssize_t thrm_limit_cpu_store(struct kobject *kobj,
 	if (limit_cpu == val)
 		goto EXIT;
 
-	if (cur_state != THRM_AWARE_STATE_INACTIVE)
-		thrm_reset();
+	thrm_reset();
 
 	limit_cpu = val;
 
@@ -265,6 +297,111 @@ EXIT:
 
 static KOBJ_ATTR_RW(thrm_limit_cpu);
 
+static ssize_t thrm_sub_cpu_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	int val = -1;
+
+	mutex_lock(&thrm_aware_lock);
+	val = sub_cpu;
+	mutex_unlock(&thrm_aware_lock);
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", val);
+}
+
+static ssize_t thrm_sub_cpu_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	int val = -1;
+	char acBuffer[FPSGO_SYSFS_MAX_BUFF_SIZE];
+	int arg;
+	int nr_cpus = num_possible_cpus();
+
+	if ((count > 0) && (count < FPSGO_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, FPSGO_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtoint(acBuffer, 0, &arg) == 0)
+				val = arg;
+			else
+				return count;
+		}
+	}
+
+
+	if (val >= nr_cpus || val < -1)
+		return count;
+
+	mutex_lock(&thrm_aware_lock);
+
+	if (sub_cpu == val)
+		goto EXIT;
+
+	if (sub_cpu != -1)
+		thrm_set_isolation(0, sub_cpu);
+
+	sub_cpu = val;
+
+EXIT:
+	mutex_unlock(&thrm_aware_lock);
+
+	return count;
+}
+
+static KOBJ_ATTR_RW(thrm_sub_cpu);
+
+static ssize_t thrm_activate_fps_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	int val = -1;
+
+	mutex_lock(&thrm_aware_lock);
+	val = activate_fps;
+	mutex_unlock(&thrm_aware_lock);
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", val);
+}
+
+static ssize_t thrm_activate_fps_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	int val = -1;
+	char acBuffer[FPSGO_SYSFS_MAX_BUFF_SIZE];
+	int arg;
+
+	if ((count > 0) && (count < FPSGO_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, FPSGO_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtoint(acBuffer, 0, &arg) == 0)
+				val = arg;
+			else
+				return count;
+		}
+	}
+
+
+	if (val > TARGET_UNLIMITED_FPS || val < 0)
+		return count;
+
+	mutex_lock(&thrm_aware_lock);
+
+	if (activate_fps == val)
+		goto EXIT;
+
+	if (cur_state != THRM_AWARE_STATE_INACTIVE)
+		thrm_reset();
+
+	activate_fps = val;
+
+EXIT:
+	mutex_unlock(&thrm_aware_lock);
+
+	return count;
+}
+
+static KOBJ_ATTR_RW(thrm_activate_fps);
+
 void __init thrm_aware_init(struct kobject *dir_kobj)
 {
 	hrtimer_init(&hrt, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
@@ -273,8 +410,10 @@ void __init thrm_aware_init(struct kobject *dir_kobj)
 
 	temp_th = 65;
 	limit_cpu = -1;
+	sub_cpu = -1;
 	cur_state = THRM_AWARE_STATE_INACTIVE;
 	debnc_time = TIME_1S;
+	activate_fps = 1;
 
 	thrm_aware_kobj = dir_kobj;
 
@@ -283,6 +422,8 @@ void __init thrm_aware_init(struct kobject *dir_kobj)
 
 	fpsgo_sysfs_create_file(thrm_aware_kobj, &kobj_attr_thrm_temp_th);
 	fpsgo_sysfs_create_file(thrm_aware_kobj, &kobj_attr_thrm_limit_cpu);
+	fpsgo_sysfs_create_file(thrm_aware_kobj, &kobj_attr_thrm_sub_cpu);
+	fpsgo_sysfs_create_file(thrm_aware_kobj, &kobj_attr_thrm_activate_fps);
 }
 
 void __exit thrm_aware_exit(void)
@@ -294,5 +435,7 @@ void __exit thrm_aware_exit(void)
 
 	fpsgo_sysfs_remove_file(thrm_aware_kobj, &kobj_attr_thrm_temp_th);
 	fpsgo_sysfs_remove_file(thrm_aware_kobj, &kobj_attr_thrm_limit_cpu);
+	fpsgo_sysfs_remove_file(thrm_aware_kobj, &kobj_attr_thrm_sub_cpu);
+	fpsgo_sysfs_remove_file(thrm_aware_kobj, &kobj_attr_thrm_activate_fps);
 }
 

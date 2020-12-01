@@ -113,6 +113,15 @@ struct fbt_pid_list {
 	struct list_head entry;
 };
 
+struct fbt_sjerk {
+	int pid;
+	unsigned long long identifier;
+	int active_id;
+	int jerking;
+	struct hrtimer timer;
+	struct work_struct work;
+};
+
 enum FPSGO_JERK {
 	FPSGO_JERK_ONLY_CEILING = 0,
 	FPSGO_JERK_NEED = 1,
@@ -150,6 +159,7 @@ enum FPSGO_JERK_STAGE {
 	FPSGO_JERK_INACTIVE = 0,
 	FPSGO_JERK_FIRST,
 	FPSGO_JERK_UBOOST,
+	FPSGO_JERK_SECOND,
 };
 
 static struct kobject *fbt_kobj;
@@ -184,7 +194,15 @@ static int boost_affinity;
 static int boost_affinity_90;
 static int boost_affinity_120;
 static int cm_big_cap;
+static int cm_big_cap_90;
+static int cm_big_cap_120;
 static int cm_tdiff;
+static int cm_tdiff_90;
+static int cm_tdiff_120;
+static int rescue_second_time;
+static int rescue_second_group;
+static int rescue_second_copp;
+static int rescue_second_enable;
 
 module_param(bhr, int, 0644);
 module_param(bhr_opp, int, 0644);
@@ -216,7 +234,14 @@ module_param(boost_affinity, int, 0644);
 module_param(boost_affinity_90, int, 0644);
 module_param(boost_affinity_120, int, 0644);
 module_param(cm_big_cap, int, 0644);
+module_param(cm_big_cap_90, int, 0644);
+module_param(cm_big_cap_120, int, 0644);
 module_param(cm_tdiff, int, 0644);
+module_param(cm_tdiff_90, int, 0644);
+module_param(cm_tdiff_120, int, 0644);
+module_param(rescue_second_time, int, 0644);
+module_param(rescue_second_group, int, 0644);
+module_param(rescue_second_enable, int, 0644);
 
 static DEFINE_SPINLOCK(freq_slock);
 static DEFINE_MUTEX(fbt_mlock);
@@ -262,6 +287,8 @@ static unsigned int max_blc;
 static int max_blc_pid;
 static unsigned long long  max_blc_buffer_id;
 static int max_blc_stage;
+static unsigned int max_blc_cur;
+static int boosted_group;
 
 static unsigned int *clus_obv;
 static unsigned int last_obv;
@@ -270,6 +297,8 @@ static unsigned long long vsync_time;
 
 static int vsync_period;
 static int _gdfrc_fps_limit;
+
+static struct fbt_sjerk sjerk;
 
 static int nsec_to_100usec(unsigned long long nsec)
 {
@@ -1074,7 +1103,6 @@ static void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 	int ret;
 	int heavy_pid = 0;
 	int do_affinity = 0;
-	unsigned long long target_time;
 
 	if (!thr)
 		return;
@@ -1099,14 +1127,10 @@ static void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 	if (!size || !thr->dep_arr)
 		return;
 
-	target_time = thr->boost_info.target_time;
+	if (boost_affinity || boost_affinity_90 || boost_affinity_120) {
+		int tfps_level;
 
-	if (target_time &&
-		(boost_affinity || boost_affinity_90 || boost_affinity_120)) {
-		int tfps_level, target_fps;
-
-		target_fps = div64_u64(FBTCPU_SEC_DIVIDER, target_time);
-		tfps_level = fbt_get_fps_level(target_fps);
+		tfps_level = fbt_get_fps_level(thr->boost_info.target_fps);
 
 		if (tfps_level == fbt_fps_level[0])
 			do_affinity = boost_affinity;
@@ -1276,7 +1300,7 @@ static unsigned int fbt_get_new_base_blc(struct ppm_limit_data *pld,
 	}
 
 	if (boost_ta)
-		base = max_blc;
+		base = max_blc_cur;
 	else
 		base = floor;
 
@@ -1509,22 +1533,129 @@ static int fbt_check_to_jerk(
 	return FPSGO_JERK_POSTPONE;
 }
 
-static void fbt_do_jerk_boost(struct render_info *thr, int blc_wt)
+static void fbt_do_jerk_boost(struct render_info *thr, int blc_wt,
+				int boost_group)
 {
-	if (boost_ta)
+	if (boost_ta || boost_group) {
 		fbt_set_boost_value(blc_wt);
-	else
+		max_blc_cur = blc_wt;
+		boosted_group = 1;
+	} else
 		fbt_set_min_cap_locked(thr, blc_wt, 1);
 
 	if (ultra_rescue)
 		fbt_boost_dram(1);
 }
 
-static void fbt_do_jerk_locked(struct render_info *thr, struct fbt_jerk *jerk)
+static void fbt_cancel_sjerk(void)
+{
+	if (sjerk.jerking) {
+		hrtimer_cancel(&(sjerk.timer));
+		sjerk.jerking = 0;
+	}
+
+	sjerk.active_id = -1;
+}
+
+static void fbt_set_sjerk(int pid, unsigned long long identifier, int active_id)
+{
+	unsigned long long t2wnt;
+
+	fbt_cancel_sjerk();
+
+	if (!rescue_second_enable)
+		return;
+
+	t2wnt = rescue_second_time * vsync_period;
+	t2wnt = clamp(t2wnt, 1ULL, (unsigned long long)FBTCPU_SEC_DIVIDER);
+
+	sjerk.pid = pid;
+	sjerk.identifier = identifier;
+	sjerk.active_id = active_id;
+	sjerk.jerking = 1;
+	hrtimer_start(&(sjerk.timer), ns_to_ktime(t2wnt), HRTIMER_MODE_REL);
+}
+
+static void fbt_do_sjerk(struct work_struct *work)
+{
+	struct fbt_sjerk *jerk;
+	struct render_info *thr;
+	unsigned int blc_wt = 0U;
+	struct ppm_limit_data *pld;
+
+	jerk = container_of(work, struct fbt_sjerk, work);
+
+	if (!jerk || !jerk->pid || !jerk->identifier || !jerk->jerking)
+		return;
+
+	fpsgo_render_tree_lock(__func__);
+
+	thr = fpsgo_search_and_add_render_info(jerk->pid, jerk->identifier, 0);
+	if (!thr) {
+		fpsgo_render_tree_unlock(__func__);
+		return;
+	}
+
+	fpsgo_thread_lock(&(thr->thr_mlock));
+
+	mutex_lock(&fbt_mlock);
+
+	if (!rescue_second_enable)
+		goto EXIT;
+
+	if (thr->pid != max_blc_pid || thr->buffer_id != max_blc_buffer_id)
+		goto EXIT;
+
+	blc_wt = thr->boost_info.last_blc;
+
+	if (!blc_wt || thr->linger != 0 || jerk->active_id != thr->boost_info.proc.active_jerk_id)
+		goto EXIT;
+
+	if (fbt_check_to_jerk(thr->t_enqueue_start,
+		thr->t_enqueue_end, thr->t_dequeue_start,
+		thr->t_dequeue_end, thr->dequeue_length,
+		thr->pid, thr->buffer_id, thr->tgid) == FPSGO_JERK_DISAPPEAR)
+		goto EXIT;
+
+	pld = kcalloc(cluster_num,
+			sizeof(struct ppm_limit_data), GFP_KERNEL);
+	if (!pld)
+		goto EXIT;
+
+	blc_wt = fbt_get_new_base_blc(pld, thr->boost_info.last_blc,
+			rescue_enhance_f, rescue_second_copp);
+
+	thrm_aware_switch(0);
+	fbt_set_hard_limit_locked(FPSGO_HARD_NONE, pld);
+
+	fbt_set_ceiling(pld, thr->pid, thr->buffer_id);
+	fbt_do_jerk_boost(thr, blc_wt, rescue_second_group);
+	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, blc_wt, "perf idx");
+
+	thr->boost_info.last_blc = blc_wt;
+	thr->boost_info.cur_stage = FPSGO_JERK_SECOND;
+
+	max_blc_stage = FPSGO_JERK_SECOND;
+	fpsgo_systrace_c_fbt_gm(-100, 0, max_blc_stage, "max_blc_stage");
+
+	kfree(pld);
+
+EXIT:
+	jerk->jerking = 0;
+
+	mutex_unlock(&fbt_mlock);
+	fpsgo_thread_unlock(&(thr->thr_mlock));
+	fpsgo_render_tree_unlock(__func__);
+}
+
+static void fbt_do_jerk_locked(struct render_info *thr, struct fbt_jerk *jerk, int jerk_id)
 {
 	unsigned int blc_wt = 0U;
 	struct ppm_limit_data *pld;
 	int do_jerk;
+
+	if (!thr)
+		return;
 
 	blc_wt  = thr->boost_info.last_blc;
 	if (!blc_wt)
@@ -1542,6 +1673,9 @@ static void fbt_do_jerk_locked(struct render_info *thr, struct fbt_jerk *jerk)
 		goto EXIT;
 
 	blc_wt = fbt_limit_capacity(blc_wt, 1);
+
+	if (thr->pid == max_blc_pid && thr->buffer_id == max_blc_buffer_id)
+		fbt_set_sjerk(thr->pid, thr->identifier, jerk_id);
 
 	do_jerk = fbt_check_to_jerk(thr->t_enqueue_start, thr->t_enqueue_end,
 				thr->t_dequeue_start, thr->t_dequeue_end,
@@ -1564,7 +1698,7 @@ static void fbt_do_jerk_locked(struct render_info *thr, struct fbt_jerk *jerk)
 		jerk->postpone = 1;
 
 	if (do_jerk == FPSGO_JERK_NEED) {
-		fbt_do_jerk_boost(thr, blc_wt);
+		fbt_do_jerk_boost(thr, blc_wt, 0);
 		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, blc_wt, "perf idx");
 		thr->boost_info.last_blc = blc_wt;
 	}
@@ -1623,7 +1757,7 @@ static void fbt_do_jerk(struct work_struct *work)
 	if (jerk->id != proc->active_jerk_id || thr->linger != 0)
 		goto EXIT;
 
-	fbt_do_jerk_locked(thr, jerk);
+	fbt_do_jerk_locked(thr, jerk, jerk->id);
 
 EXIT:
 	if (!(jerk->postpone))
@@ -1658,6 +1792,13 @@ static inline void fbt_init_jerk(struct fbt_jerk *jerk, int id)
 	hrtimer_init(&jerk->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	jerk->timer.function = &fbt_jerk_tfn;
 	INIT_WORK(&jerk->work, fbt_do_jerk);
+}
+
+static void fbt_init_sjerk(void)
+{
+	hrtimer_init(&sjerk.timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	sjerk.timer.function = &fbt_jerk_tfn;
+	INIT_WORK(&sjerk.work, fbt_do_sjerk);
 }
 
 static inline long long llabs(long long val)
@@ -1699,7 +1840,8 @@ static unsigned long long fbt_get_next_vsync_locked(
 static void fbt_check_cm_limit(struct render_info *thread_info,
 		long long runtime)
 {
-	int last_blc = 0;
+	int last_blc = 0, tfps_level;
+	int big_cap, time_diff;
 
 	if (!thread_info || !runtime)
 		return;
@@ -1719,8 +1861,20 @@ static void fbt_check_cm_limit(struct render_info *thread_info,
 	if (!last_blc)
 		return;
 
-	if (last_blc > cm_big_cap &&
-		runtime > thread_info->boost_info.target_time + cm_tdiff)
+	tfps_level = fbt_get_fps_level(thread_info->boost_info.target_fps);
+	if (tfps_level == fbt_fps_level[0]) {
+		big_cap = cm_big_cap;
+		time_diff = cm_tdiff;
+	} else if (tfps_level == fbt_fps_level[1]) {
+		big_cap = cm_big_cap_90;
+		time_diff = cm_tdiff_90;
+	} else {
+		big_cap = cm_big_cap_120;
+		time_diff = cm_tdiff_120;
+	}
+
+	if (last_blc > big_cap &&
+		runtime > thread_info->boost_info.target_time + time_diff)
 		fbt_notify_CM_limit(1);
 	else
 		fbt_notify_CM_limit(0);
@@ -2029,10 +2183,28 @@ static void fbt_set_limit(unsigned int blc_wt,
 	fbt_check_cm_limit(thread_info, runtime);
 
 EXIT:
+	if (boosted_group && !boost_ta) {
+		fbt_clear_boost_value();
+		boosted_group = 0;
+	}
+
 	fbt_do_boost(final_blc, final_blc_pid, final_blc_buffer_id);
-	thrm_aware_frame_start((bhr_opp == (NR_FREQ_CPU - 1)) ? 1 : 0);
+
+	fbt_cancel_sjerk();
+
+	if (thread_info) {
+		int tfps_level = thread_info->boost_info.target_fps;
+
+		tfps_level = fbt_get_fps_level(tfps_level);
+
+		thrm_aware_switch(1);
+		thrm_aware_frame_start(
+			(bhr_opp == (NR_FREQ_CPU - 1)) ? 1 : 0,
+			tfps_level);
+	}
 
 	max_blc = final_blc;
+	max_blc_cur = blc_wt;
 	max_blc_pid = final_blc_pid;
 	max_blc_buffer_id = final_blc_buffer_id;
 	max_blc_stage = FPSGO_JERK_INACTIVE;
@@ -2299,6 +2471,7 @@ static int fbt_boost_policy(
 	if (!boost_ta)
 		fbt_set_min_cap_locked(thread_info, blc_wt, 0);
 
+	boost_info->target_fps = target_fps;
 	boost_info->target_time = target_time;
 	boost_info->last_blc = blc_wt;
 	boost_info->cur_stage = FPSGO_JERK_INACTIVE;
@@ -2319,7 +2492,10 @@ static int fbt_boost_policy(
 
 		if (t2wnt) {
 			if (t2wnt == 1ULL) {
-				fbt_do_jerk_locked(thread_info, NULL);
+				active_jerk_id = fbt_get_next_jerk(
+					boost_info->proc.active_jerk_id);
+				boost_info->proc.active_jerk_id = active_jerk_id;
+				fbt_do_jerk_locked(thread_info, NULL, active_jerk_id);
 				goto EXIT;
 			}
 
@@ -2385,6 +2561,7 @@ static void fbt_check_max_blc_locked(void)
 	fbt_find_max_blc(&temp_blc, &temp_blc_pid, &temp_blc_buffer_id);
 
 	max_blc = temp_blc;
+	max_blc_cur = temp_blc;
 	max_blc_pid = temp_blc_pid;
 	max_blc_buffer_id = temp_blc_buffer_id;
 	max_blc_stage = FPSGO_JERK_INACTIVE;
@@ -2395,8 +2572,10 @@ static void fbt_check_max_blc_locked(void)
 	fpsgo_systrace_c_fbt_gm(-100, 0, max_blc_stage, "max_blc_stage");
 
 	if (max_blc == 0 && max_blc_pid == 0 && max_blc_buffer_id == 0) {
-		if (boost_ta)
+		if (boost_ta || boosted_group) {
 			fbt_clear_boost_value();
+			boosted_group = 0;
+		}
 		fbt_free_bhr();
 		if (ultra_rescue)
 			fbt_boost_dram(0);
@@ -2642,6 +2821,7 @@ static void fbt_reset_boost(struct render_info *thr)
 
 	boost->last_blc = 0;
 	boost->target_time = 0;
+	boost->target_fps = -1;
 
 	memset(boost->frame_info, 0, WINDOW * sizeof(struct fbt_frame_info));
 	boost->f_iter = 0;
@@ -2721,8 +2901,10 @@ static void fbt_setting_reset(int reset_idleprefer)
 	fbt_free_bhr();
 	fbt_notify_CM_limit(0);
 
-	if (boost_ta)
+	if (boost_ta || boosted_group) {
 		fbt_clear_boost_value();
+		boosted_group = 0;
+	}
 
 	if (ultra_rescue)
 		fbt_boost_dram(0);
@@ -3024,6 +3206,7 @@ void fpsgo_base2fbt_no_one_render(void)
 	xgf_trace("fpsgo no render");
 
 	max_blc = 0;
+	max_blc_cur = 0;
 	max_blc_pid = 0;
 	max_blc_buffer_id = 0;
 	max_blc_stage = FPSGO_JERK_INACTIVE;
@@ -3115,6 +3298,7 @@ void fpsgo_uboost2fbt_uboost(struct render_info *thr)
 {
 	int floor, blc_wt = 0;
 	struct ppm_limit_data *pld;
+	int headroom;
 
 	if (!thr)
 		return;
@@ -3129,26 +3313,35 @@ void fpsgo_uboost2fbt_uboost(struct render_info *thr)
 	if (!floor)
 		goto leave;
 
-	blc_wt = fbt_get_new_base_blc(pld, floor, uboost_enhance_f, rescue_opp_c);
+	headroom = rescue_opp_c;
+	if (thr->boost_info.cur_stage == FPSGO_JERK_SECOND)
+		headroom = rescue_second_copp;
+
+	blc_wt = fbt_get_new_base_blc(pld, floor, uboost_enhance_f, headroom);
 	if (!blc_wt)
 		goto leave;
 
-	blc_wt = fbt_limit_capacity(blc_wt, 1);
-	fbt_set_hard_limit_locked(FPSGO_HARD_CEILING, pld);
+	if (thr->boost_info.cur_stage != FPSGO_JERK_SECOND) {
+		blc_wt = fbt_limit_capacity(blc_wt, 1);
+		fbt_set_hard_limit_locked(FPSGO_HARD_CEILING, pld);
+
+		thr->boost_info.cur_stage = FPSGO_JERK_UBOOST;
+
+		if (thr->pid == max_blc_pid && thr->buffer_id == max_blc_buffer_id) {
+			max_blc_stage = FPSGO_JERK_UBOOST;
+			fpsgo_systrace_c_fbt_gm(-100, 0, max_blc_stage, "max_blc_stage");
+		}
+	}
+
 	fbt_set_ceiling(pld, thr->pid, thr->buffer_id);
 
-	if (boost_ta)
+	if (boost_ta) {
 		fbt_set_boost_value(blc_wt);
-	else
+		max_blc_cur = blc_wt;
+	} else
 		fbt_set_min_cap_locked(thr, blc_wt, 1);
 
 	thr->boost_info.last_blc = blc_wt;
-	thr->boost_info.cur_stage = FPSGO_JERK_UBOOST;
-
-	if (thr->pid == max_blc_pid && thr->buffer_id == max_blc_buffer_id) {
-		max_blc_stage = FPSGO_JERK_UBOOST;
-		fpsgo_systrace_c_fbt_gm(-100, 0, max_blc_stage, "max_blc_stage");
-	}
 
 	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, blc_wt, "perf idx");
 
@@ -3322,6 +3515,7 @@ static void fbt_setting_exit(void)
 	vsync_time = 0;
 	memset(base_opp, 0, cluster_num * sizeof(unsigned int));
 	max_blc = 0;
+	max_blc_cur = 0;
 	max_blc_pid = 0;
 	max_blc_buffer_id = 0;
 	max_blc_stage = FPSGO_JERK_INACTIVE;
@@ -4177,8 +4371,10 @@ int __init fbt_cpu_init(void)
 	fps_level_range = 10;
 	check_running = 1;
 	uboost_enhance_f = 75;
-	cm_big_cap = 95;
-	cm_tdiff = TIME_1MS;
+	cm_big_cap = cm_big_cap_90 = cm_big_cap_120 = 95;
+	cm_tdiff = cm_tdiff_90 = cm_tdiff_120 = TIME_1MS;
+	rescue_second_time = 2;
+	rescue_second_copp = NR_FREQ_CPU - 1;
 
 	_gdfrc_fps_limit = TARGET_DEFAULT_FPS;
 	vsync_period = GED_VSYNC_MISS_QUANTUM_NS;
@@ -4208,6 +4404,8 @@ int __init fbt_cpu_init(void)
 
 	clus_max_cap =
 		kcalloc(cluster_num, sizeof(int), GFP_KERNEL);
+
+	fbt_init_sjerk();
 
 	fbt_update_pwd_tbl();
 

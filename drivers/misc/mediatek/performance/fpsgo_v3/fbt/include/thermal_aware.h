@@ -19,6 +19,7 @@
 
 void __init thrm_aware_init(struct kobject *dir_kobj);
 void __exit thrm_aware_exit(void);
-void thrm_aware_frame_start(int perf_hint);
+void thrm_aware_frame_start(int perf_hint, int target_fps);
+void thrm_aware_switch(int enable);
 
 #endif
