@@ -31,6 +31,8 @@
 
 #define VIB_DEVICE				"mtk_vibrator"
 #define VIB_TAG                                 "[vibrator]"
+#undef pr_fmt
+#define pr_fmt(fmt) KBUILD_MODNAME " %s(%d) :" fmt, __func__, __LINE__
 
 struct mt_vibr {
 	struct workqueue_struct *vibr_queue;
@@ -47,6 +49,7 @@ static struct mt_vibr *g_mt_vib;
 
 static int vibr_Enable(void)
 {
+
 	if (!g_mt_vib->ldo_state) {
 		vibr_Enable_HW();
 		g_mt_vib->ldo_state = 1;
@@ -56,6 +59,7 @@ static int vibr_Enable(void)
 
 static int vibr_Disable(void)
 {
+
 	if (g_mt_vib->ldo_state) {
 		vibr_Disable_HW();
 		g_mt_vib->ldo_state = 0;
@@ -67,6 +71,8 @@ static void update_vibrator(struct work_struct *work)
 {
 	struct mt_vibr *vibr = container_of(work, struct mt_vibr, vibr_work);
 
+	pr_info(VIB_TAG "update vibrator status %d, ldo=%d",
+		atomic_read(&vibr->vibr_state), g_mt_vib->ldo_state);
 	if (atomic_read(&vibr->vibr_state) == 0)
 		vibr_Disable();
 	else
@@ -80,7 +86,7 @@ static void vibrator_enable(unsigned int dur, unsigned int activate)
 
 	spin_lock_irqsave(&g_mt_vib->vibr_lock, flags);
 	hrtimer_cancel(&g_mt_vib->vibr_timer);
-	pr_debug(VIB_TAG "cancel hrtimer, cust:%dms, value:%u, shutdown:%d\n",
+	pr_info(VIB_TAG "cancel hrtimer, cust:%dms, value:%u, shutdown:%d\n",
 			hw->vib_timer, dur, g_mt_vib->shutdown_flag);
 
 	if (activate == 0 || g_mt_vib->shutdown_flag == 1) {
@@ -105,16 +111,20 @@ static void vibrator_enable(unsigned int dur, unsigned int activate)
 
 static void vibrator_oc_handler(void)
 {
-	pr_debug(VIB_TAG "%s: disable vibr for oc intr happened\n", __func__);
+	pr_info(VIB_TAG "%s: disable vibr for oc intr happened\n", __func__);
 	vibrator_enable(0, 0);
 }
 
 static enum hrtimer_restart vibrator_timer_func(struct hrtimer *timer)
 {
+	unsigned long flags;
 	struct mt_vibr *vibr = container_of(timer, struct mt_vibr, vibr_timer);
 
+	spin_lock_irqsave(&g_mt_vib->vibr_lock, flags);
 	atomic_set(&vibr->vibr_state, 0);
-	queue_work(vibr->vibr_queue, &vibr->vibr_work);
+	pr_info(VIB_TAG "set vibr_state 0");
+	spin_unlock_irqrestore(&g_mt_vib->vibr_lock, flags);
+	queue_work(g_mt_vib->vibr_queue, &g_mt_vib->vibr_work);
 	return HRTIMER_NORESTART;
 }
 
@@ -294,9 +304,9 @@ static void vib_shutdown(struct platform_device *pdev)
 		spin_unlock_irqrestore(&vibr->vibr_lock, flags);
 		pr_debug(VIB_TAG "%s: vibrator will disable\n", __func__);
 		vibr_Disable();
-		return;
+	} else {
+		spin_unlock_irqrestore(&vibr->vibr_lock, flags);
 	}
-	spin_unlock_irqrestore(&vibr->vibr_lock, flags);
 }
 
 
