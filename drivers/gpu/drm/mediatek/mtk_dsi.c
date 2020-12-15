@@ -680,8 +680,6 @@ static void mtk_dsi_clear_rxrd_irq(struct mtk_dsi *dsi)
 static unsigned int mtk_dsi_default_rate(struct mtk_dsi *dsi)
 {
 	u32 data_rate;
-	struct mtk_drm_crtc *mtk_crtc = dsi->ddp_comp.mtk_crtc;
-	struct mtk_drm_private *priv = NULL;
 
 	/**
 	 * vm.pixelclock is in kHz, pixel_clock unit is Hz, so multiply by 1000
@@ -691,16 +689,7 @@ static unsigned int mtk_dsi_default_rate(struct mtk_dsi *dsi)
 	 * data_rate = pixel_clock * bit_per_pixel * mipi_ratio / num_lanes;
 	 */
 
-	if (mtk_crtc && mtk_crtc->base.dev)
-		priv = mtk_crtc->base.dev->dev_private;
-
-	if (priv && mtk_drm_helper_get_opt(priv->helper_opt,
-		MTK_DRM_OPT_DYN_MIPI_CHANGE)) {
-		if (dsi->ext && dsi->ext->params &&
-			dsi->ext->params->dyn_fps.data_rate)
-			data_rate = dsi->ext->params->dyn_fps.data_rate;
-
-	} else if (dsi->ext && dsi->ext->params->data_rate) {
+	if (dsi->ext && dsi->ext->params->data_rate) {
 		data_rate = dsi->ext->params->data_rate;
 	} else if (dsi->ext && dsi->ext->params->pll_clk) {
 		data_rate = dsi->ext->params->pll_clk * 2;
@@ -4311,8 +4300,6 @@ void mtk_dsi_set_mmclk_by_datarate(struct mtk_dsi *dsi,
 	unsigned int vact = mtk_crtc->base.state->adjusted_mode.vdisplay;
 	unsigned int vrefresh = mtk_crtc->base.state->adjusted_mode.vrefresh;
 
-	struct mtk_drm_private *priv = NULL;
-
 	if (!en) {
 		mtk_drm_set_mmclk_by_pixclk(&mtk_crtc->base, pixclk,
 					__func__);
@@ -4328,12 +4315,6 @@ void mtk_dsi_set_mmclk_by_datarate(struct mtk_dsi *dsi,
 	}
 
 	compress_rate = mtk_dsi_get_dsc_compress_rate(dsi);
-
-	if (priv && mtk_drm_helper_get_opt(priv->helper_opt,
-		MTK_DRM_OPT_DYN_MIPI_CHANGE))
-		if (dsi->ext && dsi->ext->params &&
-			dsi->ext->params->dyn_fps.data_rate)
-			data_rate = dsi->ext->params->dyn_fps.data_rate;
 
 	if (!data_rate) {
 		DDPPR_ERR("DSI data_rate is NULL\n");
@@ -4390,14 +4371,6 @@ unsigned long long mtk_dsi_get_frame_hrt_bw_base_by_datarate(
 	unsigned int data_rate = mtk_dsi_default_rate(dsi);
 	u32 bpp = mipi_dsi_pixel_format_to_bpp(dsi->format);
 
-	struct mtk_drm_private *priv = NULL;
-
-	if (priv && mtk_drm_helper_get_opt(priv->helper_opt,
-		MTK_DRM_OPT_DYN_MIPI_CHANGE))
-		if (dsi->ext && dsi->ext->params &&
-			dsi->ext->params->dyn_fps.data_rate)
-			data_rate = dsi->ext->params->dyn_fps.data_rate;
-
 	bw_base = vact * hact * vrefresh * 4 / 1000;
 	if (!mtk_dsi_is_cmd_mode(&dsi->ddp_comp)) {
 		bw_base = bw_base * vtotal / vact;
@@ -4425,14 +4398,10 @@ static void mtk_dsi_cmd_timing_change(struct mtk_dsi *dsi,
 	    state->prop_val[CRTC_PROP_DISP_MODE_IDX];
 	bool need_mipi_change = 1;
 	unsigned int clk_cnt = 0;
-	struct mtk_drm_private *priv = NULL;
 
 	/* use no mipi clk change solution */
-	if (mtk_crtc && mtk_crtc->base.dev)
-		priv = mtk_crtc->base.dev->dev_private;
-
-	if (!(priv && mtk_drm_helper_get_opt(priv->helper_opt,
-		MTK_DRM_OPT_DYN_MIPI_CHANGE)))
+	if (dsi->ext && dsi->ext->params &&
+		dsi->ext->params->dyn_fps.switch_en > 0)
 		need_mipi_change = 0;
 
 	mtk_crtc_pkt_create(&cmdq_handle, &mtk_crtc->base,

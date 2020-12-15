@@ -368,10 +368,7 @@ static struct mtk_panel_params ext_params = {
 		.rc_tgt_offset_hi      =  DSC_RC_TGT_OFFSET_HI,
 		.rc_tgt_offset_lo      =  DSC_RC_TGT_OFFSET_LO,
 	},
-	.dyn_fps = {
-		.data_rate = MODE_0_DATA_RATE,
-	},
-	.data_rate = MODE_2_DATA_RATE,
+	.data_rate = MODE_0_DATA_RATE,
 };
 static struct mtk_panel_params ext_params_mode_1 = {
 	.cust_esd_check = 0,
@@ -419,10 +416,7 @@ static struct mtk_panel_params ext_params_mode_1 = {
 		.rc_tgt_offset_hi      =  DSC_RC_TGT_OFFSET_HI,
 		.rc_tgt_offset_lo      =  DSC_RC_TGT_OFFSET_LO,
 	},
-	.dyn_fps = {
-		.data_rate = MODE_1_DATA_RATE,
-	},
-	.data_rate = MODE_2_DATA_RATE,
+	.data_rate = MODE_1_DATA_RATE,
 };
 
 static struct mtk_panel_params ext_params_mode_2 = {
@@ -470,9 +464,6 @@ static struct mtk_panel_params ext_params_mode_2 = {
 		.rc_quant_incr_limit1  =  DSC_RC_QUANT_INCR_LIMIT1,
 		.rc_tgt_offset_hi      =  DSC_RC_TGT_OFFSET_HI,
 		.rc_tgt_offset_lo      =  DSC_RC_TGT_OFFSET_LO,
-	},
-	.dyn_fps = {
-		.data_rate = MODE_2_DATA_RATE,
 	},
 	.data_rate = MODE_2_DATA_RATE,
 };
