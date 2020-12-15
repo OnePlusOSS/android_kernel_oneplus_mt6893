@@ -680,6 +680,8 @@ static void mtk_dsi_clear_rxrd_irq(struct mtk_dsi *dsi)
 static unsigned int mtk_dsi_default_rate(struct mtk_dsi *dsi)
 {
 	u32 data_rate;
+	struct mtk_drm_crtc *mtk_crtc = dsi->ddp_comp.mtk_crtc;
+	struct mtk_drm_private *priv = NULL;
 
 	/**
 	 * vm.pixelclock is in kHz, pixel_clock unit is Hz, so multiply by 1000
@@ -689,7 +691,15 @@ static unsigned int mtk_dsi_default_rate(struct mtk_dsi *dsi)
 	 * data_rate = pixel_clock * bit_per_pixel * mipi_ratio / num_lanes;
 	 */
 
-	if (dsi->ext && dsi->ext->params->data_rate) {
+	if (mtk_crtc && mtk_crtc->base.dev)
+		priv = mtk_crtc->base.dev->dev_private;
+
+	if (priv && mtk_drm_helper_get_opt(priv->helper_opt,
+		MTK_DRM_OPT_DYN_MIPI_CHANGE)
+		&& dsi->ext && dsi->ext->params
+		&& dsi->ext->params->dyn_fps.data_rate) {
+		data_rate = dsi->ext->params->dyn_fps.data_rate;
+	} else if (dsi->ext && dsi->ext->params->data_rate) {
 		data_rate = dsi->ext->params->data_rate;
 	} else if (dsi->ext && dsi->ext->params->pll_clk) {
 		data_rate = dsi->ext->params->pll_clk * 2;
@@ -4398,10 +4408,14 @@ static void mtk_dsi_cmd_timing_change(struct mtk_dsi *dsi,
 	    state->prop_val[CRTC_PROP_DISP_MODE_IDX];
 	bool need_mipi_change = 1;
 	unsigned int clk_cnt = 0;
+	struct mtk_drm_private *priv = NULL;
 
 	/* use no mipi clk change solution */
-	if (dsi->ext && dsi->ext->params &&
-		dsi->ext->params->dyn_fps.switch_en > 0)
+	if (mtk_crtc && mtk_crtc->base.dev)
+		priv = mtk_crtc->base.dev->dev_private;
+
+	if (!(priv && mtk_drm_helper_get_opt(priv->helper_opt,
+		MTK_DRM_OPT_DYN_MIPI_CHANGE)))
 		need_mipi_change = 0;
 
 	mtk_crtc_pkt_create(&cmdq_handle, &mtk_crtc->base,
@@ -4423,14 +4437,14 @@ static void mtk_dsi_cmd_timing_change(struct mtk_dsi *dsi,
 	cmdq_pkt_flush(cmdq_handle);
 	cmdq_pkt_destroy(cmdq_handle);
 
-	if (need_mipi_change == 0)
-		goto skip_change_mipi;
-
 	/*  send lcm cmd before DSI power down if needed */
 	if (dsi->ext && dsi->ext->funcs &&
 		dsi->ext->funcs->mode_switch)
 		dsi->ext->funcs->mode_switch(dsi->panel, src_mode,
 			dst_mode, BEFORE_DSI_POWERDOWN);
+
+	if (need_mipi_change == 0)
+		goto skip_change_mipi;
 
 	/* Power off DSI */
 	mtk_dsi_mask(dsi, DSI_INTEN, ~0, 0);
@@ -4456,7 +4470,6 @@ static void mtk_dsi_cmd_timing_change(struct mtk_dsi *dsi,
 	mtk_dsi_rxtx_control(dsi);
 	mtk_dsi_ps_control_vact(dsi);
 	mtk_dsi_set_interrupt_enable(dsi);
-
 	//[FIXME] sw control enable will be set to 1 by mipi_tx_pll_prepare,
 	//and it needs to clear to 0
 	mtk_mipi_tx_sw_control_en(dsi->phy, 0);
