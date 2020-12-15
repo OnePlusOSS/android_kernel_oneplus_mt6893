@@ -229,10 +229,18 @@ int update_userlimit_cpu_freq(int kicker, int num_cluster
 			retval = perfmgr_common_userlimit_cpu_freq(perfmgr_clusters, final_freq);
 	}
 ret_update:
-	if (final_freq)
-		update_isolation_cpu_locked(CPU_ISO_KIR_CPU_CTRL,
-			(final_freq[clstr_num-1].min != -1) ? 0 : -1,
-			num_cpu - 1);
+	if (final_freq) {
+		for_each_perfmgr_clusters(i) {
+			struct cpumask cluster_cpus;
+			int cpu, iso;
+
+			iso = (final_freq[i].min != -1) ? 0 : -1;
+			arch_get_cluster_cpus(&cluster_cpus, i);
+			for_each_cpu(cpu, &cluster_cpus)
+				update_isolation_cpu_locked(CPU_ISO_KIR_CPU_CTRL,
+					iso, cpu);
+		}
+	}
 
 	kfree(final_freq);
 	mutex_unlock(&boost_freq);
