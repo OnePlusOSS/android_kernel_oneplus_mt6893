@@ -2962,11 +2962,6 @@ void mtk_crtc_start_trig_loop(struct drm_crtc *crtc)
 		cmdq_pkt_set_event(cmdq_handle,
 			mtk_crtc->gce_obj.event[EVENT_SYNC_TOKEN_SODI]);
 #endif
-		if (mtk_drm_helper_get_opt(priv->helper_opt,
-					   MTK_DRM_OPT_SF_PF)) {
-			cmdq_pkt_clear_event(cmdq_handle,
-				mtk_crtc->gce_obj.event[EVENT_DSI0_SOF]);
-		}
 
 		if (mtk_drm_helper_get_opt(priv->helper_opt,
 					   MTK_DRM_OPT_LAYER_REC)) {
@@ -5360,10 +5355,13 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 			goto end;
 		}
 
-		if (index == 0)
-			cmdq_pkt_wfe(cmdq_handle,
-				     mtk_crtc->gce_obj.event[EVENT_DSI0_SOF]);
+		if (index == 0) {
+			cmdq_pkt_clear_event(cmdq_handle,
+				mtk_crtc->gce_obj.event[EVENT_DSI0_SOF]);
 
+			cmdq_pkt_wait_no_clear(cmdq_handle,
+				mtk_crtc->gce_obj.event[EVENT_DSI0_SOF]);
+		}
 		addr = cmdq_buf->pa_base + DISP_SLOT_SF_PRESENT_FENCE(index);
 
 		cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, addr,
