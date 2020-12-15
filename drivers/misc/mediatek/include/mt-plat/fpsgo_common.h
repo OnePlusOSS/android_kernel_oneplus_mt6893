@@ -54,7 +54,6 @@ enum {
 
 extern uint32_t fpsgo_systrace_mask;
 extern struct dentry *fpsgo_debugfs_dir;
-extern int game_ppid;
 
 void __fpsgo_systrace_c(pid_t pid, unsigned long long bufID,
 	int value, const char *name, ...);
@@ -85,13 +84,6 @@ void __fpsgo_systrace_e(void);
 	fpsgo_systrace_c(FPSGO_DEBUG_FSTB, pid, bufID, val, fmt)
 #define fpsgo_systrace_c_xgf(pid, bufID, val, fmt...) \
 	fpsgo_systrace_c(FPSGO_DEBUG_XGF, pid, bufID, val, fmt)
-
-#define fpsgo_systrace_c_log(val, fmt...) \
-	do { \
-		if (game_ppid > 0) \
-			fpsgo_systrace_c(FPSGO_DEBUG_MANDATORY, \
-					game_ppid, val, fmt); \
-	} while (0)
 
 #define fpsgo_systrace_c_fbt(pid, bufID, val, fmt...) \
 	fpsgo_systrace_c(FPSGO_DEBUG_MANDATORY, pid, bufID, val, fmt)
@@ -132,8 +124,6 @@ static inline void fpsgo_systrace_c_fstb(pid_t id,
 	unsigned long long bufID, int val, const char *s, ...) { }
 static inline void fpsgo_systrace_c_xgf(pid_t id,
 	unsigned long long bufID, int val, const char *s, ...) { }
-static inline void fpsgo_systrace_c_log(pid_t id, int val,
-					const char *s, ...) { }
 
 static inline int fpsgo_is_fstb_enable(void) { return 0; }
 static inline int fpsgo_switch_fstb(int en) { return 0; }
