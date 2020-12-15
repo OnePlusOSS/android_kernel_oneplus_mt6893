@@ -122,6 +122,13 @@ struct fbt_sjerk {
 	struct work_struct work;
 };
 
+struct fbt_syslimit {
+	int copp;	/* ceiling limit */
+	int ropp;	/* rescue ceiling limit */
+	int cfreq;	/* tuning ceiling */
+	int rfreq;	/* tuning rescue ceiling */
+};
+
 enum FPSGO_JERK {
 	FPSGO_JERK_ONLY_CEILING = 0,
 	FPSGO_JERK_NEED = 1,
@@ -274,11 +281,9 @@ static int max_cap_cluster, min_cap_cluster;
 static unsigned int def_capacity_margin;
 
 static int limit_policy;
-static int limit_cluster;
-static int limit_copp; /* ceiling limit */
-static int limit_ropp; /* rescue ceiling limit */
-static int limit_cfreq; /* tuning ceiling */
-static int limit_rfreq; /* tuning rescue ceiling */
+static struct fbt_syslimit *limit_clus_ceil;
+static int limit_cap;
+static int limit_rcap;
 
 static int *clus_max_cap;
 
@@ -674,21 +679,22 @@ static void fbt_set_ceiling(struct ppm_limit_data *pld,
 
 static void fbt_limit_ceiling_locked(struct ppm_limit_data *pld, int is_rescue)
 {
-	int opp;
+	int opp, cluster;
 
-	if (!pld)
+	if (!pld || !limit_clus_ceil)
 		return;
 
-	if (limit_cluster >= cluster_num || limit_cluster < 0)
-		return;
+	for (cluster = 0; cluster < cluster_num; cluster++) {
+		struct fbt_syslimit *limit = &limit_clus_ceil[cluster];
 
-	opp = is_rescue ? limit_ropp : limit_copp;
+		opp = (is_rescue) ? limit->ropp : limit->copp;
 
-	if (opp <= 0 || opp >= NR_FREQ_CPU)
-		return;
+		if (opp <= 0 || opp >= NR_FREQ_CPU)
+			continue;
 
-	pld[limit_cluster].max = MIN(cpu_dvfs[limit_cluster].power[opp],
-					pld[limit_cluster].max);
+		pld[cluster].max = MIN(cpu_dvfs[cluster].power[opp],
+					pld[cluster].max);
+	}
 }
 
 static void fbt_set_hard_limit_locked(int input, struct ppm_limit_data *pld)
@@ -718,24 +724,17 @@ static void fbt_set_hard_limit_locked(int input, struct ppm_limit_data *pld)
 
 static int fbt_limit_capacity(int blc_wt, int is_rescue)
 {
-	int cap = 0;
-	int opp;
+	int max_cap = 0;
 
 	if (limit_policy == FPSGO_LIMIT_NONE)
 		return blc_wt;
 
-	if (limit_cluster >= cluster_num || limit_cluster < 0)
+	max_cap = (is_rescue) ? limit_rcap : limit_cap;
+
+	if (max_cap <= 0)
 		return blc_wt;
 
-	opp = (is_rescue) ? limit_ropp : limit_copp;
-
-	if (opp >= 0 && opp < NR_FREQ_CPU)
-		cap = cpu_dvfs[limit_cluster].capacity_ratio[opp];
-
-	if (cap <= 0)
-		return blc_wt;
-
-	return MIN(blc_wt, cap);
+	return MIN(blc_wt, max_cap);
 }
 
 static void fbt_filter_ppm_log_locked(int filter)
@@ -3392,18 +3391,55 @@ static int fbt_get_opp_by_freq(int cluster, unsigned int freq)
 	return opp;
 }
 
+static int check_limit_cap(int is_rescue)
+{
+	int cap = 0, opp, cluster;
+	int max_cap = 0;
+
+	if (limit_policy == FPSGO_LIMIT_NONE || !limit_clus_ceil)
+		return 0;
+
+	for (cluster = cluster_num - 1; cluster >= 0 ; cluster--) {
+		struct fbt_syslimit *limit = &limit_clus_ceil[cluster];
+
+		opp = (is_rescue) ? limit->ropp : limit->copp;
+		if (opp == -1)
+			opp = 0;
+
+		if (opp >= 0 && opp < NR_FREQ_CPU) {
+			cap = cpu_dvfs[cluster].capacity_ratio[opp];
+			if (cap > max_cap)
+				max_cap = cap;
+		}
+	}
+
+	if (max_cap <= 0)
+		return 0;
+
+	return max_cap;
+}
+
 static void fbt_set_cap_limit(void)
 {
 	int freq = 0, limit_ret, r_freq = 0;
 	int opp;
 	int cluster;
+	struct fbt_syslimit *limit = NULL;
 
-	limit_cluster = INVALID_NUM;
-	limit_copp = INVALID_NUM;
-	limit_ropp = INVALID_NUM;
-	limit_cfreq = 0;
-	limit_rfreq = 0;
 	limit_policy = FPSGO_LIMIT_NONE;
+
+	if (!limit_clus_ceil)
+		return;
+
+	for (cluster = 0; cluster < cluster_num; cluster++) {
+		limit_clus_ceil[cluster].copp = INVALID_NUM;
+		limit_clus_ceil[cluster].ropp = INVALID_NUM;
+		limit_clus_ceil[cluster].cfreq = 0;
+		limit_clus_ceil[cluster].rfreq = 0;
+	}
+
+	if (cluster_num < 2)
+		return;
 
 	limit_ret = fbt_get_cluster_limit(&cluster, &freq, &r_freq);
 	if (!limit_ret)
@@ -3413,7 +3449,7 @@ static void fbt_set_cap_limit(void)
 		return;
 
 	limit_policy = FPSGO_LIMIT_CAPACITY;
-	limit_cluster = cluster;
+	limit = &limit_clus_ceil[cluster];
 
 	if (!freq)
 		goto RCEILING;
@@ -3422,8 +3458,9 @@ static void fbt_set_cap_limit(void)
 	if (opp == INVALID_NUM)
 		goto RCEILING;
 
-	limit_copp = opp;
-	limit_cfreq = cpu_dvfs[cluster].power[opp];
+	limit->copp = opp;
+	limit->cfreq = cpu_dvfs[cluster].power[opp];
+	limit_cap = check_limit_cap(0);
 
 RCEILING:
 	if (!r_freq)
@@ -3433,11 +3470,12 @@ RCEILING:
 	if (opp == INVALID_NUM)
 		goto CHECK;
 
-	limit_ropp = opp;
-	limit_rfreq = cpu_dvfs[cluster].power[opp];
+	limit->ropp = opp;
+	limit->rfreq = cpu_dvfs[cluster].power[opp];
+	limit_rcap = check_limit_cap(1);
 
 CHECK:
-	if (limit_copp == INVALID_NUM && limit_ropp == INVALID_NUM)
+	if (limit->copp == INVALID_NUM && limit->ropp == INVALID_NUM)
 		limit_policy = FPSGO_LIMIT_NONE;
 
 	return;
@@ -3764,16 +3802,6 @@ static ssize_t table_show(struct kobject *kobj,
 		cluster_num, max_cap_cluster, min_cap_cluster);
 	posi += length;
 
-	length = scnprintf(temp + posi,
-		FPSGO_SYSFS_MAX_BUFF_SIZE - posi,
-		"limit\tclus\tcopp\tropp\n");
-	posi += length;
-
-	length = scnprintf(temp + posi, FPSGO_SYSFS_MAX_BUFF_SIZE - posi,
-		"%d\t%d\t%d\t%d\n\n",
-		limit_policy, limit_cluster, limit_copp, limit_ropp);
-	posi += length;
-
 	for (cluster = 0; cluster < cluster_num ; cluster++) {
 		for (opp = 0; opp < NR_FREQ_CPU; opp++) {
 			length = scnprintf(temp + posi,
@@ -3784,6 +3812,20 @@ static ssize_t table_show(struct kobject *kobj,
 				cpu_dvfs[cluster].capacity_ratio[opp]);
 			posi += length;
 		}
+	}
+
+	length = scnprintf(temp + posi,
+		FPSGO_SYSFS_MAX_BUFF_SIZE - posi,
+		"clus\tcopp\tropp\t\n");
+	posi += length;
+
+	for (cluster = 0; cluster < cluster_num ; cluster++) {
+		length = scnprintf(temp + posi,
+			FPSGO_SYSFS_MAX_BUFF_SIZE - posi,
+			"%d\t%d\t%d\n",
+			cluster, limit_clus_ceil[cluster].copp,
+			limit_clus_ceil[cluster].ropp);
+		posi += length;
 	}
 
 	mutex_unlock(&fbt_mlock);
@@ -4128,73 +4170,21 @@ static ssize_t llf_task_policy_store(struct kobject *kobj,
 
 static KOBJ_ATTR_RW(llf_task_policy);
 
-static ssize_t limit_policy_show(struct kobject *kobj,
-		struct kobj_attribute *attr,
-		char *buf)
-{
-	int val = -1;
-
-	mutex_lock(&fbt_mlock);
-	val = limit_policy;
-	mutex_unlock(&fbt_mlock);
-
-	return scnprintf(buf, PAGE_SIZE, "%d\n", val);
-}
-
-static ssize_t limit_policy_store(struct kobject *kobj,
-		struct kobj_attribute *attr,
-		const char *buf, size_t count)
-{
-	int val = 0;
-	char acBuffer[FPSGO_SYSFS_MAX_BUFF_SIZE];
-	int arg;
-
-	if ((count > 0) && (count < FPSGO_SYSFS_MAX_BUFF_SIZE)) {
-		if (scnprintf(acBuffer, FPSGO_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
-			if (kstrtoint(acBuffer, 0, &arg) == 0)
-				val = arg;
-			else
-				return count;
-		}
-	}
-
-	mutex_lock(&fbt_mlock);
-	if (!fbt_enable)
-		goto EXIT;
-
-	if (val < FPSGO_LIMIT_NONE || val >= FPSGO_LIMIT_MAX)
-		goto EXIT;
-
-	if (limit_policy == val)
-		goto EXIT;
-
-	if (limit_cluster < 0 || limit_cluster >= cluster_num)
-		goto EXIT;
-
-	fbt_set_hard_limit_locked(FPSGO_HARD_NONE, NULL);
-
-	if (val == FPSGO_LIMIT_CAPACITY
-		&& (limit_cluster < 0 || limit_cluster >= cluster_num))
-		goto EXIT;
-
-	limit_policy = val;
-
-EXIT:
-	mutex_unlock(&fbt_mlock);
-
-	return count;
-}
-
-static KOBJ_ATTR_RW(limit_policy);
-
 static ssize_t limit_cfreq_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		char *buf)
 {
-	int val = -1;
+	int cluster, val = 0;
 
 	mutex_lock(&fbt_mlock);
-	val = limit_cfreq;
+
+	cluster = max_cap_cluster;
+	if (cluster >= cluster_num || cluster < 0 || !limit_clus_ceil)
+		goto EXIT;
+
+	val = limit_clus_ceil[cluster].cfreq;
+
+EXIT:
 	mutex_unlock(&fbt_mlock);
 
 	return scnprintf(buf, PAGE_SIZE, "%d\n", val);
@@ -4208,6 +4198,8 @@ static ssize_t limit_cfreq_store(struct kobject *kobj,
 	char acBuffer[FPSGO_SYSFS_MAX_BUFF_SIZE];
 	int arg;
 	int opp;
+	int cluster;
+	struct fbt_syslimit *limit;
 
 	if ((count > 0) && (count < FPSGO_SYSFS_MAX_BUFF_SIZE)) {
 		if (scnprintf(acBuffer, FPSGO_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
@@ -4219,27 +4211,29 @@ static ssize_t limit_cfreq_store(struct kobject *kobj,
 	}
 
 	mutex_lock(&fbt_mlock);
-	if (!fbt_enable)
+	if (limit_policy != FPSGO_LIMIT_CAPACITY || !limit_clus_ceil)
 		goto EXIT;
 
-	if (limit_policy != FPSGO_LIMIT_CAPACITY)
+	cluster = max_cap_cluster;
+	if (cluster >= cluster_num || cluster < 0)
 		goto EXIT;
+
+	limit = &limit_clus_ceil[cluster];
 
 	if (val == 0) {
-		limit_cfreq = 0;
-		limit_copp = INVALID_NUM;
+		limit->cfreq = 0;
+		limit->copp = INVALID_NUM;
 		goto EXIT;
 	}
 
-	if (limit_cluster >= cluster_num || limit_cluster < 0)
-		goto EXIT;
 
-	opp = fbt_get_opp_by_freq(limit_cluster, val);
+	opp = fbt_get_opp_by_freq(cluster, val);
 	if (opp == INVALID_NUM)
 		goto EXIT;
 
-	limit_cfreq = cpu_dvfs[limit_cluster].power[opp];
-	limit_copp = opp;
+	limit->cfreq = cpu_dvfs[cluster].power[opp];
+	limit->copp = opp;
+	limit_cap = check_limit_cap(0);
 
 EXIT:
 	mutex_unlock(&fbt_mlock);
@@ -4249,14 +4243,97 @@ EXIT:
 
 static KOBJ_ATTR_RW(limit_cfreq);
 
+static ssize_t limit_cfreq_m_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	int cluster, val = 0;
+
+	mutex_lock(&fbt_mlock);
+
+	cluster = (max_cap_cluster > min_cap_cluster)
+			? max_cap_cluster - 1 : min_cap_cluster - 1;
+	if (cluster >= cluster_num || cluster < 0 || !limit_clus_ceil)
+		goto EXIT;
+
+	val = limit_clus_ceil[cluster].cfreq;
+
+EXIT:
+	mutex_unlock(&fbt_mlock);
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", val);
+}
+
+static ssize_t limit_cfreq_m_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	int val = 0;
+	char acBuffer[FPSGO_SYSFS_MAX_BUFF_SIZE];
+	int arg;
+	int opp;
+	int cluster;
+	struct fbt_syslimit *limit;
+
+	if ((count > 0) && (count < FPSGO_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, FPSGO_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtoint(acBuffer, 0, &arg) == 0)
+				val = arg;
+			else
+				return count;
+		}
+	}
+
+	mutex_lock(&fbt_mlock);
+	if (limit_policy != FPSGO_LIMIT_CAPACITY || !limit_clus_ceil)
+		goto EXIT;
+
+	cluster = (max_cap_cluster > min_cap_cluster)
+			? max_cap_cluster - 1 : min_cap_cluster - 1;
+
+	if (cluster >= cluster_num || cluster < 0)
+		goto EXIT;
+
+	limit = &limit_clus_ceil[cluster];
+
+	if (val == 0) {
+		limit->cfreq = 0;
+		limit->copp = INVALID_NUM;
+		goto EXIT;
+	}
+
+
+	opp = fbt_get_opp_by_freq(cluster, val);
+	if (opp == INVALID_NUM)
+		goto EXIT;
+
+	limit->cfreq = cpu_dvfs[cluster].power[opp];
+	limit->copp = opp;
+	limit_cap = check_limit_cap(0);
+
+EXIT:
+	mutex_unlock(&fbt_mlock);
+
+	return count;
+}
+
+static KOBJ_ATTR_RW(limit_cfreq_m);
+
 static ssize_t limit_rfreq_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		char *buf)
 {
-	int val = -1;
+	int cluster, val = 0;
 
 	mutex_lock(&fbt_mlock);
-	val = limit_rfreq;
+
+	cluster = max_cap_cluster;
+	if (cluster >= cluster_num || cluster < 0 || !limit_clus_ceil)
+		goto EXIT;
+
+	val = limit_clus_ceil[cluster].rfreq;
+
+EXIT:
 	mutex_unlock(&fbt_mlock);
 
 	return scnprintf(buf, PAGE_SIZE, "%d\n", val);
@@ -4270,6 +4347,8 @@ static ssize_t limit_rfreq_store(struct kobject *kobj,
 	char acBuffer[FPSGO_SYSFS_MAX_BUFF_SIZE];
 	int arg;
 	int opp;
+	int cluster;
+	struct fbt_syslimit *limit;
 
 	if ((count > 0) && (count < FPSGO_SYSFS_MAX_BUFF_SIZE)) {
 		if (scnprintf(acBuffer, FPSGO_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
@@ -4281,27 +4360,29 @@ static ssize_t limit_rfreq_store(struct kobject *kobj,
 	}
 
 	mutex_lock(&fbt_mlock);
-	if (!fbt_enable)
+	if (limit_policy != FPSGO_LIMIT_CAPACITY || !limit_clus_ceil)
 		goto EXIT;
 
-	if (limit_policy != FPSGO_LIMIT_CAPACITY)
+	cluster = max_cap_cluster;
+	if (cluster >= cluster_num || cluster < 0)
 		goto EXIT;
+
+	limit = &limit_clus_ceil[cluster];
 
 	if (val == 0) {
-		limit_rfreq = 0;
-		limit_ropp = INVALID_NUM;
+		limit->rfreq = 0;
+		limit->ropp = INVALID_NUM;
 		goto EXIT;
 	}
 
-	if (limit_cluster >= cluster_num || limit_cluster < 0)
-		goto EXIT;
 
-	opp = fbt_get_opp_by_freq(limit_cluster, val);
+	opp = fbt_get_opp_by_freq(cluster, val);
 	if (opp == INVALID_NUM)
 		goto EXIT;
 
-	limit_rfreq = cpu_dvfs[limit_cluster].power[opp];
-	limit_ropp = opp;
+	limit->rfreq = cpu_dvfs[cluster].power[opp];
+	limit->ropp = opp;
+	limit_rcap = check_limit_cap(1);
 
 EXIT:
 	mutex_unlock(&fbt_mlock);
@@ -4310,6 +4391,82 @@ EXIT:
 }
 
 static KOBJ_ATTR_RW(limit_rfreq);
+
+static ssize_t limit_rfreq_m_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	int cluster, val = 0;
+
+	mutex_lock(&fbt_mlock);
+
+	cluster = (max_cap_cluster > min_cap_cluster)
+			? max_cap_cluster - 1 : min_cap_cluster - 1;
+	if (cluster >= cluster_num || cluster < 0 || !limit_clus_ceil)
+		goto EXIT;
+
+	val = limit_clus_ceil[cluster].rfreq;
+
+EXIT:
+	mutex_unlock(&fbt_mlock);
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", val);
+}
+
+static ssize_t limit_rfreq_m_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	int val = 0;
+	char acBuffer[FPSGO_SYSFS_MAX_BUFF_SIZE];
+	int arg;
+	int opp;
+	int cluster;
+	struct fbt_syslimit *limit;
+
+	if ((count > 0) && (count < FPSGO_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, FPSGO_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtoint(acBuffer, 0, &arg) == 0)
+				val = arg;
+			else
+				return count;
+		}
+	}
+
+	mutex_lock(&fbt_mlock);
+	if (limit_policy != FPSGO_LIMIT_CAPACITY || !limit_clus_ceil)
+		goto EXIT;
+
+	cluster = (max_cap_cluster > min_cap_cluster)
+			? max_cap_cluster - 1 : min_cap_cluster - 1;
+
+	if (cluster >= cluster_num || cluster < 0)
+		goto EXIT;
+
+	limit = &limit_clus_ceil[cluster];
+
+	if (val == 0) {
+		limit->rfreq = 0;
+		limit->ropp = INVALID_NUM;
+		goto EXIT;
+	}
+
+
+	opp = fbt_get_opp_by_freq(cluster, val);
+	if (opp == INVALID_NUM)
+		goto EXIT;
+
+	limit->rfreq = cpu_dvfs[cluster].power[opp];
+	limit->ropp = opp;
+	limit_rcap = check_limit_cap(1);
+
+EXIT:
+	mutex_unlock(&fbt_mlock);
+
+	return count;
+}
+
+static KOBJ_ATTR_RW(limit_rfreq_m);
 
 void __exit fbt_cpu_exit(void)
 {
@@ -4338,11 +4495,13 @@ void __exit fbt_cpu_exit(void)
 	fpsgo_sysfs_remove_file(fbt_kobj,
 			&kobj_attr_boost_ta);
 	fpsgo_sysfs_remove_file(fbt_kobj,
-			&kobj_attr_limit_policy);
-	fpsgo_sysfs_remove_file(fbt_kobj,
 			&kobj_attr_limit_cfreq);
 	fpsgo_sysfs_remove_file(fbt_kobj,
 			&kobj_attr_limit_rfreq);
+	fpsgo_sysfs_remove_file(fbt_kobj,
+			&kobj_attr_limit_cfreq_m);
+	fpsgo_sysfs_remove_file(fbt_kobj,
+			&kobj_attr_limit_rfreq_m);
 
 	fpsgo_sysfs_remove_dir(&fbt_kobj);
 
@@ -4350,6 +4509,7 @@ void __exit fbt_cpu_exit(void)
 	kfree(clus_obv);
 	kfree(cpu_dvfs);
 	kfree(clus_max_cap);
+	kfree(limit_clus_ceil);
 }
 
 int __init fbt_cpu_init(void)
@@ -4414,6 +4574,9 @@ int __init fbt_cpu_init(void)
 	clus_max_cap =
 		kcalloc(cluster_num, sizeof(int), GFP_KERNEL);
 
+	limit_clus_ceil =
+		kcalloc(cluster_num, sizeof(struct fbt_syslimit), GFP_KERNEL);
+
 	fbt_init_sjerk();
 
 	fbt_update_pwd_tbl();
@@ -4440,11 +4603,13 @@ int __init fbt_cpu_init(void)
 		fpsgo_sysfs_create_file(fbt_kobj,
 				&kobj_attr_boost_ta);
 		fpsgo_sysfs_create_file(fbt_kobj,
-				&kobj_attr_limit_policy);
-		fpsgo_sysfs_create_file(fbt_kobj,
 				&kobj_attr_limit_cfreq);
 		fpsgo_sysfs_create_file(fbt_kobj,
 				&kobj_attr_limit_rfreq);
+		fpsgo_sysfs_create_file(fbt_kobj,
+				&kobj_attr_limit_cfreq_m);
+		fpsgo_sysfs_create_file(fbt_kobj,
+				&kobj_attr_limit_rfreq_m);
 	}
 
 
