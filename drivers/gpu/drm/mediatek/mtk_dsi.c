@@ -2837,6 +2837,12 @@ int mtk_dsi_porch_setting(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 	switch (type) {
 	case DSI_VFP:
+#if defined(CONFIG_MACH_MT6885) || defined(CONFIG_MACH_MT6893)
+		if (value > 0xffe) {
+			DDPINFO("VFP overflow: %u, set to 4094\n", value);
+			value = 0xffe;
+		}
+#endif
 		mtk_ddp_write_relaxed(comp, value, DSI_VFP_NL, handle);
 		break;
 	case DSI_VSA:
