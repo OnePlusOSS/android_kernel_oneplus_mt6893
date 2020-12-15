@@ -1880,6 +1880,79 @@ void dumpAllRegs(enum ISP_DEV_NODE_ENUM module)
 	g_is_dumping[module] = MFALSE;
 }
 
+int STT_FBC_Reset(unsigned int reg_module)
+{
+	unsigned int DmaEnStatus[_cam_max_];
+	union FBC_CTRL_2 fbc_ctrl2[_cam_max_ + 1];
+
+	ISP_GetDmaPortsStatus(reg_module, &DmaEnStatus[0]);
+	LOG_INF("STT recover start  reg_module:%d\n", reg_module);
+	if (DmaEnStatus[_aao_]) {
+		fbc_ctrl2[_aao_].Raw = ISP_RD32(CAM_REG_FBC_AAO_CTL2(reg_module));
+		ISP_WR32(CAM_REG_FBC_AAO_CTL1(reg_module),
+			(ISP_RD32(CAM_REG_FBC_AAO_CTL1(reg_module))|0x100));
+		ISP_WR32(CAM_REG_FBC_AAO_CTL1(reg_module),
+			(ISP_RD32(CAM_REG_FBC_AAO_CTL1(reg_module)) & (~(0x100))));
+		ISP_WR32(CAM_REG_FBC_AAO_CTL2(reg_module), fbc_ctrl2[_aao_].Raw);
+	}
+
+	if (DmaEnStatus[_flko_]) {
+		fbc_ctrl2[_flko_].Raw = ISP_RD32(CAM_REG_FBC_FLKO_CTL2(reg_module));
+		ISP_WR32(CAM_REG_FBC_FLKO_CTL1(reg_module),
+			(ISP_RD32(CAM_REG_FBC_FLKO_CTL1(reg_module))|0x100));
+		ISP_WR32(CAM_REG_FBC_FLKO_CTL1(reg_module),
+			(ISP_RD32(CAM_REG_FBC_FLKO_CTL1(reg_module)) & (~(0x100))));
+		ISP_WR32(CAM_REG_FBC_FLKO_CTL2(reg_module), fbc_ctrl2[_flko_].Raw);
+	}
+
+	if (DmaEnStatus[_aaho_]) {
+		fbc_ctrl2[_aaho_].Raw = ISP_RD32(CAM_REG_FBC_AAHO_CTL2(reg_module));
+		ISP_WR32(CAM_REG_FBC_AAHO_CTL1(reg_module),
+			(ISP_RD32(CAM_REG_FBC_AAHO_CTL1(reg_module))|0x100));
+		ISP_WR32(CAM_REG_FBC_AAHO_CTL1(reg_module),
+			(ISP_RD32(CAM_REG_FBC_AAHO_CTL1(reg_module)) & (~(0x100))));
+		ISP_WR32(CAM_REG_FBC_AAHO_CTL2(reg_module), fbc_ctrl2[_aaho_].Raw);
+	}
+
+	if (DmaEnStatus[_afo_]) {
+		fbc_ctrl2[_afo_].Raw = ISP_RD32(CAM_REG_FBC_AFO_CTL2(reg_module));
+		ISP_WR32(CAM_REG_FBC_AFO_CTL1(reg_module),
+			(ISP_RD32(CAM_REG_FBC_AFO_CTL1(reg_module))|0x100));
+		ISP_WR32(CAM_REG_FBC_AFO_CTL1(reg_module),
+			(ISP_RD32(CAM_REG_FBC_AFO_CTL1(reg_module)) & (~(0x100))));
+		ISP_WR32(CAM_REG_FBC_AFO_CTL2(reg_module), fbc_ctrl2[_afo_].Raw);
+	}
+
+	if (DmaEnStatus[_pdo_]) {
+		fbc_ctrl2[_pdo_].Raw = ISP_RD32(CAM_REG_FBC_PDO_CTL2(reg_module));
+		ISP_WR32(CAM_REG_FBC_PDO_CTL1(reg_module),
+			(ISP_RD32(CAM_REG_FBC_PDO_CTL1(reg_module))|0x100));
+		ISP_WR32(CAM_REG_FBC_PDO_CTL1(reg_module),
+			(ISP_RD32(CAM_REG_FBC_PDO_CTL1(reg_module)) & (~(0x100))));
+		ISP_WR32(CAM_REG_FBC_PDO_CTL2(reg_module), fbc_ctrl2[_pdo_].Raw);
+	}
+
+	if (DmaEnStatus[_tsfso_]) {
+		fbc_ctrl2[_tsfso_].Raw = ISP_RD32(CAM_REG_FBC_TSFSO_CTL2(reg_module));
+		ISP_WR32(CAM_REG_FBC_TSFSO_CTL1(reg_module),
+			(ISP_RD32(CAM_REG_FBC_TSFSO_CTL1(reg_module))|0x100));
+		ISP_WR32(CAM_REG_FBC_TSFSO_CTL1(reg_module),
+			(ISP_RD32(CAM_REG_FBC_TSFSO_CTL1(reg_module)) & (~(0x100))));
+		ISP_WR32(CAM_REG_FBC_TSFSO_CTL2(reg_module), fbc_ctrl2[_tsfso_].Raw);
+	}
+
+	if (DmaEnStatus[_ltmso_]) {
+		fbc_ctrl2[_ltmso_].Raw = ISP_RD32(CAM_REG_FBC_LTMSO_CTL2(reg_module));
+		ISP_WR32(CAM_REG_FBC_LTMSO_CTL1(reg_module),
+			(ISP_RD32(CAM_REG_FBC_LTMSO_CTL1(reg_module))|0x100));
+		ISP_WR32(CAM_REG_FBC_LTMSO_CTL1(reg_module),
+			(ISP_RD32(CAM_REG_FBC_LTMSO_CTL1(reg_module)) & (~(0x100))));
+		ISP_WR32(CAM_REG_FBC_LTMSO_CTL2(reg_module), fbc_ctrl2[_ltmso_].Raw);
+	}
+	LOG_INF("STT recover done  reg_module:%d\n", reg_module);
+	return 0;
+}
+
 #define Rdy_ReqDump
 static void ISP_DumpDmaDeepDbg(enum ISP_IRQ_TYPE_ENUM module, unsigned int ErrStatus)
 {
@@ -1915,6 +1988,35 @@ static void ISP_DumpDmaDeepDbg(enum ISP_IRQ_TYPE_ENUM module, unsigned int ErrSt
 	default:
 		LOG_NOTICE("unsupported module:0x%x\n", module);
 		return;
+	}
+
+	if (ErrStatus & TG_ERR_ST) {
+		STT_FBC_Reset(regModule);
+		twin_status.Raw =
+			ISP_RD32(CAM_REG_CTL_TWIN_STATUS(innerRegModule));
+		LOG_INF("twin status en:%d, master:%d\n",
+			twin_status.Bits.TWIN_EN,
+			twin_status.Bits.MASTER_MODULE);
+		if (twin_status.Bits.TWIN_EN == MTRUE) {
+			for (i = 0 ; i < twin_status.Bits.SLAVE_CAM_NUM ; i++) {
+				switch (i) {
+				case 0:
+					if (twin_status.Bits.TWIN_MODULE == CAM_B)
+						STT_FBC_Reset(ISP_CAM_B_IDX);
+					else if (twin_status.Bits.TWIN_MODULE == CAM_C)
+						STT_FBC_Reset(ISP_CAM_C_IDX);
+					break;
+				case 1:
+					LOG_INF("2nd slave%d cam:%d\n", i,
+						twin_status.Bits.TRIPLE_MODULE);
+						STT_FBC_Reset(ISP_CAM_C_IDX);
+					break;
+				default:
+					LOG_INF("unexpected slave cam\n");
+					break;
+				}
+			}
+		}
 	}
 
 	/* DMAO */
@@ -2142,11 +2244,6 @@ static void ISP_DumpDmaDeepDbg(enum ISP_IRQ_TYPE_ENUM module, unsigned int ErrSt
 	}
 
 	if (dump_all) {
-		twin_status.Raw =
-			ISP_RD32(CAM_REG_CTL_TWIN_STATUS(innerRegModule));
-		LOG_INF("twin status en:%d, master:%d\n",
-			twin_status.Bits.TWIN_EN,
-			twin_status.Bits.MASTER_MODULE);
 
 		/* single/master case*/
 		dumpAllRegs(innerRegModule);
@@ -8636,6 +8733,7 @@ enum CAM_FrameST Irq_CAM_FrameStatus(enum ISP_DEV_NODE_ENUM module,
 	unsigned int dma_en, dma2_en;
 	union FBC_CTRL_1 fbc_ctrl1[_cam_max_ + 1];
 	union FBC_CTRL_2 fbc_ctrl2[_cam_max_ + 1];
+	union FBC_CTRL_2 fbc_ctrl2_STT;
 	bool bQueMode = MFALSE;
 	unsigned int product = 1;
 	/* TSTP_V3 unsigned int frmPeriod = */
@@ -8879,6 +8977,69 @@ enum CAM_FrameST Irq_CAM_FrameStatus(enum ISP_DEV_NODE_ENUM module,
 	} else {
 		fbc_ctrl1[dma_arry_map[_yuvo_]].Raw = 0x0;
 		fbc_ctrl2[dma_arry_map[_yuvo_]].Raw = 0x0;
+	}
+	/*STT FBC Status record*/
+	if (dma_en & _TSFSO_R1_EN_) {
+
+		fbc_ctrl2_STT.Raw =
+			ISP_RD32(CAM_REG_FBC_TSFSO_CTL2(module));
+
+		if (fbc_ctrl2_STT.Bits.FBC_CNT > 0)
+			(*FBCurStat) = (*FBCurStat) | _TSFSO_R1_EN_;
+	}
+
+	if (dma_en & _AAO_R1_EN_) {
+
+		fbc_ctrl2_STT.Raw =
+			ISP_RD32(CAM_REG_FBC_AAO_CTL2(module));
+
+		if (fbc_ctrl2_STT.Bits.FBC_CNT > 0)
+			(*FBCurStat) = (*FBCurStat) | _AAO_R1_EN_;
+	}
+
+	if (dma_en & _AAHO_R1_EN_) {
+
+		fbc_ctrl2_STT.Raw =
+			ISP_RD32(CAM_REG_FBC_AAHO_CTL2(module));
+
+		if (fbc_ctrl2_STT.Bits.FBC_CNT > 0)
+			(*FBCurStat) = (*FBCurStat) | _AAHO_R1_EN_;
+	}
+
+	if (dma_en & _FLKO_R1_EN_) {
+
+		fbc_ctrl2_STT.Raw =
+			ISP_RD32(CAM_REG_FBC_FLKO_CTL2(module));
+
+		if (fbc_ctrl2_STT.Bits.FBC_CNT > 0)
+			(*FBCurStat) = (*FBCurStat) | _FLKO_R1_EN_;
+	}
+
+	if (dma_en & _AFO_R1_EN_) {
+
+		fbc_ctrl2_STT.Raw =
+			ISP_RD32(CAM_REG_FBC_AFO_CTL2(module));
+
+		if (fbc_ctrl2_STT.Bits.FBC_CNT > 0)
+			(*FBCurStat) = (*FBCurStat) | _AFO_R1_EN_;
+	}
+
+	if (dma_en & _PDO_R1_EN_) {
+
+		fbc_ctrl2_STT.Raw =
+			ISP_RD32(CAM_REG_FBC_PDO_CTL2(module));
+
+		if (fbc_ctrl2_STT.Bits.FBC_CNT > 0)
+			(*FBCurStat) = (*FBCurStat) | _PDO_R1_EN_;
+	}
+
+	if (dma_en & _LTMSO_R1_EN_) {
+
+		fbc_ctrl2_STT.Raw =
+			ISP_RD32(CAM_REG_FBC_LTMSO_CTL2(module));
+
+		if (fbc_ctrl2_STT.Bits.FBC_CNT > 0)
+			(*FBCurStat) = (*FBCurStat) | _LTMSO_R1_EN_;
 	}
 
 	for (i = 0; i < _cam_max_; i++) {
