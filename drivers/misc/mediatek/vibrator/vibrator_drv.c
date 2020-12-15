@@ -71,12 +71,13 @@ static void update_vibrator(struct work_struct *work)
 {
 	struct mt_vibr *vibr = container_of(work, struct mt_vibr, vibr_work);
 
-	pr_info(VIB_TAG "update vibrator status %d, ldo=%d",
-		atomic_read(&vibr->vibr_state), g_mt_vib->ldo_state);
-	if (atomic_read(&vibr->vibr_state) == 0)
+	if (atomic_read(&vibr->vibr_state) == 0) {
 		vibr_Disable();
-	else
+		pr_info("update vibrator disable, ldo=%d", g_mt_vib->ldo_state);
+	} else {
 		vibr_Enable();
+		pr_info("update vibrator enable, ldo=%d", g_mt_vib->ldo_state);
+	}
 }
 
 static void vibrator_enable(unsigned int dur, unsigned int activate)
@@ -117,14 +118,11 @@ static void vibrator_oc_handler(void)
 
 static enum hrtimer_restart vibrator_timer_func(struct hrtimer *timer)
 {
-	unsigned long flags;
 	struct mt_vibr *vibr = container_of(timer, struct mt_vibr, vibr_timer);
 
-	spin_lock_irqsave(&g_mt_vib->vibr_lock, flags);
 	atomic_set(&vibr->vibr_state, 0);
 	pr_info(VIB_TAG "set vibr_state 0");
-	spin_unlock_irqrestore(&g_mt_vib->vibr_lock, flags);
-	queue_work(g_mt_vib->vibr_queue, &g_mt_vib->vibr_work);
+	queue_work(vibr->vibr_queue, &vibr->vibr_work);
 	return HRTIMER_NORESTART;
 }
 
