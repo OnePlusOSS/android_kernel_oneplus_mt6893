@@ -4456,6 +4456,7 @@ static void mtk_dsi_cmd_timing_change(struct mtk_dsi *dsi,
 	mtk_dsi_rxtx_control(dsi);
 	mtk_dsi_ps_control_vact(dsi);
 	mtk_dsi_set_interrupt_enable(dsi);
+
 	//[FIXME] sw control enable will be set to 1 by mipi_tx_pll_prepare,
 	//and it needs to clear to 0
 	mtk_mipi_tx_sw_control_en(dsi->phy, 0);
@@ -4464,7 +4465,7 @@ static void mtk_dsi_cmd_timing_change(struct mtk_dsi *dsi,
 
 	mtk_dsi_set_mode(dsi);
 	mtk_dsi_clk_hs_mode(dsi, 1);
-	mtk_dsi_set_mmclk_by_datarate(dsi, mtk_crtc, 1);
+
 skip_change_mipi:
 	/*  send lcm cmd after DSI power on if needed */
 	if (dsi->ext && dsi->ext->funcs &&
