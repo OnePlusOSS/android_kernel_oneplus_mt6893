@@ -998,22 +998,22 @@ int cm_mgr_get_bw(void)
 #ifdef USE_CPU_TO_DRAM_MAP
 int cm_mgr_cpu_opp_to_dram[CM_MGR_CPU_OPP_SIZE] = {
 /* start from cpu opp 0 */
+	DDR_OPP_0,
+	DDR_OPP_0,
+	DDR_OPP_0,
+	DDR_OPP_0,
+	DDR_OPP_0,
+	DDR_OPP_0,
+	DDR_OPP_0,
+	DDR_OPP_0,
+	DDR_OPP_0,
+	DDR_OPP_0,
+	DDR_OPP_0,
 	DDR_OPP_1,
 	DDR_OPP_1,
-	PM_QOS_DDR_OPP_DEFAULT_VALUE,
-	PM_QOS_DDR_OPP_DEFAULT_VALUE,
-	PM_QOS_DDR_OPP_DEFAULT_VALUE,
-	PM_QOS_DDR_OPP_DEFAULT_VALUE,
-	PM_QOS_DDR_OPP_DEFAULT_VALUE,
-	PM_QOS_DDR_OPP_DEFAULT_VALUE,
-	PM_QOS_DDR_OPP_DEFAULT_VALUE,
-	PM_QOS_DDR_OPP_DEFAULT_VALUE,
-	PM_QOS_DDR_OPP_DEFAULT_VALUE,
-	PM_QOS_DDR_OPP_DEFAULT_VALUE,
-	PM_QOS_DDR_OPP_DEFAULT_VALUE,
-	PM_QOS_DDR_OPP_DEFAULT_VALUE,
-	PM_QOS_DDR_OPP_DEFAULT_VALUE,
-	PM_QOS_DDR_OPP_DEFAULT_VALUE,
+	DDR_OPP_1,
+	DDR_OPP_1,
+	DDR_OPP_1,
 };
 
 static void cm_mgr_process(struct work_struct *work)
@@ -1040,8 +1040,10 @@ void cm_mgr_update_dram_by_cpu_opp(int cpu_opp)
 	if ((cpu_opp >= 0) && (cpu_opp < CM_MGR_CPU_OPP_SIZE))
 		dram_opp = cm_mgr_cpu_opp_to_dram[cpu_opp];
 
+
 	if (cm_mgr_cpu_to_dram_opp == dram_opp)
 		return;
+
 
 	cm_mgr_cpu_to_dram_opp = dram_opp;
 
