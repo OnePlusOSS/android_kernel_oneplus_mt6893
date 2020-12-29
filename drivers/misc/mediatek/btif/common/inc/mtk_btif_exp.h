@@ -293,6 +293,20 @@ int mtk_btif_exp_tx_has_pending_data(unsigned long u_id);
 
 /*****************************************************************************
  * FUNCTION
+ *  mtk_btif_is_tx_complete
+ * DESCRIPTION
+ *  Check if tx is complete
+ * PARAMETERS
+ *  u_id      [IN] btif index
+ * RETURNS
+ *  positive means tx is complete
+ *  zeor means tx is ongoing
+ *  negative means fail
+ *****************************************************************************/
+int mtk_btif_is_tx_complete(unsigned long u_id);
+
+/*****************************************************************************
+ * FUNCTION
  *  mtk_btif_exp_rx_thread_get
  * DESCRIPTION
  *  get btif_rxd thread

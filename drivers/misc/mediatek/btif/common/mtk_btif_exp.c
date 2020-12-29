@@ -845,6 +845,20 @@ int mtk_btif_exp_tx_has_pending_data(unsigned long u_id)
 }
 EXPORT_SYMBOL(mtk_btif_exp_tx_has_pending_data);
 
+int mtk_btif_is_tx_complete(unsigned long u_id)
+{
+	struct _mtk_btif_ *p_btif = NULL;
+
+	p_btif = btif_exp_srh_id(u_id);
+	if (p_btif == NULL) {
+		BTIF_ERR_FUNC("E_BTIF_INVAL_PARAM\n");
+		return E_BTIF_INVAL_PARAM;
+	}
+
+	return btif_is_tx_complete(p_btif);
+}
+EXPORT_SYMBOL(mtk_btif_is_tx_complete);
+
 struct task_struct *mtk_btif_exp_rx_thread_get(unsigned long u_id)
 {
 	struct _mtk_btif_ *p_btif = NULL;

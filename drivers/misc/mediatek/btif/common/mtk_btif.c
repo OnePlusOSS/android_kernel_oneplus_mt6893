@@ -141,7 +141,6 @@ static int _btif_vfifo_deinit(struct _mtk_btif_dma_ *p_dma);
 static int _btif_vfifo_init(struct _mtk_btif_dma_ *p_dma);
 #endif
 
-static bool _btif_is_tx_complete(struct _mtk_btif_ *p_btif);
 static int _btif_init(struct _mtk_btif_ *p_btif);
 static int _btif_lpbk_ctrl(struct _mtk_btif_ *p_btif, bool flag);
 static int btif_rx_dma_mode_set(int en);
@@ -1809,7 +1808,7 @@ int _btif_enter_dpidle_from_on(struct _mtk_btif_ *p_btif)
 
 	do_gettimeofday(&timer_start);
 
-	while ((!_btif_is_tx_complete(p_btif)) && (retry < max_retry)) {
+	while ((!btif_is_tx_complete(p_btif)) && (retry < max_retry)) {
 		do_gettimeofday(&timer_now);
 		if ((MAX_WAIT_TIME_MS/1000) <=
 				(timer_now.tv_sec - timer_start.tv_sec)) {
@@ -1888,7 +1887,7 @@ int btif_raise_wak_signal(struct _mtk_btif_ *p_btif)
 	return i_ret;
 }
 
-bool _btif_is_tx_complete(struct _mtk_btif_ *p_btif)
+bool btif_is_tx_complete(struct _mtk_btif_ *p_btif)
 {
 	bool b_ret = false;
 	enum _ENUM_BTIF_MODE_ tx_mode = p_btif->tx_mode;
