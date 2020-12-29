@@ -1154,7 +1154,6 @@ static void vow_service_ReadPayloadDumpData(unsigned int buf_length)
 }
 #endif
 
-#ifdef CONFIG_MTK_VOW_DUAL_MIC_SUPPORT
 static void vow_interleaving(short *out_buf,
 			     short *l_sample,
 			     short *r_sample,
@@ -1169,7 +1168,6 @@ static void vow_interleaving(short *out_buf,
 		*out_buf++ = *r_sample++;
 	}
 }
-#endif
 
 static int vow_service_ReadVoiceData_Internal(unsigned int buf_offset,
 					      unsigned int buf_length)
