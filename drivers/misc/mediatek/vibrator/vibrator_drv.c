@@ -36,7 +36,8 @@
 
 struct mt_vibr {
 	struct workqueue_struct *vibr_queue;
-	struct work_struct vibr_work;
+	struct work_struct vibr_onwork;
+	struct work_struct vibr_offwork;
 	struct hrtimer vibr_timer;
 	int ldo_state;
 	int shutdown_flag;
@@ -51,6 +52,7 @@ static int vibr_Enable(void)
 {
 
 	if (!g_mt_vib->ldo_state) {
+		pr_info("vibr enable");
 		vibr_Enable_HW();
 		g_mt_vib->ldo_state = 1;
 	}
@@ -61,23 +63,23 @@ static int vibr_Disable(void)
 {
 
 	if (g_mt_vib->ldo_state) {
+		pr_info("vibr disable");
 		vibr_Disable_HW();
 		g_mt_vib->ldo_state = 0;
 	}
 	return 0;
 }
 
-static void update_vibrator(struct work_struct *work)
+static void on_vibrator(struct work_struct *work)
 {
-	struct mt_vibr *vibr = container_of(work, struct mt_vibr, vibr_work);
+	pr_info("update vibrator enable, ldo=%d", g_mt_vib->ldo_state);
+	vibr_Enable();
+}
 
-	if (atomic_read(&vibr->vibr_state) == 0) {
-		vibr_Disable();
-		pr_info("update vibrator disable, ldo=%d", g_mt_vib->ldo_state);
-	} else {
-		vibr_Enable();
-		pr_info("update vibrator enable, ldo=%d", g_mt_vib->ldo_state);
-	}
+static void off_vibrator(struct work_struct *work)
+{
+	pr_info("update vibrator disable, ldo=%d", g_mt_vib->ldo_state);
+	vibr_Disable();
 }
 
 static void vibrator_enable(unsigned int dur, unsigned int activate)
@@ -87,11 +89,13 @@ static void vibrator_enable(unsigned int dur, unsigned int activate)
 
 	spin_lock_irqsave(&g_mt_vib->vibr_lock, flags);
 	hrtimer_cancel(&g_mt_vib->vibr_timer);
-	pr_info(VIB_TAG "cancel hrtimer, cust:%dms, value:%u, shutdown:%d\n",
-			hw->vib_timer, dur, g_mt_vib->shutdown_flag);
+	cancel_work(&g_mt_vib->vibr_onwork);
+	pr_info(VIB_TAG "cancel hrtimer, cust:%dms, value:%u, activate:%d, shutdown:%d\n",
+			hw->vib_timer, dur, activate, g_mt_vib->shutdown_flag);
 
 	if (activate == 0 || g_mt_vib->shutdown_flag == 1) {
 		atomic_set(&g_mt_vib->vibr_state, 0);
+		queue_work(g_mt_vib->vibr_queue, &g_mt_vib->vibr_offwork);
 	} else {
 #ifdef CUST_VIBR_LIMIT
 		if (dur > hw->vib_limit && dur < hw->vib_timer)
@@ -102,12 +106,12 @@ static void vibrator_enable(unsigned int dur, unsigned int activate)
 
 		dur = (dur > 15000 ? 15000 : dur);
 		atomic_set(&g_mt_vib->vibr_state, 1);
+		queue_work(g_mt_vib->vibr_queue, &g_mt_vib->vibr_onwork);
 		hrtimer_start(&g_mt_vib->vibr_timer,
 			      ktime_set(dur / 1000, (dur % 1000) * 1000000),
 			      HRTIMER_MODE_REL);
 	}
 	spin_unlock_irqrestore(&g_mt_vib->vibr_lock, flags);
-	queue_work(g_mt_vib->vibr_queue, &g_mt_vib->vibr_work);
 }
 
 static void vibrator_oc_handler(void)
@@ -121,8 +125,9 @@ static enum hrtimer_restart vibrator_timer_func(struct hrtimer *timer)
 	struct mt_vibr *vibr = container_of(timer, struct mt_vibr, vibr_timer);
 
 	atomic_set(&vibr->vibr_state, 0);
+
 	pr_info(VIB_TAG "set vibr_state 0");
-	queue_work(vibr->vibr_queue, &vibr->vibr_work);
+	queue_work(vibr->vibr_queue, &vibr->vibr_offwork);
 	return HRTIMER_NORESTART;
 }
 
@@ -261,7 +266,8 @@ static int vib_probe(struct platform_device *pdev)
 		return -ENODATA;
 	}
 
-	INIT_WORK(&vibr->vibr_work, update_vibrator);
+	INIT_WORK(&vibr->vibr_onwork, on_vibrator);
+	INIT_WORK(&vibr->vibr_offwork, off_vibrator);
 	spin_lock_init(&vibr->vibr_lock);
 	vibr->shutdown_flag = 0;
 	atomic_set(&vibr->vibr_state, 0);
@@ -282,7 +288,8 @@ static int vib_remove(struct platform_device *pdev)
 {
 	struct mt_vibr *vibr = dev_get_drvdata(&pdev->dev);
 
-	cancel_work_sync(&vibr->vibr_work);
+	cancel_work_sync(&vibr->vibr_onwork);
+	cancel_work_sync(&vibr->vibr_offwork);
 	hrtimer_cancel(&vibr->vibr_timer);
 	devm_led_classdev_unregister(&pdev->dev, &led_vibr);
 
@@ -306,7 +313,6 @@ static void vib_shutdown(struct platform_device *pdev)
 		spin_unlock_irqrestore(&vibr->vibr_lock, flags);
 	}
 }
-
 
 static struct platform_driver vibrator_driver = {
 	.probe = vib_probe,
