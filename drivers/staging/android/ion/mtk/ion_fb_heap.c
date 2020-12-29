@@ -299,31 +299,6 @@ static int ion_fb_heap_debug_show(struct ion_heap *heap, struct seq_file *s,
 	return 0;
 }
 
-struct ion_heap *ion_fb_heap_create(struct ion_platform_heap *heap_data)
-{
-	struct ion_fb_heap *fb_heap;
-
-	fb_heap = kzalloc(sizeof(*fb_heap), GFP_KERNEL);
-	if (!fb_heap)
-		return ERR_PTR(-ENOMEM);
-
-	fb_heap->pool = gen_pool_create(12, -1);
-	if (!fb_heap->pool) {
-		kfree(fb_heap);
-		return ERR_PTR(-ENOMEM);
-	}
-
-	fb_heap->base = heap_data->base;
-	fb_heap->size = heap_data->size;
-	gen_pool_add(fb_heap->pool, fb_heap->base, fb_heap->size, -1);
-	fb_heap->heap.ops = &fb_heap_ops;
-	fb_heap->heap.type = (unsigned int)ION_HEAP_TYPE_FB;
-	fb_heap->heap.flags = (unsigned int)ION_HEAP_FLAG_DEFER_FREE;
-	fb_heap->heap.debug_show = ion_fb_heap_debug_show;
-
-	return &fb_heap->heap;
-}
-
 void ion_fb_heap_destroy(struct ion_heap *heap)
 {
 	struct ion_fb_heap
@@ -332,26 +307,4 @@ void ion_fb_heap_destroy(struct ion_heap *heap)
 	gen_pool_destroy(fb_heap->pool);
 	kfree(fb_heap);
 	fb_heap = NULL;
-}
-
-int ion_drv_create_FB_heap(ion_phys_addr_t fb_base, size_t fb_size)
-{
-	struct ion_platform_heap *heap_data;
-
-	heap_data = kzalloc(sizeof(*heap_data), GFP_KERNEL);
-	if (!heap_data)
-		return -ENOMEM;
-
-	heap_data->id = ION_HEAP_TYPE_FB;
-	heap_data->type = (unsigned int)ION_HEAP_TYPE_FB;
-	heap_data->name = "ion_fb_heap";
-	heap_data->base = fb_base;
-	heap_data->size = fb_size;
-	heap_data->align = 0x1000;
-	heap_data->priv = NULL;
-	ion_drv_create_heap(heap_data);
-
-	kfree(heap_data);
-
-	return 0;
 }

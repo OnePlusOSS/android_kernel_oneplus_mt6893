@@ -844,9 +844,6 @@ struct ion_heap *ion_mtk_heap_create(struct ion_platform_heap *heap_data)
 	case ION_HEAP_TYPE_MULTIMEDIA:
 		heap = ion_mm_heap_create(heap_data);
 		break;
-	case ION_HEAP_TYPE_FB:
-		heap = ion_fb_heap_create(heap_data);
-		break;
 	case ION_HEAP_TYPE_MULTIMEDIA_SEC:
 		heap = ion_sec_heap_create(heap_data);
 		break;
@@ -1185,24 +1182,6 @@ static struct ion_platform_heap ion_drv_platform_heaps[] = {
 	 .type = (unsigned int)ION_HEAP_TYPE_MULTIMEDIA_SEC,
 	 .id = ION_HEAP_TYPE_MULTIMEDIA_SDSP_SHARED,
 	 .name = "ion_sec_heap_sdsp_shared",
-	 .base = 0,
-	 .size = 0,
-	 .align = 0,
-	 .priv = NULL,
-	 },
-	{
-	 .type = (unsigned int)ION_HEAP_TYPE_MULTIMEDIA,
-	 .id = ION_HEAP_TYPE_MULTIMEDIA_MAP_MVA,
-	 .name = "ion_mm_heap_for_va2mva",
-	 .base = 0,
-	 .size = 0,
-	 .align = 0,
-	 .priv = NULL,
-	 },
-	{
-	 .type = (unsigned int)ION_HEAP_TYPE_MULTIMEDIA,
-	 .id = ION_HEAP_TYPE_MULTIMEDIA_PA2MVA,
-	 .name = "ion_mm_heap_for_pa2mva",
 	 .base = 0,
 	 .size = 0,
 	 .align = 0,
