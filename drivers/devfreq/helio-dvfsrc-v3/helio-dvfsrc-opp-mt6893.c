@@ -30,6 +30,7 @@
 #define VCORE_VB_TYPEC_EN_SHIFT 10
 #define VCORE_VB_750_EN_SHIFT 12
 #define VCORE_VB_575_EN_SHIFT 13
+#define VCORE_VB_750_EN_V2_SHIFT 14
 
 static int dvfsrc_rsrv;
 
@@ -144,6 +145,11 @@ static int get_vb_volt(int vcore_opp, int info_mode)
 			ret = (ptpod <= 2) ? ptpod : 2;
 		else if ((info > 10) && (info_mode & (1 << VCORE_VB_TYPEC_EN_SHIFT)))
 			ret = (ptpod <= 1) ? ptpod : 1;
+
+		if (info_mode & (1 << VCORE_VB_750_EN_V2_SHIFT)) {
+			if (ret > 0)
+				ret += 5;
+		}
 	}
 
 	if (vcore_opp == VCORE_OPP_4) {
@@ -215,8 +221,10 @@ static int __init dvfsrc_opp_init(void)
 	vcore_opp_4_uv = vcore_opp_4_uv + rising_idx * 25000;
 
 	if (is_vcore_ct && (rising_idx == 0)) {
-		if (vb_750_en)
+		if (vb_750_en) {
 			vcore_opp_0_uv -= get_vb_volt(VCORE_OPP_0, dvfsrc_rsrv);
+			vcore_opp_1_uv = min(vcore_opp_0_uv, vcore_opp_1_uv);
+		}
 		if (vb_575_en)
 			vcore_opp_4_uv -= get_vb_volt(VCORE_OPP_4, dvfsrc_rsrv);
 	}
