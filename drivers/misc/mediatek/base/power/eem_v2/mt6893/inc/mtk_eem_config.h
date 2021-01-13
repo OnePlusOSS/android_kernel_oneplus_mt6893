@@ -17,6 +17,8 @@
 /* #define EEM_NOT_READY		(1) */
 #define CONFIG_EEM_SHOWLOG	(0)
 #define EN_ISR_LOG		(0)
+#define EN_PI_VOLT_LOG		(1)
+#define EN_READ_SSPM_THER		(1)
 #define EEM_BANK_SOC		(0) /* use voltage bin, so disable it */
 #define EARLY_PORTING		(0) /* for detecting real vboot in eem_init01 */
 #define DUMP_DATA_TO_DE		(1)
@@ -170,6 +172,7 @@ enum mt_cpu_dvfs_id {
 
 #define NR_FREQ 16
 #define NR_FREQ_CPU 16
+#define NR_OPP_55C	5
 
 #define L_MAX_FREQ_BASE		1000
 #define L_FREQ_BASE			2000
@@ -232,23 +235,25 @@ enum mt_cpu_dvfs_id {
 #define VBOOT_PMIC_VAL	(75000)
 #define VBOOT_PMIC_CLR	(0)
 #define VBOOT_VAL		(0x38) /* volt domain: 0.75v */
-#define VMAX_VAL		(0x73) /* volt domain: 1.11875v*/
+#define VMAX_VAL		(0x99) /* volt domain: 1.11875v*/
 #define VMIN_VAL		(0x18) /* volt domain: 0.55v*/
 #define VCO_VAL			(0x10)
 #define DVTFIXED_VAL	(0x6)
+#define DVTFIXED_VAL_B_3G	(12)
+#define APPLY_DVT12_VER	(3) /* after ver 3 */
 
 /* different for B_L */
-#define VMAX_VAL_BL		(0x73) /* volt domain: 1.11875v*/
+#define VMAX_VAL_BL		(0x99) /* volt domain: 1.11875v*/
 #define VMIN_VAL_BL		(0x18) /* volt domain: 0.55v*/
 #define VCO_VAL_BL		(0x10) /* volt domain: 0.5v*/
 
-#define VMAX_VAL_B		(0x73) /* volt domain: 1.11875v*/
+#define VMAX_VAL_B		(0x99) /* volt domain: 1.11875v*/
 #define VMIN_VAL_B		(0x18) /* volt domain: 0.55v*/
 #define VCO_VAL_B		(0x10) /* volt domain: 0.5v*/
 
 
 /* different for CCI */
-#define VMAX_VAL_CCI		(0x73) /* volt domain: 1.11875v*/
+#define VMAX_VAL_CCI		(0x99) /* volt domain: 1.11875v*/
 #define VMIN_VAL_CCI		(0x18) /* volt domain: 0.55v*/
 #define VCO_VAL_CCI			(0x10) /* volt domain: 0.5v*/
 
@@ -264,7 +269,12 @@ enum mt_cpu_dvfs_id {
 
 #define LOW_TEMP_VAL		(18000)
 #define EXTRA_LOW_TEMP_VAL	(10000)
-#define HIGH_TEMP_VAL		(85000)
+#define HIGH_TEMP85_VAL		(85000)
+#define HIGH_TEMP95_VAL		(95000)
+#define MID_L_TEMP_VAL		(50000)
+#define MID_R_TEMP_VAL		(60000)
+
+
 
 #define LOW_TEMP_OFF_DEFAULT	(0)
 #define LOW_TEMP_OFF_L		(8)
@@ -272,6 +282,9 @@ enum mt_cpu_dvfs_id {
 #define LOW_TEMP_OFF_B		(8)
 #define HIGH_TEMP_OFF_B		(3)
 #define HIGH_TEMP_OFF_B_3G		(6)
+#define HIGH_TEMP85_OFF_BL		(2)
+#define HIGH_TEMP85_OFF_B_3G		(3)
+
 #define LOW_TEMP_OFF_GPU		(4)
 #define HIGH_TEMP_OFF_GPU		(3)
 #define EXTRA_LOW_TEMP_OFF_GPU	(7)
@@ -282,14 +295,21 @@ enum mt_cpu_dvfs_id {
 
 /* for EEMCTL0's setting */
 #define EEM_CTL0_L			(0xBA98000F)
-#define EEM_CTL0_BL		(0x00010001)
-#define EEM_CTL0_B			(0x05400007)
+#define EEM_CTL0_BL			(0x05400007)
+#define EEM_CTL0_B			(0x00010001)
 #define EEM_CTL0_CCI		(0xBA98000F)
 
 
+#define LL_TEMP_OFT			0x13E0	/* LL core max temp. */
+#define CCI_TEMP_OFT		0x13E4	/* CCI max temp. */
+#define BL_MAX_TEMP_OFT		0x13E8	/* BL core max temp. */
+#define BL_MIN_TEMP_OFT		0x13EC	/* BL core min temp. */
+#define B_TEMP_OFT			0x13F0	/* B core temp. */
+//#define AEE_DUMP_LEN		0x2000
+#define PTP_MEM_SIZE		0x2000
+#define AEE_ENTRY_NUM			15
+#define AEE_PER_ENTRY_LEN		80
 
-#define AGING_VAL_CPU		(0x0) /* CPU aging margin : 31mv*/
-#define AGING_VAL_CPU_B		(0x0) /* CPU aging margin : 37mv*/
-#define AGING_VAL_GPU		(0x0) /* GPU aging margin : 43.75mv*/
 
+#define AGING_VAL_CPU		(-1)
 #endif
