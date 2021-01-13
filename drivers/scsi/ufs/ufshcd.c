@@ -5584,14 +5584,14 @@ static int __ufshcd_transfer_req_compl(struct ufs_hba *hba,
 	int result;
 	int index;
 	u32 ocs_err_status;
+	unsigned long handled_reqs = 0;
+
 	/* MTK PATCH: for completion notification feature */
 
 	for_each_set_bit(index, &completed_reqs, hba->nutrs) {
 		lrbp = &hba->lrb[index];
 		cmd = lrbp->cmd;
 		if (cmd) {
-			/* MTK Patch: handler of performance heuristic */
-			ufs_mtk_perf_heurisic_req_done(hba, cmd);
 			/* MTK PATCH */
 			ufshcd_cond_add_cmd_trace(hba, index,
 				UFS_TRACE_COMPLETED);
@@ -5599,8 +5599,14 @@ static int __ufshcd_transfer_req_compl(struct ufs_hba *hba,
 			result = ufshcd_transfer_rsp_status(hba, lrbp, index);
 			scsi_dma_unmap(cmd);
 
-			if (result == (DID_FATAL << 16))
+			if (result == (DID_FATAL << 16)) {
+				hba->outstanding_reqs ^= handled_reqs;
 				return result;
+			}
+
+			/* MTK Patch: handler of performance heuristic */
+			ufs_mtk_perf_heurisic_req_done(hba, cmd);
+			handled_reqs |= (1UL << index);
 
 			cmd->result = result;
 #ifdef CONFIG_MTK_UFS_LBA_CRC16_CHECK
