@@ -314,6 +314,41 @@ static void vib_shutdown(struct platform_device *pdev)
 	}
 }
 
+static int vib_suspend_noirq(struct device *dev)
+{
+	int ret = 0;
+	struct platform_device *pdev = to_platform_device(dev);
+	struct mt_vibr *vibr = platform_get_drvdata(pdev);
+
+	if (atomic_read(&vibr->vibr_state)) {
+		ret = vibr_Disable();
+		pr_info("vibr disbale vibr success, enter suspend ret=%d!", ret);
+	}
+
+	return ret;
+}
+
+static int vib_resume_noirq(struct device *dev)
+{
+	int ret = 0;
+	struct platform_device *pdev = to_platform_device(dev);
+	struct mt_vibr *vibr = platform_get_drvdata(pdev);
+
+
+	if (atomic_read(&vibr->vibr_state)) {
+		ret = vibr_Enable();
+		pr_info("vibr enable vibr success, enter resume ret=%d!", ret);
+	}
+
+	return ret;
+}
+
+static const struct dev_pm_ops vib_pm_ops = {
+	.suspend_noirq = vib_suspend_noirq,
+	.resume_noirq = vib_resume_noirq,
+};
+#define VIB_PM_OPS	(&vib_pm_ops)
+
 static struct platform_driver vibrator_driver = {
 	.probe = vib_probe,
 	.remove = vib_remove,
@@ -321,6 +356,7 @@ static struct platform_driver vibrator_driver = {
 	.driver = {
 			.name = VIB_DEVICE,
 			.owner = THIS_MODULE,
+			.pm = VIB_PM_OPS,
 #ifdef CONFIG_OF
 			.of_match_table = vibr_of_ids,
 #endif
