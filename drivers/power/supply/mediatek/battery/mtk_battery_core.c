@@ -344,6 +344,25 @@ int gauge_get_nag_dltv(void)
 }
 
 /* ============================================================ */
+/* battery health methods */
+/* ============================================================ */
+int mtk_get_bat_health(void)
+{
+	if (gm.bat_health != 0)
+		return gm.bat_health;
+
+	return 10000;
+}
+
+int mtk_get_bat_show_ag(void)
+{
+	if (gm.show_ag != 0)
+		return gm.show_ag;
+
+	return 10000;
+}
+
+/* ============================================================ */
 /* zcv filter methods */
 /* ============================================================ */
 void zcv_filter_init(struct zcv_filter *zf)
@@ -4402,6 +4421,7 @@ void bmd_ctrl_cmd_from_user(void *nl_data, struct fgd_nl_msg_t *ret_msg)
 			rtc_invalid);
 	}
 	break;
+
 	case FG_DAEMON_CMD_SET_BATTERY_CAPACITY:
 	{
 		struct fgd_cmd_param_t_8 param;
@@ -4409,7 +4429,12 @@ void bmd_ctrl_cmd_from_user(void *nl_data, struct fgd_nl_msg_t *ret_msg)
 		memcpy(&param, &msg->fgd_data[0],
 			sizeof(struct fgd_cmd_param_t_8));
 
-		gm.health = param.data[11];
+		if (param.data[10] != 0 && param.data[11] != 0) {
+			gm.show_ag = param.data[10];
+			gm.bat_health = param.data[11];
+			bm_err("%s:SET_BATTERY_CAPACITY: show_ag:%d, bat_health:%d",
+				__func__, gm.show_ag, gm.bat_health);
+		}
 
 		bm_debug(
 			"[fr] FG_DAEMON_CMD_SET_BATTERY_CAPACITY = %d %d %d %d %d %d %d %d %d %d RM:%d\n",
