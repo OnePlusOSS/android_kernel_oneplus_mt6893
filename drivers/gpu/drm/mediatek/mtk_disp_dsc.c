@@ -49,6 +49,7 @@
 	#define DSC_ZERO_FIFO BIT(2)
 	#define DSC_ABN_EOF BIT(3)
 
+#define DISP_REG_DSC_INTACK			0x000C
 #define DISP_REG_DSC_PIC_W			0x0018
 	#define CFG_FLD_PIC_WIDTH	REG_FLD_MSB_LSB(15, 0)
 	#define CFG_FLD_PIC_HEIGHT_M1	REG_FLD_MSB_LSB(31, 16)
@@ -140,7 +141,8 @@ static irqreturn_t mtk_dsc_irq_handler(int irq, void *dev_id)
 
 	DDPIRQ("%s irq, val:0x%x\n", mtk_dump_comp_str(dsc), val);
 
-	writel(~val, dsc->regs + DISP_REG_DSC_INTSTA);
+	writel(val, dsc->regs + DISP_REG_DSC_INTACK);
+	writel(0x0, dsc->regs + DISP_REG_DSC_INTACK);
 
 	if (val & (1 << 0))
 		DDPIRQ("[IRQ] %s: frame complete!\n",
@@ -187,10 +189,6 @@ static void mtk_dsc_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 		/* DSC Empty flag always high */
 		mtk_ddp_write_mask(comp, 0x4000, DISP_REG_DSC_CON,
 				DSC_EMPTY_FLAG_SEL, handle);
-
-		/* DSC output buffer as FHD(plus) */
-		mtk_ddp_write_mask(comp, 0x800002C2, DISP_REG_DSC_OBUF,
-				0xFFFFFFFF, handle);
 	}
 
 	DDPINFO("%s, dsc_start:0x%x\n",
@@ -390,9 +388,7 @@ static void mtk_dsc_config(struct mtk_ddp_comp *comp,
 			dsc_params->slice_width-1) / dsc_params->slice_width;
 		init_delay_height_min =
 			(init_delay_limit > 15) ? 15 : init_delay_limit;
-		init_delay_height =
-			(mtk_crtc_is_frame_trigger_mode(&comp->mtk_crtc->base)) ?
-			4 : init_delay_height_min;
+		init_delay_height = 1;
 
 		reg_val = (!!dsc_params->slice_mode) |
 					(!!dsc_params->rgb_swap << 2) |
@@ -411,9 +407,6 @@ static void mtk_dsc_config(struct mtk_ddp_comp *comp,
 					DISP_REG_DSC_DBG_CON, DSC_CKSM_CAL_EN,
 					handle);
 
-		mtk_ddp_write_mask(comp, 0xE,
-					DISP_REG_DSC_INTEN, 0xF,
-					handle);
 #if defined(CONFIG_MACH_MT6885) || defined(CONFIG_MACH_MT6893) \
 	|| defined(CONFIG_MACH_MT6873) || defined(CONFIG_MACH_MT6853)
 		mtk_ddp_write_mask(comp,
