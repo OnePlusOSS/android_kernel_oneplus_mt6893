@@ -1685,6 +1685,9 @@ static unsigned int dual_pipe_comp_mapping(unsigned int comp_id)
 		break;
 	case DDP_COMPONENT_OVL2_2L:
 		ret = DDP_COMPONENT_OVL3_2L;
+
+	case DDP_COMPONENT_AAL0:
+		ret = DDP_COMPONENT_AAL1;
 		break;
 	default:
 		DDPMSG("unknown comp %u for %s\n", comp_id, __func__);
@@ -1707,6 +1710,7 @@ static void mtk_crtc_get_plane_comp_state(struct drm_crtc *crtc,
 
 		plane_state = to_mtk_plane_state(plane->state);
 		comp_state = &(plane_state->comp_state);
+		/* TODO: check plane_state by pending.enable */
 		if (plane_state->base.visible) {
 			for_each_comp_in_cur_crtc_path(
 				comp, mtk_crtc, j,
