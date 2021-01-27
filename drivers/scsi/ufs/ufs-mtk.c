@@ -790,6 +790,10 @@ static int ufs_mtk_setup_clocks(struct ufs_hba *hba, bool on,
 					&host->req_cpu_dma_latency,
 					PM_QOS_DEFAULT_VALUE);
 
+				pm_qos_update_request(
+					&host->req_mm_bandwidth,
+					0);
+
 				ret = ufs_mtk_perf_setup(host, false);
 				if (ret)
 					goto out;
@@ -807,6 +811,10 @@ static int ufs_mtk_setup_clocks(struct ufs_hba *hba, bool on,
 				goto out;
 
 			if (host && host->pm_qos_init) {
+				pm_qos_update_request(
+					&host->req_mm_bandwidth,
+					5554);
+
 				pm_qos_update_request(
 					&host->req_cpu_dma_latency, 0);
 
@@ -917,6 +925,9 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 
 	pm_qos_add_request(&host->req_cpu_dma_latency, PM_QOS_CPU_DMA_LATENCY,
 			   PM_QOS_DEFAULT_VALUE);
+
+	pm_qos_add_request(&host->req_mm_bandwidth,
+			   PM_QOS_MM_MEMORY_BANDWIDTH, 0);
 
 	host->pm_qos_init = true;
 

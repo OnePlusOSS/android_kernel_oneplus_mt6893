@@ -198,6 +198,7 @@ struct ufs_mtk_host {
 	bool pm_qos_init;
 	struct pm_qos_request *req_vcore;
 	struct pm_qos_request req_cpu_dma_latency;
+	struct pm_qos_request req_mm_bandwidth;
 
 	/* passthrough keyhint if number of key slots is enough */
 	bool passthrough_keyhint;
