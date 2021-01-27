@@ -4863,23 +4863,22 @@ void mtk_drm_layer_dispatch_to_dual_pipe(
 	memcpy(plane_state_r,
 		plane_state, sizeof(struct mtk_plane_state));
 
-	if (plane_state->base.crtc == NULL) {
+	if (plane_state->base.crtc != NULL) {
+		crtc_state = to_mtk_crtc_state(plane_state->base.crtc->state);
+
+		src_w = drm_rect_width(&plane_state->base.src) >> 16;
+		src_h = drm_rect_height(&plane_state->base.src) >> 16;
+		dst_w = drm_rect_width(&plane_state->base.dst);
+		dst_h = drm_rect_height(&plane_state->base.dst);
+
+		if (src_w < dst_w || src_h < dst_h) {
+			left_bg = crtc_state->rsz_param[0].in_len;
+			right_bg = crtc_state->rsz_param[1].in_len;
+			roi_w = crtc_state->rsz_src_roi.width;
+			DDPDBG("dual rsz %u, %u, %u\n", left_bg, right_bg, roi_w);
+		}
+	} else {
 		DDPINFO("%s crtc is NULL\n", __func__);
-		return;
-	}
-
-	crtc_state = to_mtk_crtc_state(plane_state->base.crtc->state);
-
-	src_w = drm_rect_width(&plane_state->base.src) >> 16;
-	src_h = drm_rect_height(&plane_state->base.src) >> 16;
-	dst_w = drm_rect_width(&plane_state->base.dst);
-	dst_h = drm_rect_height(&plane_state->base.dst);
-
-	if (src_w < dst_w || src_h < dst_h) {
-		left_bg = crtc_state->rsz_param[0].in_len;
-		right_bg = crtc_state->rsz_param[1].in_len;
-		roi_w = crtc_state->rsz_src_roi.width;
-		DDPDBG("dual rsz %u, %u, %u\n", left_bg, right_bg, roi_w);
 	}
 
 	/*left path*/
@@ -5000,6 +4999,24 @@ void mtk_drm_crtc_plane_update(struct drm_crtc *crtc, struct drm_plane *plane,
 	/* plane disable at mtk_crtc_get_plane_comp_state() actually */
 	/* following statement is for disable all layers during suspend */
 
+		if (mtk_crtc->is_dual_pipe) {
+			struct mtk_plane_state plane_state_l;
+			struct mtk_plane_state plane_state_r;
+
+			if (plane_state->comp_state.comp_id == 0)
+				plane_state->comp_state.comp_id = comp->id;
+
+			mtk_drm_layer_dispatch_to_dual_pipe(plane_state,
+				&plane_state_l, &plane_state_r,
+				crtc->state->adjusted_mode.hdisplay);
+
+			comp = priv->ddp_comp[plane_state_r.comp_state.comp_id];
+			mtk_ddp_comp_layer_config(comp, plane_index,
+						&plane_state_r, cmdq_handle);
+			DDPINFO("%s+D comp_id:%d, comp_id:%d\n",
+				__func__, comp->id,
+				plane_state_r.comp_state.comp_id);
+		}
 		comp = mtk_crtc_get_plane_comp(crtc, plane_state);
 
 		mtk_ddp_comp_layer_config(comp, plane_index, plane_state,
