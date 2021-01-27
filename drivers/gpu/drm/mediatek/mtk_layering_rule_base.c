@@ -2324,6 +2324,11 @@ static int check_cross_pipe_rpo(
 		   param[1].out_len,
 		   param[1].out_x);
 
+	if (param[1].in_len == param[1].out_len) {
+		DDPDBG("skip_pipe1_no_scale\n");
+		return -1;
+	}
+
 	if (tile_in_len[1] > tile_out_len[1] || tile_in_len[0] > tile_out_len[0])
 		return -1;
 
