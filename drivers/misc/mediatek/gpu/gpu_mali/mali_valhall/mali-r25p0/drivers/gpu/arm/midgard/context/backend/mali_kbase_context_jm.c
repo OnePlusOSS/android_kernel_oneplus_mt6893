@@ -119,13 +119,7 @@ static void kbase_context_flush_jobs(struct kbase_context *kctx)
 
 static void kbase_context_free(struct kbase_context *kctx)
 {
-	unsigned long flags;
-
 	kbase_timeline_post_kbase_context_destroy(kctx);
-
-	spin_lock_irqsave(&kctx->kbdev->hwaccess_lock, flags);
-	WARN_ON(kbase_js_check_ctx_priority_list_at_termination(kctx));
-	spin_unlock_irqrestore(&kctx->kbdev->hwaccess_lock, flags);
 
 	vfree(kctx);
 }

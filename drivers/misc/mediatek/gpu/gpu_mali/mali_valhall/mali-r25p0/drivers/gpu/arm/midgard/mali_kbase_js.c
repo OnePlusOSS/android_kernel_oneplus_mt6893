@@ -1169,27 +1169,6 @@ void kbase_js_set_ctx_priority(struct kbase_context *kctx, int new_priority)
 	}
 }
 
-bool kbase_js_check_ctx_priority_list_at_termination(struct kbase_context *kctx)
-{
-        int js;
-        bool found = false;
-        struct kbasep_js_kctx_info *sched_info;
-
-        lockdep_assert_held(&kctx->kbdev->hwaccess_lock);
-
-        sched_info = &kctx->jctx.sched_info;
-        for (js = 0; js < kctx->kbdev->gpu_props.num_job_slots; js++) {
-                if (!list_empty(&sched_info->ctx.ctx_list_entry[js])) {
-                        dev_err(kctx->kbdev->dev,
-                                "kctx in scheduling list at termination\n");
-                        found = true;
-                        list_del_init(&sched_info->ctx.ctx_list_entry[js]);
-                }
-        }
-
-        return found;
-}
-
 void kbase_js_update_ctx_priority(struct kbase_context *kctx)
 {
 	struct kbase_device *kbdev = kctx->kbdev;
