@@ -5679,6 +5679,12 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 	/* This refcnt would be release in ddp_cmdq_cb */
 	drm_atomic_state_get(old_crtc_state->state);
 	mtk_drm_crtc_lfr_update(crtc, cmdq_handle);
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_SF_PF) &&
+	   (state->prop_val[CRTC_PROP_SF_PRES_FENCE_IDX] != (unsigned int)-1)) {
+		if (index == 0)
+			cmdq_pkt_clear_event(cmdq_handle,
+				mtk_crtc->gce_obj.event[EVENT_DSI0_SOF]);
+	}
 #ifdef MTK_DRM_CMDQ_ASYNC
 	ret = mtk_crtc_gce_flush(crtc, ddp_cmdq_cb, cb_data, cmdq_handle);
 	if (ret) {
@@ -5713,13 +5719,10 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 			goto end;
 		}
 
-		if (index == 0) {
-			cmdq_pkt_clear_event(cmdq_handle,
-				mtk_crtc->gce_obj.event[EVENT_DSI0_SOF]);
-
+		if (index == 0)
 			cmdq_pkt_wait_no_clear(cmdq_handle,
 				mtk_crtc->gce_obj.event[EVENT_DSI0_SOF]);
-		}
+
 		addr = cmdq_buf->pa_base + DISP_SLOT_SF_PRESENT_FENCE(index);
 
 		cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, addr,
