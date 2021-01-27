@@ -4040,12 +4040,6 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 	struct mtk_ddp_comp *output_comp = NULL;
 	int en = 1;
 
-#ifndef CONFIG_MTK_DISP_NO_LK
-	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
-	if (output_comp)
-		mtk_ddp_comp_io_cmd(output_comp, NULL, SET_MMCLK_BY_DATARATE,
-				&en);
-#endif
 	CRTC_MMP_EVENT_START(crtc_id, enable,
 			mtk_crtc->enabled, 0);
 
@@ -4067,12 +4061,10 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc)
 
 	/* attach the crtc to each componet */
 	mtk_crtc_attach_ddp_comp(crtc, mtk_crtc->ddp_mode, true);
-#ifdef CONFIG_MTK_DISP_NO_LK
-		output_comp = mtk_ddp_comp_request_output(mtk_crtc);
-		if (output_comp)
-			mtk_ddp_comp_io_cmd(output_comp, NULL, SET_MMCLK_BY_DATARATE,
-					&en);
-#endif
+	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+	if (output_comp)
+		mtk_ddp_comp_io_cmd(output_comp, NULL, SET_MMCLK_BY_DATARATE,
+				&en);
 #ifndef CONFIG_FPGA_EARLY_PORTING
 	/* 1. power on mtcmos */
 	mtk_drm_top_clk_prepare_enable(crtc->dev);
