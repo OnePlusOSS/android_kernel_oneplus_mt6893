@@ -5495,7 +5495,7 @@ page_owner=on loop.max_part=7";
 		mediatek,dec_gce_th_num = <1>;
 		mediatek,enc_gce_th_num = <2>;
 		mboxes = <&gce_mbox 16 0 CMDQ_THR_PRIO_1>,
-			<&gce_mbox 17 0 CMDQ_THR_PRIO_1>,
+			<&gce_mbox 12 0 CMDQ_THR_PRIO_1>,
 			<&gce_mbox 18 0 CMDQ_THR_PRIO_1>,
 			<&gce_mbox_sec 12 0 CMDQ_THR_PRIO_1>;
 		gce-event-names = "venc_eof",
