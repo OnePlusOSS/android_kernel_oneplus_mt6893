@@ -60,8 +60,6 @@ bool ufs_mtk_auto_hibern8_enabled;
 bool ufs_mtk_host_deep_stall_enable;
 bool ufs_mtk_host_scramble_enable;
 int  ufs_mtk_hs_gear;
-u32  ufs_mtk_qcmd_r_cmd_cnt;
-u32  ufs_mtk_qcmd_w_cmd_cnt;
 struct ufs_hba *ufs_mtk_hba;
 
 static bool ufs_mtk_is_data_cmd(char cmd_op, bool isolation);
@@ -1327,6 +1325,12 @@ static void ufs_mtk_dbg_register_dump(struct ufs_hba *hba)
 	val = ufshcd_readl(hba, REG_UFS_MTK_PROBE);
 
 	dev_info(hba->dev, "REG_UFS_MTK_PROBE: 0x%x\n", val);
+	dev_info(hba->dev, "outstanding_reqs: 0x%x, tasks: 0x%x",
+		 hba->outstanding_reqs, hba->outstanding_tasks);
+	dev_info(hba->dev, "r_cmd_cnt: %d, w_cmd_cnt: %d\n",
+		 hba->ufs_mtk_qcmd_r_cmd_cnt,
+		 hba->ufs_mtk_qcmd_w_cmd_cnt);
+
 }
 
 static int ufs_mtk_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
@@ -2594,8 +2598,8 @@ static void ufs_mtk_abort_handler(struct ufs_hba *hba, int tag,
 
 	if (tag == -1) {
 		aee_kernel_warning_api(file, line, DB_OPT_FS_IO_LOG,
-			"[UFS] Host and Device Reset Event",
-			"Host and Device Reset, %s:%d",
+			"[UFS] Invalid Resp or OCS",
+			"Invalid Resp or OCS, %s:%d",
 			file, line);
 	} else {
 		if (hba->lrb[tag].cmd)
@@ -2618,30 +2622,31 @@ int ufs_mtk_perf_heurisic_if_allow_cmd(struct ufs_hba *hba,
 	/* Check rw commands only and allow all other commands. */
 	if (ufs_mtk_is_data_cmd(cmd->cmnd[0], true)) {
 
-		if (!ufs_mtk_qcmd_r_cmd_cnt && !ufs_mtk_qcmd_w_cmd_cnt) {
+		if (!hba->ufs_mtk_qcmd_r_cmd_cnt &&
+			!hba->ufs_mtk_qcmd_w_cmd_cnt) {
 
 			/* Case: no on-going r or w commands. */
 
 			if (ufs_mtk_is_data_write_cmd(cmd->cmnd[0], true))
-				ufs_mtk_qcmd_w_cmd_cnt++;
+				hba->ufs_mtk_qcmd_w_cmd_cnt++;
 			else
-				ufs_mtk_qcmd_r_cmd_cnt++;
+				hba->ufs_mtk_qcmd_r_cmd_cnt++;
 
 		} else {
 
 			if (ufs_mtk_is_data_write_cmd(cmd->cmnd[0], true)) {
 
-				if (ufs_mtk_qcmd_r_cmd_cnt)
+				if (hba->ufs_mtk_qcmd_r_cmd_cnt)
 					return 1;
 
-				ufs_mtk_qcmd_w_cmd_cnt++;
+				hba->ufs_mtk_qcmd_w_cmd_cnt++;
 
 			} else {
 
-				if (ufs_mtk_qcmd_w_cmd_cnt)
+				if (hba->ufs_mtk_qcmd_w_cmd_cnt)
 					return 1;
 
-				ufs_mtk_qcmd_r_cmd_cnt++;
+				hba->ufs_mtk_qcmd_r_cmd_cnt++;
 			}
 		}
 	}
@@ -2656,9 +2661,9 @@ void ufs_mtk_perf_heurisic_req_done(struct ufs_hba *hba, struct scsi_cmnd *cmd)
 
 	if (ufs_mtk_is_data_cmd(cmd->cmnd[0], true)) {
 		if (ufs_mtk_is_data_write_cmd(cmd->cmnd[0], true))
-			ufs_mtk_qcmd_w_cmd_cnt--;
+			hba->ufs_mtk_qcmd_w_cmd_cnt--;
 		else
-			ufs_mtk_qcmd_r_cmd_cnt--;
+			hba->ufs_mtk_qcmd_r_cmd_cnt--;
 	}
 }
 
