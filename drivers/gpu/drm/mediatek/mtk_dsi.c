@@ -5059,7 +5059,7 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			&& panel_ext->params->dyn.vfp)
 			vfront_porch = panel_ext->params->dyn.vfp;
 		else
-			break;
+			vfront_porch = dsi->vm.vfront_porch;
 
 		DDPINFO("vfront_porch=%d\n", vfront_porch);
 
