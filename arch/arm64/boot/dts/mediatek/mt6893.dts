@@ -4404,7 +4404,7 @@ page_owner=on loop.max_part=7";
 			<1>, /*MTK_DRM_OPT_LFR*/
 			<1>, /*MTK_DRM_OPT_SF_PF*/
 			<1>, /*MTK_DRM_OPT_DYN_MIPI_CHANGE*/
-			<1>; /*MTK_DRM_OPT_PRIM_DUAL_PIPE*/
+			<0>; /*MTK_DRM_OPT_PRIM_DUAL_PIPE*/
 	};
 
 	disp_mutex0: disp_mutex@14117000 {
