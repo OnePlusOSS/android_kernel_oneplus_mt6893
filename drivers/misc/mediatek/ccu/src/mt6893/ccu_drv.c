@@ -660,6 +660,8 @@ static long ccu_ioctl(struct file *flip, unsigned int cmd,
 			LOG_ERR(
 			"CCU_IOCTL_IPC_SEND_CMD copy_from_user 2 oversize\n");
 			ret = -EINVAL;
+			kfree(indata);
+			kfree(outdata);
 			break;
 		}
 		ret = copy_from_user(indata,
@@ -680,6 +682,8 @@ static long ccu_ioctl(struct file *flip, unsigned int cmd,
 			LOG_ERR(
 			"CCU_IOCTL_IPC_SEND_CMD copy_to_user oversize\n");
 			ret = -EINVAL;
+			kfree(indata);
+			kfree(outdata);
 			break;
 		}
 		ret = copy_to_user((void *)msg.outDataPtr, outdata, msg.outDataSize);
