@@ -223,9 +223,14 @@ static bool is_extended_base_layer_valid(struct drm_crtc *crtc,
 	 * because extended layer would not find base layer in one of
 	 * display pipe.
 	 * So always mark this specific layer as overlap to avoid the fail case.
+	 * *
+	 * UPDATE @ 2020/12/17
+	 * Could skip this step through revise ovl extended layer config
+	 * flow; by enable attached layer index's RDMA, extended layer
+	 * can work well even attached layer does not enable.
 	 */
-	if (!is_layer_across_each_pipe(crtc, configs))
-		return false;
+	//if (!is_layer_across_each_pipe(crtc, configs))
+	//	return false;
 
 	return true;
 }
