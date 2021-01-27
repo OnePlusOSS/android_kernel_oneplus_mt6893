@@ -4248,19 +4248,58 @@ void mtk_crtc_config_round_corner(struct drm_crtc *crtc,
 
 	cfg.w = crtc->mode.hdisplay;
 	cfg.h = crtc->mode.vdisplay;
+
+	if (mtk_crtc_with_sub_path(crtc, mtk_crtc->ddp_mode))
+		cur_path_idx = DDP_SECOND_PATH;
+	else
+		cur_path_idx = DDP_FIRST_PATH;
+
+	mtk_crtc_wait_frame_done(mtk_crtc,
+		handle, cur_path_idx, 0);
+
 	for_each_comp_in_cur_crtc_path(
 		comp, mtk_crtc, i, j)
 		if (comp->id == DDP_COMPONENT_POSTMASK0 ||
 			comp->id == DDP_COMPONENT_POSTMASK1) {
-			if (mtk_crtc_with_sub_path(crtc, mtk_crtc->ddp_mode))
-				cur_path_idx = DDP_SECOND_PATH;
-			else
-				cur_path_idx = DDP_FIRST_PATH;
-			mtk_crtc_wait_frame_done(mtk_crtc,
-				handle, cur_path_idx, 0);
 			mtk_ddp_comp_config(comp, &cfg, handle);
 			break;
 		}
+
+	if (!mtk_crtc->is_dual_pipe)
+		return;
+
+	for_each_comp_in_dual_pipe(comp, mtk_crtc, i, j) {
+		if (comp->id == DDP_COMPONENT_POSTMASK0 ||
+			comp->id == DDP_COMPONENT_POSTMASK1) {
+			mtk_ddp_comp_config(comp, &cfg, handle);
+			break;
+		}
+	}
+}
+
+static inline struct mtk_drm_gem_obj *
+__load_rc_pattern(struct drm_crtc *crtc, size_t size, void *addr)
+{
+	struct mtk_drm_gem_obj *gem;
+
+	if (!size || !addr) {
+		DDPPR_ERR("%s invalid round_corner size or addr\n",
+			__func__);
+		return NULL;
+	}
+
+	gem = mtk_drm_gem_create(
+		crtc->dev, size, true);
+
+	if (!gem) {
+		DDPPR_ERR("%s gem create fail\n", __func__);
+		return NULL;
+	}
+
+	memcpy(gem->kvaddr, addr,
+	       size);
+
+	return gem;
 }
 
 void mtk_crtc_load_round_corner_pattern(struct drm_crtc *crtc,
@@ -4268,20 +4307,18 @@ void mtk_crtc_load_round_corner_pattern(struct drm_crtc *crtc,
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_panel_params *panel_ext = mtk_drm_get_lcm_ext_params(crtc);
-	struct mtk_drm_gem_obj *gem;
 
 	if (panel_ext && panel_ext->round_corner_en) {
-		gem = mtk_drm_gem_create(
-			crtc->dev, panel_ext->corner_pattern_tp_size, true);
+		mtk_crtc->round_corner_gem =
+			__load_rc_pattern(crtc, panel_ext->corner_pattern_tp_size,
+						panel_ext->corner_pattern_lt_addr);
 
-		if (!gem) {
-			DDPPR_ERR("%s gem create fail\n", __func__);
-			return;
-		}
-
-		memcpy(gem->kvaddr, panel_ext->corner_pattern_lt_addr,
-		       panel_ext->corner_pattern_tp_size);
-		mtk_crtc->round_corner_gem = gem;
+		mtk_crtc->round_corner_gem_l =
+			__load_rc_pattern(crtc, panel_ext->corner_pattern_tp_size_l,
+						panel_ext->corner_pattern_lt_addr_l);
+		mtk_crtc->round_corner_gem_r =
+			__load_rc_pattern(crtc, panel_ext->corner_pattern_tp_size_r,
+						panel_ext->corner_pattern_lt_addr_r);
 
 		mtk_crtc_config_round_corner(crtc, handle);
 	}
