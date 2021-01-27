@@ -195,18 +195,6 @@ int ccu_allocate_mem(struct CcuMemHandle *memHandle, int size, bool cached)
 	}
 
 	LOG_DBG_MUST("memHandle->ionHandleKd(%p)\n", memHandle->ionHandleKd);
-	// get ion buffer share handle
-	memHandle->meminfo.shareFd = ion_share_dma_buf_fd(_ccu_ion_client,
-		memHandle->ionHandleKd);
-	if (memHandle->meminfo.shareFd < 0) {
-		LOG_ERR("fail to get ion buffer share handle");
-		ion_free(_ccu_ion_client, memHandle->ionHandleKd);
-		if ((memHandle->meminfo.ion_log) && (size > ION_LOG_SIZE))  //10M
-			LOG_INF_MUST("ion free size = %d, caller = CCU\n", size);
-
-		return -1;
-	}
-	LOG_DBG_MUST("memHandle->share_fd(%d)\n", memHandle->meminfo.shareFd);
 
 	// get buffer virtual address
 	memHandle->meminfo.size = size;
@@ -253,8 +241,6 @@ int ccu_deallocate_mem(struct CcuMemHandle *memHandle)
 	}
 	ion_unmap_kernel(_ccu_ion_client,
 		ccu_buffer_handle[idx].ionHandleKd);
-	__close_fd(current->files,
-		ccu_buffer_handle[idx].meminfo.shareFd);
 	ion_free(_ccu_ion_client,
 		ccu_buffer_handle[idx].ionHandleKd);
 	if ((memHandle->meminfo.ion_log) && (memHandle->meminfo.size > ION_LOG_SIZE))  //10M
@@ -266,6 +252,8 @@ int ccu_deallocate_mem(struct CcuMemHandle *memHandle)
 	return 0;
 }
 
+#define ION_FLAG_FREE_WITHOUT_DEFER (4)
+
 static struct ion_handle *_ccu_ion_alloc(struct ion_client *client,
 	unsigned int heap_id_mask, size_t align, unsigned int size, bool cached, bool ion_log)
 {
@@ -275,7 +263,7 @@ static struct ion_handle *_ccu_ion_alloc(struct ion_client *client,
 	if (ion_log)
 		ts_start = get_ns_systemtime();
 	disp_handle = ion_alloc(client, size, align,
-		heap_id_mask, (cached)?3:0);
+		heap_id_mask, ((cached)?3:0) | ION_FLAG_FREE_WITHOUT_DEFER);
 	if (IS_ERR(disp_handle)) {
 		LOG_ERR("disp_ion_alloc 1error %p\n", disp_handle);
 		return NULL;

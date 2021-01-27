@@ -78,6 +78,9 @@
 #define CCU_DEV_NAME            "ccu"
 
 #define CCU_CLK_PWR_NUM 4
+
+static int32_t _user_count;
+
 /* [0]: CCU_CLK_TOP_MUX, [1]: MDP_PWR, [2]: CAM_PWR, [3]: CCU_CLK_CAM_CCU */
 struct clk *ccu_clk_pwr_ctrl[CCU_CLK_PWR_NUM];
 
@@ -319,19 +322,48 @@ static int ccu_open(struct inode *inode, struct file *flip)
 
 	struct ccu_user_s *user;
 
-	_clk_count = 0;
+	mutex_lock(&g_ccu_device->dev_mutex);
+
+	LOG_INF_MUST("%s pid:%d tid:%d cnt:%d+\n",
+		__func__, current->pid, current->tgid, _user_count);
+
 	ccu_create_user(&user);
 	if (IS_ERR_OR_NULL(user)) {
 		LOG_ERR("fail to create user\n");
+		mutex_unlock(&g_ccu_device->dev_mutex);
 		return -ENOMEM;
 	}
 
 	flip->private_data = user;
+
+	_user_count++;
+
+	if (_user_count > 1) {
+		LOG_INF_MUST("%s clean legacy data flow-\n", __func__);
+		ccu_force_powerdown();
+
+		for (i = 0; i < CCU_IMPORT_BUF_NUM; i++) {
+			if (import_buffer_handle[i] == (struct ion_handle *)
+			    CCU_IMPORT_BUF_UNDEF) {
+				LOG_INF_MUST("freed buffer count: %d\n", i);
+				break;
+			}
+
+			ccu_ion_free_import_handle(
+				import_buffer_handle[i]);/*can't in spin_lock*/
+		}
+
+		ccu_ion_uninit();
+	}
+
+	_clk_count = 0;
 	ccu_ion_init();
 
 	for (i = 0; i < CCU_IMPORT_BUF_NUM; i++)
 		import_buffer_handle[i] =
 			(struct ion_handle *)CCU_IMPORT_BUF_UNDEF;
+
+	mutex_unlock(&g_ccu_device->dev_mutex);
 
 	return ret;
 }
@@ -354,6 +386,8 @@ static long ccu_compat_ioctl(struct file *flip,
 	int ret = 0;
 	struct ccu_user_s *user = flip->private_data;
 
+	mutex_lock(&g_ccu_device->dev_mutex);
+
 	LOG_DBG("+, cmd: %d\n", cmd);
 
 	switch (cmd) {
@@ -375,8 +409,10 @@ static long ccu_compat_ioctl(struct file *flip,
 
 		ptr_power32 = compat_ptr(arg);
 		ptr_power64 = compat_alloc_user_space(sizeof(*ptr_power64));
-		if (ptr_power64 == NULL)
+		if (ptr_power64 == NULL) {
+			mutex_unlock(&g_ccu_device->dev_mutex);
 			return -EFAULT;
+		}
 
 		LOG_DBG("[IOCTL_DBG] (void *)arg: %p\n", (void *)arg);
 		LOG_DBG("[IOCTL_DBG] ptr_power32: %p\n", ptr_power32);
@@ -433,6 +469,8 @@ static long ccu_compat_ioctl(struct file *flip,
 		LOG_ERR("(process, pid, tgid)=(%s, %d, %d)\n",
 			current->comm, current->pid, current->tgid);
 	}
+
+	mutex_unlock(&g_ccu_device->dev_mutex);
 
 	return ret;
 }
@@ -502,6 +540,8 @@ static long ccu_ioctl(struct file *flip, unsigned int cmd,
 	enum CCU_BIN_TYPE type;
 	struct ccu_run_s ccu_run_info;
 
+	mutex_lock(&g_ccu_device->dev_mutex);
+
 	LOG_DBG("%s+, cmd:%d\n", __func__, cmd);
 
 	if ((cmd != CCU_IOCTL_SET_POWER) && (cmd != CCU_IOCTL_FLUSH_LOG) &&
@@ -511,6 +551,7 @@ static long ccu_ioctl(struct file *flip, unsigned int cmd,
 		powert_stat = ccu_query_power_status();
 		if (powert_stat == 0) {
 			LOG_WARN("ccuk: ioctl without powered on\n");
+			mutex_unlock(&g_ccu_device->dev_mutex);
 			return -EFAULT;
 		}
 	}
@@ -525,6 +566,7 @@ static long ccu_ioctl(struct file *flip, unsigned int cmd,
 		if (ret != 0) {
 			LOG_ERR(
 			"[SET_POWER] copy_from_user failed, ret=%d\n", ret);
+			mutex_unlock(&g_ccu_device->dev_mutex);
 			return -EFAULT;
 		}
 		ret = ccu_set_power(&power);
@@ -798,8 +840,10 @@ static long ccu_ioctl(struct file *flip, unsigned int cmd,
 	case CCU_READ_REGISTER:
 	{
 		int regToRead = (int)arg;
+		int rc = ccu_read_info_reg(regToRead);
 
-		return ccu_read_info_reg(regToRead);
+		mutex_unlock(&g_ccu_device->dev_mutex);
+		return rc;
 	}
 
 	case CCU_WRITE_REGISTER:
@@ -941,6 +985,7 @@ static long ccu_ioctl(struct file *flip, unsigned int cmd,
 		powert_stat = ccu_query_power_status();
 		if (type == 0 && powert_stat == 0) {
 			LOG_WARN("ccuk: ioctl without powered on\n");
+			mutex_unlock(&g_ccu_device->dev_mutex);
 			return -EFAULT;
 		}
 		ret = ccu_load_bin(g_ccu_device, type);
@@ -1013,6 +1058,8 @@ EXIT:
 			current->comm, current->pid, current->tgid);
 	}
 
+	mutex_unlock(&g_ccu_device->dev_mutex);
+
 	return ret;
 }
 
@@ -1020,8 +1067,22 @@ static int ccu_release(struct inode *inode, struct file *flip)
 {
 	struct ccu_user_s *user = flip->private_data;
 	int i = 0;
+	struct CcuMemHandle handle;
 
-	LOG_INF_MUST("%s +\n", __func__);
+	mutex_lock(&g_ccu_device->dev_mutex);
+
+	LOG_INF_MUST("%s pid:%d tid:%d cnt:%d+\n",
+		__func__, user->open_pid, user->open_tgid, _user_count);
+
+	ccu_delete_user(user);
+	_user_count--;
+
+	if (_user_count > 0) {
+		LOG_INF_MUST("%s bypass release flow-", __func__);
+		mutex_unlock(&g_ccu_device->dev_mutex);
+		return 0;
+	}
+
 	ccu_force_powerdown();
 
 	for (i = 0; i < CCU_IMPORT_BUF_NUM; i++) {
@@ -1035,11 +1096,16 @@ static int ccu_release(struct inode *inode, struct file *flip)
 		ccu_ion_free_import_handle(import_buffer_handle[i]);
 	}
 
-	ccu_delete_user(user);
+	handle.meminfo.cached = 0;
+	ccu_deallocate_mem(&handle);
+	handle.meminfo.cached = 1;
+	ccu_deallocate_mem(&handle);
 
 	ccu_ion_uninit();
 
 	LOG_INF_MUST("%s -\n", __func__);
+
+	mutex_unlock(&g_ccu_device->dev_mutex);
 
 	return 0;
 }
@@ -1439,6 +1505,7 @@ static int __init CCU_INIT(void)
 	/*g_ccu_device = dma_cache_coherent();*/
 
 	INIT_LIST_HEAD(&g_ccu_device->user_list);
+	mutex_init(&g_ccu_device->dev_mutex);
 	mutex_init(&g_ccu_device->user_mutex);
 	mutex_init(&g_ccu_device->clk_mutex);
 	mutex_init(&g_ccu_device->ion_client_mutex);
