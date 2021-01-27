@@ -13202,6 +13202,10 @@ static void ISP_BH_Switch_Workqueue(struct work_struct *pWork)
 		CAM_REG_CTL_SW_CTL(reg_module_array[i]), 0x0);
 	}
 
+	/* set CAM MUX & CAMSV */
+	Switch_Tg_For_Stagger(irq_module);
+	ISP_CAMSV_Config(irq_module);
+
 	/* 4. restore CQ base address */
 	for (i = 0; i < reg_module_count; i++) {
 		index = reg_module_array[i] - ISP_CAM_A_IDX;
@@ -13290,6 +13294,29 @@ static void ISP_BH_Switch_Workqueue(struct work_struct *pWork)
 		}
 	}
 
+	/* Reset TG Ctrl*/
+	if (g_ExposureNum[irq_module] == EXP_ONE) {
+		LOG_NOTICE("switch to 1 exp");
+		ISP_WR32(CAM_REG_TG_SEN_MODE(reg_module),
+			ISP_RD32(CAM_REG_TG_SEN_MODE(reg_module)) & ~0x400000);
+
+		ISP_WR32(CAM_REG_TG_PATH_CFG(reg_module),
+			ISP_RD32(CAM_REG_TG_PATH_CFG(reg_module)) & ~0x300000);
+
+		ISP_WR32(CAM_REG_TG_DCIF_CTL(reg_module),
+			ISP_RD32(CAM_REG_TG_DCIF_CTL(reg_module)) & ~0x10000);
+	} else {
+		LOG_NOTICE("switch to 2/3 exp");
+		ISP_WR32(CAM_REG_TG_SEN_MODE(reg_module),
+			ISP_RD32(CAM_REG_TG_SEN_MODE(reg_module)) | 0x400000);
+
+		ISP_WR32(CAM_REG_TG_PATH_CFG(reg_module),
+			ISP_RD32(CAM_REG_TG_PATH_CFG(reg_module)) | 0x200000);
+
+		ISP_WR32(CAM_REG_TG_DCIF_CTL(reg_module),
+			ISP_RD32(CAM_REG_TG_DCIF_CTL(reg_module)) | 0x10000);
+	}
+
 	/* 6. disable CQ done control and enable double buffer */
 	for (i = 0; i < reg_module_count; i++) {
 		ISP_WR32(CAM_REG_CTL_RAW_INT6_EN(reg_module_array[i]), 0x0);
@@ -13303,9 +13330,6 @@ static void ISP_BH_Switch_Workqueue(struct work_struct *pWork)
 		"en double buf CAM%d for seamless switch", reg_module_array[i]);
 	}
 
-	/* set CAM MUX & CAMSV */
-	Switch_Tg_For_Stagger(irq_module);
-	ISP_CAMSV_Config(irq_module);
 
 	/* 7. enable TG CMOS & viewFinder */
 	for (i = 0; i < reg_module_count; i++) {
