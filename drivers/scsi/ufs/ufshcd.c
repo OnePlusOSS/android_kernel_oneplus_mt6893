@@ -6334,6 +6334,7 @@ static void ufshcd_inv_resp_handler(struct work_struct *work)
 	ufshcd_wait_for_doorbell_clr(hba, DOORBELL_CLR_TOUT_US, true,
 				     2, 0);
 	ufshcd_wait_for_doorbell_clr(hba, 10000, true, 1, 0);
+	usleep_range(5000, 5100);
 	ret = ufshcd_dme_set(hba,
 		UIC_ARG_MIB_SEL(VENDOR_UNIPROPOWERDOWNCONTROL, 0), 1);
 	if (ret)
