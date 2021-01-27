@@ -1140,6 +1140,11 @@ static int ufs_mtk_hce_enable_notify(struct ufs_hba *hba,
 		 */
 		ufshcd_writel(hba, 0, REG_UFS_ADDR_XOUFS_ST);
 #endif
+		if (hba->quirks & UFSHCD_QUIRK_UFS_HCI_PERF_HEURISTIC) {
+			/* [31:16] PRE_ULTRA, [15:0] ULTRA */
+			ufshcd_writel(hba, 0x00400080, 0x220c);
+		}
+
 		break;
 	default:
 		break;

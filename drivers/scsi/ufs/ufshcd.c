@@ -2180,6 +2180,37 @@ void ufshcd_send_command(struct ufs_hba *hba, unsigned int task_tag)
 	ufshcd_vops_res_ctrl(hba, UFS_RESCTL_CMD_SEND);
 	ufs_mtk_auto_hiber8_quirk_handler(hba, false);
 
+	if ((hba->quirks & UFSHCD_QUIRK_UFS_HCI_PERF_HEURISTIC) &&
+		hba->ufs_mtk_qcmd_r_cmd_cnt) {
+		bool timeout = false;
+		ktime_t start;
+		u32 val;
+
+		start = ktime_get();
+		ufshcd_writel(hba, 0xA2, REG_UFS_MTK_DEBUG_SEL);
+		do {
+			val = ufshcd_readl(hba, REG_UFS_MTK_PROBE);
+			val = (val >> 10) & 0x3F;
+
+			/* DATA IN = 0x22 */
+			if (val != 0x22) {
+				timeout = false;
+				break;
+			}
+
+			if (timeout)
+				break;
+
+			if (ktime_to_us(ktime_sub(ktime_get(), start)) >
+				10000)
+				timeout = true;
+		} while (1);
+
+		if (timeout)
+			dev_info(hba->dev, "%s: wait DATAIN timeout\n",
+				 __func__);
+	}
+
 	__set_bit(task_tag, &hba->outstanding_reqs);
 	ufs_mtk_biolog_check(hba->outstanding_reqs);
 	ufshcd_writel(hba, 1 << task_tag, REG_UTP_TRANSFER_REQ_DOOR_BELL);
