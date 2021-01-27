@@ -322,9 +322,12 @@ int drm_show_dal(struct drm_crtc *crtc, bool enable)
 		DDPINFO("%s+ comp_id:%d, comp_id:%d\n",
 			__func__, comp->id,
 			plane_state_r.comp_state.comp_id);
-	}
 
-	mtk_ddp_comp_layer_config(ovl_comp, layer_id, plane_state, cmdq_handle);
+		mtk_ddp_comp_layer_config(ovl_comp, layer_id, &plane_state_l,
+					  cmdq_handle);
+	} else {
+		mtk_ddp_comp_layer_config(ovl_comp, layer_id, plane_state, cmdq_handle);
+	}
 
 	mtk_crtc_gce_flush(crtc, mtk_drm_cmdq_done, cmdq_handle, cmdq_handle);
 	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
@@ -373,9 +376,12 @@ void drm_set_dal(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle)
 		DDPINFO("%s+ comp_id:%d, comp_id:%d\n",
 			__func__, comp->id,
 			plane_state_r.comp_state.comp_id);
-	}
 
-	mtk_ddp_comp_layer_config(ovl_comp, layer_id, plane_state, cmdq_handle);
+		mtk_ddp_comp_layer_config(ovl_comp, layer_id, &plane_state_l,
+					  cmdq_handle);
+	} else {
+		mtk_ddp_comp_layer_config(ovl_comp, layer_id, plane_state, cmdq_handle);
+	}
 }
 
 int DAL_Clean(void)

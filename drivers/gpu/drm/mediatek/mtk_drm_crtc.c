@@ -3531,7 +3531,32 @@ void mtk_crtc_restore_plane_setting(struct mtk_drm_crtc *mtk_crtc)
 		if (comp == NULL)
 			continue;
 
-		mtk_ddp_comp_layer_config(comp, i, plane_state, cmdq_handle);
+		if (mtk_crtc->is_dual_pipe) {
+			struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
+			struct mtk_plane_state plane_state_l;
+			struct mtk_plane_state plane_state_r;
+			struct mtk_ddp_comp *comp;
+
+			if (plane_state->comp_state.comp_id == 0)
+				plane_state->comp_state.comp_id = comp->id;
+
+			mtk_drm_layer_dispatch_to_dual_pipe(plane_state,
+				&plane_state_l, &plane_state_r,
+				crtc->state->adjusted_mode.hdisplay);
+
+			comp = priv->ddp_comp[plane_state_r.comp_state.comp_id];
+			mtk_ddp_comp_layer_config(comp, i,
+						&plane_state_r, cmdq_handle);
+			DDPINFO("%s+ comp_id:%d, comp_id:%d\n",
+				__func__, comp->id,
+				plane_state_r.comp_state.comp_id);
+
+			comp = priv->ddp_comp[plane_state_l.comp_state.comp_id];
+			mtk_ddp_comp_layer_config(comp, i, &plane_state_l,
+						  cmdq_handle);
+		} else {
+			mtk_ddp_comp_layer_config(comp, i, plane_state, cmdq_handle);
+		}
 		if (comp->id == DDP_COMPONENT_OVL2_2L
 			&& mtk_crtc->is_dual_pipe) {
 			struct mtk_crtc_ddp_ctx *ddp_ctx;
@@ -4938,8 +4963,6 @@ void mtk_drm_layer_dispatch_to_dual_pipe(
 		plane_state_r->pending.src_x, plane_state_r->pending.src_y,
 		plane_state_r->pending.dst_x, plane_state_r->pending.dst_y,
 		plane_state_r->pending.width, plane_state_r->pending.height);
-	memcpy(plane_state,
-		plane_state_l, sizeof(struct mtk_plane_state));
 }
 
 
@@ -4984,11 +5007,16 @@ void mtk_drm_crtc_plane_update(struct drm_crtc *crtc, struct drm_plane *plane,
 				__func__, comp->id,
 				plane_state_r.comp_state.comp_id);
 
-		}
-		comp = mtk_crtc_get_plane_comp(crtc, plane_state);
+			comp = mtk_crtc_get_plane_comp(crtc, &plane_state_l);
 
-		mtk_ddp_comp_layer_config(comp, plane_index, plane_state,
-					  cmdq_handle);
+			mtk_ddp_comp_layer_config(comp, plane_index, &plane_state_l,
+						  cmdq_handle);
+		} else {
+			comp = mtk_crtc_get_plane_comp(crtc, plane_state);
+
+			mtk_ddp_comp_layer_config(comp, plane_index, plane_state,
+						  cmdq_handle);
+		}
 #ifdef CONFIG_MTK_DISPLAY_CMDQ
 		mtk_wb_atomic_commit(mtk_crtc, v, h, state->cmdq_handle);
 #else
@@ -5016,11 +5044,17 @@ void mtk_drm_crtc_plane_update(struct drm_crtc *crtc, struct drm_plane *plane,
 			DDPINFO("%s+D comp_id:%d, comp_id:%d\n",
 				__func__, comp->id,
 				plane_state_r.comp_state.comp_id);
-		}
-		comp = mtk_crtc_get_plane_comp(crtc, plane_state);
 
-		mtk_ddp_comp_layer_config(comp, plane_index, plane_state,
-					  cmdq_handle);
+			comp = mtk_crtc_get_plane_comp(crtc, &plane_state_l);
+
+			mtk_ddp_comp_layer_config(comp, plane_index, &plane_state_l,
+						  cmdq_handle);
+		}  else {
+			comp = mtk_crtc_get_plane_comp(crtc, plane_state);
+
+			mtk_ddp_comp_layer_config(comp, plane_index, plane_state,
+						  cmdq_handle);
+		}
 	}
 	last_fence = *(unsigned int *)(cmdq_buf->va_base +
 				       DISP_SLOT_CUR_CONFIG_FENCE(plane_index));
