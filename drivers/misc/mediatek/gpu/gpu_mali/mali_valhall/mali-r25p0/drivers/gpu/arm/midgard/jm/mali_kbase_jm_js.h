@@ -584,6 +584,18 @@ void kbase_js_set_timeouts(struct kbase_device *kbdev);
  */
 void kbase_js_set_ctx_priority(struct kbase_context *kctx, int new_priority);
 
+/**
+ * kbase_js_check_ctx_priority_list_at_termination - Check whether the context
+ *                                                   is in pullable/unpullable
+ *                                                   list of the device.
+ * @kctx: Context pointer
+ *
+ * This function can be called only at context termination with hwaccess_lock held.
+ * If found, the context will be removed from the pullable/unpullable lists.
+ *
+ * Return: true if context is in the list.
+ */
+bool kbase_js_check_ctx_priority_list_at_termination(struct kbase_context *kctx);
 
 /**
  * kbase_js_update_ctx_priority - update the context priority
