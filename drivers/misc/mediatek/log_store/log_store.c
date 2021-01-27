@@ -357,9 +357,8 @@ static int pl_lk_log_show(struct seq_file *m, void *v)
 		if (dram_curlog_header->buff_size >= (dram_curlog_header->off_pl
 		+ dram_curlog_header->sz_pl
 		+ dram_curlog_header->sz_lk))
-			seq_write(m, pbuff+dram_curlog_header->off_pl,
-				dram_curlog_header->sz_lk
-				+ dram_curlog_header->sz_pl);
+			seq_write(m, pbuff, dram_curlog_header->off_pl +
+				dram_curlog_header->sz_lk + dram_curlog_header->sz_pl);
 
 	return 0;
 }

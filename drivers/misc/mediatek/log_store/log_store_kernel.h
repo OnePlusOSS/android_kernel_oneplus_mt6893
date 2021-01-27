@@ -88,7 +88,7 @@ struct sram_log_header {
 #define SRAM_BLOCK_SIZE 0x01
 #define SRAM_PMIC_BOOT_PHASE 0x02
 #define SRAM_HISTORY_BOOT_PHASE 0x03
-
+#define SRAM_PLLK_SIZE 0x04
 
 /* emmc last block struct */
 struct log_emmc_header {
