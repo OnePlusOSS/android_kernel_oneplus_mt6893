@@ -683,30 +683,34 @@ int disp_ccorr_set_color_matrix(struct mtk_ddp_comp *comp,
 					priv->ddp_comp[DDP_COMPONENT_COLOR0];
 				ddp_color_bypass_color(comp_color0, false, handle);
 				bypass_color0 = false;
-			} else if (bypass_color0 == false) {
-				struct mtk_ddp_comp *comp_color0 =
-					priv->ddp_comp[DDP_COMPONENT_COLOR0];
-				ddp_color_bypass_color(comp_color0, true, handle);
-				bypass_color0 = true;
-			} else {
-				DDPINFO("%s, bypass_color0 value is invalid!\n", __func__);
 			}
-		}
-
-		if (id == 1) {
+		} else if (id == 1) {
 			if (bypass_color1 == true) {
 				struct mtk_ddp_comp *comp_color1 =
 					priv->ddp_comp[DDP_COMPONENT_COLOR1];
 				ddp_color_bypass_color(comp_color1, false, handle);
 				bypass_color1 = false;
-			} else if (bypass_color1 == false) {
+			}
+		} else {
+			DDPINFO("%s, id is invalid!\n", __func__);
+		}
+	} else {
+		if (id == 0) {
+			if (bypass_color0 == false) {
+				struct mtk_ddp_comp *comp_color0 =
+					priv->ddp_comp[DDP_COMPONENT_COLOR0];
+				ddp_color_bypass_color(comp_color0, true, handle);
+				bypass_color0 = true;
+			}
+		} else if (id == 1) {
+			if (bypass_color1 == false) {
 				struct mtk_ddp_comp *comp_color1 =
 					priv->ddp_comp[DDP_COMPONENT_COLOR1];
 				ddp_color_bypass_color(comp_color1, true, handle);
 				bypass_color1 = true;
-			} else {
-				DDPINFO("%s, bypass_color1 value is invalid!\n", __func__);
 			}
+		} else {
+			DDPINFO("%s, id is invalid!\n", __func__);
 		}
 	}
 
