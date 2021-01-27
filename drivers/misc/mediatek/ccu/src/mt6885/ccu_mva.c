@@ -179,6 +179,11 @@ int ccu_allocate_mem(struct CcuMemHandle *memHandle, int size, bool cached)
 	LOG_DBG_MUST("_ccuAllocMem+\n");
 	LOG_DBG_MUST("size(%d) cached(%d) memHandle->ionHandleKd(%d)\n",
 		size, cached, memHandle->ionHandleKd);
+	if (_ccu_ion_client == NULL) {
+		LOG_ERR("%s: _ccu_ion_client is null!\n", __func__);
+		return -EINVAL;
+	}
+
 	//allocate ion buffer handle
 	memHandle->ionHandleKd = _ccu_ion_alloc(_ccu_ion_client,
 		ION_HEAP_MULTIMEDIA_MASK,
@@ -210,7 +215,7 @@ int ccu_allocate_mem(struct CcuMemHandle *memHandle, int size, bool cached)
 		memHandle->ionHandleKd);
 	if (memHandle->meminfo.va == NULL) {
 		LOG_ERR("fail to get buffer kernel virtual address");
-		return false;
+		return -EINVAL;
 	}
 	LOG_DBG_MUST("memHandle->va(0x%lx)\n", memHandle->meminfo.va);
 
@@ -236,6 +241,11 @@ int ccu_deallocate_mem(struct CcuMemHandle *memHandle)
 	LOG_DBG_MUST("free idx(%d) mva(0x%x) fd(0x%x)\n", idx,
 		ccu_buffer_handle[idx].meminfo.mva,
 		ccu_buffer_handle[idx].meminfo.shareFd);
+
+	if (_ccu_ion_client == NULL) {
+		LOG_ERR("%s: _ccu_ion_client is null!\n", __func__);
+		return -EINVAL;
+	}
 	if (ccu_buffer_handle[idx].ionHandleKd == 0) {
 		LOG_ERR("idx %d handle %d is empty\n", idx,
 			ccu_buffer_handle[idx].ionHandleKd);
