@@ -5315,6 +5315,31 @@ static kal_uint32 seamless_switch(enum MSDK_SCENARIO_ID_ENUM scenario_id,
 
 	}
 	break;
+	case MSDK_SCENARIO_ID_VIDEO_PREVIEW:
+	{
+		spin_lock(&imgsensor_drv_lock);
+		imgsensor.sensor_mode = IMGSENSOR_MODE_VIDEO;
+		imgsensor.pclk = imgsensor_info.normal_video.pclk;
+		imgsensor.line_length = imgsensor_info.normal_video.linelength;
+		imgsensor.frame_length = imgsensor_info.normal_video.framelength;
+		imgsensor.min_frame_length = imgsensor_info.normal_video.framelength;
+		imgsensor.autoflicker_en = KAL_FALSE;
+		imgsensor.extend_frame_length_en = KAL_FALSE;
+		spin_unlock(&imgsensor_drv_lock);
+		LOG_INF("seamless switch 1-exp!\n");
+
+		 table_write_cmos_sensor(s5kjd1_seamless_video,
+		sizeof(s5kjd1_seamless_video) / sizeof(kal_uint16));
+
+		//JD1 is in AE LOCK stage for development.
+		if (gain != 0)
+			write_cmos_sensor(0x0204, gain);
+
+		if (shutter != 0)
+			write_cmos_sensor(0X0202, shutter);
+
+	}
+	break;
 	case MSDK_SCENARIO_ID_CUSTOM1:
 	{
 		LOG_INF("seamless switch to CUSTOM1 size!\n");
@@ -6241,10 +6266,13 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 			*(pScenarios + 1) = MSDK_SCENARIO_ID_CUSTOM2;
 			break;
 		case MSDK_SCENARIO_ID_CUSTOM2:
-			*pScenarios = MSDK_SCENARIO_ID_CUSTOM1;
+			*pScenarios = MSDK_SCENARIO_ID_VIDEO_PREVIEW;
 			*(pScenarios + 1) = MSDK_SCENARIO_ID_CAMERA_PREVIEW;
 			break;
 		case MSDK_SCENARIO_ID_VIDEO_PREVIEW:
+			*pScenarios = MSDK_SCENARIO_ID_CUSTOM2;
+			*(pScenarios + 1) = MSDK_SCENARIO_ID_CAMERA_PREVIEW;
+			break;
 		case MSDK_SCENARIO_ID_SLIM_VIDEO:
 		case MSDK_SCENARIO_ID_HIGH_SPEED_VIDEO:
 		default:
