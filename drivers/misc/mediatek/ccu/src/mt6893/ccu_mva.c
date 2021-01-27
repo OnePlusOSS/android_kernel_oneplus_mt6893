@@ -184,6 +184,12 @@ int ccu_allocate_mem(struct CcuMemHandle *memHandle, int size, bool cached)
 		return -EINVAL;
 	}
 
+	if (ccu_buffer_handle[cached].ionHandleKd != NULL) {
+		LOG_ERR("idx %d handle %p is not empty\n", cached,
+		ccu_buffer_handle[cached].ionHandleKd);
+		return -EINVAL;
+	}
+
 	//allocate ion buffer handle
 	memHandle->ionHandleKd = _ccu_ion_alloc(_ccu_ion_client,
 		ION_HEAP_MULTIMEDIA_MASK,
