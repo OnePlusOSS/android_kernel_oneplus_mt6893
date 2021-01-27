@@ -2458,7 +2458,8 @@ static bool ufs_mtk_is_data_cmd(char cmd_op, bool isolation)
 		if ((cmd_op == WRITE_BUFFER) ||
 		    (cmd_op == UNMAP) ||
 		    (cmd_op == FORMAT_UNIT) ||
-		    (cmd_op == SECURITY_PROTOCOL_OUT))
+		    (cmd_op == SECURITY_PROTOCOL_OUT) ||
+		    (cmd_op == 0xC0)) /* Vendor Command */
 			return true;
 	}
 
