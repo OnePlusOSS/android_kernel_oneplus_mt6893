@@ -787,6 +787,12 @@ bool mtk_drm_get_hdr_property(void);
 int mtk_drm_aod_setbacklight(struct drm_crtc *crtc, unsigned int level);
 
 int mtk_drm_crtc_wait_blank(struct mtk_drm_crtc *mtk_crtc);
+void mtk_drm_crtc_init_para(struct drm_crtc *crtc);
+void mtk_drm_layer_dispatch_to_dual_pipe(
+	struct mtk_plane_state *plane_state,
+	struct mtk_plane_state *plane_state_l,
+	struct mtk_plane_state *plane_state_r,
+	unsigned int w);
 /* ********************* Legacy DISP API *************************** */
 unsigned int DISP_GetScreenWidth(void);
 unsigned int DISP_GetScreenHeight(void);

@@ -262,6 +262,7 @@ static struct mtk_plane_state *drm_set_dal_plane_state(struct drm_crtc *crtc,
 	plane_state->comp_state.comp_id = ovl_comp->id;
 	plane_state->comp_state.lye_id = layer_id;
 	plane_state->comp_state.ext_lye_id = 0;
+	plane_state->base.crtc = crtc;
 
 	return plane_state;
 }
@@ -302,6 +303,27 @@ int drm_show_dal(struct drm_crtc *crtc, bool enable)
 	/* set DAL config and trigger display */
 	cmdq_handle = mtk_crtc_gce_commit_begin(crtc);
 
+	if (mtk_crtc->is_dual_pipe) {
+		struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
+		struct mtk_plane_state plane_state_l;
+		struct mtk_plane_state plane_state_r;
+		struct mtk_ddp_comp *comp;
+
+		if (plane_state->comp_state.comp_id == 0)
+			plane_state->comp_state.comp_id = comp->id;
+
+		mtk_drm_layer_dispatch_to_dual_pipe(plane_state,
+			&plane_state_l, &plane_state_r,
+			crtc->state->adjusted_mode.hdisplay);
+
+		comp = priv->ddp_comp[plane_state_r.comp_state.comp_id];
+		mtk_ddp_comp_layer_config(comp, layer_id,
+					&plane_state_r, cmdq_handle);
+		DDPINFO("%s+ comp_id:%d, comp_id:%d\n",
+			__func__, comp->id,
+			plane_state_r.comp_state.comp_id);
+	}
+
 	mtk_ddp_comp_layer_config(ovl_comp, layer_id, plane_state, cmdq_handle);
 
 	mtk_crtc_gce_flush(crtc, mtk_drm_cmdq_done, cmdq_handle, cmdq_handle);
@@ -332,16 +354,33 @@ void drm_set_dal(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle)
 		return;
 	}
 
+	if (mtk_crtc->is_dual_pipe) {
+		struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
+		struct mtk_plane_state plane_state_l;
+		struct mtk_plane_state plane_state_r;
+		struct mtk_ddp_comp *comp;
+
+		if (plane_state->comp_state.comp_id == 0)
+			plane_state->comp_state.comp_id = comp->id;
+
+		mtk_drm_layer_dispatch_to_dual_pipe(plane_state,
+			&plane_state_l, &plane_state_r,
+			crtc->state->adjusted_mode.hdisplay);
+
+		comp = priv->ddp_comp[plane_state_r.comp_state.comp_id];
+		mtk_ddp_comp_layer_config(comp, layer_id,
+					&plane_state_r, cmdq_handle);
+		DDPINFO("%s+ comp_id:%d, comp_id:%d\n",
+			__func__, comp->id,
+			plane_state_r.comp_state.comp_id);
+	}
+
 	mtk_ddp_comp_layer_config(ovl_comp, layer_id, plane_state, cmdq_handle);
 }
 
 int DAL_Clean(void)
 {
 	struct MFC_CONTEXT *ctxt = (struct MFC_CONTEXT *)mfc_handle;
-	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(dal_crtc);
-
-	if (mtk_crtc->is_dual_pipe)
-		return 0;
 
 	if (!mfc_handle)
 		return 0;
@@ -369,10 +408,6 @@ int DAL_Printf(const char *fmt, ...)
 {
 	va_list args;
 	u32 i;
-	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(dal_crtc);
-
-	if (mtk_crtc->is_dual_pipe)
-		return 0;
 
 	if (!mfc_handle)
 		return -1;

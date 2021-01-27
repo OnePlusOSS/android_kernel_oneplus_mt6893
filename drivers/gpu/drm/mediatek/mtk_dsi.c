@@ -4664,8 +4664,11 @@ void mtk_dsi_set_mmclk_by_datarate(struct mtk_dsi *dsi,
 			pixclk = pixclk * 16 / 7;
 		pixclk = pixclk / bpp / 100;
 	}
-	DDPINFO("%s,data_rate =%d,clk=%u pixclk_min=%d\n", __func__,
-			data_rate, pixclk, pixclk_min);
+	if (mtk_crtc->is_dual_pipe)
+		pixclk /= 2;
+
+	DDPINFO("%s,data_rate =%d,clk=%u pixclk_min=%d, dual=%u\n", __func__,
+			data_rate, pixclk, pixclk_min, mtk_crtc->is_dual_pipe);
 	mtk_drm_set_mmclk_by_pixclk(&mtk_crtc->base, pixclk, __func__);
 }
 
@@ -5687,6 +5690,7 @@ static int mtk_dsi_probe(struct platform_device *pdev)
 	}
 
 	init_waitqueue_head(&dsi->irq_wait_queue);
+#ifndef CONFIG_MTK_DISP_NO_LK
 #ifndef CONFIG_FPGA_EARLY_PORTING
 	/* set ccf reference cnt = 1 */
 
@@ -5703,7 +5707,7 @@ static int mtk_dsi_probe(struct platform_device *pdev)
 #endif
 	dsi->output_en = true;
 	dsi->clk_refcnt = 1;
-
+#endif
 	platform_set_drvdata(pdev, dsi);
 	DDPINFO("%s-\n", __func__);
 

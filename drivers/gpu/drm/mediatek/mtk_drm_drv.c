@@ -674,7 +674,11 @@ static bool mtk_drm_is_enable_from_lk(struct drm_crtc *crtc)
 {
 	/* TODO: check if target CRTC has been turn on in LK */
 	if (drm_crtc_index(crtc) == 0)
+	#ifndef CONFIG_MTK_DISP_NO_LK
 		return true;
+	#else
+		return false;
+	#endif
 	return false;
 }
 
@@ -1116,8 +1120,7 @@ static const enum mtk_ddp_comp_id mt6885_dual_data_ext[] = {
 	DDP_COMPONENT_DSC0,
 };
 static const enum mtk_ddp_comp_id mt6885_mtk_ddp_third[] = {
-	DDP_COMPONENT_OVL1_2L, DDP_COMPONENT_OVL1_2L_VIRTUAL0,
-	DDP_COMPONENT_WDMA1,
+	DDP_COMPONENT_OVL2_2L, DDP_COMPONENT_WDMA0,
 };
 
 static const struct mtk_addon_module_data addon_rsz_data[] = {
@@ -2066,6 +2069,8 @@ static void mtk_drm_first_enable(struct drm_device *drm)
 	drm_for_each_crtc(crtc, drm) {
 		if (mtk_drm_is_enable_from_lk(crtc))
 			mtk_drm_crtc_first_enable(crtc);
+		else
+			mtk_drm_crtc_init_para(crtc);
 		lcm_fps_ctx_init(crtc);
 	}
 }

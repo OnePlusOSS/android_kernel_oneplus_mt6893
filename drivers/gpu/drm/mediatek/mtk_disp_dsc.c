@@ -18,6 +18,7 @@
 #include <linux/of_irq.h>
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
+#include <linux/ratelimit.h>
 #include <linux/soc/mediatek/mtk-cmdq.h>
 
 #include "mtk_drm_crtc.h"
@@ -40,6 +41,13 @@
 	#define DSC_UFOE_SEL BIT(16)
 	#define CON_FLD_DSC_EN		REG_FLD_MSB_LSB(0, 0)
 	#define CON_FLD_DISP_DSC_BYPASS		REG_FLD_MSB_LSB(4, 4)
+
+#define DISP_REG_DSC_INTEN			0x0004
+#define DISP_REG_DSC_INTSTA			0x0008
+	#define DSC_DONE BIT(0)
+	#define DSC_ERR BIT(1)
+	#define DSC_ZERO_FIFO BIT(2)
+	#define DSC_ABN_EOF BIT(3)
 
 #define DISP_REG_DSC_PIC_W			0x0018
 	#define CFG_FLD_PIC_WIDTH	REG_FLD_MSB_LSB(15, 0)
@@ -115,6 +123,50 @@ struct mtk_disp_dsc {
 static inline struct mtk_disp_dsc *comp_to_dsc(struct mtk_ddp_comp *comp)
 {
 	return container_of(comp, struct mtk_disp_dsc, ddp_comp);
+}
+
+static irqreturn_t mtk_dsc_irq_handler(int irq, void *dev_id)
+{
+	struct mtk_disp_dsc *priv = dev_id;
+	struct mtk_ddp_comp *dsc = &priv->ddp_comp;
+	unsigned int val = 0;
+	unsigned int ret = 0;
+
+	val = readl(dsc->regs + DISP_REG_DSC_INTSTA);
+	if (!val) {
+		ret = IRQ_NONE;
+		goto out;
+	}
+
+	DDPIRQ("%s irq, val:0x%x\n", mtk_dump_comp_str(dsc), val);
+
+	writel(~val, dsc->regs + DISP_REG_DSC_INTSTA);
+
+	if (val & (1 << 0))
+		DDPIRQ("[IRQ] %s: frame complete!\n",
+			mtk_dump_comp_str(dsc));
+
+	if (val & (1 << 1)) {
+		static DEFINE_RATELIMIT_STATE(err_ratelimit, 1 * HZ, 20);
+
+		if (__ratelimit(&err_ratelimit))
+			DDPPR_ERR("[IRQ] %s: err!\n",
+				  mtk_dump_comp_str(dsc));
+	}
+	if (val & (1 << 2)) {
+		static DEFINE_RATELIMIT_STATE(zfifo_ratelimit, 1 * HZ, 20);
+
+		if (__ratelimit(&zfifo_ratelimit))
+			DDPPR_ERR("[IRQ] %s: zero fifo!\n",
+				  mtk_dump_comp_str(dsc));
+	}
+	if (val & (1 << 3))
+		DDPPR_ERR("[IRQ] %s: abnormal EOF!\n",
+			  mtk_dump_comp_str(dsc));
+
+	ret = IRQ_HANDLED;
+out:
+	return ret;
 }
 
 static void mtk_dsc_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
@@ -338,7 +390,9 @@ static void mtk_dsc_config(struct mtk_ddp_comp *comp,
 			dsc_params->slice_width-1) / dsc_params->slice_width;
 		init_delay_height_min =
 			(init_delay_limit > 15) ? 15 : init_delay_limit;
-		init_delay_height = init_delay_height_min;
+		init_delay_height =
+			(mtk_crtc_is_frame_trigger_mode(&comp->mtk_crtc->base)) ?
+			4 : init_delay_height_min;
 
 		reg_val = (!!dsc_params->slice_mode) |
 					(!!dsc_params->rgb_swap << 2) |
@@ -355,6 +409,10 @@ static void mtk_dsc_config(struct mtk_ddp_comp *comp,
 
 		mtk_ddp_write_mask(comp, DSC_CKSM_CAL_EN,
 					DISP_REG_DSC_DBG_CON, DSC_CKSM_CAL_EN,
+					handle);
+
+		mtk_ddp_write_mask(comp, 0xE,
+					DISP_REG_DSC_INTEN, 0xF,
 					handle);
 #if defined(CONFIG_MACH_MT6885) || defined(CONFIG_MACH_MT6893) \
 	|| defined(CONFIG_MACH_MT6873) || defined(CONFIG_MACH_MT6853)
@@ -438,6 +496,14 @@ static void mtk_dsc_config(struct mtk_ddp_comp *comp,
 		mtk_ddp_write(comp, 0x00007e7d, DISP_REG_DSC_PPS11, handle);
 		mtk_ddp_write(comp, 0x00800880, DISP_REG_DSC_PPS12, handle);
 		mtk_ddp_write(comp, 0xf8c100a1, DISP_REG_DSC_PPS13, handle);
+		mtk_ddp_write(comp, 0xe8e3f0e3, DISP_REG_DSC_PPS14, handle);
+		mtk_ddp_write(comp, 0xe103e0e3, DISP_REG_DSC_PPS15, handle);
+		mtk_ddp_write(comp, 0xd943e123,	DISP_REG_DSC_PPS16, handle);
+		mtk_ddp_write(comp, 0xd185d965,	DISP_REG_DSC_PPS17, handle);
+		mtk_ddp_write(comp, 0xd1a7d1a5,	DISP_REG_DSC_PPS18, handle);
+		mtk_ddp_write(comp, 0x0000d1ed,	DISP_REG_DSC_PPS19, handle);
+
+#if 0
 		if (comp->mtk_crtc->is_dual_pipe) {
 			mtk_ddp_write(comp, 0xe8e3f0e3,
 				DISP_REG_DSC_PPS14, handle);
@@ -467,7 +533,7 @@ static void mtk_dsc_config(struct mtk_ddp_comp *comp,
 			mtk_ddp_write(comp, 0x0000d1ed,
 				DISP_REG_DSC_PPS19, handle);
 		}
-
+#endif
 
 		dsc->enable = true;
 	} else {
@@ -490,11 +556,11 @@ void mtk_dsc_dump(struct mtk_ddp_comp *comp)
 		readl(baddr + DISP_REG_DSC_SLICE_W));
 	DDPDUMP("(0x024)DSC_SLICE_HIGHT=0x%x\n",
 		readl(baddr + DISP_REG_DSC_SLICE_H));
-	DDPDUMP("(0x000)DSC_WIDTH=0x%x\n", readl(baddr + DISP_REG_DSC_PIC_W));
-	DDPDUMP("(0x000)DSC_HEIGHT=0x%x\n", readl(baddr + DISP_REG_DSC_PIC_H));
+	DDPDUMP("(0x018)DSC_WIDTH=0x%x\n", readl(baddr + DISP_REG_DSC_PIC_W));
+	DDPDUMP("(0x01C)DSC_HEIGHT=0x%x\n", readl(baddr + DISP_REG_DSC_PIC_H));
 #if defined(CONFIG_MACH_MT6885) || defined(CONFIG_MACH_MT6893) \
 	|| defined(CONFIG_MACH_MT6873) || defined(CONFIG_MACH_MT6853)
-	DDPDUMP("(0x000)DSC_SHADOW=0x%x\n",
+	DDPDUMP("(0x200)DSC_SHADOW=0x%x\n",
 		readl(baddr + DISP_REG_DSC_SHADOW));
 #endif
 	DDPDUMP("-- Start dump dsc registers --\n");
@@ -596,6 +662,16 @@ static int mtk_disp_dsc_probe(struct platform_device *pdev)
 	}
 
 	platform_set_drvdata(pdev, priv);
+
+	ret = devm_request_irq(dev, irq, mtk_dsc_irq_handler,
+			       IRQF_TRIGGER_NONE | IRQF_SHARED, dev_name(dev),
+			       priv);
+	if (ret < 0) {
+		DDPAEE("%s:%d, failed to request irq:%d ret:%d comp_id:%d\n",
+				__func__, __LINE__,
+				irq, ret, comp_id);
+		return ret;
+	}
 
 	pm_runtime_enable(dev);
 
