@@ -652,6 +652,7 @@ static void mtk_rdma_set_ultra_l(struct mtk_ddp_comp *comp,
 	unsigned int val = 0;
 
 	if ((comp->id != DDP_COMPONENT_RDMA0)
+		&& (comp->id != DDP_COMPONENT_RDMA1)
 		&& (comp->id != DDP_COMPONENT_RDMA4)
 		&& (comp->id != DDP_COMPONENT_RDMA5)) {
 		DDPPR_ERR("unsupport golden setting, id:%d\n", comp->id);

@@ -338,6 +338,10 @@ void drm_set_dal(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle)
 int DAL_Clean(void)
 {
 	struct MFC_CONTEXT *ctxt = (struct MFC_CONTEXT *)mfc_handle;
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(dal_crtc);
+
+	if (mtk_crtc->is_dual_pipe)
+		return 0;
 
 	if (!mfc_handle)
 		return 0;
@@ -365,6 +369,10 @@ int DAL_Printf(const char *fmt, ...)
 {
 	va_list args;
 	u32 i;
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(dal_crtc);
+
+	if (mtk_crtc->is_dual_pipe)
+		return 0;
 
 	if (!mfc_handle)
 		return -1;

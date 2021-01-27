@@ -120,6 +120,11 @@ enum mtk_ddp_comp_type {
 	EXPR(DDP_COMPONENT_DMDP_AAL0)                                       \
 	EXPR(DDP_COMPONENT_DMDP_RSZ0)                                       \
 	EXPR(DDP_COMPONENT_DMDP_TDSHP0)                                     \
+	EXPR(DDP_COMPONENT_DMDP_RDMA1)                                      \
+	EXPR(DDP_COMPONENT_DMDP_HDR1)                                       \
+	EXPR(DDP_COMPONENT_DMDP_AAL1)                                       \
+	EXPR(DDP_COMPONENT_DMDP_RSZ1)                                       \
+	EXPR(DDP_COMPONENT_DMDP_TDSHP1)                                     \
 	EXPR(DDP_COMPONENT_DSC0)                                            \
 	EXPR(DDP_COMPONENT_MERGE0)                                          \
 	EXPR(DDP_COMPONENT_DPTX)                                            \

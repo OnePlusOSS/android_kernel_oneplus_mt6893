@@ -198,6 +198,13 @@ static void mtk_postmask_config(struct mtk_ddp_comp *comp,
 	struct mtk_drm_gem_obj *gem;
 #endif
 #endif
+	unsigned int width;
+
+	if (comp->mtk_crtc->is_dual_pipe)
+		width = cfg->w / 2;
+	else
+		width = cfg->w;
+
 	value = (REG_FLD_VAL((BLEND_CFG_FLD_A_EN), 1) |
 		 REG_FLD_VAL((BLEND_CFG_FLD_PARGB_BLD), 0) |
 		 REG_FLD_VAL((BLEND_CFG_FLD_CONST_BLD), 0));
@@ -207,7 +214,7 @@ static void mtk_postmask_config(struct mtk_ddp_comp *comp,
 			      handle);
 	mtk_ddp_write_relaxed(comp, 0xff000000, DISP_POSTMASK_MASK_CLR, handle);
 
-	value = (cfg->w << 16) + cfg->h;
+	value = (width << 16) + cfg->h;
 	mtk_ddp_write_relaxed(comp, value, DISP_POSTMASK_SIZE, handle);
 
 	if (!panel_ext)

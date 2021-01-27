@@ -2245,7 +2245,8 @@ static void mtk_ovl_addon_config(struct mtk_ddp_comp *comp,
 				 struct cmdq_pkt *handle)
 {
 	if ((addon_config->config_type.module == DISP_RSZ ||
-		addon_config->config_type.module == DISP_RSZ_v2) &&
+		addon_config->config_type.module == DISP_RSZ_v2 ||
+		addon_config->config_type.module == DISP_RSZ_v3) &&
 		addon_config->config_type.type == ADDON_BETWEEN) {
 		struct mtk_addon_rsz_config *config =
 			&addon_config->addon_rsz_config;

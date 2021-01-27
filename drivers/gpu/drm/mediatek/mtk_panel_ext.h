@@ -238,6 +238,7 @@ struct mtk_panel_params {
 		lane_swap[MIPITX_PHY_PORT_NUM][MIPITX_PHY_LANE_NUM];
 	struct mtk_panel_dsc_params dsc_params;
 	unsigned int output_mode;
+	unsigned int lcm_cmd_if;
 	unsigned int hbm_en_time;
 	unsigned int hbm_dis_time;
 	unsigned int lcm_index;

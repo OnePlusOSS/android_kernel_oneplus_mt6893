@@ -482,6 +482,7 @@ struct mtk_crtc_path_data {
 	//for dual path
 	const enum mtk_ddp_comp_id *dual_path[DDP_PATH_NR];
 	unsigned int dual_path_len[DDP_PATH_NR];
+	const struct mtk_addon_scenario_data *addon_data_dual;
 };
 
 struct mtk_crtc_gce_obj {
@@ -654,6 +655,7 @@ struct mtk_crtc_state {
 	struct mtk_lye_ddp_state lye_state;
 	struct mtk_rect rsz_src_roi;
 	struct mtk_rect rsz_dst_roi;
+	struct mtk_rsz_param rsz_param[2];
 	atomic_t plane_enabled_num;
 
 	/* property */
