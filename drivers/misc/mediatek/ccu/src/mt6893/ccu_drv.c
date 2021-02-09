@@ -540,7 +540,8 @@ static long ccu_ioctl(struct file *flip, unsigned int cmd,
 	enum CCU_BIN_TYPE type;
 	struct ccu_run_s ccu_run_info;
 
-	mutex_lock(&g_ccu_device->dev_mutex);
+	if ((cmd != CCU_IOCTL_WAIT_IRQ) && (cmd != CCU_IOCTL_WAIT_AF_IRQ))
+		mutex_lock(&g_ccu_device->dev_mutex);
 
 	LOG_DBG("%s+, cmd:%d\n", __func__, cmd);
 
@@ -1058,7 +1059,8 @@ EXIT:
 			current->comm, current->pid, current->tgid);
 	}
 
-	mutex_unlock(&g_ccu_device->dev_mutex);
+	if ((cmd != CCU_IOCTL_WAIT_IRQ) && (cmd != CCU_IOCTL_WAIT_AF_IRQ))
+		mutex_unlock(&g_ccu_device->dev_mutex);
 
 	return ret;
 }
