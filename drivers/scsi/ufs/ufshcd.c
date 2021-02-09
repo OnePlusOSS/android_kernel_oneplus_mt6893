@@ -2201,6 +2201,10 @@ void ufshcd_send_command(struct ufs_hba *hba, unsigned int task_tag)
 	/* Make sure that doorbell is committed immediately */
 	wmb();
 
+	if ((hba->quirks & UFSHCD_QUIRK_UFS_HCI_PERF_HEURISTIC) &&
+	    hba->ufs_mtk_qcmd_r_cmd_cnt)
+		udelay(1);
+
 	if (hba->lrb[task_tag].cmd)
 		ufshcd_cond_add_cmd_trace(hba, task_tag, UFS_TRACE_SEND);
 	else
