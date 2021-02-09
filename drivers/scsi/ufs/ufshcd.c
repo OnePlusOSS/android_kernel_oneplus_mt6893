@@ -7139,6 +7139,7 @@ static int ufshcd_abort(struct scsi_cmnd *cmd)
 	spin_lock_irqsave(host->host_lock, flags);
 
 	ufshcd_outstanding_req_clear(hba, tag);
+	ufs_mtk_perf_heurisic_req_done(hba, cmd);
 	hba->lrb[tag].cmd = NULL;
 	ufshcd_vops_res_ctrl(hba, UFS_RESCTL_CMD_COMP);
 	ufs_mtk_auto_hiber8_quirk_handler(hba, true);
