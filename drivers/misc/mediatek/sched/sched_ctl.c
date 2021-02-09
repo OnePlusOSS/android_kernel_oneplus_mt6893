@@ -705,7 +705,9 @@ void sched_set_boost_fg(void)
 	 */
 
 	nr = arch_get_nr_clusters();
-	arch_get_cluster_cpus(&cpus, nr-1);
+	arch_get_cluster_cpus(&cpus, 0);
+	if (nr > 1)
+		cpumask_xor(&cpus, &cpus, cpu_possible_mask);
 
 	set_user_space_global_cpuset(&cpus, 3);
 	set_user_space_global_cpuset(&cpus, 2);
