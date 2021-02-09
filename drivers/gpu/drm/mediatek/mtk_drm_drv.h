@@ -176,6 +176,9 @@ struct mtk_drm_private {
 	int vds_path_switch_done;
 	int vds_path_enable;
 
+	bool need_cwb_path_disconnect;
+	bool cwb_is_preempted;
+
 	/* Due to 2nd display share 1 secure gce client, need store here */
 	struct cmdq_client *ext_sec_client;
 };
