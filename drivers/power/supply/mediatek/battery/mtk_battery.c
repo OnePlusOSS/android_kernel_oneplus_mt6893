@@ -293,6 +293,35 @@ bool is_fg_disabled(void)
 }
 
 
+bool set_charge_power_sel(enum CHARGE_SEL select)
+{
+	/* select gm.charge_power_sel to CHARGE_NORMAL ,CHARGE_R1,CHARGE_R2 */
+	/* example: gm.charge_power_sel = CHARGE_NORMAL */
+
+	gm.charge_power_sel = select;
+
+	wakeup_fg_algo_cmd(FG_INTR_KERNEL_CMD,
+		FG_KERNEL_CMD_FORCE_BAT_TEMP, select);
+
+	return 0;
+}
+
+int dump_pseudo100(enum CHARGE_SEL select)
+{
+	int i = 0;
+
+	bm_err("%s:select=%d\n", __func__, select);
+
+	if (select > MAX_CHARGE_RDC || select < 0)
+		return 0;
+
+	for (i = 0; i < MAX_TABLE; i++) {
+		bm_err("%6d\n",
+			fg_table_cust_data.fg_profile[i].r_pseudo100.pseudo[select]);
+	}
+
+	return 0;
+}
 
 int register_battery_notifier(struct notifier_block *nb)
 {
@@ -981,7 +1010,7 @@ static void dump_daemon_table(struct seq_file *m)
 				ptr[i].mah,
 				ptr[i].voltage,
 				ptr[i].resistance,
-				ptr[i].resistance2,
+				ptr[i].charge_r.rdc[0],
 				ptr[i].percentage);
 		}
 	}
@@ -996,7 +1025,7 @@ static void dump_daemon_table(struct seq_file *m)
 			ptr[i].mah,
 			ptr[i].voltage,
 			ptr[i].resistance,
-			ptr[i].resistance2,
+			ptr[i].charge_r.rdc[0],
 			ptr[i].percentage);
 
 	}
@@ -1011,7 +1040,7 @@ static void dump_daemon_table(struct seq_file *m)
 			ptr[i].mah,
 			ptr[i].voltage,
 			ptr[i].resistance,
-			ptr[i].resistance2,
+			ptr[i].charge_r.rdc[0],
 			ptr[i].percentage);
 	}
 
@@ -1059,7 +1088,7 @@ static void dump_kernel_table(struct seq_file *m)
 				ptr[i].mah,
 				ptr[i].voltage,
 				ptr[i].resistance,
-				ptr[i].resistance2,
+				ptr[i].charge_r.rdc[0],
 				ptr[i].percentage);
 		}
 	}
@@ -1078,7 +1107,7 @@ static void dump_kernel_table(struct seq_file *m)
 				ptr[i].mah,
 				ptr[i].voltage,
 				ptr[i].resistance,
-				ptr[i].resistance2,
+				ptr[i].charge_r.rdc[0],
 				ptr[i].percentage);
 		}
 	}
@@ -3220,7 +3249,25 @@ void exec_BAT_EC(int cmd, int param)
 			wakeup_fg_algo(FG_INTR_CHR_FULL);
 		}
 		break;
+	case 800:
+		{
 
+			bm_err(
+				"exe_BAT_EC cmd %d, charge_power_sel =%d\n",
+				cmd, param);
+
+			set_charge_power_sel(param);
+		}
+		break;
+	case 801:
+		{
+			bm_err(
+				"exe_BAT_EC cmd %d, charge_power_sel =%d\n",
+				cmd, param);
+
+			dump_pseudo100(param);
+		}
+		break;
 
 	default:
 		bm_err(
