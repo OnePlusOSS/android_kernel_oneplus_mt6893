@@ -296,6 +296,7 @@ static unsigned int max_blc_cur;
 static int boosted_group;
 
 static unsigned int *clus_obv;
+static unsigned int *clus_status;
 static unsigned int last_obv;
 
 static unsigned long long vsync_time;
@@ -582,6 +583,26 @@ static void fbt_find_ex_max_blc(int pid, unsigned long long buffer_id,
 		}
 	}
 	mutex_unlock(&blc_mlock);
+}
+
+static int fbt_is_cl_isolated(int cluster, bool include_offline)
+{
+	cpumask_t mask;
+	cpumask_t count_mask = CPU_MASK_NONE;
+
+	arch_get_cluster_cpus(&mask, cluster);
+
+	if (include_offline) {
+		cpumask_complement(&count_mask, cpu_online_mask);
+		cpumask_or(&count_mask, &count_mask, cpu_isolated_mask);
+		cpumask_and(&count_mask, &count_mask, &mask);
+	} else
+		cpumask_and(&count_mask, &mask, cpu_isolated_mask);
+
+	if (cpumask_weight(&count_mask) == cpumask_weight(&mask))
+		return 1;
+
+	return 0;
 }
 
 static void fbt_set_cap_margin_locked(int set)
@@ -2617,7 +2638,7 @@ static int fbt_adjust_loading(struct render_info *thr, unsigned long long ts,
 	int new_ts;
 	long loading = 0L;
 	long *loading_cl;
-	unsigned int temp_obv, *temp_obv_cl;
+	unsigned int temp_obv, *temp_obv_cl, *temp_stat_cl;
 	unsigned long long loading_result = 0U;
 	unsigned long flags;
 	int i;
@@ -2626,13 +2647,20 @@ static int fbt_adjust_loading(struct render_info *thr, unsigned long long ts,
 
 	loading_cl = kcalloc(cluster_num, sizeof(long), GFP_KERNEL);
 	temp_obv_cl = kcalloc(cluster_num, sizeof(unsigned int), GFP_KERNEL);
-	if (!loading_cl || !temp_obv_cl)
+	temp_stat_cl = kcalloc(cluster_num, sizeof(unsigned int), GFP_KERNEL);
+	if (!loading_cl || !temp_obv_cl || !temp_stat_cl) {
+		kfree(loading_cl);
+		kfree(temp_obv_cl);
+		kfree(temp_stat_cl);
 		return 0;
+	}
 
 	spin_lock_irqsave(&freq_slock, flags);
 	temp_obv = last_obv;
-	for (i = 0; i < cluster_num; i++)
+	for (i = 0; i < cluster_num; i++) {
 		temp_obv_cl[i] = clus_obv[i];
+		temp_stat_cl[i] = clus_status[i];
+	}
 	spin_unlock_irqrestore(&freq_slock, flags);
 
 	spin_lock_irqsave(&loading_slock, flags);
@@ -2655,13 +2683,16 @@ static int fbt_adjust_loading(struct render_info *thr, unsigned long long ts,
 		}
 
 		for (i = 0; i < cluster_num; i++) {
-			loading_result = fbt_est_loading(new_ts,
+			if (!temp_stat_cl[i]) {
+				loading_result = fbt_est_loading(new_ts,
 				thr->pLoading->last_cb_ts, temp_obv_cl[i]);
-			atomic_add_return(loading_result,
+				atomic_add_return(loading_result,
 					&thr->pLoading->loading_cl[i]);
-			fpsgo_systrace_c_fbt_gm(thr->pid, thr->buffer_id,
+				fpsgo_systrace_c_fbt_gm(thr->pid, thr->buffer_id,
 				atomic_read(&thr->pLoading->loading_cl[i]),
 				"loading_cl[%d]", i);
+			}
+
 			loading_cl[i] =
 				atomic_read(&thr->pLoading->loading_cl[i]);
 			atomic_set(&thr->pLoading->loading_cl[i], 0);
@@ -2695,17 +2726,23 @@ SKIP:
 		first_cluster = clamp(first_cluster, 0, cluster_num - 1);
 		sec_cluster = clamp(sec_cluster, 0, cluster_num - 1);
 
-		loading_result = thr->boost_info.loading_weight;
-		loading_result = loading_result *
-					loading_cl[sec_cluster];
-		loading_result += (100 - thr->boost_info.loading_weight) *
-					loading_cl[first_cluster];
-		do_div(loading_result, 100);
-		loading = (long)loading_result;
+		if (loading_cl[first_cluster] && loading_cl[sec_cluster]) {
+			loading_result = thr->boost_info.loading_weight;
+			loading_result = loading_result *
+						loading_cl[sec_cluster];
+			loading_result += (100 - thr->boost_info.loading_weight) *
+						loading_cl[first_cluster];
+			do_div(loading_result, 100);
+			loading = (long)loading_result;
+		} else if (loading_cl[first_cluster])
+			loading = loading_cl[first_cluster];
+		else if (loading_cl[sec_cluster])
+			loading = loading_cl[sec_cluster];
 	}
 
 	kfree(loading_cl);
 	kfree(temp_obv_cl);
+	kfree(temp_stat_cl);
 	return loading;
 }
 
@@ -2959,6 +2996,9 @@ void fpsgo_ctrl2fbt_cpufreq_cb(int cid, unsigned long freq)
 				goto SKIP;
 
 			for (i = 0; i < cluster_num; i++) {
+				if (clus_status[i])
+					continue;
+
 				loading_result =
 					fbt_est_loading(new_ts,
 					pos->last_cb_ts, clus_obv[i]);
@@ -2980,6 +3020,11 @@ SKIP:
 	clus_obv[cid] = curr_obv;
 
 	for (i = 0; i < cluster_num; i++) {
+		clus_status[i] = fbt_is_cl_isolated(i, 1);
+
+		if (clus_status[i])
+			continue;
+
 		if (curr_obv < clus_obv[i])
 			curr_obv = clus_obv[i];
 	}
@@ -4507,6 +4552,7 @@ void __exit fbt_cpu_exit(void)
 
 	kfree(base_opp);
 	kfree(clus_obv);
+	kfree(clus_status);
 	kfree(cpu_dvfs);
 	kfree(clus_max_cap);
 	kfree(limit_clus_ceil);
@@ -4565,6 +4611,9 @@ int __init fbt_cpu_init(void)
 		kcalloc(cluster_num, sizeof(unsigned int), GFP_KERNEL);
 
 	clus_obv =
+		kcalloc(cluster_num, sizeof(unsigned int), GFP_KERNEL);
+
+	clus_status =
 		kcalloc(cluster_num, sizeof(unsigned int), GFP_KERNEL);
 
 	cpu_dvfs =

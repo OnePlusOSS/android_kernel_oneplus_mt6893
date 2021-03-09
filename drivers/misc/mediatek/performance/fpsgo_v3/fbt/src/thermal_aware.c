@@ -17,10 +17,12 @@
 #include <linux/hrtimer.h>
 #include <linux/cpumask.h>
 #include <linux/workqueue.h>
+#include <linux/slab.h>
 #include "tscpu_settings.h"
 #include "cpu_ctrl.h"
 #include "fpsgo_base.h"
 #include "fpsgo_sysfs.h"
+#include "fpsgo_common.h"
 
 #define TIME_1S  1000000000
 #define TARGET_UNLIMITED_FPS 240
@@ -41,6 +43,9 @@ static int cur_state;
 static unsigned long long last_frame_ts;
 static unsigned long long last_active_ts;
 
+static int g_cluster_num;
+static int *g_core_num;
+
 static DEFINE_MUTEX(thrm_aware_lock);
 
 static void thrm_check_status(struct work_struct *work);
@@ -50,6 +55,13 @@ static DECLARE_WORK(thrm_aware_work, (void *) thrm_check_status);
 enum THRM_AWARE_STATE {
 	THRM_AWARE_STATE_INACTIVE = 0,
 	THRM_AWARE_STATE_ACTIVE,
+	THRM_AWARE_STATE_TRANSITION,
+};
+
+enum THRM_AWARE_CORE {
+	THRM_AWARE_CORE_RESET,
+	THRM_AWARE_CORE_ISO,
+	THRM_AWARE_CORE_DEISO,
 };
 
 static int thrm_get_temp(void)
@@ -64,11 +76,26 @@ static int thrm_get_temp(void)
 static void thrm_set_isolation(int input, int cpu)
 {
 	int nr_cpus = num_possible_cpus();
+	int cl;
+	int cl_min = -1, cl_max = -1;
 
 	if (cpu >= nr_cpus || cpu < 0)
 		return;
 
+	cl = arch_get_cluster_id(cpu);
+	if (cl >= g_cluster_num || cl < 0)
+		return;
+
+	if (input == THRM_AWARE_CORE_ISO)
+		cl_max = g_core_num[cl] - 1;
+	else if (input == THRM_AWARE_CORE_DEISO)
+		cl_min = cl_max = g_core_num[cl];
+
+#ifdef CONFIG_MTK_CORE_CTL
+	update_cpu_core_limit(CPU_ISO_KIR_FPSGO, cl, cl_min, cl_max);
+#else
 	update_isolation_cpu(CPU_ISO_KIR_FPSGO, input ? 1 : -1, cpu);
+#endif
 }
 
 static void thrm_enable_timer(void)
@@ -101,9 +128,10 @@ static void thrm_reset(void)
 		cur_state = THRM_AWARE_STATE_INACTIVE;
 		last_active_ts = 0;
 		if (limit_cpu != -1)
-			thrm_set_isolation(0, limit_cpu);
+			thrm_set_isolation(THRM_AWARE_CORE_RESET, limit_cpu);
 		if (sub_cpu != -1)
-			thrm_set_isolation(0, sub_cpu);
+			thrm_set_isolation(THRM_AWARE_CORE_RESET, sub_cpu);
+		fpsgo_systrace_c_fbt_gm(-100, 0, cur_state, "thrm_aware_state");
 	}
 }
 
@@ -117,7 +145,7 @@ static void thrm_check_status(struct work_struct *work)
 	if (!thrm_aware_enable)
 		goto EXIT;
 
-	if (cur_state != THRM_AWARE_STATE_ACTIVE)
+	if (cur_state == THRM_AWARE_STATE_INACTIVE)
 		goto EXIT;
 
 	cur_time = fpsgo_get_time();
@@ -126,14 +154,17 @@ static void thrm_check_status(struct work_struct *work)
 
 	temp = thrm_get_temp();
 
-	if (temp >= temp_th || (last_active_ts >= (cur_time - TIME_1S))) {
+	if (temp >= temp_th || (last_active_ts >= (cur_time - debnc_time))) {
 		thrm_enable_timer();
 		goto EXIT;
 	}
 
 DEISO:
 	cur_state = THRM_AWARE_STATE_INACTIVE;
-	thrm_set_isolation(0, limit_cpu);
+	last_active_ts = 0;
+	thrm_set_isolation(THRM_AWARE_CORE_RESET, limit_cpu);
+	thrm_set_isolation(THRM_AWARE_CORE_RESET, sub_cpu);
+	fpsgo_systrace_c_fbt_gm(-100, 0, cur_state, "thrm_aware_state");
 
 EXIT:
 	mutex_unlock(&thrm_aware_lock);
@@ -163,8 +194,11 @@ void thrm_aware_frame_start(int perf_hint, int target_fps)
 	if (temp >= temp_th) {
 		if (cur_state != THRM_AWARE_STATE_ACTIVE) {
 			cur_state = THRM_AWARE_STATE_ACTIVE;
-			thrm_set_isolation(1, limit_cpu);
+			thrm_set_isolation(THRM_AWARE_CORE_ISO, limit_cpu);
+			if (sub_cpu != -1)
+				thrm_set_isolation(THRM_AWARE_CORE_DEISO, sub_cpu);
 			thrm_enable_timer();
+			fpsgo_systrace_c_fbt_gm(-100, 0, cur_state, "thrm_aware_state");
 		}
 		last_active_ts = cur_time;
 	}
@@ -175,26 +209,30 @@ EXIT:
 
 void thrm_aware_switch(int enable)
 {
-	int is_active = 0;
-
 	mutex_lock(&thrm_aware_lock);
 
 	if (enable == thrm_aware_enable)
 		goto EXIT;
 
 	if (!enable) {
-		if (cur_state == THRM_AWARE_STATE_ACTIVE)
-			is_active = 1;
-
-		thrm_reset();
 		thrm_aware_enable = 0;
 
-		if ((sub_cpu != -1) && is_active)
-			thrm_set_isolation(1, sub_cpu);
+		if (cur_state != THRM_AWARE_STATE_ACTIVE)
+			goto EXIT;
+
+		cur_state = THRM_AWARE_STATE_TRANSITION;
+		fpsgo_systrace_c_fbt_gm(-100, 0, cur_state, "thrm_aware_state");
+
+		if (limit_cpu != -1)
+			thrm_set_isolation(THRM_AWARE_CORE_RESET, limit_cpu);
+
+		if (sub_cpu != -1)
+			thrm_set_isolation(THRM_AWARE_CORE_ISO, sub_cpu);
 	} else if (limit_cpu != -1) {
 		thrm_aware_enable = 1;
+
 		if (sub_cpu != -1)
-			thrm_set_isolation(0, sub_cpu);
+			thrm_set_isolation(THRM_AWARE_CORE_RESET, sub_cpu);
 	}
 
 EXIT:
@@ -338,7 +376,7 @@ static ssize_t thrm_sub_cpu_store(struct kobject *kobj,
 		goto EXIT;
 
 	if (sub_cpu != -1)
-		thrm_set_isolation(0, sub_cpu);
+		thrm_set_isolation(THRM_AWARE_CORE_RESET, sub_cpu);
 
 	sub_cpu = val;
 
@@ -402,6 +440,21 @@ EXIT:
 
 static KOBJ_ATTR_RW(thrm_activate_fps);
 
+static void update_cpu_info(void)
+{
+	int i;
+
+	g_cluster_num = arch_get_nr_clusters();
+	g_core_num = kcalloc(g_cluster_num, sizeof(int), GFP_KERNEL);
+
+	for (i = 0; i < g_cluster_num; i++) {
+		struct cpumask cluster_cpus;
+
+		arch_get_cluster_cpus(&cluster_cpus, i);
+		g_core_num[i] = cpumask_weight(&cluster_cpus);
+	}
+}
+
 void __init thrm_aware_init(struct kobject *dir_kobj)
 {
 	hrtimer_init(&hrt, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
@@ -414,6 +467,8 @@ void __init thrm_aware_init(struct kobject *dir_kobj)
 	cur_state = THRM_AWARE_STATE_INACTIVE;
 	debnc_time = TIME_1S;
 	activate_fps = 1;
+
+	update_cpu_info();
 
 	thrm_aware_kobj = dir_kobj;
 
@@ -429,6 +484,8 @@ void __init thrm_aware_init(struct kobject *dir_kobj)
 void __exit thrm_aware_exit(void)
 {
 	thrm_reset();
+
+	kfree(g_core_num);
 
 	if (!thrm_aware_kobj)
 		return;
