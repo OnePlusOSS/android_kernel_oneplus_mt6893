@@ -39,6 +39,7 @@
 #include <uapi/linux/sched/types.h>
 #include <linux/sched/clock.h>
 #include <linux/suspend.h>
+#include <linux/kdebug.h>
 
 /*************************************************************************
  * Feature configure region
@@ -334,6 +335,17 @@ static int start_kicker_thread_with_default_setting(void)
 	pr_debug("[wdk] %s done\n", __func__);
 	return ret;
 }
+
+static int wdt_die_callback(struct notifier_block *self, unsigned long cmd, void *ptr)
+{
+	timer_list_aee_dump(kick_bit);
+	return 0;
+}
+
+static struct notifier_block wdt_notify = {
+	.notifier_call	= wdt_die_callback,
+	.priority	= 1,
+};
 
 static unsigned int cpus_kick_bit;
 void wk_start_kick_cpu(int cpu)
@@ -987,7 +999,12 @@ static int wdt_pm_notify(struct notifier_block *notify_block,
 
 static int __init init_wk(void)
 {
-	int res = 0;
+	int res = 0, ret = 0;
+
+	ret = register_die_notifier(&wdt_notify);
+
+	if (ret != 0)
+		pr_info("[wdk] die notifier cannot be hooked\n");
 
 	wdk_workqueue = create_singlethread_workqueue("mt-wdk");
 	INIT_WORK(&wdk_work, wdk_work_callback);
