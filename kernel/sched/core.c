@@ -4346,9 +4346,6 @@ void scheduler_tick(void)
 #ifdef CONFIG_MTK_CACHE_CONTROL
 	hook_ca_scheduler_tick(cpu);
 #endif
-#ifdef CONFIG_MTK_PERF_TRACKER
-	perf_tracker(ktime_get_ns());
-#endif
 
 #ifdef CONFIG_SMP
 	rq->idle_balance = idle_cpu(cpu);
@@ -4358,6 +4355,10 @@ void scheduler_tick(void)
 
 #ifdef CONFIG_MTK_SCHED_RQAVG_KS
 	sched_max_util_task_tracking();
+#endif
+
+#ifdef CONFIG_MTK_PERF_TRACKER
+	perf_tracker(ktime_get_ns());
 #endif
 
 #ifdef CONFIG_MTK_SCHED_CPULOAD
@@ -7141,6 +7142,7 @@ out:
 			__func__, iso_prio, cpu, cpu_isolated_mask->bits[0]);
 	return ret_code;
 }
+EXPORT_SYMBOL(_sched_isolate_cpu);
 
 /*
  * Note: The client calling sched_isolate_cpu() is repsonsible for ONLY
@@ -7148,7 +7150,7 @@ out:
  * Client is also responsible for deisolating when a core goes offline
  * (after CPU is marked offline).
  */
-int __sched_deisolate_cpu_unlocked(int cpu)
+int sched_deisolate_cpu_unlocked(int cpu)
 {
 	int ret_code = 0;
 	struct rq *rq = cpu_rq(cpu);
@@ -7200,10 +7202,11 @@ int _sched_deisolate_cpu(int cpu)
 	int ret_code;
 
 	cpu_maps_update_begin();
-	ret_code = __sched_deisolate_cpu_unlocked(cpu);
+	ret_code = sched_deisolate_cpu_unlocked(cpu);
 	cpu_maps_update_done();
 	return ret_code;
 }
+EXPORT_SYMBOL(_sched_deisolate_cpu);
 
 void iso_cpumask_init(void)
 {
