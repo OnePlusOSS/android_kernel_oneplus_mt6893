@@ -257,7 +257,7 @@ void update_next_cluster_down_thresh(unsigned int index,
 {
 	struct cluster_data *next_cluster;
 
-	if (index == MAX_CLUSTERS - 1)
+	if (index == num_clusters - 1)
 		return;
 
 	next_cluster = &cluster_state[index + 1];
@@ -1004,7 +1004,7 @@ void get_nr_running_big_task(struct cluster_data* cluster)
 	int max_nr[MAX_CLUSTERS] = {0};
 	int i, delta;
 
-	for (i = 0; i < MAX_CLUSTERS; i++) {
+	for (i = 0; i < num_clusters; i++) {
 		sched_get_nr_overutil_avg(i,
 					  &avg_down[i],
 					  &avg_up[i],
@@ -1014,7 +1014,7 @@ void get_nr_running_big_task(struct cluster_data* cluster)
 		cluster[i].max_nr = max_nr[i];
 	}
 
-	for (i = 0; i < MAX_CLUSTERS; i++) {
+	for (i = 0; i < num_clusters; i++) {
 		/* reset nr_up and nr_down */
 		cluster[i].nr_up = 0;
 		cluster[i].nr_down = 0;
@@ -1049,7 +1049,7 @@ void get_nr_running_big_task(struct cluster_data* cluster)
 	}
 
 	if (debug_enable) {
-		for (i = 0; i < MAX_CLUSTERS; i++) {
+		for (i = 0; i < num_clusters; i++) {
 			nr_up[i] = cluster[i].nr_up;
 			nr_down[i] = cluster[i].nr_down;
 			max_nr[i] = cluster[i].max_nr;
