@@ -1504,8 +1504,13 @@ void cpuhvfs_update_cci_map_tbl(unsigned int idx_1, unsigned int idx_2,
 
 void cpuhvfs_update_cci_mode(unsigned int mode, unsigned int use_id)
 {
-
 	/* mode = 0(Normal as 50%) mode = 1(Perf as 70%) */
+#ifdef ENABLE_DOE
+	struct cpudvfs_doe *d = &dvfs_doe;
+
+	if (!d->state)
+		return;
+#endif
 
 #ifdef DSU_DVFS_ENABLE
 	if (use_id == FPS_PERF && force_disable)
