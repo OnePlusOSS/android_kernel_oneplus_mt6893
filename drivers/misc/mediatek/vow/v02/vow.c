@@ -174,8 +174,9 @@ static struct
 	bool                 suspend_lock;
 	bool                 firstRead;
 	unsigned long        voicedata_user_return_size_addr;
-	unsigned int         voice_buf_offset;
-	unsigned int         voice_length;
+	unsigned int         voice_r;
+	unsigned int         voice_w;
+	struct voice_data_msg_t     voice_msg[VOICE_DATA_MSG_NUM];
 	unsigned int         transfer_length;
 	struct device_node   *node;
 	struct pinctrl       *pinctrl;
@@ -235,6 +236,37 @@ static struct
 } vffp_resv_dram;
 
 /*****************************************************************************
+ * Voice Data Msg API
+ *****************************************************************************/
+
+static void vow_dmsg_init(void)
+{
+	vowserv.voice_r = 0;
+	vowserv.voice_w = 0;
+	memset(&vowserv.voice_msg,
+	       0,
+	       (VOICE_DATA_MSG_NUM * sizeof(struct voice_data_msg_t)));
+}
+
+static uint32_t vow_dmsg_data_size(void)
+{
+	uint32_t r_idx = vowserv.voice_r;
+	uint32_t w_idx = vowserv.voice_w;
+	uint32_t data_size;
+
+	if (w_idx >= r_idx)
+		data_size = w_idx - r_idx;
+	else
+		data_size = (VOICE_DATA_MSG_NUM << 1) - r_idx + w_idx;
+	return data_size;
+}
+
+static uint32_t vow_dmsg_space_size(void)
+{
+	return VOICE_DATA_MSG_NUM - vow_dmsg_data_size();
+}
+
+/*****************************************************************************
  * DSP IPI HANDELER
  *****************************************************************************/
 void vow_ipi_rx_internal(unsigned int msg_id,
@@ -281,11 +313,21 @@ void vow_ipi_rx_internal(unsigned int msg_id,
 		/* IPIMSG_VOW_DATAREADY */
 		if ((ipi_ptr->ipi_type_flag & DEBUG_DUMP_IDX_MASK) &&
 		    (vowserv.recording_flag)) {
-			vowserv.voice_buf_offset = ipi_ptr->voice_buf_offset;
-			vowserv.voice_length = ipi_ptr->voice_length;
-			if (vowserv.voice_length > 320)
+			uint32_t space_size = vow_dmsg_space_size();
+
+			vowserv.voice_msg[vowserv.voice_w].offset =
+				ipi_ptr->voice_buf_offset;
+			vowserv.voice_msg[vowserv.voice_w].length =
+				ipi_ptr->voice_length;
+			if (vowserv.voice_msg[vowserv.voice_w].length >
+			    VOW_VOICE_RECORD_LOG_THRESHOLD)
 				VOWDRV_DEBUG("vow,v_len=%x\n",
-					     vowserv.voice_length);
+					     vowserv.voice_msg[vowserv.voice_w].length);
+			if ((vowserv.voice_w + 1) >= VOICE_DATA_MSG_NUM)
+				vowserv.voice_w = 0;
+			else
+				vowserv.voice_w++;
+			VOW_ASSERT(space_size >= 0);
 			vow_service_getVoiceData();
 		}
 #ifdef CONFIG_MTK_VOW_BARGE_IN_SUPPORT
@@ -307,10 +349,18 @@ void vow_ipi_rx_internal(unsigned int msg_id,
 			idx = DUMP_INPUT;
 			dump_work[idx].mic_data_size = ipi_ptr->mic_dump_size;
 			dump_work[idx].mic_offset = ipi_ptr->mic_offset;
+			//VOWDRV_DEBUG("%s(), [Input]dump size %d offset %d\n",
+					//__func__,
+					//dump_work[idx].mic_data_size,
+					//dump_work[idx].mic_offset);
 #ifdef CONFIG_MTK_VOW_DUAL_MIC_SUPPORT
 			dump_work[idx].mic_data_size_R =
 					ipi_ptr->mic_dump_size;
 			dump_work[idx].mic_offset_R = ipi_ptr->mic_offset_R;
+			//VOWDRV_DEBUG("%s(), [Input R]dump size %d offset %d\n",
+					//__func__,
+					//dump_work[idx].mic_data_size_R,
+					//dump_work[idx].mic_offset_R);
 #endif  /* #ifdef CONFIG_MTK_VOW_DUAL_MIC_SUPPORT */
 			ret = queue_work(dump_workqueue[idx],
 					 &dump_work[idx].work);
@@ -326,7 +376,10 @@ void vow_ipi_rx_internal(unsigned int msg_id,
 			idx = DUMP_BARGEIN;
 			dump_work[idx].echo_data_size = ipi_ptr->echo_dump_size;
 			dump_work[idx].echo_offset = ipi_ptr->echo_offset;
-
+			//VOWDRV_DEBUG("%s(), [BargeIn]dump size %d offset %d\n",
+					//__func__,
+					//dump_work[idx].echo_data_size,
+					//dump_work[idx].echo_offset);
 			ret = queue_work(dump_workqueue[idx],
 					 &dump_work[idx].work);
 			if (ret > 0)
@@ -542,9 +595,8 @@ static void vow_service_Init(void)
 		vowserv.scp_command_flag = false;
 		vowserv.recording_flag = false;
 		vowserv.suspend_lock = 0;
-		vowserv.voice_length = 0;
 		vowserv.firstRead = false;
-		vowserv.voice_buf_offset = 0;
+		vow_dmsg_init();
 		vowserv.bypass_enter_phase3 = false;
 		vowserv.enter_phase3_cnt = 0;
 		vowserv.scp_recovering = false;
@@ -1298,6 +1350,7 @@ static int vow_service_ReadVoiceData_Internal(unsigned int buf_offset,
 static void vow_service_ReadVoiceData(void)
 {
 	int stop_condition = 0;
+	uint32_t data_size = 0;
 
 	/*int rdata;*/
 	while (1) {
@@ -1319,10 +1372,19 @@ static void vow_service_ReadVoiceData(void)
 				/* To Read Voice Data from Kernel to User */
 				stop_condition =
 				    vow_service_ReadVoiceData_Internal(
-					vowserv.voice_buf_offset,
-					vowserv.voice_length);
-				vowserv.voice_buf_offset = 0;
-				vowserv.voice_length = 0;
+					vowserv.voice_msg[vowserv.voice_r].offset,
+					vowserv.voice_msg[vowserv.voice_r].length);
+				vowserv.voice_msg[vowserv.voice_r].offset = 0;
+				vowserv.voice_msg[vowserv.voice_r].length = 0;
+				data_size = vow_dmsg_data_size();
+				if (data_size > 0) {
+					if ((vowserv.voice_r + 1) >=
+					    VOICE_DATA_MSG_NUM)
+						vowserv.voice_r = 0;
+					else
+						vowserv.voice_r++;
+					vow_service_getVoiceData();
+				}
 			}
 			if (stop_condition == 1)
 				break;
@@ -2906,8 +2968,13 @@ static long VowDrv_ioctl(struct file *fp, unsigned int cmd, unsigned long arg)
 			VOWDRV_DEBUG("VOW_SET_CONTROL DisableDebug");
 			VowDrv_SetFlag(VOW_FLAG_DEBUG, false);
 			vowserv.recording_flag = false;
-			/* force stop vow_service_ReadVoiceData() 20180906 */
-			vow_service_getVoiceData();
+			VOWDRV_DEBUG("vowser.voice_msg: offset %d, length %d, w_idx %d, r_idx %d\n",
+				     vowserv.voice_msg[vowserv.voice_w].offset,
+				     vowserv.voice_msg[vowserv.voice_w].length,
+				     vowserv.voice_w,
+				     vowserv.voice_r);
+			/* force voice_data resync */
+			vow_dmsg_init();
 			if (vowserv.suspend_lock == 1) {
 				vowserv.suspend_lock = 0;
 				/* Let AP will suspend */
