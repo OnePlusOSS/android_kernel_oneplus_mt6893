@@ -482,7 +482,7 @@ static ssize_t perfmgr_boot_freq_proc_write(struct file *filp,
 
 #ifdef CONFIG_MTK_CORE_CTL
 	if (!isBooting)
-		core_ctl_set_boost(0);
+		core_ctl_set_boost(all_cpu_deisolated);
 #endif
 
 	if (i < arg_num)
@@ -688,7 +688,9 @@ static ssize_t perfmgr_perfserv_all_cpu_deisolated_proc_write
 	all_cpu_deisolated = (data > 0) ? 1 : 0;
 
 #ifdef CONFIG_MTK_CORE_CTL
-	if (!isBooting)
+	if (isBooting)
+		core_ctl_set_boost(1);
+	else
 		core_ctl_set_boost(all_cpu_deisolated);
 #endif
 
