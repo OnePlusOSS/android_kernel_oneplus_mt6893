@@ -128,6 +128,7 @@ static void ccci_scp_md_state_sync_work(struct work_struct *work)
 		};
 		break;
 	case MD_STATE_EXCEPTION:
+	case MD_STATE_INVALID:
 		ccci_scp_ipi_send(scp_ctl->md_id,
 			CCCI_OP_MD_STATE, &state);
 		break;
@@ -194,6 +195,10 @@ static void ccci_scp_ipi_rx_work(struct work_struct *work)
 					ipi_msg_ptr->md_id);
 				ccci_scp_ipi_send(ipi_msg_ptr->md_id,
 					CCCI_OP_MD_STATE, &data);
+				break;
+			case SCP_CCCI_STATE_INVALID:
+				CCCI_NORMAL_LOG(ipi_msg_ptr->md_id, FSM,
+						"MD INVALID,scp send ack to ap\n");
 				break;
 			default:
 				break;
