@@ -89,7 +89,9 @@ static atomic_t g_aal_force_enable_irq = ATOMIC_INIT(0);
 static atomic_t g_led_mode = ATOMIC_INIT(MT65XX_LED_MODE_NONE);
 static atomic_t g_aal_force_relay = ATOMIC_INIT(0);
 static atomic_t g_aal_eof_irq = ATOMIC_INIT(0);
+static atomic_t g_aal1_eof_irq = ATOMIC_INIT(0);
 static atomic_t g_aal_first_frame = ATOMIC_INIT(1);
+static atomic_t g_aal1_first_frame = ATOMIC_INIT(1);
 static struct workqueue_struct *aal_flip_wq;
 static struct workqueue_struct *aal_refresh_wq;
 
@@ -177,6 +179,7 @@ struct mtk_disp_aal {
 	struct work_struct aal_refresh_task;
 };
 static struct mtk_disp_aal *g_aal_data;
+static struct mtk_disp_aal *g_aal1_data;
 
 static inline struct mtk_disp_aal *comp_to_aal(struct mtk_ddp_comp *comp)
 {
@@ -423,7 +426,9 @@ void disp_aal_refresh_by_kernel(void)
 
 		if (spin_trylock_irqsave(&g_aal_clock_lock, clockflags)) {
 			if (atomic_read(&g_aal_data->is_clock_on) != 1)
-				AALFLOW_LOG("clock is off\n");
+				AALFLOW_LOG("aal clock is off\n");
+			else if (isDualPQ && atomic_read(&g_aal1_data->is_clock_on) != 1)
+				AALFLOW_LOG("aal1 clock is off\n");
 			else
 				disp_aal_set_interrupt(NULL, true);
 			spin_unlock_irqrestore(&g_aal_clock_lock, clockflags);
@@ -731,6 +736,7 @@ static void mtk_aal_init(struct mtk_ddp_comp *comp,
 		atomic_set(&g_aal0_hist_available, 0);
 	}
 	atomic_set(&g_aal_eof_irq, 0);
+	atomic_set(&g_aal1_eof_irq, 0);
 	atomic_set(&aal_data->dirty_frame_retrieved, 1);
 	AALFLOW_LOG("led mode: %d-\n", atomic_read(&g_led_mode));
 }
@@ -813,7 +819,8 @@ static bool disp_aal_read_single_hist(struct mtk_ddp_comp *comp)
 	bool read_success = true;
 	int i;
 
-	if (atomic_read(&g_aal_eof_irq) == 0)
+	if (((comp->id == DDP_COMPONENT_AAL0) && (atomic_read(&g_aal_eof_irq) == 0)) ||
+		((comp->id == DDP_COMPONENT_AAL1) && (atomic_read(&g_aal1_eof_irq) == 0)))
 		return false;
 
 	if (comp->mtk_crtc->is_dual_pipe) {
@@ -853,7 +860,11 @@ static bool disp_aal_read_single_hist(struct mtk_ddp_comp *comp)
 				&g_aal_hist.aal0_colorHist);
 	}
 
-	atomic_set(&g_aal_eof_irq, 0);
+	if (comp->id == DDP_COMPONENT_AAL0)
+		atomic_set(&g_aal_eof_irq, 0);
+	if (comp->id == DDP_COMPONENT_AAL1)
+		atomic_set(&g_aal1_eof_irq, 0);
+
 	return read_success;
 }
 
@@ -1798,6 +1809,7 @@ static void disp_aal_update_dre3_sram(struct mtk_ddp_comp *comp,
 	AALIRQ_LOG("[g_aal0_hist_available = %d",
 			atomic_read(&g_aal0_hist_available));
 	AALIRQ_LOG("[g_aal_eof_irq = %d", atomic_read(&g_aal_eof_irq));
+	AALIRQ_LOG("[g_aal1_eof_irq = %d", atomic_read(&g_aal1_eof_irq));
 	if (check_sram) {
 		read_value = readl(dre3_va + DISP_AAL_SRAM_CFG);
 		hist_apb = (read_value >> 5) & 0x1;
@@ -1840,11 +1852,19 @@ static void disp_aal_update_dre3_sram(struct mtk_ddp_comp *comp,
 		if (result) {
 			AALIRQ_LOG("wake_up_interruptible");
 			wake_up_interruptible(&g_aal_hist_wq);
-		} else if (atomic_read(&g_aal_first_frame) == 1) {
-			AALIRQ_LOG("g_aal_first_frame == 1 queue_work");
-			queue_work(aal_flip_wq, &g_aal_data->aal_flip_task);
-			queue_work(aal_refresh_wq,
-					&g_aal_data->aal_refresh_task);
+		} else if (comp->mtk_crtc->is_dual_pipe) {
+			if (atomic_read(&g_aal_first_frame) == 1 &&
+				atomic_read(&g_aal1_first_frame) == 1) {
+				AALIRQ_LOG("g_aal_first_frame, g_aal1_first == 1 queue_work");
+				queue_work(aal_flip_wq, &g_aal_data->aal_flip_task);
+				queue_work(aal_refresh_wq, &g_aal_data->aal_refresh_task);
+			}
+		} else {
+			if (atomic_read(&g_aal_first_frame) == 1) {
+				AALIRQ_LOG("g_aal_first_frame == 1 queue_work");
+				queue_work(aal_flip_wq, &g_aal_data->aal_flip_task);
+				queue_work(aal_refresh_wq, &g_aal_data->aal_refresh_task);
+			}
 		}
 	}
 	if (spin_trylock_irqsave(&g_aal_dre3_gain_lock, flags)) {
@@ -2399,7 +2419,10 @@ static void mtk_aal_prepare(struct mtk_ddp_comp *comp)
 
 	mtk_ddp_comp_clk_prepare(comp);
 	atomic_set(&aal_data->is_clock_on, 1);
-	atomic_set(&g_aal_data->is_clock_on, 1);
+	if (comp->id == DDP_COMPONENT_AAL0)
+		atomic_set(&g_aal_data->is_clock_on, 1);
+	if (comp->id == DDP_COMPONENT_AAL1)
+		atomic_set(&g_aal1_data->is_clock_on, 1);
 	AALFLOW_LOG("[aal_data, g_aal_data] addr[%x, %x] val[%d, %d]\n",
 			&aal_data->is_clock_on, &g_aal_data->is_clock_on,
 			aal_data->is_clock_on, g_aal_data->is_clock_on);
@@ -2456,8 +2479,14 @@ static void mtk_aal_unprepare(struct mtk_ddp_comp *comp)
 	AALFLOW_LOG("\n");
 	spin_lock_irqsave(&g_aal_clock_lock, flags);
 	atomic_set(&aal_data->is_clock_on, 0);
-	atomic_set(&g_aal_data->is_clock_on, 0);
-	atomic_set(&g_aal_first_frame, 1);
+	if (comp->id == DDP_COMPONENT_AAL0) {
+		atomic_set(&g_aal_data->is_clock_on, 0);
+		atomic_set(&g_aal_first_frame, 1);
+	} else if (comp->id == DDP_COMPONENT_AAL1) {
+		atomic_set(&g_aal1_data->is_clock_on, 0);
+		atomic_set(&g_aal1_first_frame, 1);
+	}
+
 	spin_unlock_irqrestore(&g_aal_clock_lock, flags);
 	if (first_backup || debug_skip_first_br)
 		ddp_aal_backup(comp);
@@ -2553,7 +2582,11 @@ void disp_aal_on_end_of_frame(struct mtk_ddp_comp *comp)
 	//For 120Hz rotation issue
 	do_gettimeofday(&start);
 
-	atomic_set(&g_aal_eof_irq, 1);
+	if (comp->id == DDP_COMPONENT_AAL0)
+		atomic_set(&g_aal_eof_irq, 1);
+	if (comp->id == DDP_COMPONENT_AAL1)
+		atomic_set(&g_aal1_eof_irq, 1);
+
 	if (atomic_read(&g_aal_force_relay) == 1) {
 		disp_aal_clear_irq(comp, true);
 		return;
@@ -2568,13 +2601,21 @@ void disp_aal_on_end_of_frame(struct mtk_ddp_comp *comp)
 	AALIRQ_LOG("first_frame = %d, g_aal_eof_irq = %d",
 			atomic_read(&g_aal_first_frame),
 			atomic_read(&g_aal_eof_irq));
-
-	if (atomic_read(&g_aal_first_frame) == 1) {
-		AALIRQ_LOG("aal_refresh_task");
-		atomic_set(&g_aal_first_frame, 0);
-		queue_work(aal_refresh_wq, &g_aal_data->aal_refresh_task);
+	if (isDualPQ) {
+		if (atomic_read(&g_aal_first_frame) == 1
+			&& atomic_read(&g_aal1_first_frame) == 1) {
+			AALIRQ_LOG("aal_refresh_task");
+			atomic_set(&g_aal_first_frame, 0);
+			atomic_set(&g_aal1_first_frame, 0);
+			queue_work(aal_refresh_wq, &g_aal_data->aal_refresh_task);
+		}
+	} else {
+		if (atomic_read(&g_aal_first_frame) == 1) {
+			AALIRQ_LOG("aal_refresh_task");
+			atomic_set(&g_aal_first_frame, 0);
+			queue_work(aal_refresh_wq, &g_aal_data->aal_refresh_task);
+		}
 	}
-
 }
 
 void disp_aal_on_start_of_frame(void)
@@ -2656,19 +2697,22 @@ static int mtk_disp_aal_probe(struct platform_device *pdev)
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
 	if (priv == NULL)
 		return -ENOMEM;
-	g_aal_data = priv;
-	atomic_set(&priv->dirty_frame_retrieved, 1);
-	atomic_set(&priv->is_clock_on, 0);
-
-	irq = platform_get_irq(pdev, 0);
-	if (irq < 0)
-		return irq;
 
 	comp_id = mtk_ddp_comp_get_id(dev->of_node, MTK_DISP_AAL);
 	if ((int)comp_id < 0) {
 		AALERR("Failed to identify by alias: %d\n", comp_id);
 		return comp_id;
 	}
+	if (comp_id == DDP_COMPONENT_AAL0)
+		g_aal_data = priv;
+	if (comp_id == DDP_COMPONENT_AAL1)
+		g_aal1_data = priv;
+	atomic_set(&priv->dirty_frame_retrieved, 1);
+	atomic_set(&priv->is_clock_on, 0);
+
+	irq = platform_get_irq(pdev, 0);
+	if (irq < 0)
+		return irq;
 
 	ret = mtk_ddp_comp_init(dev, dev->of_node, &priv->ddp_comp, comp_id,
 				&mtk_disp_aal_funcs);
