@@ -5424,33 +5424,48 @@ static long ISP_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 		index = cq0_note.cq0_data[CAM_A][0] - ISP_CAM_A_IDX;
 		if (index <= (ISP_CAM_C_IDX - ISP_CAM_A_IDX)) {
 			if (cq0_note.cq0_data[CAM_A][1] != 0) {
-				g_cqBaseAddr[index][0] = cq0_note.cq0_data[CAM_A][1];
-				g_cq0NextBA[index][0] = cq0_note.cq0_data[CAM_A][2];
-				g_isSwitch[index] = (g_ExposureNum[index] != EXP_NONE &&
-					g_ExposureNum[index] != cq0_note.exposureNum)
+				g_cqBaseAddr[index][0] =
+					cq0_note.cq0_data[CAM_A][1];
+				g_cq0NextBA[index][0] =
+					cq0_note.cq0_data[CAM_A][2];
+				if (sof_count[index] != 0) {
+					g_isSwitch[index] =
+					(g_ExposureNum[index] !=
+					 cq0_note.exposureNum)
 					? MTRUE:MFALSE;
+				}
 				g_ExposureNum[index] = cq0_note.exposureNum;
 			}
 		}
 		index = cq0_note.cq0_data[CAM_B][0] - ISP_CAM_A_IDX;
 		if (index <= (ISP_CAM_C_IDX - ISP_CAM_A_IDX)) {
 			if (cq0_note.cq0_data[CAM_B][1] != 0) {
-				g_cqBaseAddr[index][0] = cq0_note.cq0_data[CAM_B][1];
-				g_cq0NextBA[index][0] = cq0_note.cq0_data[CAM_B][2];
-				g_isSwitch[index] = (g_ExposureNum[index] != EXP_NONE &&
-					g_ExposureNum[index] != cq0_note.exposureNum)
+				g_cqBaseAddr[index][0] =
+					cq0_note.cq0_data[CAM_B][1];
+				g_cq0NextBA[index][0] =
+					cq0_note.cq0_data[CAM_B][2];
+				if (sof_count[index] != 0) {
+					g_isSwitch[index] =
+					(g_ExposureNum[index] !=
+					 cq0_note.exposureNum)
 					? MTRUE:MFALSE;
+				}
 				g_ExposureNum[index] = cq0_note.exposureNum;
 			}
 		}
 		index = cq0_note.cq0_data[CAM_C][0] - ISP_CAM_A_IDX;
 		if (index <= (ISP_CAM_C_IDX - ISP_CAM_A_IDX)) {
 			if (cq0_note.cq0_data[CAM_C][1] != 0) {
-				g_cqBaseAddr[index][0] = cq0_note.cq0_data[CAM_C][1];
-				g_cq0NextBA[index][0] = cq0_note.cq0_data[CAM_C][2];
-				g_isSwitch[index] = (g_ExposureNum[index] != EXP_NONE &&
-					g_ExposureNum[index] != cq0_note.exposureNum)
+				g_cqBaseAddr[index][0] =
+					cq0_note.cq0_data[CAM_C][1];
+				g_cq0NextBA[index][0] =
+					cq0_note.cq0_data[CAM_C][2];
+				if (sof_count[index] != 0) {
+					g_isSwitch[index] =
+					(g_ExposureNum[index] !=
+					 cq0_note.exposureNum)
 					? MTRUE:MFALSE;
+				}
 				g_ExposureNum[index] = cq0_note.exposureNum;
 			}
 		}
