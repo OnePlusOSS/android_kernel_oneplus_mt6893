@@ -1285,8 +1285,6 @@ static void gt9896s_pdev_release(struct device *dev)
 {
 	ts_info("gt9896s pdev released");
 }
-#define BOOT_UPDATE_FIRMWARE_NAME novatek_firmware
-char novatek_firmware[25];
 
 static int gt9896s_spi_probe(struct spi_device *spi)
 {
