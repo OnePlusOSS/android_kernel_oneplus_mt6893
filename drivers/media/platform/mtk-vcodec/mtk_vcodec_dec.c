@@ -2531,6 +2531,14 @@ static void m2mops_vdec_device_run(void *priv)
 {
 	struct mtk_vcodec_ctx *ctx = priv;
 	struct mtk_vcodec_dev *dev = ctx->dev;
+	unsigned int enable = 1;
+
+	if (ctx->dec_param_change & MTK_DEC_PARAM_FORCE_RES_CHANGE) {
+		if (vdec_if_set_param(ctx, SET_PARAM_FORCE_RES_CHANGE, &enable) != 0)
+			mtk_v4l2_err("[%d] Error!! Cannot set param", ctx->id);
+		ctx->dec_param_change &= (~MTK_DEC_PARAM_FORCE_RES_CHANGE);
+	}
+
 
 	queue_work(dev->decode_workqueue, &ctx->decode_work);
 }
@@ -2656,11 +2664,19 @@ static int mtk_vdec_s_ctrl(struct v4l2_ctrl *ctrl)
 		mtk_dma_contig_set_secure_mode(&ctx->dev->plat_dev->dev,
 					ctx->dec_params.svp_mode);
 #endif
-		mtk_v4l2_debug(0, "[%d] V4L2_CID_MPEG_MTK_SEC_DECODE id %d val %d",
+		mtk_v4l2_debug(4, "[%d] V4L2_CID_MPEG_MTK_SEC_DECODE id %d val %d",
 			ctx->id, ctrl->id, ctrl->val);
 	}
 
 	switch (ctrl->id) {
+
+	case V4L2_CID_MPEG_MTK_FORCE_RES_CHANGE:
+		ctx->dec_params.force_res_change = ctrl->val;
+		ctx->dec_param_change |= MTK_DEC_PARAM_FORCE_RES_CHANGE;
+		mtk_v4l2_debug(0, "[%d] V4L2_CID_MPEG_MTK_FORCE_RES_CHANGE id %d val %d",
+			ctx->id, ctrl->id, ctrl->val);
+		break;
+
 	case V4L2_CID_MPEG_MTK_DECODE_MODE:
 		ctx->dec_params.decode_mode = ctrl->val;
 		ctx->dec_param_change |= MTK_DEC_PARAM_DECODE_MODE;
@@ -2822,6 +2838,11 @@ int mtk_vcodec_dec_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 		&mtk_vcodec_dec_ctrl_ops,
 		V4L2_CID_MPEG_MTK_SEC_DECODE,
 		0, 32, 1, 0);
+
+	ctrl = v4l2_ctrl_new_std(&ctx->ctrl_hdl,
+		&mtk_vcodec_dec_ctrl_ops,
+		V4L2_CID_MPEG_MTK_FORCE_RES_CHANGE,
+		0, 32, 1, 2);
 
 	ctrl = v4l2_ctrl_new_std(&ctx->ctrl_hdl,
 		&mtk_vcodec_dec_ctrl_ops,

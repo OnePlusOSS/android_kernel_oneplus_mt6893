@@ -999,6 +999,7 @@ const char *v4l2_ctrl_get_name(u32 id)
 		return "P-Frame QP Value";
 	case V4L2_CID_MPEG_MTK_ENCODE_RC_B_FRAME_QP:
 		return "B-Frame QP Value";
+	case V4L2_CID_MPEG_MTK_FORCE_RES_CHANGE: return "Video Res Change";
 	default:
 		return NULL;
 	}
@@ -1028,6 +1029,7 @@ void v4l2_ctrl_fill(u32 id, const char **name, enum v4l2_ctrl_type *type,
 	case V4L2_CID_MPEG_MTK_SEC_DECODE:
 	case V4L2_CID_MPEG_MTK_SEC_ENCODE:
 	case V4L2_CID_MPEG_MTK_QUEUED_FRAMEBUF_COUNT:
+	case V4L2_CID_MPEG_MTK_FORCE_RES_CHANGE:
 		*type = V4L2_CTRL_TYPE_INTEGER;
 		*flags |= V4L2_CTRL_FLAG_WRITE_ONLY;
 		break;
