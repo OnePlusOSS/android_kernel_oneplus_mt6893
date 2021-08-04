@@ -258,9 +258,15 @@ static struct usb_interface_descriptor mtp_interface_desc = {
 	.bDescriptorType        = USB_DT_INTERFACE,
 	.bInterfaceNumber       = 0,
 	.bNumEndpoints          = 3,
+#ifndef OPLUS_FEATURE_CHG_BASIC
 	.bInterfaceClass        = USB_CLASS_STILL_IMAGE,
 	.bInterfaceSubClass     = 1,
 	.bInterfaceProtocol     = 1,
+#else
+	.bInterfaceClass        = USB_CLASS_VENDOR_SPEC,
+	.bInterfaceSubClass     = USB_CLASS_VENDOR_SPEC,
+	.bInterfaceProtocol     = 0,
+#endif
 };
 
 static struct usb_interface_descriptor ptp_interface_desc = {
@@ -493,6 +499,10 @@ struct mtp_instance {
 
 /* temporary variable used between mtp_open() and mtp_gadget_bind() */
 static struct mtp_dev *_mtp_dev;
+
+#ifdef OPLUS_FEATURE_CHG_BASIC
+static ATOMIC_NOTIFIER_HEAD(mtp_rw_notifier);
+#endif
 
 static inline struct mtp_dev *func_to_mtp(struct usb_function *f)
 {
@@ -1485,7 +1495,7 @@ static int mtp_send_event(struct mtp_dev *dev, struct mtp_event *event)
 
 	return ret;
 }
-
+#ifndef OPLUS_FEATURE_CHG_BASIC
 static long mtp_ioctl(struct file *fp, unsigned int code, unsigned long value)
 {
 	struct mtp_dev *dev = fp->private_data;
@@ -1725,6 +1735,209 @@ out:
 	return ret;
 }
 #endif
+
+#else	/*OPLUS_FEATURE_CHG_BASIC*/
+
+static long mtp_send_receive_ioctl(struct file *fp, unsigned code,
+	struct mtp_file_range *mfr)
+{
+	struct mtp_dev *dev = fp->private_data;
+	struct file *filp = NULL;
+	struct work_struct *work;
+	int ret = -EINVAL;
+
+	spin_lock_irq(&dev->lock);
+	if (dev->state == STATE_CANCELED) {
+		/* report cancellation to userspace */
+		dev->state = STATE_READY;
+		spin_unlock_irq(&dev->lock);
+		ret = -ECANCELED;
+		goto out;
+	}
+	if (dev->state == STATE_OFFLINE) {
+		spin_unlock_irq(&dev->lock);
+		ret = -ENODEV;
+		goto out;
+	}
+	dev->state = STATE_BUSY;
+	spin_unlock_irq(&dev->lock);
+
+	/* hold a reference to the file while we are working with it */
+	filp = fget(mfr->fd);
+	if (!filp) {
+		ret = -EBADF;
+		goto fail;
+	}
+
+	/* write the parameters */
+	dev->xfer_file = filp;
+	dev->xfer_file_offset = mfr->offset;
+	dev->xfer_file_length = mfr->length;
+	smp_wmb(); /* avoid context switch and race condiction */
+
+	if (unlikely(cust_dump))
+		MTP_DBG("action<%s>, len<%lld>\n",
+				ioctl_string(code),
+				dev->xfer_file_length);
+
+	if (code == MTP_SEND_FILE_WITH_HEADER) {
+		work = &dev->send_file_work;
+		dev->xfer_send_header = 1;
+		dev->xfer_command = mfr->command;
+		dev->xfer_transaction_id = mfr->transaction_id;
+	} else if (code == MTP_SEND_FILE) {
+		work = &dev->send_file_work;
+		dev->xfer_send_header = 0;
+	} else {
+		work = &dev->receive_file_work;
+	}
+
+	/* We do the file transfer on a work queue so it will run
+	 * in kernel context, which is necessary for vfs_read and
+	 * vfs_write to use our buffers in the kernel address space.
+	 */
+	monitor_in(MTP_IOCTL_WORK);
+	if (code != MTP_RECEIVE_FILE) {
+		queue_work(dev->wq, work);
+		/* wait for operation to complete */
+		flush_workqueue(dev->wq);
+	} else {
+		bool rx_cont = mtp_rx_cont;
+
+		/* deal with (512K + 1) ~ (0xFFFFFFFE) */
+		if (rx_cont && (dev->xfer_file_length <= 524288
+			|| dev->xfer_file_length == 0xFFFFFFFF))
+			rx_cont = false;
+
+		if (rx_cont)
+			trigger_rx_cont();
+		else {
+			queue_work(dev->wq, work);
+			/* wait for operation to complete */
+			flush_workqueue(dev->wq);
+		}
+	}
+	monitor_out(MTP_IOCTL_WORK);
+	fput(filp);
+
+	/* read the result */
+	smp_rmb();
+	ret = dev->xfer_result;
+
+fail:
+	spin_lock_irq(&dev->lock);
+	if (dev->state == STATE_CANCELED)
+		ret = -ECANCELED;
+	else if (dev->state != STATE_OFFLINE)
+		dev->state = STATE_READY;
+	spin_unlock_irq(&dev->lock);
+out:
+	mtp_unlock(&dev->ioctl_excl);
+	DBG(dev->cdev, "ioctl returning %d\n", ret);
+	return ret;
+}
+
+static long mtp_ioctl(struct file *fp, unsigned int code, unsigned long value)
+{
+	struct mtp_dev *dev = fp->private_data;
+	struct mtp_file_range	mfr;
+	struct mtp_event	event;
+	int ret = -EINVAL;
+
+	switch (code) {
+	case MTP_SEND_FILE:
+	case MTP_RECEIVE_FILE:
+	case MTP_SEND_FILE_WITH_HEADER:
+		if (copy_from_user(&mfr, (void __user *)value, sizeof(mfr))) {
+			ret = -EFAULT;
+			goto fail;
+		}
+		ret = mtp_send_receive_ioctl(fp, code, &mfr);
+		break;
+	case MTP_SEND_EVENT:
+		if (mtp_lock(&dev->ioctl_excl))
+			return -EBUSY;
+		/* return here so we don't change dev->state below,
+		 * which would interfere with bulk transfer state.
+		 */
+		if (copy_from_user(&event, (void __user *)value, sizeof(event)))
+			ret = -EFAULT;
+		else
+			ret = mtp_send_event(dev, &event);
+		mtp_unlock(&dev->ioctl_excl);
+		break;
+	default:
+		DBG(dev->cdev, "unknown ioctl code: %d\n", code);
+	}
+fail:
+	return ret;
+}
+
+#ifdef CONFIG_COMPAT
+static long compat_mtp_ioctl(struct file *fp, unsigned int code,
+				unsigned long value)
+{
+	struct mtp_dev *dev = fp->private_data;
+	struct mtp_file_range	mfr;
+	struct __compat_mtp_file_range	cmfr;
+	struct mtp_event	event;
+	struct __compat_mtp_event cevent;
+	unsigned cmd;
+	bool send_file = false;
+	int ret = -EINVAL;
+	switch (code) {
+	case COMPAT_MTP_SEND_FILE:
+		cmd = MTP_SEND_FILE;
+		send_file = true;
+		break;
+	case COMPAT_MTP_RECEIVE_FILE:
+		cmd = MTP_RECEIVE_FILE;
+		send_file = true;
+		break;
+	case COMPAT_MTP_SEND_FILE_WITH_HEADER:
+		cmd = MTP_SEND_FILE_WITH_HEADER;
+		send_file = true;
+		break;
+	case COMPAT_MTP_SEND_EVENT:
+		cmd = MTP_SEND_EVENT;
+		break;
+	default:
+		DBG(dev->cdev, "unknown compat_ioctl code: %d\n", code);
+		goto fail;
+	}
+
+	if (send_file) {
+		if (copy_from_user(&cmfr, (void __user *)value, sizeof(cmfr))) {
+			ret = -EFAULT;
+			goto fail;
+		}
+		mfr.fd = cmfr.fd;
+		mfr.offset = cmfr.offset;
+		mfr.length = cmfr.length;
+		mfr.command = cmfr.command;
+		mfr.transaction_id = cmfr.transaction_id;
+		ret = mtp_send_receive_ioctl(fp, cmd, &mfr);
+	} else {
+		if (mtp_lock(&dev->ioctl_excl))
+			return -EBUSY;
+		/* return here so we don't change dev->state below,
+		 * which would interfere with bulk transfer state.
+		 */
+		if (copy_from_user(&cevent, (void __user *)value,
+			sizeof(cevent))) {
+			ret = -EFAULT;
+			goto fail;
+		}
+		event.length = cevent.length;
+		event.data = compat_ptr(cevent.data);
+		ret = mtp_send_event(dev, &event);
+		mtp_unlock(&dev->ioctl_excl);
+	}
+fail:
+	return ret;
+}
+#endif	/*CONFIG_COMPAT*/
+#endif	/*OPLUS_FEATURE_CHG_BASIC*/
 
 static int mtp_open(struct inode *ip, struct file *fp)
 {

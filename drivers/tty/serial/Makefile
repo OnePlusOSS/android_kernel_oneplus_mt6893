@@ -100,3 +100,8 @@ obj-$(CONFIG_SERIAL_MCTRL_GPIO)	+= serial_mctrl_gpio.o
 
 obj-$(CONFIG_SERIAL_KGDB_NMI) += kgdb_nmi.o
 obj-$(CONFIG_KGDB_SERIAL_CONSOLE) += kgdboc.o
+
+#ifdef OPLUS_FEATURE_CHG_BASIC
+subdir-ccflags-y += -Werror -I$(srctree)/drivers/misc/mediatek/include
+subdir-ccflags-y += -Werror -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include
+#endif

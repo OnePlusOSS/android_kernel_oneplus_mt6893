@@ -60,7 +60,7 @@
 /*
  * Delay telling the MDS we no longer want caps, in case we reopen
  * the file.  Delay a minimum amount of time, even if we send a cap
- * message for some other reason.  Otherwise, take the oppotunity to
+ * message for some other reason.  Otherwise, take the oplustunity to
  * update the mds to avoid sending another message later.
  */
 #define CEPH_CAPS_WANTED_DELAY_MIN_DEFAULT      5  /* cap release delay */

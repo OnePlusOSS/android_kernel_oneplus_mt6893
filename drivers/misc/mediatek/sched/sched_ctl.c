@@ -19,6 +19,7 @@
 #include <linux/sched/task.h>
 #include <uapi/linux/sched/types.h>
 #include <trace/events/sched.h>
+#include <soc/oplus/system/oplus_project.h>
 
 #include "rq_stats.h"
 #include "sched_ctl.h"
@@ -32,6 +33,14 @@
 #ifdef CONFIG_MACH_MT6873
 #include "mtk_devinfo.h"
 #endif
+
+#if defined(OPLUS_FEATURE_CORE_CTL) && defined(CONFIG_SCHED_CORE_CTL)
+#include <linux/sched/core_ctl.h>
+#endif /* OPLUS_FEATURE_CORE_CTL */
+
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+#include <linux/sched_assist/sched_assist_common.h>
+#endif /* OPLUS_FEATURE_SCHED_ASSIST */
 
 #define SCHED_HINT_THROTTLE_NSEC 10000000 /* 10ms for throttle */
 
@@ -403,7 +412,7 @@ err:
 late_initcall(sched_hint_init);
 
 #ifdef CONFIG_MTK_SCHED_BOOST
-static int sched_boost_type = SCHED_NO_BOOST;
+int sched_boost_type = SCHED_NO_BOOST;
 
 inline int valid_cpu_prefer(int task_prefer)
 {
@@ -610,7 +619,9 @@ void __init init_efuse_info(void)
 	efuse_aware_big_thermal = (get_devinfo_with_index(7) & 0xFF) == 0x30;
 }
 #endif
-
+#ifdef CONFIG_MTK_SCHED_BOOST
+extern oplus_task_sched_boost(struct task_struct *p, int *task_prefer);
+#endif
 int select_task_prefer_cpu(struct task_struct *p, int new_cpu)
 {
 	int task_prefer;
@@ -625,7 +636,15 @@ int select_task_prefer_cpu(struct task_struct *p, int new_cpu)
 #endif
 
 	task_prefer = cpu_prefer(p);
-
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+	if(task_prefer == SCHED_PREFER_LITTLE && test_task_ux(p) && sysctl_sched_assist_enabled && (sched_assist_scene(SA_SLIDE)|| sched_assist_scene(SA_INPUT) || sched_assist_scene(SA_LAUNCHER_SI))){
+		task_prefer = SCHED_PREFER_NONE;
+		p->cpu_prefer = SCHED_PREFER_NONE;
+	}
+#endif /* OPLUS_FEATURE_SCHED_ASSIST */
+#ifdef CONFIG_MTK_SCHED_BOOST
+	oplus_task_sched_boost(p, &task_prefer);
+#endif
 	if (!hinted_cpu_prefer(task_prefer))
 		goto out;
 
@@ -635,8 +654,13 @@ int select_task_prefer_cpu(struct task_struct *p, int new_cpu)
 	}
 
 	for (i = 0; i < domain_cnt; i++) {
-		iter_domain = (task_prefer == SCHED_PREFER_BIG) ?
-				domain_cnt-i-1 : i;
+		if (task_prefer == SCHED_PREFER_BIG)
+			iter_domain = domain_cnt - i - 1;
+		else if (task_prefer == SCHED_PREFER_MEDIUM)
+			iter_domain = (i < domain_cnt -1) ? i + 1 : 0;
+		else
+			iter_domain = i;
+
 		domain = tmp_domain[iter_domain];
 
 #ifdef CONFIG_MTK_TASK_TURBO
@@ -709,7 +733,6 @@ void sched_set_boost_fg(void)
 	arch_get_cluster_cpus(&cpus, 0);
 	if (nr > 1)
 		cpumask_xor(&cpus, &cpus, cpu_possible_mask);
-
 	set_user_space_global_cpuset(&cpus, 3);
 	set_user_space_global_cpuset(&cpus, 2);
 	set_user_space_global_cpuset(&cpus, 6);
@@ -735,6 +758,10 @@ int set_sched_boost(unsigned int val)
 	if (sched_boost_type == val)
 		return 0;
 
+	if( !(is_project(20817) || is_project(20827) || is_project(20831))){
+		if (val == SCHED_ALL_BOOST)
+		return 0;
+        }
 	mutex_lock(&sched_boost_mutex);
 	/* back to original setting*/
 	if (sched_boost_type == SCHED_ALL_BOOST)
@@ -749,16 +776,23 @@ int set_sched_boost(unsigned int val)
 			sysctl_sched_isolation_hint_enable =
 				sysctl_sched_isolation_hint_enable_backup;
 
+#if defined(OPLUS_FEATURE_CORE_CTL) && defined(CONFIG_SCHED_CORE_CTL)
+		core_ctl_set_boost(false);
+#endif /* OPLUS_FEATURE_CORE_CTL */
 	} else if ((val > SCHED_NO_BOOST) && (val < SCHED_UNKNOWN_BOOST)) {
 
 		sysctl_sched_isolation_hint_enable_backup =
 				sysctl_sched_isolation_hint_enable;
 		sysctl_sched_isolation_hint_enable = 0;
 
-		if (val == SCHED_ALL_BOOST)
+		if (val == SCHED_ALL_BOOST) {
 			sched_scheduler_switch(SCHED_HMP_LB);
-		else if (val == SCHED_FG_BOOST)
-			sched_set_boost_fg();
+#if defined(OPLUS_FEATURE_CORE_CTL) && defined(CONFIG_SCHED_CORE_CTL)
+			core_ctl_set_boost(true);
+#endif /* OPLUS_FEATURE_CORE_CTL */
+		} else if (val == SCHED_FG_BOOST){
+			//In MTK platform,we use oplus_task_sched_boost
+		}
 	}
 	printk_deferred("[name:sched_boost&] sched boost: set %d\n",
 			sched_boost_type);
@@ -915,8 +949,13 @@ int sched_walt_enable(int user, int en)
 	}
 
 #ifdef CONFIG_SCHED_WALT
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+	sysctl_sched_use_walt_cpu_util  = 0;
+	sysctl_sched_use_walt_task_util = 0;
+#else
 	sysctl_sched_use_walt_cpu_util  = walted;
 	sysctl_sched_use_walt_task_util = walted;
+#endif
 	trace_sched_ctl_walt(user_mask, walted);
 #endif
 

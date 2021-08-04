@@ -1,0 +1,87 @@
+&i2c0 {
+        focaltech@38 {
+                status = "okay";
+                compatible = "focaltech,fts";
+                reg = <0x38>;
+                chip-name = "FT3518";
+
+                /* Power Config */
+                vdd_2v8-supply  = <&mt_pmic_vtp_ldo_reg>;
+                vdd_2v8_volt = <3000000>;
+
+                /* Interrupt && Irq-gpio */
+                /* Other HW Resource */
+                irq-gpio = <&pio 21 0x2002>;
+                reset-gpio = <&pio 20 0x1>;
+                pinctrl-names = "default";
+                pinctrl-0 = <&ctp_ts_int_active &ctp_ts_reset_suspend>;
+
+                touchpanel,max-num-support = <10>;
+                touchpanel,tx-rx-num = <16 34>;
+                touchpanel,panel-coords = <4320 9600>;
+                touchpanel,display-coords = <1080 2400>;
+                touchpanel,touchmajor-limit = <0 54>;
+		touchpanel,smooth-level = <255 1 2 4 5 6>;
+		touchpanel,smooth-level-charging = <255 6 8 9 10 11>;
+		touchpanel,sensitive-level = <255 20 13 10 5 1>;
+		touchpanel,sensitive-level-charging = <255 20 16 11 7 3>;
+		touchpanel,single-optimized-time = <8>;
+
+                tp_type = <8>;
+                panel_type = <8>;
+                firmware_name = "focalt_";
+                platform_support_project = <20817 20827 20831>;
+                platform_support_project_dir = <20817 20817 20817>;
+                platform_support_project_commandline = "default_commandline","default_commandline","default_commandline";
+                /* SW Support Feature Control */
+                project_id = <20817>;
+                irq_need_dev_resume_ok;
+		health_monitor_v2_support;
+                black_gesture_support;
+                fw_edge_limit_support;
+                pressure_report_support;
+                charger_pump_support;
+                game_switch_support;
+                smart_gesture_support;
+                headset_pump_support;
+                fw_update_app_support;
+                fingerprint_underscreen_support;
+		high_resolution_support;
+                //esd_handle_support;
+                touchpanel,button-type = <4>;
+                touchpanel.button-TRx = <0 0>;
+        };
+};
+
+&pio {
+        ctp_pins_default: eintdefault {
+        };
+        ctp_ts_int_active: int_active {
+                pins_cmd_dat {
+                        pinmux = <PINMUX_GPIO21__FUNC_GPIO21>;
+                        slew-rate = <0>;
+                        bias-pull-up;
+                };
+        };
+        ctp_ts_reset_active: reset_active {
+                pins_cmd_dat {
+                        pinmux = <PINMUX_GPIO20__FUNC_GPIO20>;
+                        slew-rate = <1>;
+                        output-high;
+                };
+        };
+        ctp_ts_int_suspend: int_suspend {
+                pins_cmd_dat {
+                        pinmux = <PINMUX_GPIO21__FUNC_GPIO21>;
+                        slew-rate = <1>;
+                        output-low;
+                };
+        };
+        ctp_ts_reset_suspend: reset_suspend {
+                pins_cmd_dat {
+                        pinmux = <PINMUX_GPIO20__FUNC_GPIO20>;
+                        slew-rate = <1>;
+                        output-low;
+                };
+        };
+};

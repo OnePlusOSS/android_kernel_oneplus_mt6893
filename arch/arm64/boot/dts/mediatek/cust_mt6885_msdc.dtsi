@@ -30,7 +30,8 @@
 	register_setting = <&msdc0_register_setting_default>;
 	host_function = /bits/ 8 <MSDC_EMMC>;
 	bootable;
-	status = "okay";
+	//status = "okay";
+	status = "disable";
 
 	vmmc-supply = <&mt_pmic_vemc_ldo_reg>;
 	vcore-supply = <&mt_pmic_vgpu11_buck_reg>;
@@ -68,8 +69,11 @@
 
 	cd_level = /bits/ 8 <MSDC_CD_LOW>;
 	cd-gpios = <&pio 23 0>;
-
-	status = "okay";
+//#ifdef OPLUS_ARCH_EXTENDS
+	status = "disabled";
+//#else
+//	status = "okay";
+//#endif
 
 	vmmc-supply = <&mt_pmic_vmch_ldo_reg>;
 	vqmmc-supply = <&mt_pmic_vmc_ldo_reg>;

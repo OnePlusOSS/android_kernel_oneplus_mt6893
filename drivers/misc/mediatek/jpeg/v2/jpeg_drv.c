@@ -399,8 +399,7 @@ static int jpeg_drv_hybrid_dec_suspend(void)
 	for (i = 0 ; i < HW_CORE_NUMBER; i++) {
 		JPEG_MSG("jpeg dec suspend core %d\n", i);
 		if (dec_hwinfo[i].locked) {
-			JPEG_MSG("jpeg dec suspend core %d fail\n", i);
-			return -EBUSY;
+			pr_info("jpeg dec suspend core %d locked\n", i);
 		}
 	}
 	return 0;
@@ -420,11 +419,11 @@ static int jpeg_drv_hybrid_dec_suspend_notifier(
 		for (i = 0 ; i < HW_CORE_NUMBER; i++) {
 			JPEG_MSG("jpeg dec sn wait core %d\n", i);
 			while (dec_hwinfo[i].locked) {
-				JPEG_MSG("jpeg dec sn core %d locked. wait...\n", i);
+				pr_info("jpeg dec sn core %d locked. wait...\n", i);
 				usleep_range(10000, 20000);
 				wait_cnt++;
 				if (wait_cnt > 5) {
-					JPEG_MSG("jpeg dec sn wait core %d fail\n", i);
+					pr_info("jpeg dec sn wait core %d fail\n", i);
 					return NOTIFY_DONE;
 				}
 			}

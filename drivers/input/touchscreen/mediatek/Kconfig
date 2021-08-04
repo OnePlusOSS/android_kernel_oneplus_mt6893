@@ -169,3 +169,7 @@ config TOUCHSCREEN_MTK_GT9157
 source "drivers/input/touchscreen/mediatek/GT9157/Kconfig"
 
 endif
+
+source "drivers/input/touchscreen/mediatek/ili9881h/Kconfig"
+source "drivers/input/touchscreen/mediatek/NT36525B/Kconfig"
+

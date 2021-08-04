@@ -49,6 +49,18 @@
 #endif /* end of #if PMIC_ACCDET_KERNEL */
 
 /********************grobal variable definitions******************/
+#ifdef OPLUS_BUG_COMPATIBILITY
+ * add for hp delay detection */
+struct delayed_work hp_detect_work;
+ * add for dump log */
+extern int door_open;
+#ifdef CONFIG_HSKEY_BLOCK
+ * add for hs key blocking for 1s after insterting */
+struct delayed_work hskey_block_work;
+bool g_hskey_block_flag;
+#endif /* CONFIG_HSKEY_BLOCK */
+#endif /* OPLUS_BUG_COMPATIBILITY */
+
 #if PMIC_ACCDET_CTP
 #define CONFIG_ACCDET_EINT_IRQ
 #define CONFIG_ACCDET_SUPPORT_EINT0
@@ -880,6 +892,26 @@ static u32 key_check(u32 v)
 #if PMIC_ACCDET_KERNEL
 static void send_key_event(u32 keycode, u32 flag)
 {
+	#ifdef OPLUS_BUG_COMPATIBILITY
+	#ifdef CONFIG_HSKEY_BLOCK
+	 * add for hs key blocking for 1s after insterting */
+	pr_info("[accdet][send_key_event]g_hskey_block_flag = %d\n", g_hskey_block_flag);
+	if (g_hskey_block_flag) {
+		pr_info("[accdet][send_key_event]No key event in 1s after inserting 4-pole headsets\n");
+		return;
+	}
+	#endif /* CONFIG_HSKEY_BLOCK */
+	 * add for not sending hook key release when plugging out */
+	pr_info("[accdet][send_key_event]eint_accdet_sync_flag = %d, cur_eint_state = %d\n",
+		eint_accdet_sync_flag, cur_eint_state);
+	if (((eint_accdet_sync_flag && (cur_eint_state == EINT_PIN_PLUG_OUT))
+		|| (!eint_accdet_sync_flag))
+		&& (keycode == MD_KEY)) {
+		pr_info("[accdet][send_key_event]No hook key release when plugging out\n");
+		return;
+	}
+	#endif /* OPLUS_BUG_COMPATIBILITY */
+
 	switch (keycode) {
 	case DW_KEY:
 		input_report_key(accdet_input_dev, KEY_VOLUMEDOWN, flag);
@@ -1258,6 +1290,7 @@ static void eint_work_callback(void)
 #else
 		enable_accdet(ACCDET_PWM_EN);
 #endif
+		switch_headset_state(1);
 	} else {
 		pr_info("accdet cur:plug-out, cur_eint_state = %d\n",
 			cur_eint_state);
@@ -1271,6 +1304,7 @@ static void eint_work_callback(void)
 			pmic_read(ACCDET_STATE_SWCTRL) & (~ACCDET_PWM_IDLE));
 		disable_accdet();
 		headset_plug_out();
+		switch_headset_state(0);
 	}
 
 #ifdef CONFIG_ACCDET_EINT
@@ -1512,11 +1546,37 @@ static int pmic_eint_queue_work(int eintID)
 			mod_timer(&micbias_timer,
 				jiffies + MICBIAS_DISABLE_TIMER);
 		}
+#ifdef OPLUS_BUG_COMPATIBILITY
+		 * add for hp delay detection */
+		if (cur_eint_state == EINT_PIN_PLUG_IN) {
+#ifdef CONFIG_HSKEY_BLOCK
+			 * add for hs key blocking for 1s after insterting */
+			g_hskey_block_flag = true;
+			schedule_delayed_work(&hskey_block_work, msecs_to_jiffies(1500));
+#endif /* CONFIG_HSKEY_BLOCK */
+			 * add for dump log out of workqueue */
+			if (door_open == 1) {
+					pr_info("%s: enter dump\n", __func__);
+					BUG_ON(1);
+			}
+			pr_info("[accdet_eint_func]delayed work 500ms scheduled when plugging in\n");
+			schedule_delayed_work(&hp_detect_work, msecs_to_jiffies(500));
+		} else {
+#ifdef CONFIG_HSKEY_BLOCK
+			 * add for hs key blocking for 1s after insterting */
+			cancel_delayed_work_sync(&hskey_block_work);
+#endif /* CONFIG_HSKEY_BLOCK */
+			pr_info("[accdet_eint_func]delayed work 0ms scheduled when plugging out\n");
+			cancel_delayed_work_sync(&hp_detect_work);
+			schedule_delayed_work(&hp_detect_work, 0);
+		}
+#else /* OPLUS_BUG_COMPATIBILITY */
 #if PMIC_ACCDET_KERNEL
 		ret = queue_work(eint_workqueue, &eint_work);
 #else
 		eint_work_callback();
 #endif /* end of #if PMIC_ACCDET_KERNEL */
+#endif /* OPLUS_BUG_COMPATIBILITY */
 	} else
 		pr_info("%s invalid EINT ID!\n", __func__);
 
@@ -1718,6 +1778,15 @@ static void accdet_eint_handler(void)
 	pr_info("%s() exit\n", __func__);
 }
 #endif
+
+#ifdef CONFIG_HSKEY_BLOCK
+ * add for hs key blocking for 1s after insterting */
+static void disable_hskey_block_callback(struct work_struct *work)
+{
+	pr_info("[accdet][disable_hskey_block_callback]:\n");
+	g_hskey_block_flag = false;
+}
+#endif /* CONFIG_HSKEY_BLOCK */
 
 #ifdef CONFIG_ACCDET_EINT
 static irqreturn_t ex_eint_handler(int irq, void *data)
@@ -1968,7 +2037,7 @@ static int accdet_get_dts_data(void)
 	/* if we need moisture detection feature or not */
 	accdet_dts.moisture_detect_enable = moisture_detect_enable;
 	/* select moisture detection mode,
-	 * 1: EINT 1.0, 2: EINT1.1, 3: EINT2.0, 4: EINT2.1, 5: EINT2.1_OPPO
+	 * 1: EINT 1.0, 2: EINT1.1, 3: EINT2.0, 4: EINT2.1, 5: EINT2.1_OPLUS
 	 */
 	if (accdet_dts.moisture_detect_enable == 0x1) {
 		accdet_dts.eint_detect_mode = eint_detect_mode;
@@ -2414,6 +2483,16 @@ int mt_accdet_probe(struct platform_device *dev)
 	}
 	eint_workqueue = create_singlethread_workqueue("accdet_eint");
 	INIT_WORK(&eint_work, eint_work_callback);
+
+	#ifdef OPLUS_BUG_COMPATIBILITY
+	 * add for hp delay detection */
+	INIT_DELAYED_WORK(&hp_detect_work, eint_work_callback);
+	#ifdef CONFIG_HSKEY_BLOCK
+	 * add for hs key blocking for 1s after insterting */
+	INIT_DELAYED_WORK(&hskey_block_work, disable_hskey_block_callback);
+	#endif /* CONFIG_HSKEY_BLOCK */
+	#endif /* OPLUS_BUG_COMPATIBILITY */
+
 	if (!eint_workqueue) {
 		ret = -1;
 		pr_notice("%s create eint workqueue fail.\n", __func__);

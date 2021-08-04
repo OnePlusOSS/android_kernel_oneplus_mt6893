@@ -1812,7 +1812,9 @@ static ssize_t ccci_lp_mem_read(struct file *file, char __user *buf,
 				proc_user->curr_addr : user_start_addr;
 
 		if (proc_user->curr_addr < user_start_addr + proc_size) {
-			CCCI_ERROR_LOG(-1, TAG, "copy to user\n");
+			//#ifdef OPLUS_BUG_STABILITY
+			//CCCI_ERROR_LOG(-1, TAG, "copy to user\n");
+			//#endif/*OPLUS_BUG_STABILITY*/
 			if (copy_to_user(buf, proc_user->curr_addr, read_len)) {
 				CCCI_ERROR_LOG(-1, TAG,
 				"read ccci_lp_mem fail, size %lu\n", size);

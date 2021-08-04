@@ -480,6 +480,9 @@ static const struct {
 	{"attemp_enter_dp_mode", DPM_CAP_ATTEMP_ENTER_DP_MODE},
 	{"attemp_discover_cable", DPM_CAP_ATTEMP_DISCOVER_CABLE},
 	{"attemp_discover_id", DPM_CAP_ATTEMP_DISCOVER_ID},
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	{"attemp_discover_svid", DPM_CAP_ATTEMP_DISCOVER_SVID},
+#endif
 
 	{"pr_reject_as_source", DPM_CAP_PR_SWAP_REJECT_AS_SRC},
 	{"pr_reject_as_sink", DPM_CAP_PR_SWAP_REJECT_AS_SNK},

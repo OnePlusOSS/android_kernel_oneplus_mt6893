@@ -21,6 +21,7 @@
 #include <trace/events/power.h>
 
 #include "power.h"
+#include <linux/proc_fs.h>
 
 #ifndef CONFIG_SUSPEND
 suspend_state_t pm_suspend_target_state;
@@ -582,6 +583,7 @@ static void wakeup_source_activate(struct wakeup_source *ws)
 			"unregistered wakeup source\n"))
 		return;
 
+
 	ws->active = true;
 	ws->active_count++;
 	ws->last_time = ktime_get();
@@ -1047,6 +1049,8 @@ bool pm_save_wakeup_count(unsigned int count)
 		events_check_enabled = true;
 	}
 	spin_unlock_irqrestore(&events_lock, flags);
+	if (!events_check_enabled)
+		pm_print_active_wakeup_sources();
 	return events_check_enabled;
 }
 
@@ -1173,3 +1177,4 @@ static int __init wakeup_sources_debugfs_init(void)
 }
 
 postcore_initcall(wakeup_sources_debugfs_init);
+

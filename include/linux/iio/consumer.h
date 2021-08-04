@@ -195,7 +195,7 @@ int iio_read_channel_raw(struct iio_channel *chan,
  * Note raw reads from iio channels are in adc counts and hence
  * scale will need to be applied if standard units required.
  *
- * In opposit to the normal iio_read_channel_raw this function
+ * In oplussit to the normal iio_read_channel_raw this function
  * returns the average of multiple reads.
  */
 int iio_read_channel_average_raw(struct iio_channel *chan, int *val);

@@ -502,7 +502,7 @@ static __s32 mtkts_btsnrpa_thermistor_conver_temp(__s32 Res)
 	int i = 0;
 	int asize = 0;
 	__s32 RES1 = 0, RES2 = 0;
-	__s32 TAP_Value = -200, TMP1 = 0, TMP2 = 0;
+	__s32 TAP_Value = -2000, TMP1 = 0, TMP2 = 0;
 
 #ifdef APPLY_PRECISE_BTS_TEMP
 	TAP_Value = TAP_Value * 1000;
@@ -546,6 +546,7 @@ static __s32 mtkts_btsnrpa_thermistor_conver_temp(__s32 Res)
 			 * TMP1 = %d\n",__LINE__,i,RES1,TMP1);
 			 */
 		}
+
 #ifdef APPLY_PRECISE_BTS_TEMP
 		TAP_Value = mult_frac((((Res - RES2) * TMP1) +
 			((RES1 - Res) * TMP2)), 1000, (RES1 - RES2));

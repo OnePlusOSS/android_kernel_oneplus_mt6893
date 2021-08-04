@@ -1055,6 +1055,18 @@ config SOCK_CGROUP_DATA
 
 endif # CGROUPS
 
+#ifdef OPLUS_FEATURE_CORE_CTL
+config SCHED_CORE_CTL
+	bool "Sched Core Control"
+	depends on SMP
+	help
+	  This options enables the core control functionality in
+	  the scheduler. Core control automatically offline and
+	  online cores based on cpu load and utilization.
+
+	  If unsure, say N here.
+#endif /* OPLUS_FEATURE_CORE_CTL */
+
 config CHECKPOINT_RESTORE
 	bool "Checkpoint/restore support" if EXPERT
 	select PROC_CHILDREN
@@ -1869,7 +1881,7 @@ config HAVE_GENERIC_DMA_COHERENT
 config SLABINFO
 	bool
 	depends on PROC_FS
-	depends on SLAB || SLUB_DEBUG
+	depends on SLAB || SLUB_DEBUG || KMALLOC_DEBUG
 	default y
 
 config RT_MUTEXES

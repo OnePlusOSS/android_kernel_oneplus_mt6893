@@ -43,7 +43,9 @@ static int tcpc_otg_enable(void)
 	return 0;
 }
 
-static int tcpc_otg_disable(void)
+
+int tcpc_otg_disable(void)
+//static int tcpc_otg_disable(void)
 {
 	if (usbc_otg_attached) {
 		mt_usbhost_disconnect();
@@ -51,8 +53,11 @@ static int tcpc_otg_disable(void)
 	}
 	return 0;
 }
+EXPORT_SYMBOL(tcpc_otg_disable);
 
-static void tcpc_power_work_call(bool enable)
+void tcpc_power_work_call(bool enable)
+/*ELSE*/
+//static void tcpc_power_work_call(bool enable)
 {
 	if (enable) {
 		if (!tcpc_boost_on) {
@@ -66,6 +71,7 @@ static void tcpc_power_work_call(bool enable)
 		}
 	}
 }
+EXPORT_SYMBOL(tcpc_power_work_call);
 
 static int otg_tcp_notifier_call(struct notifier_block *nb,
 		unsigned long event, void *data)
@@ -92,12 +98,15 @@ static int otg_tcp_notifier_call(struct notifier_block *nb,
 		if (noti->typec_state.old_state == TYPEC_UNATTACHED &&
 			noti->typec_state.new_state == TYPEC_ATTACHED_SRC) {
 			pr_info("%s OTG Plug in\n", __func__);
+			//oplus_wake_up_usbtemp_thread();
+			printk(KERN_ERR "!!!!! otg_tcp_notifier_call: [1]\n");
 			tcpc_otg_enable();
 		} else if ((noti->typec_state.old_state == TYPEC_ATTACHED_SRC ||
 			noti->typec_state.old_state == TYPEC_ATTACHED_SNK) &&
 			noti->typec_state.new_state == TYPEC_UNATTACHED) {
 			if (otg_on) {
 				pr_info("%s OTG Plug out\n", __func__);
+			printk(KERN_ERR "!!!!! otg_tcp_notifier_call: [0]\n");
 				tcpc_otg_disable();
 			} else {
 				pr_info("%s USB Plug out\n", __func__);

@@ -21,6 +21,11 @@ struct mtk_phy_tuning {
 	s32 u2_vrt_ref;
 	s32 u2_term_ref;
 	s32 u2_enhance;
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	s32 host_u2_vrt_ref;
+	s32 host_u2_term_ref;
+	s32 host_u2_enhance;
+#endif
 	bool inited;
 };
 

@@ -151,6 +151,13 @@ struct cpufreq_policy {
 
 	/* For cpufreq driver's internal use */
 	void			*driver_data;
+#ifdef OPLUS_FEATURE_HEALTHINFO
+#ifdef CONFIG_OPLUS_HEALTHINFO
+	/* For get changed freq info */
+	char 			change_comm[TASK_COMM_LEN];
+	unsigned int 	org_max;
+#endif
+#endif /* OPLUS_FEATURE_HEALTHINFO */
 };
 
 /* Only for ACPI */
@@ -909,6 +916,10 @@ static inline bool policy_has_boost_freq(struct cpufreq_policy *policy)
 }
 #endif
 
+#if defined(OPLUS_FEATURE_SCHEDUTIL_USE_TL) && defined(CONFIG_SCHEDUTIL_USE_TL)
+ssize_t set_sugov_tl(unsigned int cpu, char *buf);
+#endif
+
 extern void arch_freq_prepare_all(void);
 extern unsigned int arch_freq_get_on_cpu(int cpu);
 
@@ -918,6 +929,10 @@ extern void arch_set_max_freq_scale(struct cpumask *cpus,
 				    unsigned long policy_max_freq);
 extern void arch_set_min_freq_scale(struct cpumask *cpus,
 				    unsigned long policy_min_freq);
+
+#ifdef OPLUS_FEATURE_HEALTHINFO
+struct list_head *get_cpufreq_policy_list(void);
+#endif /* OPLUS_FEATURE_HEALTHINFO */
 
 /* the following are really really optional */
 extern struct freq_attr cpufreq_freq_attr_scaling_available_freqs;

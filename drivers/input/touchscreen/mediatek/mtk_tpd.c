@@ -418,6 +418,9 @@ static void touch_resume_workqueue_callback(struct work_struct *work)
 	g_tpd_drv->resume(NULL);
 	tpd_suspend_flag = 0;
 }
+#ifdef ODM_WT_EDIT
+extern void lcd_esd_primary_display_esd_check_enable(bool enable);
+#endif /* ODM_WT_EDIT */
 static int tpd_fb_notifier_callback(
 			struct notifier_block *self,
 			unsigned long event, void *data)
@@ -429,14 +432,21 @@ static int tpd_fb_notifier_callback(
 	TPD_DEBUG("%s\n", __func__);
 
 	evdata = data;
+#ifndef ODM_WT_EDIT
 	/* If we aren't interested in this event, skip it immediately ... */
 	if (event != FB_EVENT_BLANK)
 		return 0;
-
+#endif
 	blank = *(int *)evdata->data;
 	TPD_DMESG("fb_notify(blank=%d)\n", blank);
+#ifdef ODM_WT_EDIT
+	if((event == FB_EVENT_BLANK)||(event == FB_EARLY_EVENT_BLANK)){
+#endif
 	switch (blank) {
 	case FB_BLANK_UNBLANK:
+#ifdef ODM_WT_EDIT
+		if(event == FB_EVENT_BLANK){
+#endif
 		TPD_DMESG("LCD ON Notify\n");
 		if (g_tpd_drv && tpd_suspend_flag) {
 			err = queue_work(touch_resume_workqueue,
@@ -446,8 +456,18 @@ static int tpd_fb_notifier_callback(
 				return err;
 			}
 		}
+#ifdef ODM_WT_EDIT
+		}
+#endif
+#ifdef ODM_WT_EDIT
+		if (event == FB_EVENT_BLANK)
+//			lcd_esd_primary_display_esd_check_enable(true);
+#endif /* ODM_WT_EDIT */
 		break;
 	case FB_BLANK_POWERDOWN:
+#ifdef ODM_WT_EDIT
+		if(event == FB_EARLY_EVENT_BLANK){
+#endif
 		TPD_DMESG("LCD OFF Notify\n");
 		if (g_tpd_drv && !tpd_suspend_flag) {
 			err = cancel_work_sync(&touch_resume_work);
@@ -456,10 +476,20 @@ static int tpd_fb_notifier_callback(
 			g_tpd_drv->suspend(NULL);
 		}
 		tpd_suspend_flag = 1;
+#ifdef ODM_WT_EDIT
+		}
+#endif
+#ifdef ODM_WT_EDIT
+		if (event == FB_EARLY_EVENT_BLANK)
+//			lcd_esd_primary_display_esd_check_enable(false);
+#endif
 		break;
 	default:
 		break;
 	}
+#ifdef ODM_WT_EDIT
+	}
+#endif
 	return 0;
 }
 /* Add driver: if find TPD_TYPE_CAPACITIVE driver successfully, loading it */
@@ -546,7 +576,7 @@ static int tpd_probe(struct platform_device *pdev)
 #endif
 #endif
 
-	TPD_DMESG("enter %s, %d\n", __func__, __LINE__);
+	TPD_DEBUG("enter %s, %d\n", __func__, __LINE__);
 
 	if (misc_register(&tpd_misc_device))
 		pr_info("mtk_tpd: tpd_misc_device register failed\n");
@@ -609,7 +639,11 @@ static int tpd_probe(struct platform_device *pdev)
 	if (2560 == TPD_RES_X)
 		TPD_RES_X = 2048;
 	if (1600 == TPD_RES_Y)
+#ifndef ODM_WT_EDIT
 		TPD_RES_Y = 1536;
+#else
+		TPD_RES_Y = 1600;
+#endif
 	pr_debug("mtk_tpd: TPD_RES_X = %lu, TPD_RES_Y = %lu\n",
 		TPD_RES_X, TPD_RES_Y);
 
@@ -642,7 +676,7 @@ static int tpd_probe(struct platform_device *pdev)
 			tpd_driver_list[i].tpd_local_init();
 			/* msleep(1); */
 			if (tpd_load_status == 1) {
-				TPD_DMESG("%s, tpd_driver_name=%s\n", __func__,
+				TPD_DEBUG("%s, tpd_driver_name=%s\n", __func__,
 					  tpd_driver_list[i].tpd_device_name);
 				g_tpd_drv = &tpd_driver_list[i];
 				break;
@@ -655,9 +689,9 @@ static int tpd_probe(struct platform_device *pdev)
 			/* touch_type:0: r-touch, 1: C-touch */
 			touch_type = 0;
 			g_tpd_drv->tpd_local_init();
-			TPD_DMESG("Generic touch panel driver\n");
+			TPD_DEBUG("Generic touch panel driver\n");
 		} else {
-			TPD_DMESG("no touch driver is loaded!!\n");
+			TPD_DEBUG("no touch driver is loaded!!\n");
 			return 0;
 		}
 	}
@@ -728,7 +762,7 @@ static void tpd_init_work_callback(struct work_struct *work)
 {
 	TPD_DEBUG("MediaTek touch panel driver init\n");
 	if (platform_driver_register(&tpd_driver) != 0)
-		TPD_DMESG("unable to register touch panel driver.\n");
+		TPD_DEBUG("unable to register touch panel driver.\n");
 }
 static int __init tpd_device_init(void)
 {

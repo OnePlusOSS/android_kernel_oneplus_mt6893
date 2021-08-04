@@ -20,6 +20,9 @@
 #include <gyroscope.h>
 #include <SCP_sensorHub.h>
 #include "SCP_power_monitor.h"
+#ifdef OPLUS_FEATURE_SENSOR
+#include "../../oplus_sensor_devinfo/sensor_devinfo.h"
+#endif
 
 /* name must different with gsensor gyrohub */
 #define GYROHUB_DEV_NAME    "gyro_hub"

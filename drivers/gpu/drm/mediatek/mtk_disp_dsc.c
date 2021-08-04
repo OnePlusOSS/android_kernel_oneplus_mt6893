@@ -329,7 +329,7 @@ static void mtk_dsc_config(struct mtk_ddp_comp *comp,
 	mtk_dsc_default_setting();
 #endif
 	if (dsc_params->enable == 1) {
-		DDPMSG("%s, w:%d, h:%d, slice_mode:%d,slice(%d,%d),bpp:%d\n",
+		DDPINFO("%s, w:%d, h:%d, slice_mode:%d,slice(%d,%d),bpp:%d\n",
 			mtk_dump_comp_str(comp), cfg->w, cfg->h,
 			dsc_params->slice_mode,	dsc_params->slice_width,
 			dsc_params->slice_height, dsc_params->bit_per_pixel);
@@ -396,7 +396,7 @@ static void mtk_dsc_config(struct mtk_ddp_comp *comp,
 		mtk_ddp_write_mask(comp, reg_val,
 					DISP_REG_DSC_MODE, 0xFFFF, handle);
 
-		DDPMSG("%s, init delay:%d\n",
+		DDPINFO("%s, init delay:%d\n",
 			mtk_dump_comp_str(comp), reg_val);
 
 		mtk_ddp_write_relaxed(comp,

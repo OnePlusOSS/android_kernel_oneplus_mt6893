@@ -76,6 +76,11 @@
 #include "blk-mq-tag.h"
 #include "blk-mq-sched.h"
 
+#if defined(OPLUS_FEATURE_FG_IO_OPT) && defined(CONFIG_OPLUS_FG_IO_OPT)
+/*add foreground io opt*/
+#include "foreground_io_opt/foreground_io_opt.h"
+#endif /*OPLUS_FEATURE_FG_IO_OPT*/
+
 /* PREFLUSH/FUA sequences */
 enum {
 	REQ_FSEQ_PREFLUSH	= (1 << 0), /* pre-flushing in progress */
@@ -92,6 +97,8 @@ enum {
 	 */
 	FLUSH_PENDING_TIMEOUT	= 5 * HZ,
 };
+
+extern unsigned long sysctl_blkdev_issue_flush_count;
 
 static bool blk_kick_flush(struct request_queue *q,
 			   struct blk_flush_queue *fq);
@@ -142,6 +149,10 @@ static bool blk_flush_queue_rq(struct request *rq, bool add_front)
 			list_add(&rq->queuelist, &rq->q->queue_head);
 		else
 			list_add_tail(&rq->queuelist, &rq->q->queue_head);
+#if defined(OPLUS_FEATURE_FG_IO_OPT) && defined(CONFIG_OPLUS_FG_IO_OPT)
+/*add foreground io opt*/
+		queue_throtl_add_request(rq->q, rq, add_front);
+#endif /*OPLUS_FEATURE_FG_IO_OPT*/
 		return true;
 	}
 }
@@ -465,7 +476,15 @@ void blk_insert_flush(struct request *rq)
 		if (q->mq_ops)
 			blk_mq_sched_insert_request(rq, false, true, false, false);
 		else
+#if defined(OPLUS_FEATURE_FG_IO_OPT) && defined(CONFIG_OPLUS_FG_IO_OPT)
+/*add foreground io opt*/
+		{
 			list_add_tail(&rq->queuelist, &q->queue_head);
+			queue_throtl_add_request(q, rq, false);
+		}
+#else
+			list_add_tail(&rq->queuelist, &q->queue_head);
+#endif /*OPLUS_FEATURE_FG_IO_OPT*/
 		return;
 	}
 
@@ -523,7 +542,7 @@ int blkdev_issue_flush(struct block_device *bdev, gfp_t gfp_mask,
 	 */
 	if (!q->make_request_fn)
 		return -ENXIO;
-
+		sysctl_blkdev_issue_flush_count++;
 	bio = bio_alloc(gfp_mask, 0);
 	bio_set_dev(bio, bdev);
 	bio->bi_opf = REQ_OP_WRITE | REQ_PREFLUSH;

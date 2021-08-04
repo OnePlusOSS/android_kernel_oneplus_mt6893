@@ -111,3 +111,23 @@ obj-$(CONFIG_DEBUG_PAGE_REF) += debug_page_ref.o
 obj-$(CONFIG_HARDENED_USERCOPY) += usercopy.o
 obj-$(CONFIG_PERCPU_STATS) += percpu-stats.o
 obj-$(CONFIG_HMM) += hmm.o
+obj-y += oplus_healthinfo/
+#if defined(OPLUS_FEATURE_PROCESS_RECLAIM)
+#/* add new interface for process memory reclaim*/
+#ifeq ($(OPLUS_FEATURE_PROCESS_RECLAIM), yes)
+obj-$(CONFIG_PROCESS_RECLAIM_ENHANCE) += process_mm_reclaim.o
+#else
+#obj-$(CONFIG_PROCESS_RECLAIM_ENHANCE) += process_mm_reclaim_weak.o
+#endif
+#endif /*defined(OPLUS_FEATURE_PROCESS_RECLAIM)
+#if defined(OPLUS_FEATURE_MEMLEAK_DETECT)
+#/* collect all tasks memory info */
+#ifeq ($(OPLUS_FEATURE_MEMLEAK_DETECT), yes)
+obj-$(CONFIG_DUMP_TASKS_MEM) += task_mem/
+#endif
+#endif /*defined(OPLUS_FEATURE_MEMLEAK_DETECT)
+
+#if defined(OPLUS_FEATURE_MULTI_FREEAREA)
+obj-$(CONFIG_PHYSICAL_ANTI_FRAGMENTATION) += multi_freearea.o
+#endif
+

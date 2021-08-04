@@ -16,6 +16,14 @@
 
 #include <lcm_drv.h>
 
+//#ifdef OPLUS_FEATURE_LCD
+extern struct LCM_DRIVER nt36525b_hlt_psc_ac_boe_hdp_dsi_vdo_lcm_drv; //Add for pascal
+//#endif //OPLUS_FEATURE_LCD
+
+extern struct LCM_DRIVER nt36672c_fhdp_dsi_vdo_tianma_zal1852_lcm_drv; // Add for sala
+extern struct LCM_DRIVER nt36672c_fhdp_dsi_vdo_jdi_zal1852_lcm_drv; // Add for Sala
+
+
 extern struct LCM_DRIVER otm1282a_hd720_dsi_vdo_60hz_lcm_drv;
 extern struct LCM_DRIVER otm1282a_hd720_dsi_vdo_lcm_drv;
 extern struct LCM_DRIVER nt35595_fhd_dsi_cmd_truly_8163_lcm_drv;

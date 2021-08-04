@@ -213,6 +213,53 @@ void scp_do_tbufdump(uint32_t *out, uint32_t *out_end)
  * @param scp_core_id:  core id
  * @return:             scp dump size
  */
+static void write_infra_reg_to_scp(void)
+{
+	extern struct scp_regs scpreg;
+	int i = 0;
+	u32 __iomem* infra_reg_dump = scpreg.sram + scpreg.scp_tcmsize - 0x40;
+	infra_reg_dump[i] = readl(scpreg.scpsys + 0xb80);
+	pr_notice("[SCP] infra_reg_dump[%d] = 0x%08x\n", i, infra_reg_dump[i]);
+	i++;
+	infra_reg_dump[i] = readl(scpreg.scpsys + 0xb84);
+	pr_notice("[SCP] infra_reg_dump[%d] = 0x%08x\n", i, infra_reg_dump[i]);
+	i++;
+	infra_reg_dump[i] = readl(scpreg.scpsys + 0xb8c);
+	pr_notice("[SCP] infra_reg_dump[%d] = 0x%08x\n", i, infra_reg_dump[i]);
+	i++;
+	infra_reg_dump[i] = readl(scpreg.scpsys + 0xb90);
+	pr_notice("[SCP] infra_reg_dump[%d] = 0x%08x\n", i, infra_reg_dump[i]);
+	i++;
+	infra_reg_dump[i] = readl(scpreg.scpsys + 0xba0);
+	pr_notice("[SCP] infra_reg_dump[%d] = 0x%08x\n", i, infra_reg_dump[i]);
+	i++;
+	infra_reg_dump[i] = readl(scpreg.scpsys + 0xba4);
+	pr_notice("[SCP] infra_reg_dump[%d] = 0x%08x\n", i, infra_reg_dump[i]);
+	i++;
+	infra_reg_dump[i] = readl(scpreg.scpsys + 0xba8);
+	pr_notice("[SCP] infra_reg_dump[%d] = 0x%08x\n", i, infra_reg_dump[i]);
+	i++;
+	infra_reg_dump[i] = readl(scpreg.scpsys + 0xbac);
+	pr_notice("[SCP] infra_reg_dump[%d] = 0x%08x\n", i, infra_reg_dump[i]);
+	i++;
+	infra_reg_dump[i] = readl(scpreg.scpsys + 0xbb0);
+	pr_notice("[SCP] infra_reg_dump[%d] = 0x%08x\n", i, infra_reg_dump[i]);
+	i++;
+	infra_reg_dump[i] = readl(scpreg.scpsys + 0xbb4);
+	pr_notice("[SCP] infra_reg_dump[%d] = 0x%08x\n", i, infra_reg_dump[i]);
+	i++;
+	infra_reg_dump[i] = readl(scpreg.scpsys + 0xbb8);
+	pr_notice("[SCP] infra_reg_dump[%d] = 0x%08x\n", i, infra_reg_dump[i]);
+	i++;
+	infra_reg_dump[i] = readl(scpreg.scpsys + 0xbbc);
+	pr_notice("[SCP] infra_reg_dump[%d] = 0x%08x\n", i, infra_reg_dump[i]);
+	i++;
+	infra_reg_dump[i] = readl(scpreg.scpsys + 0xbc0);
+	pr_notice("[SCP] infra_reg_dump[%d] = 0x%08x\n", i, infra_reg_dump[i]);
+	i++;
+	infra_reg_dump[i] = readl(scpreg.scpsys + 0xbc4);
+	pr_notice("[SCP] infra_reg_dump[%d] = 0x%08x\n", i, infra_reg_dump[i]);
+}
 static unsigned int scp_crash_dump(struct MemoryDump *pMemoryDump,
 		enum scp_core_id id)
 {
@@ -230,6 +277,7 @@ static unsigned int scp_crash_dump(struct MemoryDump *pMemoryDump,
 		scp_awake_fail_flag = 1;
 	}
 
+	write_infra_reg_to_scp();
 	memcpy_from_scp((void *)&(pMemoryDump->l2tcm),
 		(void *)(SCP_TCM),
 		(SCP_A_TCM_SIZE));

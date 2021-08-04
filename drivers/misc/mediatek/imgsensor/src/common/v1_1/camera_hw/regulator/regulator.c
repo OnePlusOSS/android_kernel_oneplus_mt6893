@@ -12,7 +12,7 @@
  */
 
 #include "regulator.h"
-
+#include "imgsensor.h"
 
 static const int regulator_voltage[] = {
 	REGULATOR_VOLTAGE_0,
@@ -32,9 +32,26 @@ struct REGULATOR_CTRL regulator_control[REGULATOR_TYPE_MAX_NUM] = {
 	{"vcama"},
 	{"vcamd"},
 	{"vcamio"},
+	{"vcamaf"}
 };
 
 static struct REGULATOR reg_instance;
+
+extern struct IMGSENSOR gimgsensor;
+struct regulator *regulator_get_regVCAMAF(void)
+{
+	struct IMGSENSOR *pimgsensor = &gimgsensor;
+	return regulator_get(&((pimgsensor->hw.common.pplatform_device)->dev), "vcamaf");
+}
+EXPORT_SYMBOL(regulator_get_regVCAMAF);
+struct regulator *regulator_get_regVCAMAF_Chaka(int sensor_idx)
+{
+	struct IMGSENSOR *pimgsensor = &gimgsensor;
+	char str_regulator_name[LENGTH_FOR_SNPRINTF];
+	snprintf(str_regulator_name, sizeof(str_regulator_name), "cam%d_%s", sensor_idx, "vcamaf");
+	return regulator_get(&((pimgsensor->hw.common.pplatform_device)->dev), str_regulator_name);
+}
+EXPORT_SYMBOL(regulator_get_regVCAMAF_Chaka);
 
 static enum IMGSENSOR_RETURN regulator_init(
 	void *pinstance,
@@ -98,6 +115,30 @@ static enum IMGSENSOR_RETURN regulator_release(void *pinstance)
 	return IMGSENSOR_RETURN_SUCCESS;
 }
 
+static struct regulator *regulator_reinit(void *pinstance, int sensor_idx, int type)
+{
+	struct REGULATOR *preg = (struct REGULATOR *)pinstance;
+	char str_regulator_name[LENGTH_FOR_SNPRINTF];
+	struct IMGSENSOR *pimgsensor = &gimgsensor;
+	snprintf(str_regulator_name,
+			sizeof(str_regulator_name),
+			"cam%d_%s",
+			sensor_idx,
+			regulator_control[type].pregulator_type);
+	preg->pregulator[sensor_idx][type] =
+		regulator_get(&((pimgsensor->hw.common.pplatform_device)->dev), str_regulator_name);
+	pr_err("reinit %s regulator[%d][%d] = %pK\n", str_regulator_name,
+			sensor_idx, type, preg->pregulator[sensor_idx][type]);
+	msleep(10);
+	if(IS_ERR(preg->pregulator[sensor_idx][type])){
+		pr_err("regulator reinit fail %pK\n",preg->pregulator[sensor_idx][type]);
+		return NULL;
+	} else {
+		pr_err("regulator reinit success");
+		return preg->pregulator[sensor_idx][type];
+	}
+}
+
 static enum IMGSENSOR_RETURN regulator_set(
 	void *pinstance,
 	enum IMGSENSOR_SENSOR_IDX   sensor_idx,
@@ -109,8 +150,7 @@ static enum IMGSENSOR_RETURN regulator_set(
 	int reg_type_offset;
 	atomic_t             *enable_cnt;
 
-
-	if (pin > IMGSENSOR_HW_PIN_DOVDD   ||
+	if (pin > IMGSENSOR_HW_PIN_FAN53870_ENABLE   ||
 	    pin < IMGSENSOR_HW_PIN_AVDD    ||
 	    pin_state < IMGSENSOR_HW_PIN_STATE_LEVEL_0 ||
 	    pin_state >= IMGSENSOR_HW_PIN_STATE_LEVEL_HIGH ||
@@ -122,6 +162,17 @@ static enum IMGSENSOR_RETURN regulator_set(
 	pregulator = preg->pregulator[(unsigned int)sensor_idx][
 		reg_type_offset + pin - IMGSENSOR_HW_PIN_AVDD];
 
+	if(IS_ERR(pregulator)) {
+		pregulator = regulator_reinit(preg, sensor_idx, reg_type_offset + pin - IMGSENSOR_HW_PIN_AVDD);
+		if (IS_ERR(pregulator)) {
+			PK_PR_ERR(
+				"[regulator]fail to regulator_reinit, sensor_idx:%d pin:%d reg_type_offset:%d\n",
+				sensor_idx,
+				pin,
+				reg_type_offset);
+			return IMGSENSOR_RETURN_ERROR;
+		}
+	}
 	enable_cnt = &preg->enable_cnt[(unsigned int)sensor_idx][
 		reg_type_offset + pin - IMGSENSOR_HW_PIN_AVDD];
 
@@ -139,6 +190,10 @@ static enum IMGSENSOR_RETURN regulator_set(
 				  regulator_voltage[
 				  pin_state - IMGSENSOR_HW_PIN_STATE_LEVEL_0]);
 			}
+			if (!regulator_set_load(pregulator, 10000)) {
+				PK_DBG("set load success");
+			}
+
 			if (regulator_enable(pregulator)) {
 				PK_PR_ERR(
 				"[regulator]fail to regulator_enable, powertype:%d powerId:%d\n",
@@ -182,15 +237,18 @@ static enum IMGSENSOR_RETURN regulator_dump(void *pinstance)
 		for (i = REGULATOR_TYPE_VCAMA;
 		i < REGULATOR_TYPE_MAX_NUM;
 		i++) {
-			if (!preg->pregulator[j][i])
-				continue;
-			if (regulator_is_enabled(preg->pregulator[j][i]) &&
-				atomic_read(&preg->enable_cnt[j][i]) != 0)
-				PK_DBG("index= %d %s = %d\n",
-					j,
-					regulator_control[i].pregulator_type,
-					regulator_get_voltage(
+			if (IS_ERR_OR_NULL(preg->pregulator[j][i])) {
+				PK_DBG("regulator idx(%d, %d) alread release ", j, i);
+				return IMGSENSOR_RETURN_SUCCESS;
+			} else {
+				if (regulator_is_enabled(preg->pregulator[j][i]) &&
+					atomic_read(&preg->enable_cnt[j][i]) != 0)
+					PK_DBG("index= %d %s = %d\n",
+						j,
+						regulator_control[i].pregulator_type,
+						regulator_get_voltage(
 						preg->pregulator[j][i]));
+			}
 		}
 	}
 	return IMGSENSOR_RETURN_SUCCESS;

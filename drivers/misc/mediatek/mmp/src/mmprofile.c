@@ -800,6 +800,11 @@ static void mmprofile_log_int(mmp_event event, enum mmp_log_type type,
 	unsigned int index;
 	unsigned int lock;
 
+	#ifdef OPLUS_BUG_STABILITY
+	//Cao.Yang@Multimedia.Display.Kernel.280520, 2020/10/13, add for close mmp_log
+	return ;
+	#endif /*OPLUS_BUG_STABILITY*/
+
 	if (!mmprofile_globals.enable)
 		return;
 	if ((event >= MMPROFILE_MAX_EVENT_COUNT) ||

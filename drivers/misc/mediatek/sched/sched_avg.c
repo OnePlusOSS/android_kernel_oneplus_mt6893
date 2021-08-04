@@ -42,6 +42,9 @@ static DEFINE_PER_CPU(u64, nr_heavy_prod_sum);
 static DEFINE_PER_CPU(u64, last_time);
 static DEFINE_PER_CPU(u64, last_heavy_time);
 static DEFINE_PER_CPU(u64, nr);
+#if defined(OPLUS_FEATURE_CORE_CTL) && defined(CONFIG_SCHED_CORE_CTL)
+static DEFINE_PER_CPU(u64, nr_max);
+#endif /* OPLUS_FEATURE_CORE_CTL */
 static DEFINE_PER_CPU(u64, nr_heavy);
 #ifdef CONFIG_MTK_CORE_CTL
 static DEFINE_PER_CPU(u64, nr_max);
@@ -326,6 +329,31 @@ void sched_max_util_task(int *cpu, int *pid, int *util, int *boost)
 }
 EXPORT_SYMBOL(sched_max_util_task);
 
+#if defined(OPLUS_FEATURE_CORE_CTL) && defined(CONFIG_SCHED_CORE_CTL)
+unsigned int sched_get_cpu_util(int cpu)
+{
+	struct rq *rq = cpu_rq(cpu);
+	u64 util;
+	unsigned long capacity, flags;
+	unsigned int busy;
+
+	raw_spin_lock_irqsave(&rq->lock, flags);
+
+	util = rq->cfs.avg.util_avg;
+	capacity = capacity_orig_of(cpu);
+
+#ifdef CONFIG_SCHED_WALT
+	util = rq->prev_runnable_sum + rq->grp_time.prev_runnable_sum;
+	util = div64_u64(util, sched_ravg_window >> SCHED_CAPACITY_SHIFT);
+#endif
+	raw_spin_unlock_irqrestore(&rq->lock, flags);
+
+	util = (util >= capacity) ? capacity : util;
+	busy = div64_ul((util * 100), capacity);
+	return busy;
+}
+#endif /* OPLUS_FEATURE_CORE_CTL */
+
 /**
  * sched_get_nr_running_avg
  * @return: Average nr_running and iowait value since last poll.
@@ -378,6 +406,9 @@ int sched_get_nr_running_avg(int *avg, int *iowait_avg)
 		per_cpu(last_time, cpu) = curr_time;
 		per_cpu(nr_prod_sum, cpu) = 0;
 		per_cpu(iowait_prod_sum, cpu) = 0;
+#if defined(OPLUS_FEATURE_CORE_CTL) && defined(CONFIG_SCHED_CORE_CTL)
+		per_cpu(nr_max, cpu) = per_cpu(nr, cpu);
+#endif /* OPLUS_FEATURE_CORE_CTL */
 		spin_unlock_irqrestore(&per_cpu(nr_lock, cpu), flags);
 	}
 
@@ -409,6 +440,90 @@ int sched_get_nr_running_avg(int *avg, int *iowait_avg)
 	return scaled_tlp*100;
 }
 EXPORT_SYMBOL(sched_get_nr_running_avg);
+
+#if defined(OPLUS_FEATURE_CORE_CTL) && defined(CONFIG_SCHED_CORE_CTL)
+int sched_get_nr_running_avg2(int *avg, int *iowait_avg, unsigned int *max_nr, unsigned int *big_max_nr)
+{
+	int cpu;
+	u64 curr_time = sched_clock();
+	s64 diff = (s64) (curr_time - last_get_time);
+	u64 tmp_avg = 0, tmp_iowait = 0, old_lgt;
+	bool clk_faulty = 0;
+	u32 cpumask = 0;
+	int scaled_tlp = 0; /* the tasks number of last poll */
+
+	*avg = 0;
+	*iowait_avg = 0;
+
+	if (!diff)
+		return 0;
+	if (diff < 0)
+		printk_deferred("[%s] time last:%llu curr:%llu ",
+		__func__, last_get_time, curr_time);
+
+	old_lgt = last_get_time;
+	last_get_time = curr_time;
+	/* read and reset nr_running counts */
+	for_each_possible_cpu(cpu) {
+		unsigned long flags;
+
+		spin_lock_irqsave(&per_cpu(nr_lock, cpu), flags);
+		/* error handling for problematic clock violation */
+		if ((s64) (curr_time - per_cpu(last_time, cpu) < 0)) {
+			clk_faulty = 1;
+			cpumask |= 1 << cpu;
+		}
+		tmp_avg += per_cpu(nr_prod_sum, cpu);
+		/* record tasks nr of last poll */
+		scaled_tlp += per_cpu(nr, cpu);
+		tmp_avg += per_cpu(nr, cpu) *
+			(curr_time - per_cpu(last_time, cpu));
+		tmp_iowait = per_cpu(iowait_prod_sum, cpu);
+		tmp_iowait += nr_iowait_cpu(cpu) *
+			(curr_time - per_cpu(last_time, cpu));
+		per_cpu(last_time, cpu) = curr_time;
+		per_cpu(nr_prod_sum, cpu) = 0;
+		per_cpu(iowait_prod_sum, cpu) = 0;
+		if (*max_nr < per_cpu(nr_max, cpu))
+			*max_nr = per_cpu(nr_max, cpu);
+
+		if (is_max_capacity_cpu(cpu)) {
+			if (*big_max_nr < per_cpu(nr_max, cpu))
+				*big_max_nr = per_cpu(nr_max, cpu);
+		}
+
+		per_cpu(nr_max, cpu) = per_cpu(nr, cpu);
+		spin_unlock_irqrestore(&per_cpu(nr_lock, cpu), flags);
+	}
+
+	/* error handling for problematic clock violation */
+	if (clk_faulty) {
+		*avg = 0;
+		*iowait_avg = 0;
+		printk_deferred("[%s] **** CPU (0x%08x)clock may unstable !!\n",
+		__func__, cpumask);
+		return 0;
+	}
+
+	*avg = (int)div64_u64(tmp_avg * 100, (u64) diff);
+	*iowait_avg = (int)div64_u64(tmp_iowait * 100, (u64) diff);
+
+	if (unlikely(*avg < 0)) {
+		printk_deferred("[%s] avg:%d(%llu/%lld), time last:%llu curr:%llu ",
+		__func__,
+		*avg, tmp_avg, diff, old_lgt, curr_time);
+		*avg = 0;
+	}
+	if (unlikely(*iowait_avg < 0)) {
+		printk_deferred("[%s] iowait_avg:%d(%llu/%lld) time last:%llu curr:%llu ",
+		__func__,
+		*iowait_avg, tmp_iowait, diff, old_lgt, curr_time);
+		*iowait_avg = 0;
+	}
+
+	return scaled_tlp*100;
+}
+#endif /* OPLUS_FEATURE_CORE_CTL */
 
 int reset_heavy_task_stats(int cpu)
 {

@@ -181,7 +181,47 @@ static int _lcm_i2c_write_bytes(unsigned char addr, unsigned char value)
 	return ret;
 }
 
+#if 1//def ODM_WT_EDIT
+#define LCD_GATE_IC_SM5109_MUSK    0x03
+#define LCD_GATE_IC_OCP2130_MUSK  0x33
+static unsigned char gateICfalg;
 
+int display_bias_setting(unsigned char voltage_value_offset)
+{
+int rc=0;
+	if(!(gateICfalg^LCD_GATE_IC_SM5109_MUSK)){
+		rc=_lcm_i2c_write_bytes(0x03,0x43);
+		pr_debug("[lcm] i2c read value is %x\n",rc);
+		if( 0x02 == _lcm_i2c_write_bytes(0x03,0x43)){
+		// set register 03H
+		// bit0 active discharge enable OUTP
+		// bit1 active discharge enable OUTN
+		// bit6 current drive capability
+			if(0x02 == _lcm_i2c_write_bytes(0x00,voltage_value_offset)){
+				if(0x02 == _lcm_i2c_write_bytes(0x01,voltage_value_offset)){
+					pr_debug(" _lcm_i2c_bias is LCD_BIAS_SM5109\n");
+					return 0;
+					}
+			}
+		}
+		pr_err("oops! [LCD] gate ic SM5109 setting error \n");
+		return 0;
+	}else if(!(gateICfalg^LCD_GATE_IC_OCP2130_MUSK)){
+
+		if(0x02 == _lcm_i2c_write_bytes(0x00,voltage_value_offset)){
+			if(0x02 == _lcm_i2c_write_bytes(0x01,voltage_value_offset)){
+				pr_debug(" _lcm_i2c_bias is OCP2130\n");
+				return 0;
+			}
+		}
+		pr_err("oops! [LCD] gate ic setting OCP2130 error \n");
+		return -2;
+	}else{
+		pr_err("oops! [LCD] no gate ic device matched \n");
+		return -3;
+	}
+}
+#endif
 /*
  * module load/unload record keeping
  */

@@ -24,6 +24,35 @@
 
 /* ------------------------------------------------------------------------- */
 
+#ifdef OPLUS_BUG_STABILITY
+#define LM3697_EXPONENTIAL 1
+#define MP3188_EXPONENTIAL 1
+
+/*
+ * add for backlight IC KTD3136
+ */
+#define KTD3136_EXPONENTIAL 1
+
+extern int is_lm3697;
+extern long lcd_bl_en_setting(unsigned int value);
+extern long lcd_enn_bias_setting(unsigned int value);
+extern long lcd_enp_bias_setting(unsigned int value);
+extern long lcd_rst_setting(unsigned int value);
+extern long lcd_1p8_en_setting(unsigned int value);
+extern long spi_csn_en_setting(unsigned int value);
+extern long lcd_vci_setting(unsigned int value);
+extern long lcd_vpoc_setting(unsigned int value);
+extern long lcd_mipi_err_setting(unsigned int value);
+extern long lcd_ldo_setting(unsigned int value);
+extern int __attribute__((weak)) tp_control_irq(bool enable, int mode) {return 0;};
+extern void __attribute__((weak)) tp_wait_hdl_finished(void) {return;};
+int __attribute__((weak)) register_device_proc(char *name, char *version, char *manufacture)
+{
+	printk("%s not defined, use weak func\n", __func__);
+	return 0;
+}
+#endif /* OPLUS_BUG_STABILITY */
+
 /* common enumerations */
 
 enum LCM_TYPE {
@@ -620,6 +649,10 @@ struct LCM_DSI_PARAMS {
 	unsigned int horizontal_blanking_pixel;
 	unsigned int horizontal_active_pixel;
 	unsigned int horizontal_bllp;
+#if 1//def ODM_WT_EDIT
+	unsigned int horizontal_sync_active_ext;
+	unsigned int horizontal_backporch_ext;
+#endif
 
 	unsigned int line_byte;
 	unsigned int horizontal_sync_active_byte;
@@ -794,6 +827,13 @@ struct LCM_PARAMS {
 	unsigned int average_luminance;
 	unsigned int max_luminance;
 
+#if 1//def ODM_HQ_EDIT
+	int *blmap;
+	int blmap_size;
+	int brightness_max;
+	int brightness_min;
+#endif
+
 #ifdef CONFIG_MTK_HIGH_FRAME_RATE
 	enum LCM_Send_Cmd_Mode sendmode;
 #endif
@@ -951,7 +991,13 @@ struct LCM_UTIL_FUNCS {
 	int (*set_gpio_mode)(unsigned int pin, unsigned int mode);
 	int (*set_gpio_dir)(unsigned int pin, unsigned int dir);
 	int (*set_gpio_pull_enable)(unsigned int pin, unsigned char pull_en);
+#if 1//def ODM_WT_EDIT
 	long (*set_gpio_lcd_enp_bias)(unsigned int value);
+	void (*set_gpio_lcd_enn_bias)(unsigned int value);
+	void (*set_gpio_lcm_vddio_ctl)(unsigned int value);
+#else
+	long (*set_gpio_lcd_enp_bias)(unsigned int value);
+#endif
 	void (*dsi_set_cmdq_V11)(void *cmdq, unsigned int *pdata,
 			unsigned int queue_size, unsigned char force_update);
 	void (*dsi_set_cmdq_V22)(void *cmdq, unsigned int cmd,
@@ -988,7 +1034,9 @@ struct LCM_DRIVER {
 	void (*init_power)(void);
 	void (*suspend_power)(void);
 	void (*resume_power)(void);
-
+#if 1//def ODM_WT_EDIT
+	void (*shutdown_power)(void);
+#endif
 	void (*update)(unsigned int x, unsigned int y, unsigned int width,
 			unsigned int height);
 	unsigned int (*compare_id)(void);
@@ -998,10 +1046,38 @@ struct LCM_DRIVER {
 	/* /////////////////////////CABC backlight related function */
 	void (*set_backlight)(unsigned int level);
 	void (*set_backlight_cmdq)(void *handle, unsigned int level);
+	bool (*get_hbm_state)(void);
+	bool (*get_hbm_wait)(void);
+	bool (*set_hbm_wait)(bool wait);
+	bool (*set_hbm_cmdq)(bool en, void *qhandle);
+#if 1//def ODM_WT_EDIT
+	void(*set_cabc_cmdq)(void *handle, unsigned int level);
+	void (*get_cabc_status)(int *status);
+	//void (*set_cabc_mode_cmdq)(void *handle, unsigned int level);
+#endif
 	void (*set_pwm)(unsigned int divider);
 	unsigned int (*get_pwm)(unsigned int divider);
 	void (*set_backlight_mode)(unsigned int mode);
 	/* ///////////////////////// */
+	void (*set_cabc_mode_cmdq)(void *handle, unsigned int level);
+	/*
+	* add power seq api for ulps
+	*/
+	void (*poweron_before_ulps)(void);
+	void (*poweroff_after_ulps)(void);
+	/*
+	* add for samsung lcd hbm node
+	*/
+	void (*set_hbm_mode_cmdq)(void *handle, unsigned int level);
+	/*
+	* add for Aod feature
+	*/
+	void (*aod_doze_resume)(void);
+	/*
+	* modify for support aod state.
+	*/
+	void (*disp_lcm_aod_from_display_on)(void);
+	void (*set_aod_brightness)(void *handle, unsigned int mode);
 
 	int (*adjust_fps)(void *cmdq, int fps, struct LCM_PARAMS *params);
 	void (*validate_roi)(int *x, int *y, int *width, int *height);
@@ -1051,6 +1127,12 @@ extern int display_bias_enable(void);
 extern int display_bias_disable(void);
 extern int display_bias_regulator_init(void);
 
-
+/*
+* add for Aod feature
+*/
+extern unsigned int aod_mode;
+#if 1//def ODM_WT_EDIT
+extern int display_bias_setting(unsigned char voltage_value_offset);
+#endif
 
 #endif /* __LCM_DRV_H__ */

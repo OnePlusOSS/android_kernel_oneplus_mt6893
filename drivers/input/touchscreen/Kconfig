@@ -1255,4 +1255,8 @@ config TOUCHSCREEN_MTK_TOUCH
 
          To compile this dirver for used touch IC.
 
+#ifdef OPLUS_FEATURE_TP_BASIC
+source "drivers/input/touchscreen/oplus_touchscreen/Kconfig"
+#endif /* OPLUS_FEATURE_TP_BASIC */
+
 endif

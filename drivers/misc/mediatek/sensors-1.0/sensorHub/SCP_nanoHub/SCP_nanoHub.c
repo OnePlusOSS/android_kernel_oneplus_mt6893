@@ -76,6 +76,12 @@
 
 #define CHRE_POWER_RESET_NOTIFY
 
+
+#ifdef OPLUS_FEATURE_SENSOR_ALGORITHM
+extern void oplus_init_sensor_state(struct SensorState *mSensorState);
+#endif /*OPLUS_FEATURE_SENSOR_ALGORITHM*/
+
+
 static int sensor_send_timestamp_to_hub(void);
 static int SCP_sensorHub_server_dispatch_data(uint32_t *currWp);
 static int SCP_sensorHub_init_flag = -1;
@@ -616,6 +622,15 @@ SCP_sensorHub_set_timestamp_cmd(union SCP_SENSOR_HUB_DATA *rsp,
 {
 	SCP_sensorHub_xcmd_putdata(rsp, rx_len);
 }
+#ifdef OPLUS_FEATURE_SENSOR
+static void
+SCP_sensorHub_set_oplus_cmd(union SCP_SENSOR_HUB_DATA *rsp,
+					int rx_len)
+{
+	SCP_sensorHub_xcmd_putdata(rsp, rx_len);
+}
+#endif
+
 static void SCP_sensorHub_moving_average(union SCP_SENSOR_HUB_DATA *rsp)
 {
 	uint64_t ap_now_time = 0, arch_counter = 0;
@@ -745,11 +760,20 @@ static void SCP_sensorHub_IPI_handler(int id,
 	/*pr_err("sensorType:%d, action=%d event:%d len:%d\n",
 	 * rsp->rsp.sensorType, rsp->rsp.action, rsp->notify_rsp.event, len);
 	 */
+	#ifndef OPLUS_FEATURE_SENSOR
 	cmd = SCP_sensorHub_find_cmd(rsp->rsp.action);
 	if (cmd != NULL)
 		cmd->handler(rsp, len);
 	else
 		pr_err("cannot find cmd!\n");
+	#else
+	cmd = SCP_sensorHub_find_cmd(rsp->rsp.action);
+	if (cmd != NULL)
+		cmd->handler(rsp, len);
+	else {
+		SCP_sensorHub_set_oplus_cmd(rsp,len);
+	}
+	#endif
 }
 
 static void SCP_sensorHub_init_sensor_state(void)
@@ -909,6 +933,10 @@ static void SCP_sensorHub_init_sensor_state(void)
 
 	mSensorState[SENSOR_TYPE_SAR].sensorType = SENSOR_TYPE_SAR;
 	mSensorState[SENSOR_TYPE_SAR].timestamp_filter = false;
+	#ifdef OPLUS_FEATURE_SENSOR_ALGORITHM
+	oplus_init_sensor_state(mSensorState);
+	#endif /*OPLUS_FEATURE_SENSOR_ALGORITHM*/
+
 }
 
 static void init_sensor_config_cmd(struct ConfigCmd *cmd,

@@ -481,10 +481,13 @@ static int mt635x_auxadc_read_raw(struct iio_dev *indio_dev,
 		return -EINVAL;
 	}
 	if (__ratelimit(&ratelimit)) {
+/*
 		dev_info(adc_dev->dev,
 			"name:%s, channel=%d, adc_out=0x%x, adc_result=%d\n",
 			auxadc_chan->ch_name, auxadc_chan->ch_num,
 			auxadc_out, *val);
+*/
+//#endif
 	}
 	return ret;
 

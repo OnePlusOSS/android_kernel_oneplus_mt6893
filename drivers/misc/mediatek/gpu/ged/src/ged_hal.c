@@ -259,7 +259,10 @@ static ssize_t opp_logs_show(struct kobject *kobj,
 	return len;
 }
 
-static KOBJ_ATTR_RO(opp_logs);
+#ifdef CONFIG_OPLUS_FEATURE_MIDAS
+static KOBJ_OPLUS_ATTR_RO(opp_logs);
+#endif
+
 #endif
 
 //-----------------------------------------------------------------------------

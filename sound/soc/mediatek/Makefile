@@ -23,6 +23,10 @@ obj-$(CONFIG_MTK_VOW_BARGE_IN_SUPPORT) += scp_vow/
 obj-$(CONFIG_SND_SOC_MTK_AUDIO_DSP) += audio_dsp/
 obj-$(CONFIG_SND_SOC_MTK_AUDIO_DSP) += common_int/
 
+#ifeq ($(strip $(OPLUS_BUG_STABILITY)),yes)
+obj-y += sia81xx/
+#endif # OPLUS_BUG_STABILITY
+
 # btcvsd
 obj-$(CONFIG_SND_SOC_MTK_BTCVSD) += common/
 obj-$(CONFIG_SND_SOC_MEDIATEK) += common/
@@ -36,6 +40,7 @@ obj-$(CONFIG_SND_SOC_MT6853) += mt6853/
 obj-$(CONFIG_SND_SOC_MT6873) += mt6873/
 obj-$(CONFIG_SND_SOC_MT6885) += mt6885/
 obj-$(CONFIG_SND_SOC_MT8167) += mt8167/
+obj-$(CONFIG_SND_SOC_MT6893) += mt6885/
 
 #mtk new arch
 ifeq ($(CONFIG_MTK_SND_SOC_NEW_ARCH),)
@@ -134,3 +139,7 @@ obj-y += $(AUDIO_PLATFORM)/
 # AP include path
 subdir-ccflags-y += -Werror -I$(src)/$(AUDIO_PLATFORM)
 endif
+
+obj-$(CONFIG_SND_SOC_AW87339) += aw87339/
+
+obj-$(CONFIG_SND_SOC_AW87359) += aw87359/

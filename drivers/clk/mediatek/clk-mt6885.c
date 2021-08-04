@@ -349,7 +349,7 @@ void mtk_ccf_cam_debug(const char *str1, const char *str2,
 #define MDP_CG1		0x13FF
 #define MDP_CG2		0x303
 
-#define INFRA_CG0	0x032F8000	/* pwm: 21~15, uart:24,25 */
+#define INFRA_CG0	0x03AF8000	/* pwm: 21~15, uart:24,25 */
 #define INFRA_CG1	0x00000800	/* cpum: 11 */
 #define INFRA_CG2	0x0
 #define INFRA_CG3	0x0

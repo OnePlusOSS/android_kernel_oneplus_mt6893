@@ -56,3 +56,7 @@ ifneq ($(CONFIG_USB_MTU3_DUAL_ROLE),)
 endif
 
 endif
+
+ifneq (,$(filter $(CONFIG_MTK_PLATFORM), "mt6785"))
+ccflags-y += -DADB_DEVICE_MTK_6785
+endif

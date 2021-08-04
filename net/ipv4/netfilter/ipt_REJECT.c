@@ -30,6 +30,11 @@ MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Netfilter Core Team <coreteam@netfilter.org>");
 MODULE_DESCRIPTION("Xtables: packet \"rejection\" target for IPv4");
 
+//#ifdef OPLUS_FEATURE_WIFI_SLA
+void (*mark_streams_for_iptables_reject)(struct sk_buff *skb,enum ipt_reject_with reject_type) = NULL;
+EXPORT_SYMBOL(mark_streams_for_iptables_reject);
+//#endif /* OPLUS_FEATURE_WIFI_SLA */
+
 static unsigned int
 reject_tg(struct sk_buff *skb, const struct xt_action_param *par)
 {
@@ -64,6 +69,11 @@ reject_tg(struct sk_buff *skb, const struct xt_action_param *par)
 		/* Doesn't happen. */
 		break;
 	}
+	//#ifdef OPLUS_FEATURE_WIFI_SLA
+	if (mark_streams_for_iptables_reject) {
+		mark_streams_for_iptables_reject(skb,reject->with);
+	}
+	//#endif /* OPLUS_FEATURE_WIFI_SLA */
 
 	return NF_DROP;
 }

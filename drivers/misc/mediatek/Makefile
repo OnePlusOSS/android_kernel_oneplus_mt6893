@@ -141,6 +141,11 @@ obj-$(CONFIG_MTK_CCU) += ccu/src/
 
 obj-$(CONFIG_MTK_CQDMA) += cqdma/
 
+#ifdef ODM_HQ_EDIT
+###obj-$(CONFIG_SET_LCD_BIAS_ODM_HQ) += lcd_bias/
+#endif #ODM_HQ_EDIT
+obj-y += lcd_bias/
+
 ifeq ($(CONFIG_MTK_GAUGE_VERSION),30)
 obj-y += power/
 else

@@ -32,6 +32,10 @@
 #include "flashlight-core.h"
 #include "flashlight-dt.h"
 
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+#include "oplus/flashlight_custom.h"
+#endif
+
 /* device tree should be defined in flashlight-dt.h */
 #ifndef MT6360_DTNAME
 #define MT6360_DTNAME "mediatek,flashlights_mt6360"
@@ -288,6 +292,10 @@ static int mt6360_disable(int channel)
 /* set flashlight level */
 static int mt6360_set_level_ch1(int level)
 {
+	#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	int torch_level, strobe_level;
+	#endif
+
 	level = mt6360_verify_level(level);
 	mt6360_level_ch1 = level;
 
@@ -296,18 +304,31 @@ static int mt6360_set_level_ch1(int level)
 		return -1;
 	}
 
+	#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	Oplus_get_torch_and_strobe_level_custom(mt6360_torch_level[level], mt6360_strobe_level[level], level, &torch_level, &strobe_level);
+	if (!mt6360_is_torch(level))
+		flashlight_set_torch_brightness(
+				flashlight_dev_ch1, torch_level);
+	flashlight_set_strobe_brightness(
+			flashlight_dev_ch1, strobe_level);
+	#else
 	/* set brightness level */
 	if (!mt6360_is_torch(level))
 		flashlight_set_torch_brightness(
 				flashlight_dev_ch1, mt6360_torch_level[level]);
 	flashlight_set_strobe_brightness(
 			flashlight_dev_ch1, mt6360_strobe_level[level]);
+	#endif
 
 	return 0;
 }
 
 static int mt6360_set_level_ch2(int level)
 {
+	#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	int torch_level, strobe_level;
+	#endif
+
 	level = mt6360_verify_level(level);
 	mt6360_level_ch2 = level;
 
@@ -316,12 +337,21 @@ static int mt6360_set_level_ch2(int level)
 		return -1;
 	}
 
+	#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	Oplus_get_torch_and_strobe_level_custom(mt6360_torch_level[level], mt6360_strobe_level[level], level, &torch_level, &strobe_level);
+	if (!mt6360_is_torch(level))
+		flashlight_set_torch_brightness(
+				flashlight_dev_ch2, torch_level);
+	flashlight_set_strobe_brightness(
+			flashlight_dev_ch2, strobe_level);
+	#else
 	/* set brightness level */
 	if (!mt6360_is_torch(level))
 		flashlight_set_torch_brightness(
 				flashlight_dev_ch2, mt6360_torch_level[level]);
 	flashlight_set_strobe_brightness(
 			flashlight_dev_ch2, mt6360_strobe_level[level]);
+	#endif
 
 	return 0;
 }
@@ -561,6 +591,15 @@ static int mt6360_ioctl(unsigned int cmd, unsigned long arg)
 {
 	struct flashlight_dev_arg *fl_arg;
 	int channel;
+	#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	int ch1_timeout, ch2_timeout;
+	int ch1_duty, ch2_duty;
+	int ch1_status, ch2_status, need_op_ch_number; // need_op_ch_number: 0:ch1 1:ch2 2:ch1&ch2
+	int cur_duty;
+	int max_level_torch;
+	int max_level_num;
+	int hw_timeout;
+	#endif
 
 	fl_arg = (struct flashlight_dev_arg *)arg;
 	channel = fl_arg->channel;
@@ -575,13 +614,25 @@ static int mt6360_ioctl(unsigned int cmd, unsigned long arg)
 	case FLASH_IOC_SET_TIME_OUT_TIME_MS:
 		pr_debug("FLASH_IOC_SET_TIME_OUT_TIME_MS(%d): %d\n",
 				channel, (int)fl_arg->arg);
+		#ifdef OPLUS_FEATURE_CAMERA_COMMON
+		Oplus2Channel_set_timeout_custom(mt6360_timeout_ms, channel, fl_arg->arg, &ch1_timeout, &ch2_timeout);
+		mt6360_timeout_ms[MT6360_CHANNEL_CH1] = ch1_timeout;
+		mt6360_timeout_ms[MT6360_CHANNEL_CH2] = ch2_timeout;
+		#else
 		mt6360_timeout_ms[channel] = fl_arg->arg;
+		#endif
 		break;
 
 	case FLASH_IOC_SET_DUTY:
 		pr_debug("FLASH_IOC_SET_DUTY(%d): %d\n",
 				channel, (int)fl_arg->arg);
+		#ifdef OPLUS_FEATURE_CAMERA_COMMON
+		Oplus2Channel_set_duty_custom(mt6360_level_ch1, mt6360_level_ch2, channel, fl_arg->arg, &ch1_duty, &ch2_duty);
+		mt6360_set_level(MT6360_CHANNEL_CH1, ch1_duty);
+		mt6360_set_level(MT6360_CHANNEL_CH2, ch2_duty);
+		#else
 		mt6360_set_level(channel, fl_arg->arg);
+		#endif
 		break;
 
 	case FLASH_IOC_SET_SCENARIO:
@@ -593,7 +644,20 @@ static int mt6360_ioctl(unsigned int cmd, unsigned long arg)
 	case FLASH_IOC_SET_ONOFF:
 		pr_debug("FLASH_IOC_SET_ONOFF(%d): %d\n",
 				channel, (int)fl_arg->arg);
+		#ifdef OPLUS_FEATURE_CAMERA_COMMON
+		need_op_ch_number = -1;
+		Oplus2Channel_set_onoff_custom(channel, fl_arg->arg, &ch1_status, &ch2_status, &need_op_ch_number);
+		if (need_op_ch_number == 0) {
+			mt6360_operate(channel, ch1_status);
+		}else if (need_op_ch_number == 1) {
+			mt6360_operate(channel, ch2_status);
+		}else if(need_op_ch_number == 2) {
+			mt6360_operate(MT6360_CHANNEL_CH1, ch1_status);
+			mt6360_operate(MT6360_CHANNEL_CH2, ch2_status);
+		}
+		#else
 		mt6360_operate(channel, fl_arg->arg);
+		#endif
 		break;
 
 	case FLASH_IOC_IS_CHARGER_READY:
@@ -604,24 +668,44 @@ static int mt6360_ioctl(unsigned int cmd, unsigned long arg)
 
 	case FLASH_IOC_GET_DUTY_NUMBER:
 		pr_debug("FLASH_IOC_GET_DUTY_NUMBER(%d)\n", channel);
+		#ifdef OPLUS_FEATURE_CAMERA_COMMON
+		max_level_num = Oplus_get_max_duty_num_custom(MT6360_LEVEL_NUM);
+		fl_arg->arg = max_level_num -1;
+		#else
 		fl_arg->arg = MT6360_LEVEL_NUM;
+		#endif
 		break;
 
 	case FLASH_IOC_GET_MAX_TORCH_DUTY:
 		pr_debug("FLASH_IOC_GET_MAX_TORCH_DUTY(%d)\n", channel);
+		#ifdef OPLUS_FEATURE_CAMERA_COMMON
+		max_level_torch = Oplus_get_max_duty_torch_custom(MT6360_LEVEL_TORCH);
+		fl_arg->arg = max_level_torch -1;
+		#else
 		fl_arg->arg = MT6360_LEVEL_TORCH - 1;
+		#endif
 		break;
 
 	case FLASH_IOC_GET_DUTY_CURRENT:
 		fl_arg->arg = mt6360_verify_level(fl_arg->arg);
 		pr_debug("FLASH_IOC_GET_DUTY_CURRENT(%d): %d\n",
 				channel, (int)fl_arg->arg);
+		#ifdef OPLUS_FEATURE_CAMERA_COMMON
+		cur_duty = Oplus_get_current_duty_custom(mt6360_current, fl_arg->arg);
+		fl_arg->arg = cur_duty;
+		#else
 		fl_arg->arg = mt6360_current[fl_arg->arg];
+		#endif
 		break;
 
 	case FLASH_IOC_GET_HW_TIMEOUT:
 		pr_debug("FLASH_IOC_GET_HW_TIMEOUT(%d)\n", channel);
+		#ifdef OPLUS_FEATURE_CAMERA_COMMON
+		hw_timeout = Oplus_get_hw_timeout_custom(MT6360_HW_TIMEOUT);
+		fl_arg->arg = hw_timeout;
+		#else
 		fl_arg->arg = MT6360_HW_TIMEOUT;
+		#endif
 		break;
 
 	default:
@@ -688,7 +772,15 @@ static int mt6360_set_driver(int set)
 
 static ssize_t mt6360_strobe_store(struct flashlight_arg arg)
 {
+	#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	int scenario;
+	#endif
+
 	mt6360_set_driver(1);
+	#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	scenario = Oplusflashlight_get_scenairo_custom(arg.decouple);
+	mt6360_set_scenario(scenario);
+	#else
 	if (arg.decouple)
 		mt6360_set_scenario(
 			FLASHLIGHT_SCENARIO_CAMERA |
@@ -697,6 +789,7 @@ static ssize_t mt6360_strobe_store(struct flashlight_arg arg)
 		mt6360_set_scenario(
 			FLASHLIGHT_SCENARIO_CAMERA |
 			FLASHLIGHT_SCENARIO_COUPLE);
+	#endif
 	mt6360_set_level(arg.channel, arg.level);
 	mt6360_timeout_ms[arg.channel] = 0;
 
@@ -836,10 +929,16 @@ static int mt6360_probe(struct platform_device *pdev)
 		return -EFAULT;
 	}
 
+	#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	/* setup strobe mode timeout */
+	if(Oplusflashlight_set_strobe_timeout_custom(flashlight_dev_ch1, MT6360_HW_TIMEOUT) < 0)
+		pr_info("Failed to set strobe timeout.\n");
+	#else
 	/* setup strobe mode timeout */
 	if (flashlight_set_strobe_timeout(flashlight_dev_ch1,
 				MT6360_HW_TIMEOUT, MT6360_HW_TIMEOUT + 200) < 0)
 		pr_info("Failed to set strobe timeout.\n");
+	#endif
 
 	/* get charger consumer manager */
 	flashlight_charger_consumer = charger_manager_get_by_name(

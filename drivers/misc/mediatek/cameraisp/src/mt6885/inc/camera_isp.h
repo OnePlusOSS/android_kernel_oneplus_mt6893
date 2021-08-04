@@ -616,6 +616,9 @@ struct ISP_RAW_INT_STATUS {
 struct ISP_CQ0_NOTE_INFO {
 	unsigned int cq0_data[CAM_MAX][3];
 	unsigned int exposureNum;
+	#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	unsigned int cqCnt;
+	#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 };
 
 /*******************************************************************************

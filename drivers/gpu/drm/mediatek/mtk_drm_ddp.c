@@ -4886,7 +4886,6 @@ void mtk_ddp_dual_pipe_dump(struct mtk_drm_crtc *mtk_crtc)
 void mtk_ddp_connect_dual_pipe_path(struct mtk_drm_crtc *mtk_crtc,
 	struct mtk_disp_mutex *mutex)
 {
-	DDPFUNC();
 	if (drm_crtc_index(&mtk_crtc->base) == 1) {
 		if ((&mtk_crtc->base)->state->adjusted_mode.vrefresh == 60)
 			mtk_ddp_ext_dual_pipe_dsc_MT6885(mtk_crtc,
@@ -4900,7 +4899,7 @@ void mtk_ddp_connect_dual_pipe_path(struct mtk_drm_crtc *mtk_crtc,
 		struct mtk_ddp_comp **ddp_comp;
 		enum mtk_ddp_comp_id prev_id, next_id;
 
-		DDPMSG("connect dual pipe path\n");
+		DDPINFO("connect dual pipe path\n");
 		for_each_comp_in_dual_pipe(comp, mtk_crtc, i, j) {
 			if (j >= mtk_crtc->dual_pipe_ddp_ctx.ddp_comp_nr[i]) {
 				DDPINFO("exceed comp nr\n");

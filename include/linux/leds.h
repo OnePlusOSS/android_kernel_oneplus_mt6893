@@ -26,12 +26,23 @@ struct device;
  * LED Core
  */
 
+#ifndef OPLUS_FEATURE_MULTIBITS_BL
 enum led_brightness {
 	LED_OFF		= 0,
 	LED_ON		= 1,
 	LED_HALF	= 127,
 	LED_FULL	= 255,
 };
+#else /* OPLUS_FEATURE_MULTIBITS_BL */
+enum led_brightness {
+	LED_OFF		= 0,
+	LED_ON		= 1,
+};
+extern int get_half_backlight_level(void);
+extern int get_full_backlight_level(void);
+#define LED_HALF  (get_half_backlight_level())
+#define LED_FULL  (get_full_backlight_level())
+#endif /* OPLUS_FEATURE_MULTIBITS_BL */
 
 struct led_classdev {
 	const char		*name;

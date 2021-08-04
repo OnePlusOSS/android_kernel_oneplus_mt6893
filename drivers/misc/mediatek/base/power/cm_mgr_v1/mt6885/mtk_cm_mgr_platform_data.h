@@ -67,7 +67,7 @@ unsigned int cpu_power_ratio_up_x[CM_MGR_EMI_OPP] = {0, 0, 0, 0, 0};
 int cpu_power_bcpu_weight_max = 100;
 int cpu_power_bcpu_weight_min = 100;
 #endif
-unsigned int cpu_power_ratio_up[CM_MGR_EMI_OPP] = {140, 140, 100, 100, 100};
+unsigned int cpu_power_ratio_up[CM_MGR_EMI_OPP] = {140, 140, 100, 30, 30};
 unsigned int cpu_power_ratio_down[CM_MGR_EMI_OPP] = {100, 100, 100, 100, 100};
 unsigned int vcore_power_ratio_up[CM_MGR_EMI_OPP] = {100, 100, 100, 100, 100};
 unsigned int vcore_power_ratio_down[CM_MGR_EMI_OPP] = {100, 100, 100, 100, 100};

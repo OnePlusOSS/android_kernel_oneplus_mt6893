@@ -160,7 +160,7 @@ struct cmdq {
 	bool			suspended;
 	atomic_t		usage;
 	struct workqueue_struct *timeout_wq;
-	struct wakeup_source	wake_lock;
+	struct wakeup_source	*wake_lock;
 	bool			wake_locked;
 	spinlock_t		lock;
 	u32			token_cnt;
@@ -257,7 +257,7 @@ static void cmdq_lock_wake_lock(struct cmdq *cmdq, bool lock)
 
 	if (lock) {
 		if (!cmdq->wake_locked) {
-			__pm_stay_awake(&cmdq->wake_lock);
+			__pm_stay_awake(cmdq->wake_lock);
 			cmdq->wake_locked = true;
 		} else  {
 			/* should not reach here */
@@ -267,7 +267,7 @@ static void cmdq_lock_wake_lock(struct cmdq *cmdq, bool lock)
 		}
 	} else {
 		if (cmdq->wake_locked) {
-			__pm_relax(&cmdq->wake_lock);
+			__pm_relax(cmdq->wake_lock);
 			cmdq->wake_locked = false;
 		} else {
 			/* should not reach here */
@@ -305,6 +305,8 @@ static s32 cmdq_clk_enable(struct cmdq *cmdq)
 #if IS_ENABLED(CONFIG_MACH_MT6873) || IS_ENABLED(CONFIG_MACH_MT6853)
 		writel((0x7 << 16) + 0x7, cmdq->base + GCE_GCTL_VALUE);
 		writel(0, cmdq->base + GCE_DEBUG_START_ADDR);
+#else
+        writel(0, cmdq->base + GCE_GCTL_VALUE);
 #endif
 		/* make sure pm not suspend */
 		cmdq_lock_wake_lock(cmdq, true);
@@ -346,6 +348,8 @@ static void cmdq_clk_disable(struct cmdq *cmdq)
 		writel(0, cmdq->base + CMDQ_TPR_MASK);
 #if IS_ENABLED(CONFIG_MACH_MT6873) || IS_ENABLED(CONFIG_MACH_MT6853)
 		writel(0x7, cmdq->base + GCE_GCTL_VALUE);
+#else
+        writel(0x7, cmdq->base + GCE_GCTL_VALUE);
 #endif
 		/* now allow pm suspend */
 		cmdq_lock_wake_lock(cmdq, false);
@@ -624,7 +628,6 @@ void cmdq_init_cmds(void *dev_cmdq)
 	struct cmdq *cmdq = dev_cmdq;
 	struct cmdq_thread *thread = &cmdq->thread[0];
 	dma_addr_t pc, end;
-	int i;
 
 	cmdq_trace_ex_begin("%s", __func__);
 
@@ -642,13 +645,6 @@ void cmdq_init_cmds(void *dev_cmdq)
 		cmdq_err("clear event instructions timeout pc:%#lx end:%#lx",
 			(unsigned long)pc,
 			(unsigned long)end);
-		for (i = 0; i < ARRAY_SIZE(cmdq->thread); i++)
-			if (cmdq->thread->chan) {
-				cmdq_err("%s cmdq:%d thread:%d i:%d",
-					__func__, cmdq->hwid, thread->idx, i);
-				cmdq_util_dump_dbg_reg(cmdq->thread->chan);
-				break;
-			}
 		cmdq_thread_reset(cmdq, thread);
 	}
 	writel(CMDQ_THR_DISABLED, thread->base + CMDQ_THR_ENABLE_TASK);
@@ -1690,6 +1686,7 @@ static int cmdq_remove(struct platform_device *pdev)
 {
 	struct cmdq *cmdq = platform_get_drvdata(pdev);
 
+	wakeup_source_unregister(cmdq->wake_lock);
 	destroy_workqueue(cmdq->buf_dump_wq);
 	mbox_controller_unregister(&cmdq->mbox);
 	clk_unprepare(cmdq->clock_timer);
@@ -1988,7 +1985,7 @@ static int cmdq_probe(struct platform_device *pdev)
 	WARN_ON(clk_prepare(cmdq->clock) < 0);
 	WARN_ON(clk_prepare(cmdq->clock_timer) < 0);
 
-	wakeup_source_add(&cmdq->wake_lock);
+	cmdq->wake_lock = wakeup_source_register(dev, "cmdq_pm_lock");
 
 	spin_lock_init(&cmdq->lock);
 	clk_enable(cmdq->clock);
@@ -2056,8 +2053,21 @@ void cmdq_mbox_enable(void *chan)
 {
 	struct cmdq *cmdq = container_of(((struct mbox_chan *)chan)->mbox,
 		typeof(*cmdq), mbox);
+	struct cmdq_thread *thread = ((struct mbox_chan *)chan)->con_priv;
+	s32 user_usage = -1;
+
+	if (!thread) {
+		cmdq_err("thread is NULL");
+		dump_stack();
+		return;
+	}
 
 	WARN_ON(clk_prepare(cmdq->clock) < 0);
+
+	user_usage = atomic_inc_return(&thread->user_usage);
+	WARN_ON(user_usage <= 0);
+	if (user_usage <= 0)
+		cmdq_err("thd%d user_usage:%d",thread->idx ,user_usage);
 	cmdq_clk_enable(cmdq);
 }
 
@@ -2065,6 +2075,23 @@ void cmdq_mbox_disable(void *chan)
 {
 	struct cmdq *cmdq = container_of(((struct mbox_chan *)chan)->mbox,
 		typeof(*cmdq), mbox);
+	struct cmdq_thread *thread = ((struct mbox_chan *)chan)->con_priv;
+	s32 user_usage = -1;
+
+	if (!thread) {
+		cmdq_err("thread is NULL");
+		dump_stack();
+		return;
+	}
+
+	user_usage = atomic_dec_return(&thread->user_usage);
+	WARN_ON(user_usage < 0);
+	if (user_usage < 0) {
+		atomic_inc(&thread->user_usage);
+		cmdq_err("%s thd%d, usage:%d, cannot disable",
+				__func__, thread->idx, user_usage);
+		return;
+	}
 
 	cmdq_clk_disable(cmdq);
 	clk_unprepare(cmdq->clock);

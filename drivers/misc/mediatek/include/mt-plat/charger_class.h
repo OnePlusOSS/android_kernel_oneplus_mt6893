@@ -172,6 +172,12 @@ struct charger_ops {
 	int (*enable_force_typec_otp)(struct charger_device *dev, bool en);
 	int (*enable_hidden_mode)(struct charger_device *dev, bool en);
 	int (*get_ctd_dischg_status)(struct charger_device *dev, u8 *status);
+#ifdef CONFIG_OPLUS_CHARGER_MTK6769
+    /* HVDCP */
+    int (*send_hvdcp_pattern_ex)(struct charger_device *dev, bool en);
+    int (*reset_hvdcp_ta_ex)(struct charger_device *dev);
+    int (*hvdcp_can_enabled)(struct charger_device *dev, bool *en);
+#endif /*CONFIG_OPLUS_CHARGER_MTK6769*/
 	int (*enable_hz)(struct charger_device *dev, bool en);
 
 	int (*enable_bleed_discharge)(struct charger_device *dev, bool en);
@@ -358,5 +364,11 @@ extern int unregister_charger_device_notifier(
 extern int charger_dev_notify(
 	struct charger_device *charger_dev, int event);
 
+#ifdef CONFIG_OPLUS_CHARGER_MTK6769
+extern int charger_dev_send_hvdcp_pattern_ex(
+    struct charger_device *charger_dev, bool en);
+extern int charger_dev_reset_hvdcp_ta_ex(struct charger_device *chg_dev);
+extern int charger_dev_hvdcp_can_enabled(struct charger_device *chg_dev, bool *en);
+#endif /*CONFIG_OPLUS_CHARGER_MTK6769*/
 
 #endif /*LINUX_POWER_CHARGER_CLASS_H*/

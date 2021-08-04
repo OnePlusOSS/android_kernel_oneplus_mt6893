@@ -28,7 +28,6 @@
 #include "s5k3m5sxmipiraw_Sensor.h"
 
 
-#undef VENDOR_EDIT
 
 /***************Modify Following Strings for Debug**********************/
 #define PFX "S5K3M5SX_camera_sensor"
@@ -44,9 +43,7 @@
 #endif
 
 
-#ifdef VENDOR_EDIT
 #define MODULE_ID_OFFSET 0x0000
-#endif
 
 
 static DEFINE_SPINLOCK(imgsensor_drv_lock);
@@ -3364,11 +3361,9 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 	case SENSOR_FEATURE_SET_NIGHTMODE:
 		 /* night_mode((BOOL) *feature_data); */
 		break;
-	#ifdef VENDOR_EDIT
 	case SENSOR_FEATURE_CHECK_MODULE_ID:
 		*feature_return_para_32 = imgsensor_info.module_id;
 		break;
-	#endif
 	case SENSOR_FEATURE_SET_GAIN:
 		set_gain((UINT16) *feature_data);
 		break;

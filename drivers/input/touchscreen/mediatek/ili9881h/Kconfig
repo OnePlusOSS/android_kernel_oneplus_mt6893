@@ -1,0 +1,10 @@
+#
+# ili9881 driver
+#
+config TOUCHSCREEN_ILI9881H
+	bool "ili9881h Touchscreen Driver"
+	help
+	  Say Y here if you have a ili9881h Touchscreen.
+
+	  If unsure, say N.
+

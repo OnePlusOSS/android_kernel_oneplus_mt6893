@@ -16,7 +16,12 @@
 
 #include <linux/thermal.h>
 
+#ifdef CONFIG_OPLUS_CHARGER_MTK6771
+/*add for 6771R charger bingup*/
+#include <mt-plat/charging.h>
+#else
 #include <mt-plat/mtk_charger.h>
+#endif
 
 extern
 int mtk_thermal_get_cpu_info(int *nocores, int **cpufreq, int **cpuloading);

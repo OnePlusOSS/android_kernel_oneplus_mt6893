@@ -675,7 +675,6 @@ void pm_qos_trace_dbg_dump(int pm_qos_class)
 	spin_unlock_irqrestore(&pm_qos_lock, flags);
 }
 
-
 static inline int pm_qos_get_value(struct pm_qos_constraints *c);
 static int pm_qos_dbg_show_requests(struct seq_file *s, void *unused)
 {

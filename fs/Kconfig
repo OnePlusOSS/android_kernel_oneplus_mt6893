@@ -313,4 +313,8 @@ source "fs/nls/Kconfig"
 source "fs/dlm/Kconfig"
 source "fs/unicode/Kconfig"
 
+#ifdef CONFIG_EXFAT_FS
+source "fs/exfat/Kconfig"
+#endif /*CONFIG_EXFAT_FS*/
+
 endmenu

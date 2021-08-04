@@ -106,11 +106,19 @@
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/task.h>
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+#include <linux/sched_assist/sched_assist_fork.h>
+#endif /* OPLUS_FEATURE_SCHED_ASSIST */
 
 #include <mt-plat/mtk_pidmap.h>
 #ifdef CONFIG_MTK_TASK_TURBO
 #include <mt-plat/turbo_common.h>
 #endif
+#ifdef OPLUS_FEATURE_HEALTHINFO
+#ifdef CONFIG_OPLUS_JANK_INFO
+#include <linux/healthinfo/jank_monitor.h>
+#endif
+#endif /* OPLUS_FEATURE_HEALTHINFO */
 
 /*
  * Minimum number of threads to boot the kernel
@@ -122,6 +130,10 @@
  */
 #define MAX_THREADS FUTEX_TID_MASK
 
+#if defined(OPLUS_FEATURE_MEMLEAK_DETECT) && defined(CONFIG_ION) && defined(CONFIG_DUMP_TASKS_MEM)
+/* update user tasklist */
+extern void update_user_tasklist(struct task_struct *tsk);
+#endif
 /*
  * Protected counters by write_lock_irq(&tasklist_lock)
  */
@@ -1903,6 +1915,19 @@ static __latent_entropy struct task_struct *copy_process(
 #ifdef CONFIG_MTK_TASK_TURBO
 	init_turbo_attr(p, current);
 #endif
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+	init_task_ux_info(p);
+#endif /* OPLUS_FEATURE_SCHED_ASSIST */
+#ifdef OPLUS_FEATURE_HEALTHINFO
+#ifdef CONFIG_OPLUS_JANK_INFO
+	p->jank_trace = 0;
+	memset(&p->jank_info, 0, sizeof(struct jank_monitor_info));
+#endif
+#endif /* OPLUS_FEATURE_HEALTHINFO */
+
+#ifdef CONFIG_OPLUS_FEATURE_FUSE_FS_SHORTCIRCUIT
+	p->fpack = NULL;
+#endif /* CONFIG_OPLUS_FEATURE_FUSE_FS_SHORTCIRCUIT */
 	/* Perform scheduler related setup. Assign this task to a CPU. */
 	retval = sched_fork(clone_flags, p);
 	if (retval)
@@ -2105,6 +2130,11 @@ static __latent_entropy struct task_struct *copy_process(
 							 p->real_parent->signal->is_child_subreaper;
 			list_add_tail(&p->sibling, &p->real_parent->children);
 			list_add_tail_rcu(&p->tasks, &init_task.tasks);
+#if defined(OPLUS_FEATURE_MEMLEAK_DETECT) && defined(CONFIG_ION) && defined(CONFIG_DUMP_TASKS_MEM)
+			/* init user tasklist */
+			INIT_LIST_HEAD(&p->user_tasks);
+			update_user_tasklist(p);
+#endif
 			attach_pid(p, PIDTYPE_PGID);
 			attach_pid(p, PIDTYPE_SID);
 			__this_cpu_inc(process_counts);
@@ -2271,6 +2301,9 @@ long _do_fork(unsigned long clone_flags,
 
 		pid = get_task_pid(p, PIDTYPE_PID);
 		nr = pid_vnr(pid);
+#if defined(OPLUS_FEATURE_MEMLEAK_DETECT) && defined(CONFIG_ION) && defined(CONFIG_DUMP_TASKS_MEM)
+		atomic64_set(&p->ions, 0);
+#endif
 
 		if (clone_flags & CLONE_PARENT_SETTID)
 			put_user(nr, parent_tidptr);

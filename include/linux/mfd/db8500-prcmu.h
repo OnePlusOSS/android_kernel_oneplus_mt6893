@@ -301,7 +301,6 @@ enum sia_mmdsp_stat {
  * @ARMWFI_ERR: The ARM WFI has not been correctly executed in the given time
  * @SYSCLKOK_ERR: The SYSCLK is not available in the given time
  * @BOOT_ERR: Romcode has not validated the XP70 self reset in the given time
- * @ROMCODESAVECONTEXT: The Romcode didn.t correctly save it secure context
  * @VARMHIGHSPEEDVALTO_ERR: The ARM high speed supply value transfered
  *          through I2C has not been correctly executed in the given time
  * @VARMHIGHSPEEDACCESS_ERR: The command value of VarmHighSpeedVal transfered

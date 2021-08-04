@@ -39,6 +39,23 @@
 #endif
 
 #include "mt6359.h"
+#ifdef CONFIG_SND_SOC_CODEC_AW87339
+extern unsigned char aw87339_audio_spk_if_kspk(void);
+extern unsigned char aw87339_audio_rcv_if_kspk(void);
+extern unsigned char aw87339_audio_rcv_if_drcv(void);
+extern unsigned char aw87339_audio_spk_if_off(void);
+extern unsigned char aw87339_audio_rcv_if_off(void);
+
+extern void aw87339_voice_setting(int bStatus);
+extern int aw87339_voice_status;
+extern void aw87339_audio_spk_low_voltage_status(bool bStatus);
+extern int aw87339_spk_low_voltage_status;
+
+static int aw87339_kspk_control_spk = 0;
+static int aw87339_kspk_control_rcv = 0;
+static int aw87339_drcv_control_rcv = 0;
+
+#endif /* CONFIG_SND_SOC_CODEC_AW87339 */
 
 enum {
 	MT6359_AIF_1 = 0,	/* dl: hp, rcv, hp+lo */
@@ -283,6 +300,11 @@ struct mt6359_priv {
 	int reg_afe_vow_periodic;
 	unsigned int vow_channel;
 	struct mt6359_vow_periodic_on_off_data vow_periodic_param;
+
+#ifdef OPLUS_ARCH_EXTENDS
+	int micb0_val;
+	int micb2_val;
+#endif /* OPLUS_ARCH_EXTENDS */
 };
 
 /* static function declaration */
@@ -866,6 +888,121 @@ static int dl_pga_set(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+#ifdef CONFIG_SND_SOC_CODEC_AW87339
+static int ext_kspk_amp_get_spk(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+    ucontrol->value.integer.value[0] = aw87339_kspk_control_spk;
+    pr_debug("%s: aw87339_kspk_control = %d\n", __func__, aw87339_kspk_control_spk);
+    return 0;
+}
+static int ext_kspk_amp_put_spk(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+    if(ucontrol->value.integer.value[0] == aw87339_kspk_control_spk)
+        return 1;
+    aw87339_kspk_control_spk = ucontrol->value.integer.value[0];
+    if(ucontrol->value.integer.value[0]) {
+        aw87339_audio_spk_if_kspk();
+    } else {
+        aw87339_audio_spk_if_off();
+    }
+    pr_debug("%s: value.integer.value = %d\n", __func__, ucontrol->value.integer.value[0]);
+    return 0;
+}
+static int ext_kspk_amp_get_rcv(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+    ucontrol->value.integer.value[0] = aw87339_kspk_control_rcv;
+    pr_debug("%s: aw87339_kspk_control = %d\n", __func__, aw87339_kspk_control_rcv);
+    return 0;
+}
+static int ext_kspk_amp_put_rcv(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+    if(ucontrol->value.integer.value[0] == aw87339_kspk_control_rcv)
+        return 1;
+    aw87339_kspk_control_rcv = ucontrol->value.integer.value[0];
+    if(ucontrol->value.integer.value[0]) {
+        aw87339_audio_rcv_if_kspk();
+    } else {
+        aw87339_audio_rcv_if_off();
+    }
+    pr_debug("%s: value.integer.value = %d\n", __func__, ucontrol->value.integer.value[0]);
+    return 0;
+}
+
+static int ext_drcv_amp_get_rcv(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+    ucontrol->value.integer.value[0] = aw87339_drcv_control_rcv;
+    pr_debug("%s: aw87339_drcv_control = %d\n", __func__, aw87339_drcv_control_rcv);
+    return 0;
+}
+
+static int ext_drcv_amp_put_rcv(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+    if(ucontrol->value.integer.value[0] == aw87339_drcv_control_rcv)
+        return 1;
+    aw87339_drcv_control_rcv = ucontrol->value.integer.value[0];
+    if(ucontrol->value.integer.value[0]) {
+        aw87339_audio_rcv_if_drcv();
+    } else {
+        aw87339_audio_rcv_if_off();
+    }
+    pr_debug("%s: value.integer.value = %d\n", __func__, ucontrol->value.integer.value[0]);
+    return 0;
+}
+
+static int ext_amp_low_voltage_get(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+        ucontrol->value.integer.value[0] = aw87339_spk_low_voltage_status;
+        pr_info("%s: aw87339_spk_low_voltage_status = %d\n", __func__, aw87339_spk_low_voltage_status);
+        return 0;
+}
+
+static int ext_amp_low_voltage_set(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+        if (ucontrol->value.integer.value[0] == aw87339_spk_low_voltage_status)
+                return 1;
+        if (ucontrol->value.integer.value[0] == 1) {
+                aw87339_audio_spk_low_voltage_status(1);
+        } else {
+                aw87339_audio_spk_low_voltage_status(0);
+        }
+
+        pr_info("%s: value.integer.value = %ld\n", __func__, ucontrol->value.integer.value[0]);
+        return 0;
+}
+
+static int ext_amp_voice_get(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = aw87339_voice_status;
+	pr_info("%s: aw87339_voice_status = %d\n", __func__, aw87339_voice_status);
+	return 0;
+}
+
+static int ext_amp_voice_set(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+	if (ucontrol->value.integer.value[0] == aw87339_voice_status)
+		return 1;
+	if (ucontrol->value.integer.value[0] == 1) {
+		aw87339_voice_setting(1);
+	} else {
+		aw87339_voice_setting(0);
+	}
+
+	pr_info("%s: value.integer.value = %ld\n", __func__, ucontrol->value.integer.value[0]);
+	return 0;
+}
+
+
+
+
+
+static const char *const ext_kspk_amp_function_spk[] = { "Off", "On" };
+static const char *const ext_kspk_amp_function_rcv[] = { "Off", "On" };
+static const char *const ext_drcv_amp_function_rcv[] = { "Off", "On" };
+static const char *const ext_amp_low_vol_function[] = { "Off", "On" };
+
+static const char *const ext_amp_voice_function[] = { "Off", "On" };
+#endif /* CONFIG_SND_SOC_CODEC_AW87339 */
+
 static int mt6359_put_volsw(struct snd_kcontrol *kcontrol,
 			    struct snd_ctl_elem_value *ucontrol)
 {
@@ -933,6 +1070,13 @@ static const DECLARE_TLV_DB_SCALE(capture_tlv, 0, 600, 0);
 static const struct soc_enum dl_pga_enum[] = {
 	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(dl_pga_gain), dl_pga_gain),
 	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(hp_dl_pga_gain), hp_dl_pga_gain),
+	#ifdef CONFIG_SND_SOC_CODEC_AW87339
+    SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(ext_kspk_amp_function_spk), ext_kspk_amp_function_spk),
+    SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(ext_kspk_amp_function_rcv), ext_kspk_amp_function_rcv),
+    SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(ext_drcv_amp_function_rcv), ext_drcv_amp_function_rcv),
+    SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(ext_amp_low_vol_function), ext_amp_low_vol_function),
+    SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(ext_amp_voice_function), ext_amp_voice_function),
+	#endif /* CONFIG_SND_SOC_CODEC_AW87339 */
 };
 
 #define MT_SOC_ENUM_EXT_ID(xname, xenum, xhandler_get, xhandler_put, id) \
@@ -976,6 +1120,13 @@ static const struct snd_kcontrol_new mt6359_snd_controls[] = {
 	MT_SOC_ENUM_EXT_ID("Lineout_PGAR_GAIN", dl_pga_enum[0],
 			   dl_pga_get, dl_pga_set,
 			   AUDIO_ANALOG_VOLUME_LINEOUTR),
+	#ifdef CONFIG_SND_SOC_CODEC_AW87339
+	SOC_ENUM_EXT("Ext_Speaker_Amp_spkmode", dl_pga_enum[2], ext_kspk_amp_get_spk, ext_kspk_amp_put_spk),
+	SOC_ENUM_EXT("Ext_Receiver_Amp_spkmode", dl_pga_enum[3], ext_kspk_amp_get_rcv, ext_kspk_amp_put_rcv),
+	SOC_ENUM_EXT("Ext_Receiver_Amp_rcvmode", dl_pga_enum[4], ext_drcv_amp_get_rcv, ext_drcv_amp_put_rcv),
+        SOC_ENUM_EXT("Ext_AMP_LOW_VOLTAGE", dl_pga_enum[5], ext_amp_low_voltage_get, ext_amp_low_voltage_set),
+	SOC_ENUM_EXT("EXT_AMP_VOICE_SETTING", dl_pga_enum[6], ext_amp_voice_get, ext_amp_voice_set),
+	#endif
 };
 
 /* ul pga gain */
@@ -2311,10 +2462,16 @@ static int mt_mic_bias_0_event(struct snd_soc_dapm_widget *w,
 			break;
 		}
 
+#ifdef OPLUS_ARCH_EXTENDS
+		regmap_update_bits(priv->regmap, MT6359_AUDENC_ANA_CON15,
+				   RG_AUDMICBIAS0VREF_MASK_SFT,
+				   priv->micb0_val << RG_AUDMICBIAS0VREF_SFT);
+#else /* OPLUS_ARCH_EXTENDS */
 		/* MISBIAS0 = 1P9V */
 		regmap_update_bits(priv->regmap, MT6359_AUDENC_ANA_CON15,
 				   RG_AUDMICBIAS0VREF_MASK_SFT,
 				   MIC_BIAS_1P9 << RG_AUDMICBIAS0VREF_SFT);
+#endif /* OPLUS_ARCH_EXTENDS */
 		/* vow low power select */
 		regmap_update_bits(priv->regmap, MT6359_AUDENC_ANA_CON15,
 				   RG_AUDMICBIAS0LOWPEN_MASK_SFT,
@@ -2350,8 +2507,13 @@ static int mt_mic_bias_1_event(struct snd_soc_dapm_widget *w,
 			regmap_write(priv->regmap,
 				     MT6359_AUDENC_ANA_CON16, 0x0160);
 		else
+#ifdef OPLUS_BUG_COMPATIBILITY
+			regmap_write(priv->regmap,
+				     MT6359_AUDENC_ANA_CON16, 0x3060);
+#else /* CONFIG_SND_SOC_CODEC_MICBIAS_2P8V */
 			regmap_write(priv->regmap,
 				     MT6359_AUDENC_ANA_CON16, 0x0060);
+#endif /* CONFIG_SND_SOC_CODEC_MICBIAS_2P8V */
 
 		/* vow low power select */
 		regmap_update_bits(priv->regmap, MT6359_AUDENC_ANA_CON16,
@@ -2399,10 +2561,16 @@ static int mt_mic_bias_2_event(struct snd_soc_dapm_widget *w,
 			break;
 		}
 
+#ifdef OPLUS_ARCH_EXTENDS
+		regmap_update_bits(priv->regmap, MT6359_AUDENC_ANA_CON17,
+				   RG_AUDMICBIAS2VREF_MASK_SFT,
+				   priv->micb2_val << RG_AUDMICBIAS2VREF_SFT);
+#else /* OPLUS_ARCH_EXTENDS */
 		/* MISBIAS2 = 1P9V */
 		regmap_update_bits(priv->regmap, MT6359_AUDENC_ANA_CON17,
 				   RG_AUDMICBIAS2VREF_MASK_SFT,
 				   MIC_BIAS_1P9 << RG_AUDMICBIAS2VREF_SFT);
+#endif /* OPLUS_ARCH_EXTENDS */
 		/* vow low power select */
 		regmap_update_bits(priv->regmap, MT6359_AUDENC_ANA_CON17,
 				   RG_AUDMICBIAS2LOWPEN_MASK_SFT,
@@ -6468,11 +6636,17 @@ static int mt6359_codec_init_reg(struct mt6359_priv *priv)
 	regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON7,
 			   RG_AUDLOLSCDISABLE_VAUDP32_MASK_SFT,
 			   0x1 << RG_AUDLOLSCDISABLE_VAUDP32_SFT);
-
+#ifdef OPLUS_BUG_COMPATIBILITY
+	/* Set HP_EINT trigger level to 2.0v */
+	//regmap_update_bits(priv->regmap, MT6359_AUDENC_ANA_CON19,
+	//		   RG_EINTCOMPVTH_MASK_SFT,
+	//		   0x2 << RG_EINTCOMPVTH_SFT);
+#else
 	/* Set HP_EINT trigger level to 2.0v */
 	regmap_update_bits(priv->regmap, MT6359_AUDENC_ANA_CON19,
 			   RG_EINTCOMPVTH_MASK_SFT,
 			   0x2 << RG_EINTCOMPVTH_SFT);
+#endif
 
 	/* set gpio */
 	gpio_smt_set(priv);
@@ -7696,12 +7870,55 @@ static const struct regmap_config mt6359_regmap = {
 };
 #endif
 
+#ifdef OPLUS_ARCH_EXTENDS
+static int mt6359_get_mic_bias_val(int micb_mv)
+{
+	int val = MIC_BIAS_1P9;
+
+	switch (micb_mv) {
+		case 1700:
+			val = MIC_BIAS_1P7;
+			break;
+		case 1800:
+			val = MIC_BIAS_1P8;
+			break;
+		case 1900:
+			val = MIC_BIAS_1P9;
+			break;
+		case 2000:
+			val = MIC_BIAS_2P0;
+			break;
+		case 2100:
+			val = MIC_BIAS_2P1;
+			break;
+		case 2500:
+			val = MIC_BIAS_2P5;
+			break;
+		case 2600:
+			val = MIC_BIAS_2P6;
+			break;
+		case 2700:
+			val = MIC_BIAS_2P7;
+			break;
+		default:
+			pr_warn("%s(), invalid micb_mv %d\n", __func__, micb_mv);
+			val = MIC_BIAS_2P5;
+			break;
+	}
+	return val;
+}
+#endif /* OPLUS_ARCH_EXTENDS */
+
 static int mt6359_platform_driver_probe(struct platform_device *pdev)
 {
 	struct mt6359_priv *priv;
 #ifdef CONFIG_MTK_PMIC_WRAP
 	struct device_node *pwrap_node;
 #endif
+#ifdef OPLUS_ARCH_EXTENDS
+	int micb_mv = 1900;
+	int ret;
+#endif /* OPLUS_ARCH_EXTENDS */
 
 	priv = devm_kzalloc(&pdev->dev,
 			    sizeof(struct mt6359_priv),
@@ -7736,6 +7953,24 @@ static int mt6359_platform_driver_probe(struct platform_device *pdev)
 					    S_IFREG | 0444, NULL,
 					    priv, &mt6359_debugfs_ops);
 #endif
+
+#ifdef OPLUS_ARCH_EXTENDS
+	priv->micb0_val = MIC_BIAS_2P5; //default is 2.5V
+	priv->micb2_val = MIC_BIAS_2P5; //default is 2.5V
+	ret = of_property_read_u32(pdev->dev.of_node,
+			"mediatek,micbias0-mv", &micb_mv);
+	if (!ret) {
+		priv->micb0_val = mt6359_get_mic_bias_val(micb_mv);
+		pr_info("%s(), micb0_val %d\n", __func__, priv->micb0_val);
+	}
+
+	ret = of_property_read_u32(pdev->dev.of_node,
+			"mediatek,micbias2-mv", &micb_mv);
+	if (!ret) {
+		priv->micb2_val = mt6359_get_mic_bias_val(micb_mv);
+		pr_info("%s(), micb2_val %d\n", __func__, priv->micb2_val);
+	}
+#endif /* OPLUS_ARCH_EXTENDS */
 
 	dev_info(priv->dev, "%s(), dev name %s\n",
 		__func__, dev_name(&pdev->dev));

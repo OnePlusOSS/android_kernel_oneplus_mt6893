@@ -23,6 +23,7 @@
 #include "mtk_drm_ddp.h"
 #include "mtk_drm_ddp_comp.h"
 #include "mtk_drm_mmp.h"
+#include "mtk_drm_trace.h"
 
 #define MAX_ENTER_IDLE_RSZ_RATIO 300
 
@@ -178,6 +179,7 @@ void mtk_drm_idlemgr_kick(const char *source, struct drm_crtc *crtc,
 	struct mtk_drm_idlemgr *idlemgr;
 	struct mtk_drm_idlemgr_context *idlemgr_ctx;
 
+	mtk_drm_trace_begin("idlemgr_kick");
 	if (!mtk_crtc->idlemgr)
 		return;
 	idlemgr = mtk_crtc->idlemgr;
@@ -203,6 +205,7 @@ void mtk_drm_idlemgr_kick(const char *source, struct drm_crtc *crtc,
 
 	if (need_lock)
 		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+	mtk_drm_trace_end();
 }
 
 unsigned int mtk_drm_set_idlemgr(struct drm_crtc *crtc, unsigned int flag,

@@ -70,9 +70,9 @@
 						     QM_RL_PERIOD * \
 						     101) / (8 * 100)), 1)
 /* AFullOprtnstcCrdMask constants */
-#define QM_OPPOR_LINE_VOQ_DEF           1
-#define QM_OPPOR_FW_STOP_DEF            0
-#define QM_OPPOR_PQ_EMPTY_DEF           1
+#define QM_OPLUSR_LINE_VOQ_DEF           1
+#define QM_OPLUSR_FW_STOP_DEF            0
+#define QM_OPLUSR_PQ_EMPTY_DEF           1
 /* Command Queue constants */
 #define PBF_CMDQ_PURE_LB_LINES                          150
 #define PBF_CMDQ_LINES_RT_OFFSET(voq)           (		 \
@@ -647,21 +647,21 @@ int qed_qm_common_rt_init(
 	struct qed_qm_common_rt_init_params *p_params)
 {
 	/* init AFullOprtnstcCrdMask */
-	u32 mask = (QM_OPPOR_LINE_VOQ_DEF <<
-		    QM_RF_OPPORTUNISTIC_MASK_LINEVOQ_SHIFT) |
-		   (QM_BYTE_CRD_EN << QM_RF_OPPORTUNISTIC_MASK_BYTEVOQ_SHIFT) |
+	u32 mask = (QM_OPLUSR_LINE_VOQ_DEF <<
+		    QM_RF_OPLUSRTUNISTIC_MASK_LINEVOQ_SHIFT) |
+		   (QM_BYTE_CRD_EN << QM_RF_OPLUSRTUNISTIC_MASK_BYTEVOQ_SHIFT) |
 		   (p_params->pf_wfq_en <<
-		    QM_RF_OPPORTUNISTIC_MASK_PFWFQ_SHIFT) |
+		    QM_RF_OPLUSRTUNISTIC_MASK_PFWFQ_SHIFT) |
 		   (p_params->vport_wfq_en <<
-		    QM_RF_OPPORTUNISTIC_MASK_VPWFQ_SHIFT) |
+		    QM_RF_OPLUSRTUNISTIC_MASK_VPWFQ_SHIFT) |
 		   (p_params->pf_rl_en <<
-		    QM_RF_OPPORTUNISTIC_MASK_PFRL_SHIFT) |
+		    QM_RF_OPLUSRTUNISTIC_MASK_PFRL_SHIFT) |
 		   (p_params->vport_rl_en <<
-		    QM_RF_OPPORTUNISTIC_MASK_VPQCNRL_SHIFT) |
-		   (QM_OPPOR_FW_STOP_DEF <<
-		    QM_RF_OPPORTUNISTIC_MASK_FWPAUSE_SHIFT) |
-		   (QM_OPPOR_PQ_EMPTY_DEF <<
-		    QM_RF_OPPORTUNISTIC_MASK_QUEUEEMPTY_SHIFT);
+		    QM_RF_OPLUSRTUNISTIC_MASK_VPQCNRL_SHIFT) |
+		   (QM_OPLUSR_FW_STOP_DEF <<
+		    QM_RF_OPLUSRTUNISTIC_MASK_FWPAUSE_SHIFT) |
+		   (QM_OPLUSR_PQ_EMPTY_DEF <<
+		    QM_RF_OPLUSRTUNISTIC_MASK_QUEUEEMPTY_SHIFT);
 
 	STORE_RT_REG(p_hwfn, QM_REG_AFULLOPRTNSTCCRDMASK_RT_OFFSET, mask);
 	qed_enable_pf_rl(p_hwfn, p_params->pf_rl_en);

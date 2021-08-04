@@ -45,12 +45,18 @@
 #include "logging.h"
 #include "nq.h"
 
+#include <soc/oplus/system/oplus_project.h>
+
 #define NQ_NUM_ELEMS		64
 #define DEFAULT_TIMEOUT_MS	20000	/* We do nothing on timeout anyway */
 
 #if !defined(NQ_TEE_WORKER_THREADS)
 #define NQ_TEE_WORKER_THREADS	1
 #endif
+
+//#ifdef OPLUS_FEATURE_SECURITY_COMMON
+extern int phx_is_system_boot_completed(void);
+//#endif /* OPLUS_FEATURE_SECURITY_COMMON */
 
 static struct {
 	struct mutex buffer_mutex;	/* Lock on SWd communication buffer */
@@ -298,7 +304,16 @@ cpumask_t tee_set_affinity(void)
 		     l_ctx.default_affinity_mask,
 		     cpumask_pr_args(&old_affinity),
 		     current->pid);
+
+#if defined(BIG_CORE_SWITCH_AFFINITY_MASK)
+	if(current->flags & PF_NO_SETAFFINITY){
+		mc_dev_err(-EINVAL, "Skip set_cpus_allowed_ptr as PF_NO_SETAFFINITY masked (pid = %u)", current->pid);
+	} else {
+		set_cpus_allowed_ptr(current, to_cpumask(&affinity));
+	}
+#else
 	set_cpus_allowed_ptr(current, to_cpumask(&affinity));
+#endif
 
 	return old_affinity;
 }
@@ -502,6 +517,10 @@ static void nq_dump_status(void)
 	size_t i;
 	cpumask_t old_affinity;
 
+//#ifdef OPLUS_FEATURE_SECURITY_COMMON
+	int boot_completed_tee = 0;
+//#endif /* OPLUS_FEATURE_SECURITY_COMMON */
+
 	if (l_ctx.dump.off)
 		ret = -EBUSY;
 
@@ -547,6 +566,16 @@ static void nq_dump_status(void)
 	tee_restore_affinity(old_affinity);
 
 	mc_dev_info("  %-22s= 0x%s", "mcExcep.uuid", uuid_str);
+	//#ifdef OPLUS_FEATURE_SECURITY_COMMON
+	if(0 == strcmp(uuid_str, "07170000000000000000000000000000")) {
+		boot_completed_tee = phx_is_system_boot_completed();
+		if(boot_completed_tee == 1) {
+			mc_dev_info("tee boot complete\n");
+		} else {
+			BUG();
+		}
+	}
+	//#endif /* OPLUS_FEATURE_SECURITY_COMMON */
 	if (ret >= 0)
 		ret = kasnprintf(&l_ctx.dump, "%-22s= 0x%s\n", "mcExcep.uuid",
 				 uuid_str);

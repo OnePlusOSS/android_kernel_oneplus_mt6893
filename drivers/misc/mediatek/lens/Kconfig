@@ -91,6 +91,15 @@ config MTK_LENS_AK7371AF_SUPPORT
 	  lens driver for the camera sensor module
 	  Set as y if the driver is used in this project
 
+config MTK_LENS_AK7377AF_SUPPORT
+	bool "AK7377AF Lens Driver"
+	default n
+	help
+	  AK7377AF Lens Driver
+	  This config is used to enable the corresponding
+	  lens driver for the camera sensor module
+	  Set as y if the driver is used in this project
+
 config MTK_LENS_BU6424AF_SUPPORT
 	bool "BU6424AF Lens Driver"
 	default n

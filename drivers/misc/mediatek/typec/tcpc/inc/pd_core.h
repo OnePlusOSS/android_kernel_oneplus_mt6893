@@ -670,7 +670,9 @@
 #define USB_SID_DISPLAYPORT	0xff01	/* display port */
 #define USB_SID_RICHTEK	0x29cf  /* demo uvdm */
 #define USB_SID_DIRECTCHARGE	0x29cf  /* direct charge */
-
+#ifdef OPLUS_FEATURE_CHG_BASIC
+#define USB_VID_OPLUS		0x22D9
+#endif
 /* PD counter definitions */
 #define PD_MESSAGE_ID_COUNT	7
 #define PD_HARD_RESET_COUNT	2
@@ -1156,7 +1158,7 @@ static inline bool pd_check_rev30(struct pd_port *pd_port)
 
 extern bool pd_is_reset_cable(struct pd_port *pd_port);
 extern bool pd_is_discover_cable(struct pd_port *pd_port);
-
+#ifndef OPLUS_FEATURE_CHG_BASIC
 static inline int pd_is_support_modal_operation(struct pd_port *pd_port)
 {
 	if (!(pd_port->id_vdos[0] & PD_IDH_MODAL_SUPPORT))
@@ -1164,7 +1166,7 @@ static inline int pd_is_support_modal_operation(struct pd_port *pd_port)
 
 	return pd_port->svid_data_cnt > 0;
 }
-
+#endif
 static inline int pd_is_source_support_apdo(struct pd_port *pd_port)
 {
 #ifdef CONFIG_USB_PD_REV30_PPS_SINK

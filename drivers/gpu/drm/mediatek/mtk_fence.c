@@ -540,7 +540,13 @@ int mtk_release_present_fence(unsigned int session_id, unsigned int fence_idx)
 
 	fence_increment = fence_idx - layer_info->timeline->value;
 
-	if (fence_increment <= 0)
+	if (fence_increment == 0) 
+		DDPFENCE("Warning fence_increment == 0, R/%s%d/L%d/timeline idx:%d/fence:%d\n",
+             		mtk_fence_session_mode_spy(session_id),
+             		MTK_SESSION_DEV(session_id), timeline_id,
+             		layer_info->timeline->value, fence_idx);
+
+	if (fence_increment < 0)
 		goto done;
 
 	if (fence_increment >= 2)

@@ -255,6 +255,28 @@ int set_rtc_spare0_fg_value(int val)
 	return 0;
 }
 
+#ifdef CONFIG_OPLUS_CHARGER_MTK6771
+int get_rtc_spare_oplus_fg_value(void)
+{
+	u16 temp;
+	unsigned long flags;
+
+	spin_lock_irqsave(&rtc_lock, flags);
+	temp = hal_rtc_get_spare_register(RTC_OPLUS_BATTERY);
+	spin_unlock_irqrestore(&rtc_lock, flags);
+
+	return temp;
+}
+int set_rtc_spare_oplus_fg_value(int val)
+{
+	unsigned long flags;
+	spin_lock_irqsave(&rtc_lock, flags);
+	hal_rtc_set_spare_register(RTC_OPLUS_BATTERY, val);
+	spin_unlock_irqrestore(&rtc_lock, flags);
+
+	return 0;
+}
+#endif /* CONFIG_OPLUS_CHARGER_MTK6771 */
 bool crystal_exist_status(void)
 {
 	unsigned long flags;
@@ -411,6 +433,134 @@ void rtc_mark_fast(void)
 	rtc_xinfo("%s\n", __func__);
 	spin_lock_irqsave(&rtc_lock, flags);
 	hal_rtc_set_spare_register(RTC_FAST_BOOT, 0x1);
+	spin_unlock_irqrestore(&rtc_lock, flags);
+}
+
+void oplus_rtc_mark_reboot_kernel(void)
+{
+	unsigned long flags;
+
+	rtc_xinfo("oplus_rtc_mark_reboot_kernel\n");
+	spin_lock_irqsave(&rtc_lock, flags);
+	hal_rtc_set_spare_register(RTC_REBOOT_KERNEL, 0x1);
+	spin_unlock_irqrestore(&rtc_lock, flags);
+}
+
+
+void oplus_rtc_mark_silence(void)
+{
+	unsigned long flags;
+
+	rtc_xinfo("oplus_rtc_mark_silence\n");
+	spin_lock_irqsave(&rtc_lock, flags);
+	hal_rtc_set_spare_register(RTC_SILENCE_BOOT, 0x1);
+	spin_unlock_irqrestore(&rtc_lock, flags);
+}
+
+void oplus_rtc_mark_meta(void)
+{
+	unsigned long flags;
+
+	rtc_xinfo("oplus_rtc_mark_meta\n");
+	spin_lock_irqsave(&rtc_lock, flags);
+	hal_rtc_set_spare_register(RTC_META_BOOT, 0x1);
+	spin_unlock_irqrestore(&rtc_lock, flags);
+}
+
+void oplus_rtc_mark_sau(void)
+{
+	unsigned long flags;
+
+	rtc_xinfo("rtc_mark_sau\n");
+	spin_lock_irqsave(&rtc_lock, flags);
+	hal_rtc_set_spare_register(RTC_SAU_BOOT, 0x1);
+	spin_unlock_irqrestore(&rtc_lock, flags);
+}
+
+void oplus_rtc_mark_factory(void)
+{
+	unsigned long flags;
+
+	rtc_xinfo("rtc_mark_factory\n");
+	spin_lock_irqsave(&rtc_lock, flags);
+	hal_rtc_set_spare_register(RTC_FACTORY_BOOT, 0x1);
+	spin_unlock_irqrestore(&rtc_lock, flags);
+}
+
+#ifdef OPLUS_FEATURE_AGINGTEST
+void oplus_rtc_mark_agingtest(void)
+{
+	unsigned long flags;
+
+	rtc_xinfo("rtc_mark_agingtest\n");
+	spin_lock_irqsave(&rtc_lock, flags);
+	hal_rtc_set_spare_register(RTC_AGINGTEST_BOOT, 0x01);
+	spin_unlock_irqrestore(&rtc_lock, flags);
+}
+#endif /*OPLUS_FEATURE_AGINGTEST */
+
+void oplus_rtc_mark_safe(void)
+{
+	unsigned long flags;
+
+	rtc_xinfo("rtc_mark_safe\n");
+	spin_lock_irqsave(&rtc_lock, flags);
+	hal_rtc_set_spare_register(RTC_SAFE_BOOT, 0x01);
+	spin_unlock_irqrestore(&rtc_lock, flags);
+}
+
+void oplus_rtc_mark_sensor_cause_panic(void)
+{
+	unsigned long flags;
+
+	rtc_xinfo("rtc mark sensor i2c cause panic\n");
+	spin_lock_irqsave(&rtc_lock, flags);
+	hal_rtc_set_spare_register(RTC_SENSOR_CAUSE_PANIC, 0x1);
+	spin_unlock_irqrestore(&rtc_lock, flags);
+}
+
+int oplus_get_rtc_sensor_cause_panic_value(void)
+{
+	u16 temp;
+	unsigned long flags;
+
+	spin_lock_irqsave(&rtc_lock, flags);
+	temp = hal_rtc_get_spare_register(RTC_SENSOR_CAUSE_PANIC);
+	spin_unlock_irqrestore(&rtc_lock, flags);
+
+	return temp;
+}
+
+void oplus_clear_rtc_sensor_cause_panic(void)
+{
+	unsigned long flags = 0;
+
+	spin_lock_irqsave(&rtc_lock, flags);
+	hal_rtc_set_spare_register(RTC_SENSOR_CAUSE_PANIC, 0x0);
+	spin_unlock_irqrestore(&rtc_lock, flags);
+}
+
+u16  is_kernel_panic_reboot(void)
+{
+	/* RTC_SPAR0 bit8 */
+	u16 temp;
+	unsigned long flags;
+
+	spin_lock_irqsave(&rtc_lock, flags);
+	temp = hal_rtc_get_spare_register(RTC_REBOOT_KERNEL);
+	spin_unlock_irqrestore(&rtc_lock, flags);
+
+	if(temp != 0)
+	 	return 1;
+	else
+		return 0;
+}
+void  hal_rtc_clear_spar0_bit8(void)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&rtc_lock, flags);
+	hal_rtc_set_spare_register(RTC_REBOOT_KERNEL, 0x0);
 	spin_unlock_irqrestore(&rtc_lock, flags);
 }
 

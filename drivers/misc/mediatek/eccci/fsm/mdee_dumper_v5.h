@@ -239,5 +239,9 @@ struct mdee_dumper_v5 {
 	/* request by modem, change to 2k: include struct ex_PL_log*/
 	unsigned char ex_pl_info[MD_HS1_FAIL_DUMP_SIZE];
 };
+//Add for monitor modem crash
+#define MODEM_MONITOR_ID          509    //modem crash
+#define BUF_LOG_LENGTH            2148
+unsigned int BKDRHash(const char* str, unsigned int len);
 #endif	/* __MDEE_DUMPER_V5_H__ */
 

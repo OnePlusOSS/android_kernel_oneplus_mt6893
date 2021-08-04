@@ -39,7 +39,11 @@ typedef u8 __bitwise blk_status_t;
 #define BLK_STS_PROTECTION	((__force blk_status_t)8)
 #define BLK_STS_RESOURCE	((__force blk_status_t)9)
 #define BLK_STS_IOERR		((__force blk_status_t)10)
-
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+/*add ux and fg req*/
+#define REQ_UX			(1ULL << __REQ_UX)
+#define REQ_FG			(1ULL << __REQ_FG)
+#endif
 /* hack for device mapper, don't use elsewhere: */
 #define BLK_STS_DM_REQUEUE    ((__force blk_status_t)11)
 
@@ -251,6 +255,11 @@ enum req_flag_bits {
 	__REQ_INTEGRITY,	/* I/O includes block integrity payload */
 	__REQ_FUA,		/* forced unit access */
 	__REQ_PREFLUSH,		/* request for cache flush */
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+/*add ux and fg req*/
+	__REQ_UX,		/* ux activity */
+	__REQ_FG,		/* foreground activity */
+#endif
 	__REQ_RAHEAD,		/* read ahead, can fail anytime */
 	__REQ_BACKGROUND,	/* background IO */
 

@@ -112,6 +112,10 @@ config EXT4_FS_ENCRYPTION
 	bool
 	default y
 	depends on EXT4_ENCRYPTION
+config EXT4_ASYNC_DISCARD_SUPPORT
+	bool "Ext4 async discard Support"
+	default n
+	depends on EXT4_FS
 
 config EXT4_DEBUG
 	bool "EXT4 debugging support"

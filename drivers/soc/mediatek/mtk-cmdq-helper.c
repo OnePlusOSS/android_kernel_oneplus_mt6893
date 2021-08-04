@@ -21,6 +21,22 @@
 #endif
 
 #endif
+#ifdef MTK_DRM_ADVANCE
+extern bool oplus_dc_set;
+#endif
+
+//#ifdef OPLUS_CMDQ_TIMEOUT_OPTIMIZE
+extern atomic_t disp_cmdq_timeout_flag;
+extern int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
+enum DPREC_LOGGER_PR_TYPE {
+	DPREC_LOGGER_ERROR,
+	DPREC_LOGGER_FENCE,
+	DPREC_LOGGER_DEBUG,
+	DPREC_LOGGER_DUMP,
+	DPREC_LOGGER_STATUS,
+	DPREC_LOGGER_PR_NUM
+};
+//#endif
 
 #define CMDQ_ARG_A_WRITE_MASK	0xffff
 #define CMDQ_WRITE_ENABLE_MASK	BIT(0)
@@ -1250,8 +1266,14 @@ s32 cmdq_pkt_poll_timeout(struct cmdq_pkt *pkt, u32 value, u8 subsys,
 	cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_ADD, reg_counter, &lop,
 		&rop);
 
+#ifdef MTK_DRM_ADVANCE
+	if (!oplus_dc_set) {
 	cmdq_pkt_sleep(pkt, CMDQ_POLL_TICK, reg_gpr);
-
+	oplus_dc_set = false;
+	}
+#else
+	cmdq_pkt_sleep(pkt, CMDQ_POLL_TICK, reg_gpr);
+#endif /* MTK_DRM_ADVANCE */
 	/* loop to begin */
 	if (absolute) {
 		cmd_pa = cmdq_pkt_get_pa_by_offset(pkt, begin_mark);
@@ -2338,6 +2360,13 @@ void cmdq_buf_cmd_parse(u64 *buf, u32 cmd_nr, dma_addr_t buf_pa,
 		cmdq_util_msg("%s%s",
 			info ? info : (buf_pa == cur_pa ? ">>" : "  "),
 			text);
+//#ifdef OPLUS_CMDQ_TIMEOUT_OPTIMIZE
+		if (atomic_read(&disp_cmdq_timeout_flag) == 1) {
+			if ((info == NULL) && (buf_pa == cur_pa)) {
+				mtk_dprec_logger_pr(DPREC_LOGGER_ERROR, ">>%s\n", text);
+			}
+		}
+//#endif
 		buf_pa += CMDQ_INST_SIZE;
 	}
 }

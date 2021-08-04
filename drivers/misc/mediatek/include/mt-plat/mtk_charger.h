@@ -50,6 +50,8 @@ struct charger_consumer {
 	struct notifier_block *pnb;
 	struct list_head list;
 	bool hv_charging_disabled;
+	bool support_ntc_01c_precision;
+	/*end*/
 };
 
 /* ============================================= */

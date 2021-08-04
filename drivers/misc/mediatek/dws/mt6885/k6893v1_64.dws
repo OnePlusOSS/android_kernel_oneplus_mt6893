@@ -1403,22 +1403,24 @@
             </gpio125>
             <gpio126>
                 <eint_mode>false</eint_mode>
-                <def_mode>4</def_mode>
+                <def_mode>5</def_mode>
                 <inpull_en>true</inpull_en>
-                <inpull_selhigh>false</inpull_selhigh>
+                <inpull_selhigh>true</inpull_selhigh>
                 <def_dir>IN</def_dir>
                 <out_high>false</out_high>
-                <smt>false</smt>
+                <varName0>GPIO_I2C11_SCA_PIN</varName0>
+                <smt>true</smt>
                 <ies>true</ies>
             </gpio126>
             <gpio127>
                 <eint_mode>false</eint_mode>
-                <def_mode>4</def_mode>
+                <def_mode>5</def_mode>
                 <inpull_en>true</inpull_en>
-                <inpull_selhigh>false</inpull_selhigh>
+                <inpull_selhigh>true</inpull_selhigh>
                 <def_dir>IN</def_dir>
                 <out_high>false</out_high>
-                <smt>false</smt>
+                <varName0>GPIO_I2C11_SDA_PIN</varName0>
+                <smt>true</smt>
                 <ies>true</ies>
             </gpio127>
             <gpio128>
@@ -1429,7 +1431,7 @@
                 <def_dir>OUT</def_dir>
                 <out_high>false</out_high>
                 <varName0>GPIO_FLASH_LED_EN</varName0>
-                <smt>false</smt>
+                <smt>true</smt>
                 <ies>true</ies>
             </gpio128>
             <gpio129>
@@ -1440,7 +1442,7 @@
                 <def_dir>OUT</def_dir>
                 <out_high>false</out_high>
                 <varName0>GPIO_FLASH_STROBE_PIN</varName0>
-                <smt>false</smt>
+                <smt>true</smt>
                 <ies>true</ies>
             </gpio129>
             <gpio130>
@@ -2030,13 +2032,12 @@
             </gpio186>
             <gpio187>
                 <eint_mode>false</eint_mode>
-                <def_mode>1</def_mode>
+                <def_mode>0</def_mode>
                 <inpull_en>true</inpull_en>
-                <inpull_selhigh>true</inpull_selhigh>
+                <inpull_selhigh>false</inpull_selhigh>
                 <def_dir>IN</def_dir>
                 <out_high>false</out_high>
-                <varName0>GPIO_INIT_NO_COVER</varName0>
-                <smt>true</smt>
+                <smt>false</smt>
                 <ies>true</ies>
             </gpio187>
             <gpio188>
@@ -2558,16 +2559,16 @@
             <row>8</row>
             <column>9</column>
             <keyMatrix>VOLUMEDOWN NC NC NC NC NC NC NC NC
-				NC NC NC NC NC NC NC NC NC
-				NC NC NC NC NC NC NC NC NC
-				NC NC NC NC NC NC NC NC NC
-				NC NC NC NC NC NC NC NC NC
-				NC NC NC NC NC NC NC NC NC
-				NC NC NC NC NC NC NC NC NC
-				NC NC NC NC NC NC NC NC NC</keyMatrix>
+                                NC NC NC NC NC NC NC NC NC
+                                NC NC NC NC NC NC NC NC NC
+                                NC NC NC NC NC NC NC NC NC
+                                NC NC NC NC NC NC NC NC NC
+                                NC NC NC NC NC NC NC NC NC
+                                NC NC NC NC NC NC NC NC NC
+                                NC NC NC NC NC NC NC NC NC</keyMatrix>
             <keyMatrix_ext>NC NC NC NC
-				NC NC NC NC
-				NC NC NC NC</keyMatrix_ext>
+                                NC NC NC NC
+                                NC NC NC NC</keyMatrix_ext>
             <downloadKey>VOLUMEUP VOLUMEDOWN POWER</downloadKey>
             <modeKey>NC VOLUMEUP VOLUMEDOWN</modeKey>
             <pwrKeyEint_gpioNum>0</pwrKeyEint_gpioNum>

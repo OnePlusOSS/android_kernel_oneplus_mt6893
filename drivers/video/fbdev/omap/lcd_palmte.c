@@ -29,7 +29,7 @@ static struct lcd_panel palmte_panel = {
 	.name		= "palmte",
 	.config		= OMAP_LCDC_PANEL_TFT | OMAP_LCDC_INV_VSYNC |
 			  OMAP_LCDC_INV_HSYNC | OMAP_LCDC_HSVS_RISING_EDGE |
-			  OMAP_LCDC_HSVS_OPPOSITE,
+			  OMAP_LCDC_HSVS_OPLUSSITE,
 
 	.data_lines	= 16,
 	.bpp		= 8,

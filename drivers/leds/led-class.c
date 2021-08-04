@@ -25,6 +25,51 @@
 
 static struct class *leds_class;
 
+//#ifdef OPLUS_BUG_STABILITY
+/*
+* add for oplus brightness and max_brightness node
+*/
+#if defined(DRM_OPLUS_DISPLAY_NODES)
+extern unsigned long oplus_display_brightness;
+extern unsigned int m_new_pq_persist_property[32];
+enum mtk_pq_persist_property {
+	DISP_PQ_COLOR_BYPASS,
+	DISP_PQ_CCORR_BYPASS,
+	DISP_PQ_GAMMA_BYPASS,
+	DISP_PQ_DITHER_BYPASS,
+	DISP_PQ_AAL_BYPASS,
+	DISP_PQ_SILKY_BRIGHTNESS,
+	DISP_PQ_PROPERTY_MAX,
+};
+#endif
+//#endif
+
+/* #ifdef OPLUS_BUG_STABILITY */
+#ifdef OPLUS_FEATURE_MULTIBITS_BL
+extern bool __attribute((weak)) oplus_display_tenbits_support;
+extern bool __attribute((weak)) oplus_display_elevenbits_support;
+
+int get_full_backlight_level()
+{
+	if(oplus_display_elevenbits_support)
+		return 2047;
+	else if(oplus_display_tenbits_support)
+		return 1023;
+	return 255;
+}
+EXPORT_SYMBOL_GPL(get_full_backlight_level);
+int get_half_backlight_level()
+{
+	if(oplus_display_elevenbits_support)
+		return 1023;
+	else if(oplus_display_tenbits_support)
+		return 511;
+	return 127;
+}
+EXPORT_SYMBOL_GPL(get_half_backlight_level);
+#endif /* OPLUS_FEATURE_MULTIBITS_BL */
+/* #endif */ /* OPLUS_BUG_STABILITY */
+
 static ssize_t brightness_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -61,6 +106,20 @@ static ssize_t brightness_store(struct device *dev,
 	ret = size;
 unlock:
 	mutex_unlock(&led_cdev->led_access);
+
+//#ifdef OPLUS_BUG_STABILITY
+/*
+* add for oplus brightness and max_brightness node
+*/
+#if defined(DRM_OPLUS_DISPLAY_NODES)
+	if (!m_new_pq_persist_property[DISP_PQ_SILKY_BRIGHTNESS]) {
+		if (strncmp(led_cdev->name, "lcd-backlight", 13) == 0)
+			oplus_display_brightness = state;
+	}
+	pr_info("brightness_store:in level = %d\n", state);
+#endif
+//#endif
+
 	return ret;
 }
 static DEVICE_ATTR_RW(brightness);
@@ -72,7 +131,34 @@ static ssize_t max_brightness_show(struct device *dev,
 
 	return sprintf(buf, "%u\n", led_cdev->max_brightness);
 }
-static DEVICE_ATTR_RO(max_brightness);
+
+static ssize_t max_brightness_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct led_classdev *led_cdev = dev_get_drvdata(dev);
+	unsigned long state;
+	ssize_t ret;
+
+	mutex_lock(&led_cdev->led_access);
+
+	if (led_sysfs_is_disabled(led_cdev)) {
+		ret = -EBUSY;
+		goto unlock;
+	}
+
+	ret = kstrtoul(buf, 10, &state);
+	if (ret)
+		goto unlock;
+
+	led_cdev->max_brightness = state;
+
+	ret = size;
+unlock:
+	mutex_unlock(&led_cdev->led_access);
+	return ret;
+}
+
+static DEVICE_ATTR_RW(max_brightness);
 
 #ifdef CONFIG_LEDS_TRIGGERS
 static DEVICE_ATTR(trigger, 0644, led_trigger_show, led_trigger_store);

@@ -617,10 +617,20 @@ static void fbt_set_cap_margin_locked(int set)
 	fpsgo_systrace_c_fbt_gm(-100, 0, set?1024:def_capacity_margin,
 					"cap_margin");
 
+#if defined(OPLUS_FEATURE_SCHEDUTIL_USE_TL) && defined(CONFIG_SCHEDUTIL_USE_TL)
+	if (set)
+		set_capacity_margin_dvfs(1024);
+	else
+		set_capacity_margin_dvfs(def_capacity_margin);
+#if defined(CONFIG_SCHEDUTIL_USE_TL)
+	set_capacity_margin_dvfs_changed(!!set);
+#endif /* CONFIG_SCHEDUTIL_USE_TL */
+#else
 	if (set)
 		set_capacity_margin(1024);
 	else
 		set_capacity_margin(def_capacity_margin);
+#endif /* OPLUS_FEATURE_SCHEDUTIL_USE_TL */
 	set_cap_margin = set;
 }
 
@@ -4056,10 +4066,15 @@ static ssize_t enable_switch_cap_margin_show(struct kobject *kobj,
 		FPSGO_SYSFS_MAX_BUFF_SIZE - posi,
 		"set_cap_margin %d\n", set_cap_margin);
 	posi += length;
-
+#if defined(OPLUS_FEATURE_SCHEDUTIL_USE_TL) && defined(CONFIG_SCHEDUTIL_USE_TL)
+	length = scnprintf(temp + posi,
+		FPSGO_SYSFS_MAX_BUFF_SIZE - posi,
+		"get_cap_margin %d\n", get_capacity_margin_dvfs());
+#else
 	length = scnprintf(temp + posi,
 		FPSGO_SYSFS_MAX_BUFF_SIZE - posi,
 		"get_cap_margin %d\n", get_capacity_margin());
+#endif
 	posi += length;
 	mutex_unlock(&fbt_mlock);
 
@@ -4600,7 +4615,11 @@ int __init fbt_cpu_init(void)
 	fbt_down_throttle_enable = 1;
 	sync_flag = -1;
 	fbt_sync_flag_enable = 1;
+#if defined(OPLUS_FEATURE_SCHEDUTIL_USE_TL) && defined(CONFIG_SCHEDUTIL_USE_TL)
+	def_capacity_margin = get_capacity_margin_dvfs();
+#else
 	def_capacity_margin = get_capacity_margin();
+#endif
 	fbt_cap_margin_enable = 1;
 	boost_ta = fbt_get_default_boost_ta();
 	adjust_loading = fbt_get_default_adj_loading();

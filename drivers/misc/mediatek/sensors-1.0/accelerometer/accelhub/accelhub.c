@@ -19,6 +19,9 @@
 #include <SCP_sensorHub.h>
 #include <accel.h>
 #include <hwmsensor.h>
+#ifdef OPLUS_FEATURE_SENSOR
+#include "../../oplus_sensor_devinfo/sensor_devinfo.h"
+#endif
 
 #define DEBUG 1
 #define SW_CALIBRATION
@@ -353,6 +356,18 @@ static ssize_t test_cali_store(struct device_driver *ddri, const char *buf,
 		gsensor_factory_enable_calibration();
 	return tCount;
 }
+#ifdef OPLUS_FEATURE_SENSOR
+static int result = 0;
+static ssize_t factory_step_debounce_show(struct device_driver *ddri, char *buf)
+{
+	ssize_t _tLength = 0;
+	int res;
+	res = oplus_send_factory_mode_cmd_to_hub(ID_ACCELEROMETER, 1, &result);
+	pr_err("factory_step_debounce_show\n");
+	_tLength = snprintf(buf, PAGE_SIZE, "%d\n", result);
+	return _tLength;
+}
+#endif /* OPLUS_FEATURE_SENSOR */
 
 static DRIVER_ATTR_RO(chipinfo);
 static DRIVER_ATTR_RO(sensordata);

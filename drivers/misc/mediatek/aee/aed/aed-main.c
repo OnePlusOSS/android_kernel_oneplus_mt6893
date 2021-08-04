@@ -956,7 +956,12 @@ static void ee_gen_ind_msg(struct aed_eerec *eerec)
 		return;
 
 	rep_msg->cmdType = AE_IND;
-	rep_msg->cmdId = AE_IND_EXP_RAISED;
+//#ifndef OPLUS_FEATURE_ENABLE_MODEM_DB
+//Modify for enable create DB file when modem crash on release build
+    //rep_msg->cmdId = AE_IND_EXP_RAISED;
+//#else  /* OPLUS_FEATURE_ENABLE_MODEM_DB */
+    rep_msg->cmdId = AE_IND_FATAL_RAISED;
+//#endif /* OPLUS_FEATURE_ENABLE_MODEM_DB */
 	rep_msg->arg = AE_EE;
 	rep_msg->len = 0;
 	rep_msg->dbOption = eerec->db_opt;
@@ -2405,9 +2410,14 @@ static void external_exception(const char *assert_type, const int *log,
 	struct timeval tv = { 0 };
 	char trigger_time[60];
 
+//#ifdef OPLUS_FEATURE_ENABLE_MODEM_DB
+//Delete for enable create DB file when modem crash on release build
+/*
 	if ((aee_mode >= AEE_MODE_CUSTOMER_USER) &&
 		(aee_force_exp == AEE_FORCE_EXP_NOT_SET))
 		return;
+*/
+//#endif /* OPLUS_FEATURE_ENABLE_MODEM_DB */
 	eerec = kzalloc(sizeof(struct aed_eerec), GFP_ATOMIC);
 	if (eerec == NULL) {
 		return;

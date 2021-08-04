@@ -396,9 +396,7 @@ int pe40_init_state(void)
 		goto retry;
 	}
 
-	/* disable charger */
-	charger_force_disable_powerpath(true);
-
+	
 	msleep(500);
 
 	cap.output_ma = 0;
@@ -428,9 +426,7 @@ int pe40_init_state(void)
 		pe4->pmic_vbus, pe4->TA_vbus, pe4->vbus_cali,
 		cap.output_ma);
 
-	/*enable charger*/
-	charger_force_disable_powerpath(false);
-
+	
 	msleep(100);
 
 	if (cap.output_ma > 100) {

@@ -41,6 +41,11 @@ struct stCAM_CAL_LIST_STRUCT g_camCalList[] = {
 		DW9763_write_region},
 	{IMX481_SENSOR_ID, 0xA4, Common_read_region, DEFAULT_MAX_EEPROM_SIZE_8K,
 		BL24SA64_write_region},
+	/*weishaolun add for 20615*/
+	{IMX682_SENSOR_ID_20615, 0xA0, Common_read_region, MAX_EEPROM_SIZE_16K},
+	{IMX471_SENSOR_ID_20615, 0xA8, Common_read_region},
+	{HI846_SENSOR_ID_20615, 0xA2, Common_read_region, MAX_EEPROM_SIZE_16K},
+	{OV02B10_SENSOR_ID_20615, 0xA4, Common_read_region},
 	/*  ADD before this line */
 	{0, 0, 0}       /*end of list */
 };

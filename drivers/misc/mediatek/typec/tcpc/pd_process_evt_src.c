@@ -239,14 +239,13 @@ static inline bool pd_process_ext_msg(
 		struct pd_port *pd_port, struct pd_event *pd_event)
 {
 	switch (pd_event->msg) {
-
-#ifdef CONFIG_USB_PD_REV30_SRC_CAP_EXT_LOCAL
+#ifdef CONFIG_USB_PD_REV30_SRC_CAP_EXT_REMOTE
 	case PD_EXT_SOURCE_CAP_EXT:
 		if (PE_MAKE_STATE_TRANSIT_SINGLE(
 			PE_DR_SRC_GET_SOURCE_CAP_EXT, PE_SRC_READY))
 			return true;
 		break;
-#endif	/* CONFIG_USB_PD_REV30_SRC_CAP_EXT_LOCAL */
+#endif	/* CONFIG_USB_PD_REV30_SRC_CAP_EXT_REMOTE */
 
 #ifdef CONFIG_USB_PD_REV30_STATUS_LOCAL
 	case PD_EXT_STATUS:

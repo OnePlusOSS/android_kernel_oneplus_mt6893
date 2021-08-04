@@ -109,7 +109,6 @@ static void log_md_sleep_info(void)
 	if (after_md_sleep_status.sleep_time >= before_md_sleep_status.sleep_time) {
 		printk_deferred("[name:spm&][SPM] md_slp_duration = %llu (32k)\n",
 			after_md_sleep_status.sleep_time - before_md_sleep_status.sleep_time);
-
 		log_size += scnprintf(log_buf + log_size,
 		LOG_BUF_SIZE - log_size, "[name:spm&][SPM] ");
 		log_size += scnprintf(log_buf + log_size,
@@ -211,6 +210,13 @@ static void __mt6885_suspend_reflect(int type, int cpu,
 		issuer->log(MT_LPM_ISSUER_SUSPEND, "suspend", NULL);
 
 	/* show md sleep duration during AP suspend */
+#if 0
+	after_md_sleep_time = get_md_sleep_time();
+	if (after_md_sleep_time >= before_md_sleep_time)
+		printk_deferred("[name:spm&][SPM] md_slp_duration = %llu",
+			after_md_sleep_time - before_md_sleep_time);
+#endif
+
 	get_md_sleep_time(&after_md_sleep_status);
 	log_md_sleep_info();
 }
@@ -400,6 +406,7 @@ static int mt6885_spm_suspend_pm_event(struct notifier_block *notifier,
 			tm.tm_hour, tm.tm_min, tm.tm_sec, ts.tv_nsec);
 		atomic_set(&in_sleep, 1);
 		for_each_online_cpu(i) {
+			timer_setup(&mtk_lpm_ac[i].timer, lpm_timer_callback, 0);
 			mtk_lpm_ac[i].timer.expires = jiffies + msecs_to_jiffies(5000);
 			add_timer_on(&mtk_lpm_ac[i].timer, i);
 		}
@@ -430,7 +437,6 @@ int __init mt6885_model_suspend_init(void)
 	int ret;
 
 	int suspend_type = mtk_lpm_suspend_type_get();
-	int i;
 
 	if (suspend_type == MTK_LPM_SUSPEND_S2IDLE) {
 		MT6885_SUSPEND_OP_INIT(mt6885_suspend_s2idle_prompt,
@@ -453,10 +459,6 @@ int __init mt6885_model_suspend_init(void)
 	if (ret) {
 		pr_debug("[name:spm&][SPM] Failed to register PM notifier.\n");
 		return ret;
-	}
-
-	for_each_online_cpu(i) {
-		timer_setup(&mtk_lpm_ac[i].timer, lpm_timer_callback, 0);
 	}
 #endif /* CONFIG_PM */
 

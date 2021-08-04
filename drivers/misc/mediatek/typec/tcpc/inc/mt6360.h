@@ -388,8 +388,8 @@ enum mt6360_id_rupsel {
 
 #if ENABLE_MT6360_DBG
 #define MT6360_INFO(format, args...) \
-	pd_dbg_info("%s() line-%d: " format,\
-	__func__, __LINE__, ##args)
+	pd_dbg_info("line-%d: " format,\
+	__LINE__, ##args)
 #else
 #define MT6360_INFO(foramt, args...)
 #endif /* ENABLE_MT6360_DBG */

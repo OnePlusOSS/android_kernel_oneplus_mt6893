@@ -75,6 +75,7 @@
 #define SCP_ATF_RESOURCE_REQUEST	1
 #define SCP_VCORE_REQ_TO_DVFSRC		1
 
+
 struct ipi_tx_data_t {
 	unsigned int arg1;
 	unsigned int arg2;
@@ -1712,14 +1713,22 @@ static int mt_scp_dump_sleep_count(void)
 		IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_0, 500);
 	if (ret != IPI_ACTION_DONE)
 		printk_deferred("[name:scp&][%s:%d] - scp ipi fail, ret = %d\\n",
-			__func__, __LINE__, ret);
+		__func__, __LINE__, ret);
+		
+	else{
+		printk_deferred("[name:scp&][%s:%d] - scp_sleep_cnt_0 = %d\n",
+		__func__, __LINE__, slp_ipi_ackdata0);
+	}
 	scp_slp_cnt0 = slp_ipi_ackdata0;
-
+	
 	ret = mtk_ipi_send_compl(&scp_ipidev, IPI_OUT_C_SLEEP_1,
 		IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_1, 500);
 	if (ret != IPI_ACTION_DONE)
 		printk_deferred("[name:scp&][%s:%d] - scp ipi fail, ret = %d\\n",
-			__func__, __LINE__, ret);
+		__func__, __LINE__, ret);
+	else
+		printk_deferred("[name:scp&][%s:%d] - scp_sleep_cnt_1 = %d\n",
+		__func__, __LINE__, slp_ipi_ackdata1);
 	scp_slp_cnt1 = slp_ipi_ackdata1;
 
 	return 0;

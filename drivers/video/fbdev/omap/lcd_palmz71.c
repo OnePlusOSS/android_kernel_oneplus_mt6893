@@ -35,7 +35,7 @@ static struct lcd_panel palmz71_panel = {
 	.name		= "palmz71",
 	.config		= OMAP_LCDC_PANEL_TFT | OMAP_LCDC_INV_VSYNC |
 			  OMAP_LCDC_INV_HSYNC | OMAP_LCDC_HSVS_RISING_EDGE |
-			  OMAP_LCDC_HSVS_OPPOSITE,
+			  OMAP_LCDC_HSVS_OPLUSSITE,
 	.data_lines	= 16,
 	.bpp		= 16,
 	.pixel_clock	= 24000,

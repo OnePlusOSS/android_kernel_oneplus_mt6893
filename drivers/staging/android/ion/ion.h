@@ -20,7 +20,7 @@
 #include <linux/types.h>
 
 #include "../uapi/ion.h"
-
+#include <linux/atomic.h>
 struct ion_handle;
 struct ion_device;
 struct ion_heap;

@@ -111,7 +111,13 @@ enum DISP_PMQOS_SLOT {
 #define DISP_SLOT_READ_DDIC_BASE (DISP_SLOT_TRIG_CNT + 0x4)
 #define DISP_SLOT_READ_DDIC_BASE_END		\
 	(DISP_SLOT_READ_DDIC_BASE + READ_DDIC_SLOT_NUM * 0x4)
+//#ifdef OPLUS_FEATURE_ONSCREENFINGERPRINT
+//#define DISP_SLOT_FP0_IDX (DISP_SLOT_OVL_STATUS + 0x4)
+//#define DISP_SLOT_FP1_IDX (DISP_SLOT_FP0_IDX + 0x4)
+//#define DISP_SLOT_CUR_USER_CMD_IDX (DISP_SLOT_FP1_IDX + 0x4)
+//#else
 #define DISP_SLOT_CUR_USER_CMD_IDX (DISP_SLOT_READ_DDIC_BASE_END + 0x4)
+//#endif
 #define DISP_SLOT_CUR_BL_IDX (DISP_SLOT_CUR_USER_CMD_IDX + 0x4)
 
 /* For Dynamic OVL feature */
@@ -879,6 +885,13 @@ char *mtk_crtc_index_spy(int crtc_index);
 bool mtk_drm_get_hdr_property(void);
 int mtk_drm_aod_setbacklight(struct drm_crtc *crtc, unsigned int level);
 
+//#ifdef OPLUS_BUG_STABILITY
+void mtk_drm_send_lcm_cmd_prepare(struct drm_crtc *crtc,
+	struct cmdq_pkt **cmdq_handle);
+void mtk_drm_send_lcm_cmd_flush(struct drm_crtc *crtc,
+	struct cmdq_pkt **cmdq_handle, bool sync);
+//#endif
+
 int mtk_drm_crtc_wait_blank(struct mtk_drm_crtc *mtk_crtc);
 void mtk_drm_crtc_init_para(struct drm_crtc *crtc);
 void mtk_drm_layer_dispatch_to_dual_pipe(
@@ -886,6 +899,10 @@ void mtk_drm_layer_dispatch_to_dual_pipe(
 	struct mtk_plane_state *plane_state_l,
 	struct mtk_plane_state *plane_state_r,
 	unsigned int w);
+
+int mtk_drm_crtc_set_panel_hbm(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle, bool en);
+int mtk_drm_crtc_hbm_wait(struct drm_crtc *crtc, bool en);
+
 /* ********************* Legacy DISP API *************************** */
 unsigned int DISP_GetScreenWidth(void);
 unsigned int DISP_GetScreenHeight(void);
@@ -898,5 +915,6 @@ struct golden_setting_context *
 void mtk_crtc_start_for_pm(struct drm_crtc *crtc);
 void mtk_crtc_stop_for_pm(struct mtk_drm_crtc *mtk_crtc, bool need_wait);
 bool mtk_crtc_frame_buffer_existed(void);
+int m4u_sec_init(void);
 
 #endif /* MTK_DRM_CRTC_H */

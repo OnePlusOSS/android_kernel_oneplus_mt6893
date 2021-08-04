@@ -359,6 +359,7 @@ static irqreturn_t fg_cur_h_int_handler(int irq, void *data)
 		, pmic_get_register_value(PMIC_RG_INT_EN_FG_CUR_H)
 		, pmic_get_register_value(PMIC_RG_INT_EN_FG_CUR_L));
 #else
+/*
 	PMICLOG("Reg[0x%x]=0x%x, Reg[0x%x]=0x%x, Reg[0x%x]=0x%x\n",
 		PMIC_FG_CUR_HTH_ADDR,
 		upmu_get_reg_value(PMIC_FG_CUR_HTH_ADDR),
@@ -366,6 +367,8 @@ static irqreturn_t fg_cur_h_int_handler(int irq, void *data)
 		upmu_get_reg_value(PMIC_FG_CUR_LTH_ADDR),
 		PMIC_RG_INT_EN_FG_CUR_H_ADDR,
 		upmu_get_reg_value(PMIC_RG_INT_EN_FG_CUR_H_ADDR));
+*/
+//#endif
 #endif
 	return IRQ_HANDLED;
 }
@@ -391,6 +394,7 @@ static irqreturn_t fg_cur_l_int_handler(int irq, void *data)
 		, pmic_get_register_value(PMIC_RG_INT_EN_FG_CUR_H)
 		, pmic_get_register_value(PMIC_RG_INT_EN_FG_CUR_L));
 #else
+/*
 	PMICLOG("Reg[0x%x]=0x%x, Reg[0x%x]=0x%x, Reg[0x%x]=0x%x\n",
 		PMIC_FG_CUR_HTH_ADDR,
 		upmu_get_reg_value(PMIC_FG_CUR_HTH_ADDR),
@@ -398,6 +402,8 @@ static irqreturn_t fg_cur_l_int_handler(int irq, void *data)
 		upmu_get_reg_value(PMIC_FG_CUR_LTH_ADDR),
 		PMIC_RG_INT_EN_FG_CUR_H_ADDR,
 		upmu_get_reg_value(PMIC_RG_INT_EN_FG_CUR_H_ADDR));
+*/
+//#endif
 #endif
 	return IRQ_HANDLED;
 }
@@ -1703,7 +1709,7 @@ void pmic_throttling_dlpt_suspend(void)
 #ifdef BATTERY_OC_PROTECT
 	disable_irq_nosync(fg_cur_h_irq);
 	disable_irq_nosync(fg_cur_l_irq);
-
+/*
 	PMICLOG("Reg[0x%x]=0x%x, Reg[0x%x]=0x%x, Reg[0x%x]=0x%x\n",
 		PMIC_FG_CUR_HTH_ADDR,
 		upmu_get_reg_value(PMIC_FG_CUR_HTH_ADDR),
@@ -1711,6 +1717,8 @@ void pmic_throttling_dlpt_suspend(void)
 		upmu_get_reg_value(PMIC_FG_CUR_LTH_ADDR),
 		PMIC_RG_INT_EN_FG_CUR_H_ADDR,
 		upmu_get_reg_value(PMIC_RG_INT_EN_FG_CUR_H_ADDR));
+*/
+//#endif
 #endif
 }
 
@@ -1720,7 +1728,7 @@ void pmic_throttling_dlpt_resume(void)
 #ifdef BATTERY_OC_PROTECT
 	enable_irq(fg_cur_h_irq);
 	enable_irq(fg_cur_l_irq);
-
+/*
 	PMICLOG("Reg[0x%x]=0x%x, Reg[0x%x]=0x%x, Reg[0x%x]=0x%x\n",
 		PMIC_FG_CUR_HTH_ADDR,
 		upmu_get_reg_value(PMIC_FG_CUR_HTH_ADDR),
@@ -1728,6 +1736,8 @@ void pmic_throttling_dlpt_resume(void)
 		upmu_get_reg_value(PMIC_FG_CUR_LTH_ADDR),
 		PMIC_RG_INT_EN_FG_CUR_H_ADDR,
 		upmu_get_reg_value(PMIC_RG_INT_EN_FG_CUR_H_ADDR));
+*/
+//#endif
 #endif
 }
 

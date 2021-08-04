@@ -93,7 +93,11 @@ static int is_db_ok(struct mtu3_ep *mep)
 	int tmp;
 	int ret = 1;
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	for (tmp = 0; tmp < c->next_interface_id; tmp++) {
+#else
 	for (tmp = 0; tmp < MAX_CONFIG_INTERFACES; tmp++) {
+#endif
 		struct usb_function *f = c->interface[tmp];
 		struct usb_descriptor_header **descriptors;
 
@@ -614,6 +618,16 @@ static int mtu3_gadget_pullup(struct usb_gadget *gadget, int is_on)
 		set_usb_rdy();
 
 	spin_unlock_irqrestore(&mtu->lock, flags);
+#if defined(ADB_DEVICE_MTK_6785) || defined(CONFIG_OPLUS_CHARGER_MTK6769)
+	//#ifdef CONFIG_USB_MTU3_PLAT_PHONE
+	/* Trigger connection when force on*/
+	//if (mtu3_cable_mode == CABLE_MODE_FORCEON) {
+		dev_err(mtu->dev, "%s CABLE_MODE_FORCEON\n", __func__);
+		ssusb_set_mailbox(&mtu->ssusb->otg_switch,
+			MTU3_VBUS_VALID);
+	//}
+	//#endif
+#else
 	#ifdef CONFIG_USB_MTU3_PLAT_PHONE
 	/* Trigger connection when force on*/
 	if (mtu3_cable_mode == CABLE_MODE_FORCEON) {
@@ -622,6 +636,7 @@ static int mtu3_gadget_pullup(struct usb_gadget *gadget, int is_on)
 			MTU3_VBUS_VALID);
 	}
 	#endif
+#endif
 
 	return 0;
 }

@@ -310,7 +310,7 @@ static int Ti3026_setpclk(struct matrox_fb_info *minfo, int clk)
 	hw->DACclk[2] = pixpost | 0xB0;
 
 	{
-		unsigned int loopfeed, loopin, looppost, loopdiv, z;
+		unsigned int loopfeed, loopin, looplusst, loopdiv, z;
 		unsigned int Bpp;
 
 		Bpp = minfo->curr.final_bppShift;
@@ -325,13 +325,13 @@ static int Ti3026_setpclk(struct matrox_fb_info *minfo, int clk)
 		z = (110000 * loopin) / (f_pll * loopfeed);
 		loopdiv = 0; /* div 2 */
 		if (z < 2)
-			looppost = 0;
+			looplusst = 0;
 		else if (z < 4)
-			looppost = 1;
+			looplusst = 1;
 		else if (z < 8)
-			looppost = 2;
+			looplusst = 2;
 		else {
-			looppost = 3;
+			looplusst = 3;
 			loopdiv = z/16;
 		}
 		if (minfo->fbcon.var.bits_per_pixel == 24) {
@@ -352,13 +352,13 @@ static int Ti3026_setpclk(struct matrox_fb_info *minfo, int clk)
 					hw->DACreg[POS3026_XLATCHCTRL] = TVP3026A_XLATCHCTRL_4_3;
 				}
 			}
-			hw->DACclk[5] = looppost | 0xF8;
+			hw->DACclk[5] = looplusst | 0xF8;
 			if (minfo->devflags.mga_24bpp_fix)
 				hw->DACclk[5] ^= 0x40;
 		} else {
 			hw->DACclk[3] = ((65 - loopin) & 0x3F) | 0xC0;
 			hw->DACclk[4] = 65 - loopfeed;
-			hw->DACclk[5] = looppost | 0xF0;
+			hw->DACclk[5] = looplusst | 0xF0;
 		}
 		hw->DACreg[POS3026_XMEMPLLCTRL] = loopdiv | TVP3026_XMEMPLLCTRL_MCLK_MCLKPLL | TVP3026_XMEMPLLCTRL_RCLK_LOOPPLL;
 	}

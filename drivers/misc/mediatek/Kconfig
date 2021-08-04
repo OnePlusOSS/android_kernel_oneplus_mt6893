@@ -209,6 +209,9 @@ source "drivers/misc/mediatek/dfrc/Kconfig"
 source "drivers/misc/mediatek/camera_security/Kconfig"
 source "drivers/misc/mediatek/jpeg/Kconfig"
 source "drivers/misc/mediatek/ccu/src/Kconfig"
+#ifdef ODM_HQ_EDIT
+source "drivers/misc/mediatek/lcd_bias/Kconfig"
+#endif #ODM_HQ_EDIT
 
 endmenu  # MM
 

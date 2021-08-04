@@ -841,7 +841,6 @@ static unsigned int query_stream_param(struct hdac_device *codec, hda_nid_t nid)
  * @bpsp: the pointer to store the detected format widths
  *
  * Queries the supported PCM rates and formats.  The NULL @ratesp, @formatsp
- * or @bsps argument is ignored.
  *
  * Returns 0 if successful, otherwise a negative error code.
  */

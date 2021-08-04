@@ -509,6 +509,7 @@ void mtk_venc_dvfs_begin(struct temp_job **job_list)
 		else
 			idx = 0;
 	} else if (area >= 1920 * 1080) {
+		#ifndef OPLUS_FEATURE_CAMERA_COMMON
 		if (job->operation_rate > 30) {
 			if (job->format == V4L2_PIX_FMT_H265)
 				idx = 1;
@@ -517,6 +518,9 @@ void mtk_venc_dvfs_begin(struct temp_job **job_list)
 		} else {
 			idx = 0;
 		}
+		#else
+		idx = 0;
+		#endif
 	} else {
 		idx = 0;
 	}

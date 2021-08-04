@@ -25,7 +25,7 @@ endif
 
 obj-$(CONFIG_SCSI_UFS_QCOM) += ufs-qcom.o
 obj-$(CONFIG_SCSI_UFSHCD) += ufshcd-core.o
-ufshcd-core-y := ufshcd.o
+ufshcd-core-y := ufshcd.o ufs_signal_quality.o
 ufshcd-core-$(CONFIG_SCSI_UFS_CRYPTO) += ufshcd-crypto.o
 obj-$(CONFIG_UFSFEATURE) += ufsfeature.o
 obj-$(CONFIG_UFSHPB) += ufshpb.o

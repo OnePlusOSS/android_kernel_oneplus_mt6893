@@ -610,6 +610,10 @@ int tcpci_report_power_control_on(struct tcpc_device *tcpc)
 	tcpc_disable_timer(tcpc, TYPEC_RT_TIMER_AUTO_DISCHARGE);
 #endif	/* CONFIG_TYPEC_CAP_AUTO_DISCHARGE */
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	tcpci_enable_bleed_discharge(tcpc, false);
+#endif /* OPLUS_FEATURE_CHG_BASIC */
+
 	mutex_unlock(&tcpc->access_lock);
 
 	return 0;
@@ -635,6 +639,10 @@ int tcpci_report_power_control_off(struct tcpc_device *tcpc)
 
 	tcpc_enable_timer(tcpc, TYPEC_RT_TIMER_AUTO_DISCHARGE);
 #endif	/* CONFIG_TYPEC_CAP_AUTO_DISCHARGE */
+
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	tcpci_enable_bleed_discharge(tcpc, true);
+#endif /* OPLUS_FEATURE_CHG_BASIC */
 
 	mutex_unlock(&tcpc->access_lock);
 

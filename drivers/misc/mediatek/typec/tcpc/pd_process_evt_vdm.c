@@ -494,12 +494,12 @@ static const char * const pe_vdm_cmd_name[] = {
 	"ExitMode",
 	"Attention",
 };
-
+#ifdef CONFIG_USB_PD_ALT_MODE
 static const char *const pe_vdm_dp_cmd_name[] = {
 	"DPStatus",
 	"DPConfig",
 };
-
+#endif
 static const char *const pe_vdm_cmd_type_name[] = {
 	"INIT",
 	"ACK",
@@ -856,7 +856,6 @@ static inline void pd_parse_tcp_dpm_evt_from_tcpm(
 	case TCP_DPM_EVT_DP_ATTENTION:
 		pd_parse_tcp_dpm_evt_dp_status(pd_port);
 		break;
-#endif	/* CONFIG_USB_PD_ALT_MODE */
 
 #ifdef CONFIG_USB_PD_ALT_MODE_DFP
 	case TCP_DPM_EVT_DP_STATUS_UPDATE:
@@ -866,6 +865,7 @@ static inline void pd_parse_tcp_dpm_evt_from_tcpm(
 		pd_parse_tcp_dpm_evt_dp_config(pd_port);
 		break;
 #endif	/* CONFIG_USB_PD_ALT_MODE_DFP */
+#endif	/* CONFIG_USB_PD_ALT_MODE */
 
 #ifdef CONFIG_USB_PD_CUSTOM_VDM
 	case TCP_DPM_EVT_UVDM:

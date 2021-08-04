@@ -34,7 +34,6 @@
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/alarmtimer.h>
-
 /**
  * struct alarm_base - Alarm timer bases
  * @lock:		Lock for syncrhonized access to the base
@@ -327,7 +326,8 @@ static int alarmtimer_resume(struct device *dev)
 
 	rtc = alarmtimer_get_rtcdev();
 	if (rtc)
-		rtc_timer_cancel(rtc, &rtctimer);
+		rtc_timer_cancel(rtc, &rtctimer);		
+
 	return 0;
 }
 

@@ -16,6 +16,7 @@
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
 
+
 #include "power.h"
 
 DEFINE_MUTEX(pm_mutex);
@@ -569,7 +570,6 @@ static ssize_t state_store(struct kobject *kobj, struct kobj_attribute *attr,
 {
 	suspend_state_t state;
 	int error;
-
 	error = pm_autosleep_lock();
 	if (error)
 		return error;
@@ -626,7 +626,6 @@ power_attr(state);
  * is allowed to write to 'state', but the transition will be aborted if there
  * are any wakeup events detected after 'wakeup_count' was written to.
  */
-
 static ssize_t wakeup_count_show(struct kobject *kobj,
 				struct kobj_attribute *attr,
 				char *buf)
@@ -643,7 +642,6 @@ static ssize_t wakeup_count_store(struct kobject *kobj,
 {
 	unsigned int val;
 	int error;
-
 	error = pm_autosleep_lock();
 	if (error)
 		return error;

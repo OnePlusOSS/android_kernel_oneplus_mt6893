@@ -182,6 +182,12 @@ config CLOCK_THERMAL
 	  device that is configured to use this cooling mechanism will be
 	  controlled to reduce clock frequency whenever temperature is high.
 
+config HORAE_THERMAL_SHELL
+	bool "Horae shell temp driver"
+	default y
+	help
+	  Provide three thermal zones(front, frame and back) to get real shell temp.
+
 config DEVFREQ_THERMAL
 	bool "Generic device cooling support"
 	depends on PM_DEVFREQ

@@ -39,5 +39,8 @@ ccflags-y += -I$(srctree)/drivers/misc/mediatek/adsp/$(MTK_PLATFORM)
 endif
 
 ifeq ($(CONFIG_SND_SOC_AW87339),y)
-subdir-ccflags-y += -I$(srctree)/sound/soc/codecs/aw87339/$(MTK_PROJECT)/
+subdir-ccflags-y += -I$(srctree)/sound/soc/mediatek/aw87339/$(MTK_PROJECT)/
+endif
+ifeq ($(CONFIG_SND_SOC_AW87359),y)
+subdir-ccflags-y += -I$(srctree)/sound/soc/mediatek/aw87359/$(MTK_PROJECT)/
 endif

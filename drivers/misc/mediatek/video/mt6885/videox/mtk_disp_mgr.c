@@ -1521,6 +1521,10 @@ long mtk_disp_mgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		{
 			return _ioctl_get_display_caps(arg);
 		}
+	case DISP_IOCTL_GET_LCM_MODULE_INFO:
+		{
+			return _ioctl_get_lcm_module_info(arg);
+		}
 	case DISP_IOCTL_GET_VSYNC_FPS:
 		{
 			return _ioctl_get_vsync(arg);

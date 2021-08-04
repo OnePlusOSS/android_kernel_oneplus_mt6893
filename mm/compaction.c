@@ -24,7 +24,9 @@
 #include <linux/page_owner.h>
 #include <linux/psi.h>
 #include "internal.h"
-
+#if defined(OPLUS_FEATURE_MULTI_FREEAREA) && defined(CONFIG_PHYSICAL_ANTI_FRAGMENTATION)
+#include <linux/mm.h>
+#endif
 #ifdef CONFIG_COMPACTION
 static inline void count_compact_event(enum vm_event_item item)
 {
@@ -1292,7 +1294,9 @@ static enum compact_result __compact_finished(struct zone *zone,
 {
 	unsigned int order;
 	const int migratetype = cc->migratetype;
-
+#if defined(OPLUS_FEATURE_MULTI_FREEAREA) && defined(CONFIG_PHYSICAL_ANTI_FRAGMENTATION)
+	int flc = 0;
+#endif
 	if (cc->contended || fatal_signal_pending(current))
 		return COMPACT_CONTENDED;
 
@@ -1331,30 +1335,37 @@ static enum compact_result __compact_finished(struct zone *zone,
 	}
 
 	/* Direct compactor: Is a suitable page free? */
-	for (order = cc->order; order < MAX_ORDER; order++) {
-		struct free_area *area = &zone->free_area[order];
-		bool can_steal;
+#if defined(OPLUS_FEATURE_MULTI_FREEAREA) && defined(CONFIG_PHYSICAL_ANTI_FRAGMENTATION)
+    for (flc = 0; flc < FREE_AREA_COUNTS; flc++) {
+#endif
+		for (order = cc->order; order < MAX_ORDER; order++) {
+#if defined(OPLUS_FEATURE_MULTI_FREEAREA) && defined(CONFIG_PHYSICAL_ANTI_FRAGMENTATION)
+			struct free_area *area = &zone->free_area[flc][order];
+#else
+			struct free_area *area = &zone->free_area[order];
+#endif
+			bool can_steal;
 
 		/* Job done if page is free of the right migratetype */
-		if (!list_empty(&area->free_list[migratetype]))
-			return COMPACT_SUCCESS;
+			if (!list_empty(&area->free_list[migratetype]))
+				return COMPACT_SUCCESS;
 
 #ifdef CONFIG_CMA
 		/* MIGRATE_MOVABLE can fallback on MIGRATE_CMA */
-		if (migratetype == MIGRATE_MOVABLE &&
-			!list_empty(&area->free_list[MIGRATE_CMA]))
-			return COMPACT_SUCCESS;
+			if (migratetype == MIGRATE_MOVABLE &&
+				!list_empty(&area->free_list[MIGRATE_CMA]))
+				return COMPACT_SUCCESS;
 #endif
 		/*
 		 * Job done if allocation would steal freepages from
 		 * other migratetype buddy lists.
 		 */
-		if (find_suitable_fallback(area, order, migratetype,
+			if (find_suitable_fallback(area, order, migratetype,
 						true, &can_steal) != -1) {
 
 			/* movable pages are OK in any pageblock */
-			if (migratetype == MIGRATE_MOVABLE)
-				return COMPACT_SUCCESS;
+				if (migratetype == MIGRATE_MOVABLE)
+					return COMPACT_SUCCESS;
 
 			/*
 			 * We are stealing for a non-movable allocation. Make
@@ -1364,17 +1375,19 @@ static enum compact_result __compact_finished(struct zone *zone,
 			 * to sync compaction, as async compaction operates
 			 * on pageblocks of the same migratetype.
 			 */
-			if (cc->mode == MIGRATE_ASYNC ||
+				if (cc->mode == MIGRATE_ASYNC ||
 					IS_ALIGNED(cc->migrate_pfn,
 							pageblock_nr_pages)) {
-				return COMPACT_SUCCESS;
+					return COMPACT_SUCCESS;
+				}
+
+				cc->finishing_block = true;
+				return COMPACT_CONTINUE;
 			}
-
-			cc->finishing_block = true;
-			return COMPACT_CONTINUE;
 		}
-	}
-
+#if defined(OPLUS_FEATURE_MULTI_FREEAREA) && defined(CONFIG_PHYSICAL_ANTI_FRAGMENTATION)
+    }
+#endif
 	return COMPACT_NO_SUITABLE_PAGE;
 }
 

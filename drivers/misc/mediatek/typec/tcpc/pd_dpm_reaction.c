@@ -383,10 +383,12 @@ static inline void dpm_check_vconn_highv_prot(struct pd_port *pd_port)
 {
 #ifdef CONFIG_USB_PD_VCONN_SAFE5V_ONLY
 	bool vconn_highv_prot;
+	struct tcpc_device *tcpc_dev = pd_port->tcpc_dev;
 	struct pe_data *pe_data = &pd_port->pe_data;
 
 	vconn_highv_prot = pd_port->request_v_new > 5000;
-	if (vconn_highv_prot != pe_data->vconn_highv_prot) {
+	if (vconn_highv_prot != pe_data->vconn_highv_prot &&
+		tcpc_dev->tcpc_flags & TCPC_FLAGS_VCONN_SAFE5V_ONLY) {
 		DPM_INFO("VC_HIGHV_PROT: %d\r\n", vconn_highv_prot);
 
 		pe_data->vconn_highv_prot = vconn_highv_prot;

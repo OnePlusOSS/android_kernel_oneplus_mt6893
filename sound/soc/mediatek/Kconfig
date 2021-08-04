@@ -326,6 +326,17 @@ config SND_SOC_MTK_SCP_SMARTPA
 	  Select Y to enable CONFIG_SND_SOC_MTK_SCP_SMARTPA for
 	  speaker protection in SCP.
 
+#ifeq ($(strip $(OPLUS_BUG_STABILITY)),yes)
+config SND_SIA81XX_PA
+	bool "Silicon SIA8101 PA"
+	help
+	  SIA8101 provides on-chip speaker excursion protection,
+	  a signal magnitude controller for clipping avoidance
+	  and speaker temperature protection.
+	  Select Y to enable CONFIG_SND_SIA81XX_PA for adding
+	  Silicon SIA8101 PA.
+#endif # OPLUS_BUG_STABILITY
+
 config MTK_SND_SOC_NEW_ARCH
 	bool "Support new audio architecture"
 	select REGMAP_MMIO
@@ -354,3 +365,36 @@ config SND_SOC_MTK_AUDIO_DSP
 	  that can be used with other platforms
 	  Select Y if you have such device.
 	  If unsure select "N".
+
+#ifdef OPLUS_BUG_STABILITY
+config SND_SOC_FSA
+	bool "Support fsa switch"
+	default n
+	help
+	  This adds fsa driver for Mediatek boards
+	  that can be used with other platforms
+	  Select Y if you have such device.
+	  If unsure select "N".
+#endif /* OPLUS_BUG_STABILITY */
+
+#ifdef OPLUS_BUG_STABILITY
+config SND_SOC_AW87339
+	tristate "SoC Audio for awinic AW87339 Smart K PA"
+	depends on I2C
+	help
+	This option enables support for AW87339 Smart K PA.
+
+config SND_SOC_AW87359
+	tristate "SoC Audio for awinic AW87359 Smart K PA"
+	depends on I2C
+	help
+	This option enables support for AW87359 Smart K PA.
+#endif /* OPLUS_BUG_STABILITY */
+
+#ifdef OPLUS_ARCH_EXTENDS
+config OPLUS_FEATURE_KTV_V2_NONDAPM
+	bool "KTV feature"
+	default n
+	help
+	This will enable KTV feature
+#endif /* OPLUS_ARCH_EXTENDS */

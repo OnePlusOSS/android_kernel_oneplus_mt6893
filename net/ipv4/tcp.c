@@ -302,6 +302,11 @@ EXPORT_SYMBOL(sysctl_tcp_wmem);
 atomic_long_t tcp_memory_allocated;	/* Current allocated memory. */
 EXPORT_SYMBOL(tcp_memory_allocated);
 
+#ifdef OPLUS_BUG_STABILITY
+int sysctl_tcp_ts_control[2] __read_mostly = {0,0};
+EXPORT_SYMBOL(sysctl_tcp_ts_control);
+#endif /* OPLUS_BUG_STABILITY */
+
 /*
  * Current number of TCP sockets.
  */

@@ -54,6 +54,11 @@ struct cpuidle_state;
 #define TASK_ON_RQ_QUEUED	1
 #define TASK_ON_RQ_MIGRATING	2
 
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+//#ifdef CONFIG_UXCHAIN_V2
+extern int sysctl_uxchain_v2;
+#endif
+
 extern __read_mostly int scheduler_running;
 
 extern unsigned long calc_load_update;
@@ -928,6 +933,9 @@ struct rq {
 	struct cpuidle_state *idle_state;
 	int idle_state_idx;
 #endif
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+	struct list_head ux_thread_list;
+#endif /* OPLUS_FEATURE_SCHED_ASSIST */
 };
 
 static inline int cpu_of(struct rq *rq)
@@ -2419,5 +2427,13 @@ walt_task_in_cum_window_demand(struct rq *rq, struct task_struct *p)
 #else /* arch_scale_freq_capacity */
 #define arch_scale_freq_invariant()	(false)
 #endif
+
+#if defined(OPLUS_FEATURE_CORE_CTL) && defined(CONFIG_SCHED_CORE_CTL)
+struct sched_avg_stats {
+	int nr;
+	int nr_misfit;
+	int nr_max;
+};
+#endif /* OPLUS_FEATURE_CORE_CTL */
 
 #include "sched_plus.h"

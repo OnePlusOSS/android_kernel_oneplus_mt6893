@@ -1652,6 +1652,14 @@ int __init cm_mgr_module_init(void)
 
 	cm_mgr_to_sspm_command(IPI_CM_MGR_BCPU_WEIGHT_MIN_SET,
 			cpu_power_bcpu_weight_min);
+
+	r = 3 << 16 | cpu_power_ratio_up[3];
+	cm_mgr_to_sspm_command(IPI_CM_MGR_CPU_POWER_RATIO_UP, r);
+
+	r = 4 << 16 | cpu_power_ratio_up[4];
+	cm_mgr_to_sspm_command(IPI_CM_MGR_CPU_POWER_RATIO_UP, r);
+
+	pr_info("cpu_power_ratio_3_4 updated!\n");
 #endif /* USE_BCPU_WEIGHT */
 #ifdef CM_TRIGEAR
 	cm_mgr_to_sspm_command(IPI_CM_MGR_BBCPU_WEIGHT_MAX_SET,

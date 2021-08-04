@@ -2437,9 +2437,9 @@ void set_user_space_global_cpuset(struct cpumask *global_cpus, int cgroup_id)
 
 		if (is_in_v2_mode() &&
 			cpumask_empty(final_set_cpus)) {
-			printk_deferred("[name:global_cpuset&]");
-			printk_deferred("global set empty:");
-			printk_deferred("global=0x%lx, orig=0x%lx\n",
+			//printk_deferred("[name:global_cpuset&]");
+			//printk_deferred("global set empty:");
+			printk_deferred("[name:global_cpuset&]  global=0x%lx, orig=0x%lx\n",
 					global_cpus->bits[0],
 					cs->cpus_requested->bits[0]);
 
@@ -2464,10 +2464,10 @@ void set_user_space_global_cpuset(struct cpumask *global_cpus, int cgroup_id)
 		WARN_ON(!is_in_v2_mode() &&
 			!cpumask_equal(cs->cpus_allowed, cs->effective_cpus));
 
-		printk_deferred("[name:global_cpuset&]final set:0x%lx cgroup:",
-				cs->effective_cpus->bits[0]);
-		printk_deferred("%s, id:%d\n",
-				cs->css.cgroup->kn->name,
+		//printk_deferred("[name:global_cpuset&]final set:0x%lx cgroup:",
+		//		cs->effective_cpus->bits[0]);
+		printk_deferred("[name:global_cpuset&]final set:0x%lx cgroup: %s, id:%d\n",
+				cs->effective_cpus->bits[0],cs->css.cgroup->kn->name,
 				cs->css.cgroup->id);
 
 		/* use cs->effective_cpus to update cs cpumask */
@@ -2506,9 +2506,9 @@ void unset_user_space_global_cpuset(int cgroup_id)
 	/* reset global_cpus_set */
 	cpumask_copy(&global_cpus_set, top_cpuset.effective_cpus);
 
-	printk_deferred("[name:global_cpuset&]unset: ");
-	printk_deferred("restore_root_cpuset=0x%lx\n",
-			global_cpus_set.bits[0]);
+	//printk_deferred("[name:global_cpuset&]unset: ");
+	//printk_deferred("restore_root_cpuset=0x%lx\n",
+	//		global_cpus_set.bits[0]);
 
 	rcu_read_lock();
 	cpuset_for_each_descendant_pre(cs, pos_css, &top_cpuset) {
@@ -2546,13 +2546,13 @@ void unset_user_space_global_cpuset(int cgroup_id)
 		WARN_ON(!is_in_v2_mode() &&
 			!cpumask_equal(cs->cpus_allowed, cs->effective_cpus));
 
-		printk_deferred("[name:global_cpuset&]final unset:");
-		printk_deferred("0x%lx cgroup:%s, id:%d\n",
+		//printk_deferred("[name:global_cpuset&]final unset:");
+		printk_deferred("[name:global_cpuset&]final unset:  0x%lx cgroup:%s, id:%d\n",
 				cs->effective_cpus->bits[0],
 				cs->css.cgroup->kn->name,
 				cs->css.cgroup->id);
 		pr_cont_cgroup_name(cs->css.cgroup);
-		printk_deferred("\n");
+		//printk_deferred("\n");
 
 		/* use cs->effective_cpus to update cs cpumask */
 		update_tasks_cpumask(cs);

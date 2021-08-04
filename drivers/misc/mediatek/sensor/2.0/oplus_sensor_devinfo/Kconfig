@@ -1,0 +1,6 @@
+config OPLUS_SENSOR_MTK68XX
+	bool "for MediaTek 68xx"
+	default n
+	help
+	  It support 68xx.
+

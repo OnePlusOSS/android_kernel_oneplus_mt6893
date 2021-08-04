@@ -505,7 +505,7 @@ static void handle_error(void)
 	int mode = verity_mode();
 	if (mode == DM_VERITY_MODE_RESTART) {
 		DMERR("triggering restart");
-		kernel_restart("dm-verity device corrupted");
+		panic("dm-verity device corrupted");
 	} else {
 		DMERR("Mounting verity root failed");
 	}

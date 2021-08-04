@@ -52,6 +52,9 @@ static int ufshpb_create_sysfs(struct ufsf_feature *ufsf,
 			       struct ufshpb_lu *hpb);
 static int ufshpb_remove_sysfs(struct ufshpb_lu *hpb);
 
+static int create_hpbfn_enable_proc(void);
+static void remove_hpbfn_enable_proc(void);
+
 static inline void
 ufshpb_get_pos_from_lpn(struct ufshpb_lu *hpb, unsigned long lpn, int *rgn_idx,
 			int *srgn_idx, int *offset)
@@ -781,6 +784,7 @@ void ufshpb_prep_fn(struct ufsf_feature *ufsf, struct ufshcd_lrb *lrbp)
 	unsigned long lpn, flags;
 	int transfer_len = TRANSFER_LEN;
 	int rgn_idx, srgn_idx, srgn_offset, ret, error = 0;
+	bool span_flag = false;
 
 	/* WKLU could not be HPB-LU */
 	if (!lrbp || !ufsf_is_valid_lun(lrbp->lun))
@@ -814,6 +818,11 @@ void ufshpb_prep_fn(struct ufsf_feature *ufsf, struct ufshcd_lrb *lrbp)
 		goto put_hpb;
 
 	lpn = ufshpb_get_lpn(rq);
+	if (abs(lpn-hpb->lpn_last) > 1024) {
+		ufsf_para.span++;
+		span_flag = true;
+	}
+	hpb->lpn_last = lpn;
 	ufshpb_get_pos_from_lpn(hpb, lpn, &rgn_idx, &srgn_idx, &srgn_offset);
 	rgn = hpb->rgn_tbl + rgn_idx;
 	srgn = rgn->srgn_tbl + srgn_idx;
@@ -853,6 +862,7 @@ void ufshpb_prep_fn(struct ufsf_feature *ufsf, struct ufshcd_lrb *lrbp)
 	spin_lock_irqsave(&hpb->hpb_lock, flags);
 	if (ufshpb_ppn_dirty_check(hpb, lpn, transfer_len)) {
 		atomic64_inc(&hpb->miss);
+		ufsf_para.miss++;
 		TMSG_CMD(hpb, "READ_10 E_D", rq, rgn_idx, srgn_idx);
 		spin_unlock_irqrestore(&hpb->hpb_lock, flags);
 		goto put_hpb;
@@ -874,6 +884,13 @@ void ufshpb_prep_fn(struct ufsf_feature *ufsf, struct ufshcd_lrb *lrbp)
 	     srgn_idx, lrbp->hpb_ctx_id);
 
 	atomic64_inc(&hpb->hit);
+	ufsf_para.hit++;
+	if(span_flag)
+		ufsf_para.span_hit++;
+	if (transfer_len == HPB_4_CHUNK_LEN)
+		ufsf_para.hit_4k++;
+	else if (transfer_len <= HPB_32_CHUNK_LEN)
+		ufsf_para.hit_8_32k++;
 put_hpb:
 	ufshpb_lu_put(hpb);
 	return;
@@ -1308,6 +1325,7 @@ static int ufshpb_execute_map_req(struct ufshpb_lu *hpb,
 	blk_execute_rq_nowait(q, NULL, req, 1, ufshpb_map_req_compl_fn);
 
 	atomic64_inc(&hpb->map_req_cnt);
+	ufsf_para.map_req++;
 
 	return 0;
 }
@@ -1369,6 +1387,7 @@ static inline void ufshpb_add_lru_info(struct victim_select_info *lru_info,
 	rgn->rgn_state = HPBREGION_ACTIVE;
 	list_add_tail(&rgn->list_lru_rgn, &lru_info->lh_lru_rgn);
 	atomic64_inc(&lru_info->active_cnt);
+	ufsf_para.rgn_act++;
 }
 
 static inline int ufshpb_add_region(struct ufshpb_lu *hpb,
@@ -1428,6 +1447,7 @@ static inline void ufshpb_cleanup_lru_info(struct victim_select_info *lru_info,
 	list_del_init(&rgn->list_lru_rgn);
 	rgn->rgn_state = HPBREGION_INACTIVE;
 	atomic64_dec(&lru_info->active_cnt);
+	ufsf_para.rgn_act--;
 }
 
 static void __ufshpb_evict_region(struct ufshpb_lu *hpb,
@@ -1669,6 +1689,7 @@ static void ufshpb_rsp_req_region_update(struct ufshpb_lu *hpb,
 			  num + 1, rgn_idx, srgn_idx);
 		ufshpb_update_active_info(hpb, rgn_idx, srgn_idx);
 		atomic64_inc(&hpb->rb_active_cnt);
+		ufsf_para.noti_act++;
 	}
 
 	for (num = 0; num < rsp_field->inactive_rgn_cnt; num++) {
@@ -1676,6 +1697,7 @@ static void ufshpb_rsp_req_region_update(struct ufshpb_lu *hpb,
 		HPB_DEBUG(hpb, "inact num: %d, region: %d", num + 1, rgn_idx);
 		ufshpb_update_inactive_info(hpb, rgn_idx);
 		atomic64_inc(&hpb->rb_inactive_cnt);
+		ufsf_para.noti_inact++;
 	}
 	spin_unlock(&hpb->rsp_list_lock);
 
@@ -1772,6 +1794,7 @@ void ufshpb_rsp_upiu(struct ufsf_feature *ufsf, struct ufshcd_lrb *lrbp)
 		  MASK_RSP_UPIU_DATA_SEG_LEN, rsp_field->active_rgn_cnt,
 		  rsp_field->inactive_rgn_cnt);
 	atomic64_inc(&hpb->rb_noti_cnt);
+	ufsf_para.noti++;
 
 	switch (rsp_field->hpb_type) {
 	case HPB_RSP_REQ_REGION_UPDATE:
@@ -2805,6 +2828,7 @@ int ufshpb_get_lu_info(struct ufsf_feature *ufsf, u8 lun, u8 *unit_buf)
 		hpb->lu_pinned_rgn_startidx =
 			lu_desc.lu_hpb_pinned_rgn_startidx;
 		hpb->lu_pinned_end_offset = lu_desc.lu_hpb_pinned_end_offset;
+		ufsf_para.hpb_rgns = lu_desc.lu_max_active_hpb_rgns;
 	} else {
 		INIT_INFO("===== LU %d is hpb-disabled.", lun);
 		return -ENODEV;
@@ -2825,6 +2849,7 @@ static void ufshpb_error_handler(struct work_struct *work)
 	ufshpb_release(ufsf, HPB_FAILED);
 }
 
+extern int ufsplus_hpb_status;
 static int ufshpb_init(struct ufsf_feature *ufsf)
 {
 	int lun, ret;
@@ -2851,6 +2876,8 @@ static int ufshpb_init(struct ufsf_feature *ufsf)
 				goto out_free_mem;
 		}
 		hpb_enabled_lun++;
+		if(hpb_enabled_lun)
+			ufsplus_hpb_status = 1;
 	}
 
 	if (hpb_enabled_lun == 0) {
@@ -2869,6 +2896,8 @@ static int ufshpb_init(struct ufsf_feature *ufsf)
 	seq_scan_lu(lun)
 		if (ufsf->ufshpb_lup[lun])
 			INFO_MSG("UFSHPB LU %d working", lun);
+
+	create_hpbfn_enable_proc();
 
 	return 0;
 out_free_mem:
@@ -3004,6 +3033,8 @@ void ufshpb_release(struct ufsf_feature *ufsf, int state)
 
 	RELEASE_INFO("kref count %d",
 		     atomic_read(&ufsf->ufshpb_kref.refcount.refs));
+
+	remove_hpbfn_enable_proc();
 
 	seq_scan_lu(lun) {
 		hpb = ufsf->ufshpb_lup[lun];
@@ -3157,6 +3188,19 @@ static void ufshpb_stat_init(struct ufshpb_lu *hpb)
 	atomic64_set(&hpb->rb_inactive_cnt, 0);
 	atomic64_set(&hpb->map_req_cnt, 0);
 	atomic64_set(&hpb->pre_req_cnt, 0);
+
+	ufsf_para.hit = 0;
+	ufsf_para.miss = 0;
+	ufsf_para.hit_4k = 0;
+	ufsf_para.hit_8_32k = 0;
+	ufsf_para.span = 0;
+	ufsf_para.span_hit = 0;
+	ufsf_para.noti = 0;
+	ufsf_para.noti_act = 0;
+	ufsf_para.noti_inact = 0;
+	ufsf_para.rgn_act = 0;
+	ufsf_para.map_req = 0;
+	ufsf_para.pre_req = 0;
 }
 
 /* SYSFS functions */
@@ -3418,12 +3462,19 @@ static ssize_t ufshpb_sysfs_version_show(struct ufshpb_lu *hpb, char *buf)
 
 static ssize_t ufshpb_sysfs_hit_show(struct ufshpb_lu *hpb, char *buf)
 {
-	long long hit_cnt;
+	long long hit_cnt, hit_4k_cnt, hit_8_32k_cnt, span_cnt, span_hit_cnt;
 	int ret;
 
 	hit_cnt = atomic64_read(&hpb->hit);
+	hit_4k_cnt = ufsf_para.hit_4k;
+	hit_8_32k_cnt = ufsf_para.hit_8_32k;
+	span_cnt = ufsf_para.span;
+	span_hit_cnt = ufsf_para.span_hit;
 
-	ret = snprintf(buf, PAGE_SIZE, "hit_count %lld\n", hit_cnt);
+	ret = snprintf(buf, PAGE_SIZE,
+		       "hit_count %lld hit_4k_count %lld hit_8-32k_count %lld"
+		       " span_cnt %lld span_hit_cnt %lld\n", hit_cnt,
+		       hit_4k_cnt, hit_8_32k_cnt, span_cnt, span_hit_cnt);
 
 	if (ret < 0)
 		return ret;
@@ -3774,4 +3825,84 @@ static int ufshpb_remove_sysfs(struct ufshpb_lu *hpb)
 	kobject_del(&hpb->kobj);
 
 	return 0;
+}
+
+static inline void hpbfn_enable_ctrl(struct ufshpb_lu *hpb, long val)
+{
+	switch (val) {
+	case 0:
+		hpb->force_map_req_disable = true;
+		hpb->force_disable = true;
+		break;
+	case 1:
+		hpb->force_map_req_disable = false;
+		hpb->force_disable = false;
+		break;
+	case 2:
+		ufshpb_failed(hpb, __func__);
+		break;
+	default:
+		break;
+	}
+
+	return;
+}
+
+static ssize_t hpbfn_enable_write(struct file *filp, const char *ubuf,
+				  size_t cnt, loff_t *data)
+{
+	char buf[64] = {0};
+	long val = 64;
+	int lun;
+
+	if (!ufsf_para.ufsf)
+		return -EFAULT;
+	if (cnt >= sizeof(buf))
+		return -EINVAL;
+	if (copy_from_user(&buf, ubuf, cnt))
+		return -EFAULT;
+
+	if (buf[0] == '0')
+		val = 0;
+	else if (buf[0] == '1')
+		val = 1;
+	else if (buf[0] == '2')
+		val = 2;
+	else
+		val = 64;
+
+	seq_scan_lu(lun) {
+		if (ufsf_para.ufsf->ufshpb_lup[lun])
+			hpbfn_enable_ctrl(ufsf_para.ufsf->ufshpb_lup[lun],
+					  val);
+	}
+
+	return cnt;
+}
+
+static const struct file_operations hpbfn_enable_fops = {
+	.write = hpbfn_enable_write,
+};
+
+static int create_hpbfn_enable_proc(void)
+{
+	struct proc_dir_entry *d_entry;
+
+	if (!ufsf_para.ctrl_dir)
+		return -EFAULT;
+
+	d_entry = proc_create("hpbfn_enable", S_IWUGO, ufsf_para.ctrl_dir,
+			      &hpbfn_enable_fops);
+	if(!d_entry)
+		return -ENOMEM;
+
+	return 0;
+}
+
+static void remove_hpbfn_enable_proc(void)
+{
+	if (ufsf_para.ctrl_dir)
+		remove_proc_entry("hpbfn_enable", ufsf_para.ctrl_dir);
+
+	return;
 }

@@ -53,7 +53,6 @@
 #include "imx586_eeprom.h"
 #include "imx586_seamless_switch.h"
 
-#undef VENDOR_EDIT
 
 #define USE_BURST_MODE 1
 
@@ -4463,11 +4462,9 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 	case SENSOR_FEATURE_SET_NIGHTMODE:
 		 /* night_mode((BOOL) *feature_data); */
 		break;
-	#ifdef VENDOR_EDIT
 	case SENSOR_FEATURE_CHECK_MODULE_ID:
 		*feature_return_para_32 = imgsensor_info.module_id;
 		break;
-	#endif
 	case SENSOR_FEATURE_SET_GAIN:
 		set_gain((UINT16) *feature_data);
 		break;

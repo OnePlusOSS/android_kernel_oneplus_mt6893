@@ -432,19 +432,22 @@ enum pd_cable_current_limit {
 #define DPM_CAP_ATTEMP_ENTER_DP_MODE		(1<<13)
 #define DPM_CAP_ATTEMP_DISCOVER_CABLE		(1<<14)
 #define DPM_CAP_ATTEMP_DISCOVER_ID		(1<<15)
-
+#ifdef OPLUS_FEATURE_CHG_BASIC
+#define DPM_CAP_ATTEMP_DISCOVER_SVID		(1<<16)
+#endif
 enum dpm_cap_pr_check_prefer {
 	DPM_CAP_PR_CHECK_DISABLE = 0,
 	DPM_CAP_PR_CHECK_PREFER_SNK = 1,
 	DPM_CAP_PR_CHECK_PREFER_SRC = 2,
 };
-
-#define DPM_CAP_PR_CHECK_PROP(cap)			((cap & 0x03) << 16)
-#define DPM_CAP_EXTRACT_PR_CHECK(raw)		((raw >> 16) & 0x03)
-#define DPM_CAP_PR_SWAP_REJECT_AS_SRC		(1<<18)
-#define DPM_CAP_PR_SWAP_REJECT_AS_SNK		(1<<19)
-#define DPM_CAP_PR_SWAP_CHECK_GP_SRC		(1<<20)
-#define DPM_CAP_PR_SWAP_CHECK_GP_SNK		(1<<21)
+#ifdef OPLUS_FEATURE_CHG_BASIC
+#define DPM_CAP_PR_CHECK_PROP(cap)			((cap & 0x03) << 18)
+#define DPM_CAP_EXTRACT_PR_CHECK(raw)		((raw >> 18) & 0x03)
+#define DPM_CAP_PR_SWAP_REJECT_AS_SRC		(1<<20)
+#define DPM_CAP_PR_SWAP_REJECT_AS_SNK		(1<<21)
+#define DPM_CAP_PR_SWAP_CHECK_GP_SRC		(1<<22)
+#define DPM_CAP_PR_SWAP_CHECK_GP_SNK		(1<<23)
+#endif
 #define DPM_CAP_PR_SWAP_CHECK_GOOD_POWER	\
 	(DPM_CAP_PR_SWAP_CHECK_GP_SRC | DPM_CAP_PR_SWAP_CHECK_GP_SNK)
 

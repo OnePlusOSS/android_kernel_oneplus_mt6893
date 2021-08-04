@@ -37,6 +37,10 @@
 
 #define MTK_SOLUTION 1
 
+#ifdef OPLUS_FEATURE_TP_BASIC
+__attribute__((weak)) int check_touchirq_triggered(void) {return 0;}
+#endif /* OPLUS_FEATURE_TP_BASIC */
+
 const char * const pm_labels[] = {
 	[PM_SUSPEND_TO_IDLE] = "freeze",
 	[PM_SUSPEND_STANDBY] = "standby",

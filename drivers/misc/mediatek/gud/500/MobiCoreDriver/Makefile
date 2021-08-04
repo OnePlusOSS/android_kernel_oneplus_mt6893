@@ -44,7 +44,6 @@ ccflags-y += -DNDEBUG
 ccflags-y += -Wno-declaration-after-statement
 
 ccflags-$(CONFIG_TRUSTONIC_TEE_DEBUG) += -DDEBUG
-
 # MobiCore Driver includes
 ccflags-y += -I$(GUD_ROOT_FOLDER)/MobiCoreDriver
 ccflags-y += -I$(srctree)/drivers/staging/android/ion

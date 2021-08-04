@@ -238,11 +238,13 @@ page_owner=on loop.max_part=7";
 
 		backlight {
 			label = "lcd-backlight";
-			max-brightness = <255>;
-			led-bits = <8>;
+			max-brightness = <4095>;
+			led-bits = <12>;
+			trans-bits = <12>;
 			default-state = "on";
 		};
 	};
+
 
 	mtk_lpm: mtk_lpm {
 		compatible = "mediatek,mtk-lpm";
@@ -2041,16 +2043,6 @@ page_owner=on loop.max_part=7";
 		dma-names = "tx", "rx";
 	};
 
-	apuart1: serial@11003000 {
-		compatible = "mediatek,mt6577-uart";
-		reg = <0 0x11003000 0 0x1000>;
-		interrupts = <GIC_SPI 110 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clk26m>, <&infracfg_ao INFRACFG_AO_UART1_CG>;
-		clock-names = "baud", "bus";
-		dmas = <&apdma 2
-				&apdma 3>;
-		dma-names = "tx", "rx";
-	};
 
 	usb0:usb3@11200000 {
 		compatible = "mediatek,usb3";
@@ -2069,7 +2061,7 @@ page_owner=on loop.max_part=7";
 	usbphy0:usbphy {
 		compatible = "usb-nop-xceiv";
 	};
-
+	
 	usb3_phy {
 		compatible = "mediatek,usb3_phy";
 		reg = <0 0x11e40000 0 0x10000>;
@@ -3079,6 +3071,12 @@ page_owner=on loop.max_part=7";
 		compatible = "mediatek,mtboard-thermistor3";
 		io-channels = <&auxadc 2>;
 		io-channel-names = "thermistor-ch2";
+	};
+
+	tboard_thermistor4: thermal-sensor4 {
+		compatible = "mediatek,mtboard-thermistor4";
+		io-channels = <&auxadc 3>;
+		io-channel-names = "thermistor-ch3";
 	};
 
 	mt6315_them_intr {
@@ -4365,7 +4363,7 @@ page_owner=on loop.max_part=7";
 			<0>, /*MTK_DRM_OPT_VP_PQ*/
 			<0>, /*MTK_DRM_OPT_GAME_PQ*/
 			<0>, /*MTK_DRM_OPT_MMPATH*/
-			<0>, /*MTK_DRM_OPT_HBM*/
+			<1>, /*MTK_DRM_OPT_HBM*/
 			<0>, /*MTK_DRM_OPT_VDS_PATH_SWITCH*/
 			<0>, /*MTK_DRM_OPT_LAYER_REC*/
 			<1>, /*MTK_DRM_OPT_CLEAR_LAYER*/
@@ -6023,6 +6021,10 @@ page_owner=on loop.max_part=7";
 			 <&infracfg_ao INFRACFG_AO_SPI7_CK_CG>;
 		clock-names = "parent-clk", "sel-clk", "spi-clk";
 	};
+	swtp: swtp {
+	};
+	swtp_1: swtp_1 {
+	};
 
 	i2c_common: i2c_common {
 		compatible = "mediatek,i2c_common";
@@ -6302,8 +6304,16 @@ page_owner=on loop.max_part=7";
 		mediatek,fifo_only;
 	};
 
+	oplus_fp_common:oplus_fp_common { //Slave driver and CS ID
+		compatible = "oplus,fp_common"; //Manufacture, and Model
+	};
+
 	goodix_fp: fingerprint {
-		compatible = "mediatek,goodix-fp";
+		compatible = "goodix,goodix_fp";
+	};
+
+	oplus_secure_common:oplus_secure_common {
+		compatible = "oplus,secure_common";
 	};
 
 	accdet: accdet {
@@ -7314,7 +7324,11 @@ page_owner=on loop.max_part=7";
 		mtk_spk_i2s_in = <0>;
 		/* mtk_spk_i2s_mck = <3>; */
 		mediatek,speaker-codec {
-			sound-dai = <&speaker_amp>;
+//#ifdef OPLUS_ARCH_EXTENDS
+			sound-dai = <&tfa98xx>;
+//#else
+//          sound-dai = <&speaker_amp>;
+//#endif
 		};
 	};
 
@@ -7391,6 +7405,10 @@ page_owner=on loop.max_part=7";
 		compatible = "mediatek,irtx-pwm";
 		pwm_ch = <3>;
 		pwm_data_invert = <0>;
+	};
+
+	oplus_secure_common:oplus_secure_common {
+		compatible = "oplus,secure_common";
 	};
 
 	mt_charger: mt_charger {
@@ -7540,6 +7558,14 @@ page_owner=on loop.max_part=7";
 		ibus_err = <14>;
 		vsys_watt = <5000000>;
 	};
+	
+	phy_tuning: phy_tuning {
+		compatible = "mediatek,phy_tuning";
+		u2_vrt_ref = <6>;
+		u2_term_ref = <6>;
+		u2_enhance = <2>;
+     };
+//#endif
 
 	pd_adapter: pd_adapter {
 		compatible = "mediatek,pd_adapter";
@@ -7562,7 +7588,7 @@ page_owner=on loop.max_part=7";
 	};
 
 	mrdump_ext_rst: mrdump_ext_rst {
-		compatible = "mediatek, mrdump_ext_rst-eint";
+		//compatible = "mediatek, mrdump_ext_rst-eint";
 		mode = "IRQ";
 		status = "okay";
 	};
@@ -7688,6 +7714,18 @@ page_owner=on loop.max_part=7";
 		interrupt-parent = <&pio>;
 		interrupts = <219 IRQ_TYPE_LEVEL_LOW 223 0>;
 	};
+
+	shell_front {
+		compatible = "oplus,shell-temp";
+	};
+
+	shell_frame {
+		compatible = "oplus,shell-temp";
+	};
+
+	shell_back {
+		compatible = "oplus,shell-temp";
+	};
 };
 
 &spmi_bus {
@@ -7756,12 +7794,30 @@ page_owner=on loop.max_part=7";
 };
 
 &i2c6 {
-	speaker_amp: speaker_amp@34 {
-		compatible = "mediatek,speaker_amp";
+	tfa98xx: tfa98xx@34 {
+		compatible = "nxp,tfa98xx";
 		#sound-dai-cells = <0>;
 		reg = <0x34>;
+		reset-gpio = <&pio 111 0>;
 		status = "okay";
 	};
+//#ifdef OPLUS_ARCH_EXTENDS
+	tfa98xx: tfa98xx@34 {
+		compatible = "nxp,tfa98xx";
+		#sound-dai-cells = <0>;
+		reg = <0x34>;
+		reset-gpio = <&pio 111 0>;
+		status = "okay";
+	};
+//#else
+//  speaker_amp: speaker_amp@34 {
+//		compatible = "nxp,speaker_amp";
+//		#sound-dai-cells = <0>;
+//		reg = <0x34>;
+//		reset-gpio = <&pio 111 0>;
+//		status = "okay";
+//	};
+//#endif
 };
 
 &pio {

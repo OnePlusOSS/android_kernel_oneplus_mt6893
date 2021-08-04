@@ -52,13 +52,17 @@ void pmic_dump_register(struct seq_file *m)
 	PMICLOG("dump PMIC register\n");
 
 	for (i = 0; i < pFlag->offset; i = i + 10) {
+/*
 		pr_notice("Reg[0x%x]=0x%x Reg[0x%x]=0x%x Reg[0x%x]=0x%x Reg[0x%x]=0x%x Reg[0x%x]=0x%x\n"
 			  , i, upmu_get_reg_value(i)
 			  , i + 2, upmu_get_reg_value(i + 2)
 			  , i + 4, upmu_get_reg_value(i + 4)
 			  , i + 6, upmu_get_reg_value(i + 6)
 			  , i + 8, upmu_get_reg_value(i + 8));
+*/
+//#endif
 		if (m != NULL) {
+/*
 			seq_printf(m,
 				"Reg[0x%x]=0x%x Reg[0x%x]=0x%x Reg[0x%x]=0x%x Reg[0x%x]=0x%x Reg[0x%x]=0x%x\n"
 				, i, upmu_get_reg_value(i)
@@ -66,6 +70,8 @@ void pmic_dump_register(struct seq_file *m)
 				, i + 4, upmu_get_reg_value(i + 4)
 				, i + 6, upmu_get_reg_value(i + 6)
 				, i + 8, upmu_get_reg_value(i + 8));
+*/
+//#endif
 		}
 	}
 }

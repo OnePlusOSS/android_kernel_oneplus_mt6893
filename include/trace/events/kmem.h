@@ -339,6 +339,83 @@ TRACE_EVENT(rss_stat,
 		__entry->member,
 		__entry->size)
 	);
+
+
+DECLARE_EVENT_CLASS(ion_alloc,
+
+	TP_PROTO(size_t len,
+		 unsigned int mask,
+		 unsigned int flags,
+		 char *dbg_name),
+
+	TP_ARGS(len, mask, flags, dbg_name),
+
+	TP_STRUCT__entry(
+		__field(size_t,		len)
+		__field(unsigned int,	mask)
+		__field(unsigned int,	flags)
+		__array(char,		dbg_name, 32)
+	),
+
+	TP_fast_assign(
+		__entry->len		= len;
+		__entry->mask		= mask;
+		__entry->flags		= flags;
+		strlcpy(__entry->dbg_name, dbg_name, 32);
+	),
+
+	TP_printk("len=%zu mask=0x%x flags=0x%x dbg_name=%s",
+		__entry->len,
+		__entry->mask,
+		__entry->flags,
+		__entry->dbg_name)
+);
+
+DEFINE_EVENT(ion_alloc, ion_alloc_start,
+
+	TP_PROTO(size_t len,
+		 unsigned int mask,
+		 unsigned int flags,
+		 char *dbg_name),
+
+	TP_ARGS(len, mask, flags, dbg_name)
+);
+
+DEFINE_EVENT(ion_alloc, ion_alloc_end,
+
+	TP_PROTO(size_t len,
+		 unsigned int mask,
+		 unsigned int flags,
+		 char *dbg_name),
+
+	TP_ARGS(len, mask, flags, dbg_name)
+);
+
+TRACE_EVENT(ion_buffer_destroy,
+	TP_PROTO(char t,char *comm, pid_t pid, char *dbg, size_t len),
+
+	TP_ARGS(t, comm, pid, dbg, len),
+
+	TP_STRUCT__entry(
+		__field(char,	t)
+		__array(char,	comm, 16)
+		__field(pid_t,	pid)
+		__array(char,	dbg, 32)
+		__field(size_t,	len)
+	),
+
+	TP_fast_assign(
+		__entry->t	= t;
+		strlcpy(__entry->comm, comm, 16);
+		__entry->pid	= pid;
+		strlcpy(__entry->dbg, dbg, 32);
+		__entry->len	= len;
+	),
+
+	TP_printk("%c:comm=%s pid=%d dbg=%s len=%zu",
+		  __entry->t, __entry->comm, __entry->pid, __entry->dbg, __entry->len)
+	);
+
 #endif /* _TRACE_KMEM_H */
 
 /* This part must be outside protection */

@@ -141,8 +141,12 @@ int setMaxbrightness(int max_level, int enable)
 	}
 #else
 	LEDS_DRV_DEBUG("%s go through AAL\n", __func__);
+	#ifndef OPLUS_FEATURE_MULTIBITS_BL
 	disp_bls_set_max_backlight(((((1 << LED_INTERNAL_LEVEL_BIT_CNT) -
 				      1) * max_level + 127) / 255));
+	#else /* OPLUS_FEATURE_MULTIBITS_BL */
+	disp_bls_set_max_backlight(LED_FULL);
+	#endif /* OPLUS_FEATURE_MULTIBITS_BL */
 #endif
 	return 0;
 }
@@ -357,10 +361,20 @@ int backlight_brightness_set(int level)
 {
 	struct cust_mt65xx_led *cust_led_list = mt_get_cust_led_list();
 
+	#ifndef OPLUS_FEATURE_MULTIBITS_BL
+	/*
+	 * modify for multibits backlight.
+	 */
 	if (level > ((1 << MT_LED_LEVEL_BIT) - 1))
 		level = ((1 << MT_LED_LEVEL_BIT) - 1);
 	else if (level < 0)
 		level = 0;
+	#else /* OPLUS_FEATURE_MULTIBITS_BL */
+	if (level > LED_FULL)
+		level = LED_FULL;
+	else if (level < 0)
+		level = 0;
+	#endif /* OPLUS_FEATURE_MULTIBITS_BL */
 
 	if (MT65XX_LED_MODE_CUST_BLS_PWM ==
 	    cust_led_list[TYPE_LCD].mode) {
@@ -383,8 +397,15 @@ int backlight_brightness_set(int level)
 		    mt_mt65xx_led_set_cust(&cust_led_list[TYPE_LCD],
 					   level);
 	} else {
+		#ifndef OPLUS_FEATURE_MULTIBITS_BL
+		/*
+		 * modify for multibits backlight.
+		 */
 		return mt65xx_led_set_cust(&cust_led_list[TYPE_LCD],
 					   (level >> (MT_LED_LEVEL_BIT - 8)));
+		#else /* OPLUS_FEATURE_MULTIBITS_BL */
+		return mt65xx_led_set_cust(&cust_led_list[TYPE_LCD],level);
+		#endif /* OPLUS_FEATURE_MULTIBITS_BL */
 	}
 	return 0;
 }

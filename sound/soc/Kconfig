@@ -36,6 +36,15 @@ config SND_SOC_COMPRESS
 config SND_SOC_TOPOLOGY
 	bool
 
+config TFA9874_NONDSP_STEREO
+	bool "Support stereo tfa9874"
+	default n
+	help
+	  This adds stereo tfa9874 for Mediatek boards
+	  that can be used with other platforms
+	  Select Y if you have such device.
+	  If unsure select "N".
+
 # All the supported SoCs
 source "sound/soc/adi/Kconfig"
 source "sound/soc/amd/Kconfig"

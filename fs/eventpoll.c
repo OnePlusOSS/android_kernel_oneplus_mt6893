@@ -1827,9 +1827,19 @@ fetch_events:
 			}
 
 			spin_unlock_irqrestore(&ep->lock, flags);
+#ifdef OPLUS_FEATURE_HEALTHINFO
+#ifdef CONFIG_OPLUS_JANK_INFO
+			current->in_epoll = 1;
+#endif
+#endif /* OPLUS_FEATURE_HEALTHINFO */
 			if (!freezable_schedule_hrtimeout_range(to, slack,
 								HRTIMER_MODE_ABS))
 				timed_out = 1;
+#ifdef OPLUS_FEATURE_HEALTHINFO
+#ifdef CONFIG_OPLUS_JANK_INFO
+			current->in_epoll = 0;
+#endif
+#endif /* OPLUS_FEATURE_HEALTHINFO */
 
 			spin_lock_irqsave(&ep->lock, flags);
 		}

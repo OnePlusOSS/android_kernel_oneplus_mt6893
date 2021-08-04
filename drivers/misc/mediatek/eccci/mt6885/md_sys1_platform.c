@@ -394,6 +394,11 @@ void ccci_set_clk_cg(struct ccci_modem *md, unsigned int on)
 					0xFF); /* special use ccci_write32 */
 			}
 
+            //ALPS05698886 add start
+            if (strcmp(clk_table[idx].clk_name, "infra-ccif2-ap") == 0)
+                mdelay(100);
+            //add end
+
 			spin_lock_irqsave(&devapc_flag_lock, flags);
 			devapc_check_flag = 0;
 			spin_unlock_irqrestore(&devapc_flag_lock, flags);

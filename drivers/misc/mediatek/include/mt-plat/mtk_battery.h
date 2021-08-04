@@ -59,6 +59,12 @@ extern int register_battery_notifier(struct notifier_block *nb);
 extern int unregister_battery_notifier(struct notifier_block *nb);
 /* battery notify charger_consumer end*/
 
+#ifdef CONFIG_OPLUS_CHARGER_MTK6771
+extern bool gauge_get_current(int *bat_current);
+extern signed int battery_meter_get_battery_current(void);
+extern bool battery_meter_get_battery_current_sign(void);
+extern signed int battery_meter_get_charger_voltage(void);
+#endif
 
 /* battery common interface */
 extern signed int battery_get_bat_voltage(void);
@@ -71,5 +77,12 @@ extern signed int battery_get_ibus(void);
 extern signed int battery_get_vbus(void);
 extern signed int battery_get_bat_avg_current(void);
 
+#ifdef CONFIG_OPLUS_CHARGER_MTK6769
+/* legacy API */
+extern bool gauge_get_current(int *bat_current);
+extern signed int battery_meter_get_battery_current(void);
+extern bool battery_meter_get_battery_current_sign(void);
+extern signed int battery_meter_get_charger_voltage(void);
+#endif /*CONFIG_OPLUS_CHARGER_MTK6769*/
 
 #endif /* End of _FUEL_GAUGE_GM_30_H */

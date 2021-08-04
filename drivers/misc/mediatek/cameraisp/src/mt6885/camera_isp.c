@@ -674,8 +674,18 @@ static unsigned int g_cq0NextBA[ISP_CAM_C_IDX-ISP_CAM_A_IDX+1][1] = {{0} };
 static unsigned int g_cqDoneStatus[ISP_CAM_C_IDX-ISP_CAM_A_IDX+1] = {0};
 
 /* stagger seamless switch info */
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+/* spin lock protect g_ExpectedBufCqCnt and g_CompletedBufCqCnt */
+static spinlock_t SpinLockCqCnt[ISP_CAM_C_IDX-ISP_CAM_A_IDX+1];
+static unsigned int g_ExposureNum[ISP_CAM_C_IDX-ISP_CAM_A_IDX+1] = {EXP_ONE};
+static unsigned int g_ExpectedBufCqCnt[ISP_CAM_C_IDX-ISP_CAM_A_IDX+1] = {0};
+static unsigned int g_CompletedBufCqCnt[ISP_CAM_C_IDX-ISP_CAM_A_IDX+1] = {0};
+static unsigned int g_RequestBufCqCnt[ISP_CAM_C_IDX-ISP_CAM_A_IDX+1] = {0};
+static bool g_bSwitchTo1ExpDone;
+#else /*OPLUS_FEATURE_CAMERA_COMMON*/
 static unsigned int g_ExposureNum[ISP_CAM_C_IDX-ISP_CAM_A_IDX+1] = {EXP_NONE};
 static bool g_isSwitch[ISP_CAM_C_IDX-ISP_CAM_A_IDX+1] = {MFALSE};
+ #endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 
 #if Lafi_WAM_CQ_ERR
 static union FBC_CTRL_2 g_fbc_ctrl2[ISP_CAM_C_IDX-ISP_CAM_A_IDX+1][_cam_max_];
@@ -5416,6 +5426,12 @@ static long ISP_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 	} break;
 	case ISP_NOTE_CQTHR0_BASE: {
 		struct ISP_CQ0_NOTE_INFO cq0_note;
+        #ifdef OPLUS_FEATURE_CAMERA_COMMON
+		unsigned int master_module = CAM_MAX;
+		unsigned reg_module = 0;
+		bool immTrigger = MFALSE;
+		unsigned long flags;
+        #endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 		unsigned int index = 0;
 		memset((void *)&cq0_note, 0x0, sizeof(struct ISP_CQ0_NOTE_INFO));
 
@@ -5428,6 +5444,28 @@ static long ISP_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 
 		index = cq0_note.cq0_data[CAM_A][0] - ISP_CAM_A_IDX;
 		if (index <= (ISP_CAM_C_IDX - ISP_CAM_A_IDX)) {
+		#ifdef OPLUS_FEATURE_CAMERA_COMMON
+			if (master_module == CAM_MAX)
+				master_module = CAM_A;
+			if (cq0_note.cq0_data[CAM_A][1] != 0) {
+				g_cqBaseAddr[index][0] = cq0_note.cq0_data[CAM_A][1];
+				g_cq0NextBA[index][0] = cq0_note.cq0_data[CAM_A][2];
+
+				spin_lock_irqsave(&(SpinLockCqCnt[CAM_A]), flags);
+				if (g_CompletedBufCqCnt[CAM_A] != 0) {
+					if (g_ExposureNum[index] != cq0_note.exposureNum) {
+						if (g_CompletedBufCqCnt[CAM_A] == g_RequestBufCqCnt[CAM_A])
+							immTrigger = MTRUE;
+						else
+							g_ExpectedBufCqCnt[index] = g_RequestBufCqCnt[index];
+					}
+					g_RequestBufCqCnt[index] = cq0_note.cqCnt;
+				}
+				spin_unlock_irqrestore(&(SpinLockCqCnt[CAM_A]), flags);
+
+				g_ExposureNum[index] = cq0_note.exposureNum;
+			}
+			#else /*OPLUS_FEATURE_CAMERA_COMMON*/
 			if (cq0_note.cq0_data[CAM_A][1] != 0) {
 				g_cqBaseAddr[index][0] =
 					cq0_note.cq0_data[CAM_A][1];
@@ -5441,9 +5479,33 @@ static long ISP_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 				}
 				g_ExposureNum[index] = cq0_note.exposureNum;
 			}
+			#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 		}
 		index = cq0_note.cq0_data[CAM_B][0] - ISP_CAM_A_IDX;
 		if (index <= (ISP_CAM_C_IDX - ISP_CAM_A_IDX)) {
+			#ifdef OPLUS_FEATURE_CAMERA_COMMON
+			if (master_module == CAM_MAX)
+				master_module = CAM_B;
+
+			if (cq0_note.cq0_data[CAM_B][1] != 0) {
+				g_cqBaseAddr[index][0] = cq0_note.cq0_data[CAM_B][1];
+				g_cq0NextBA[index][0] = cq0_note.cq0_data[CAM_B][2];
+
+				spin_lock_irqsave(&(SpinLockCqCnt[CAM_B]), flags);
+				if (g_CompletedBufCqCnt[CAM_B] != 0) {
+				    if (g_ExposureNum[index] != cq0_note.exposureNum) {
+				        if (g_CompletedBufCqCnt[CAM_B] == g_RequestBufCqCnt[CAM_B])
+				            immTrigger = MTRUE;
+					    else
+				            g_ExpectedBufCqCnt[index] = g_RequestBufCqCnt[index];
+				    }
+					g_RequestBufCqCnt[index] = cq0_note.cqCnt;
+				}
+			    spin_unlock_irqrestore(&(SpinLockCqCnt[CAM_B]), flags);
+
+				g_ExposureNum[index] = cq0_note.exposureNum;
+			}
+			#else /*OPLUS_FEATURE_CAMERA_COMMON*/
 			if (cq0_note.cq0_data[CAM_B][1] != 0) {
 				g_cqBaseAddr[index][0] =
 					cq0_note.cq0_data[CAM_B][1];
@@ -5457,9 +5519,31 @@ static long ISP_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 				}
 				g_ExposureNum[index] = cq0_note.exposureNum;
 			}
+			#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 		}
 		index = cq0_note.cq0_data[CAM_C][0] - ISP_CAM_A_IDX;
 		if (index <= (ISP_CAM_C_IDX - ISP_CAM_A_IDX)) {
+		#ifdef OPLUS_FEATURE_CAMERA_COMMON
+		if (master_module == CAM_MAX)
+				master_module = CAM_C;
+			if (cq0_note.cq0_data[CAM_C][1] != 0) {
+				g_cqBaseAddr[index][0] = cq0_note.cq0_data[CAM_C][1];
+				g_cq0NextBA[index][0] = cq0_note.cq0_data[CAM_C][2];
+
+				spin_lock_irqsave(&(SpinLockCqCnt[CAM_C]), flags);
+				if (g_CompletedBufCqCnt[CAM_C] != 0) {
+					if (g_ExposureNum[index] != cq0_note.exposureNum) {
+						if (g_CompletedBufCqCnt[CAM_C] == g_RequestBufCqCnt[CAM_C])
+							immTrigger = MTRUE;
+						else
+							g_ExpectedBufCqCnt[index] = g_RequestBufCqCnt[index];
+					}
+					g_RequestBufCqCnt[index] = cq0_note.cqCnt;
+				}
+				spin_unlock_irqrestore(&(SpinLockCqCnt[CAM_C]), flags);
+				g_ExposureNum[index] = cq0_note.exposureNum;
+			}
+			#else /*OPLUS_FEATURE_CAMERA_COMMON*/
 			if (cq0_note.cq0_data[CAM_C][1] != 0) {
 				g_cqBaseAddr[index][0] =
 					cq0_note.cq0_data[CAM_C][1];
@@ -5473,12 +5557,50 @@ static long ISP_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 				}
 				g_ExposureNum[index] = cq0_note.exposureNum;
 			}
+			#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 		}
+        #ifdef OPLUS_FEATURE_CAMERA_COMMON
+		LOG_NOTICE("NOTE_CQTHR,CQ_BA(0x%x,0x%x,0x%x),exp(%d),cqCnt(%d),immTrigger(%d)",
+			g_cqBaseAddr[CAM_A][0], g_cqBaseAddr[CAM_B][0], g_cqBaseAddr[CAM_C][0],
+			cq0_note.exposureNum, cq0_note.cqCnt, immTrigger);
+		if (master_module != CAM_MAX) {
+			if (immTrigger) {
+				switch (master_module) {
+				case CAM_A:
+					reg_module = ISP_CAM_A_IDX;
+					break;
+				case CAM_B:
+					reg_module = ISP_CAM_B_IDX;
+					break;
+				case CAM_C:
+					reg_module = ISP_CAM_C_IDX;
+					break;
+				default:
+					LOG_NOTICE("Unsupport module:x%x\n", master_module);
+					return -EFAULT;
+				}
 
+				//disable TG db buffer
+				ISP_WR32(CAM_REG_TG_PATH_CFG(reg_module),
+					(ISP_RD32(CAM_REG_TG_PATH_CFG(reg_module)) | 0x100));
+
+				ISP_WR32(CAM_REG_TG_VF_CON(reg_module),
+					(ISP_RD32(CAM_REG_TG_VF_CON(reg_module)) & 0xFFFFFFFE));
+				ISP_WR32(CAM_REG_TG_SEN_MODE(reg_module),
+					 (ISP_RD32(CAM_REG_TG_SEN_MODE(reg_module)) &
+					  0xFFFFFFFE));
+
+#if (ISP_BOTTOMHALF_WORKQ == 1)
+			schedule_work(&isp_workque_switch[master_module].isp_bh_work);
+#endif
+			}
+		}
+		#else /*OPLUS_FEATURE_CAMERA_COMMON*/
 		LOG_NOTICE("NOTE_CQTHR,CQ_BA(0x%x,0x%x,0x%x),exp(%d),isSwitch(%d,%d,%d)",
 			g_cqBaseAddr[CAM_A][0], g_cqBaseAddr[CAM_B][0], g_cqBaseAddr[CAM_C][0],
 			cq0_note.exposureNum,
 			g_isSwitch[CAM_A], g_isSwitch[CAM_B], g_isSwitch[CAM_C]);
+			#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 	} break;
 #ifdef ENABLE_KEEP_ION_HANDLE
 	case ISP_ION_IMPORT:
@@ -6975,8 +7097,15 @@ static int ISP_release(struct inode *pInode, struct file *pFile)
 
 	/* stagger seamlesss switch flow*/
 	for (i = 0; i < ISP_IRQ_TYPE_INT_CAM_C_ST; i++) {
+	    #ifdef OPLUS_FEATURE_CAMERA_COMMON
+		g_ExposureNum[i] = EXP_ONE;
+		g_ExpectedBufCqCnt[i] = 0;
+		g_RequestBufCqCnt[i] = 0;
+		g_CompletedBufCqCnt[i] = 0;
+		#else /*OPLUS_FEATURE_CAMERA_COMMON*/
 		g_ExposureNum[i] = EXP_NONE;
 		g_isSwitch[i] = MFALSE;
+		#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 	}
 
 #ifdef ENABLE_KEEP_ION_HANDLE
@@ -7307,6 +7436,12 @@ static int ISP_probe(struct platform_device *pDev)
 		spin_lock_init(&(IspInfo.SpinLockClock));
 
 		spin_lock_init(&(SpinLock_UserKey));
+		#ifdef OPLUS_FEATURE_CAMERA_COMMON
+		for (n = 0; n < CAM_MAX; n++) {
+			/* stagger seamless switch*/
+			spin_lock_init(&(SpinLockCqCnt[n]));
+		}
+		#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 #ifdef ENABLE_KEEP_ION_HANDLE
 		for (i = 0; i < ISP_DEV_NODE_NUM; i++) {
 			if (gION_TBL[i].node != ISP_DEV_NODE_NUM) {
@@ -11828,7 +11963,11 @@ irqreturn_t ISP_Irq_CAM(enum ISP_IRQ_TYPE_ENUM irq_module)
 				gPass1doneLog[module].module = module;
 				if (snprintf(gPass1doneLog[module]._str,
 				P1DONE_STR_LEN,
+				#ifdef OPLUS_FEATURE_CAMERA_COMMON
+				"CAM_%c P1_DON_%d(0x%08x_0x%08x,0x%08x_0x%08x)dma done(0x%x,0x%x,0x%x)int(0x%x,0x%x,0x%x)CQcnt(0x%d)FLKBA(0x%x,0x%x,0x%x)AAO(0x%x,0x%x,0x%x)THR14(0x%x,0x%x,0x%x)FBC(0x%x,0x%x,0x%x)exe_us:%d ",
+				#else /*OPLUS_FEATURE_CAMERA_COMMON*/
 				"CAM_%c P1_DON_%d(0x%08x_0x%08x,0x%08x_0x%08x)dma done(0x%x,0x%x,0x%x)int(0x%x,0x%x,0x%x)FLKBA(0x%x,0x%x,0x%x)AAO(0x%x,0x%x,0x%x)THR14(0x%x,0x%x,0x%x)FBC(0x%x,0x%x,0x%x)exe_us:%d ",
+				#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 		'A' + cardinalNum,
 		(sof_count[module])
 			? (sof_count[module] - 1)
@@ -11851,6 +11990,9 @@ irqreturn_t ISP_Irq_CAM(enum ISP_IRQ_TYPE_ENUM irq_module)
 		(unsigned int)ISP_RD32(
 		CAM_REG_CTL_RAW_INT_STATUSX(
 		ISP_CAM_C_INNER_IDX)),
+		#ifdef OPLUS_FEATURE_CAMERA_COMMON
+		ISP_RD32(CAM_REG_DMA_CQ_COUNTER(inner_reg_module)),
+		#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 		ISP_RD32(CAM_REG_FLKO_BASE_ADDR(ISP_CAM_A_INNER_IDX)),
 		ISP_RD32(CAM_REG_FLKO_BASE_ADDR(ISP_CAM_B_INNER_IDX)),
 		ISP_RD32(CAM_REG_FLKO_BASE_ADDR(ISP_CAM_C_INNER_IDX)),
@@ -12835,6 +12977,20 @@ LB_CAM_SOF_IGNORE:
 		wake_up_interruptible(
 			&IspInfo.WaitQHeadCam[ISP_GetWaitQCamIndex(module)]
 					     [ISP_WAITQ_HEAD_IRQ_SOF]);
+
+		#ifdef OPLUS_FEATURE_CAMERA_COMMON
+        /* stagger 3/2 -> 1exp need to wake up waiting user */
+		if (g_bSwitchTo1ExpDone) {
+			for (i = 0; i < IRQ_USER_NUM_MAX; i++) {
+				IspInfo.IrqInfo.Status
+					[ISP_IRQ_TYPE_INT_CAMSV_0_ST][SIGNAL_INT][i]
+					|= SV_SOF_INT_ST;
+			}
+			wake_up_interruptible(&IspInfo.WaitQHeadCamsv
+					[ISP_GetWaitQCamsvIndex(ISP_IRQ_TYPE_INT_CAMSV_0_ST)]
+					[ISP_WAITQ_HEAD_IRQ_SV_SOF]);
+		}
+		#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 	}
 	if (IrqStatus & SW_PASS1_DON_ST) {
 		wake_up_interruptible(
@@ -12884,7 +13040,19 @@ LB_CAM_SOF_IGNORE:
 	wake_up_interruptible(&IspInfo.WaitQueueHead[module]);
 
 	/* Seamless switch. process align hw p1 done*/
+	#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	spin_lock(&(SpinLockCqCnt[module]));
+	if (IrqStatus & SW_PASS1_DON_ST) {
+		/* record buffer Cq counter which is done */
+		g_CompletedBufCqCnt[module] = ISP_RD32(CAM_REG_DMA_CQ_COUNTER(inner_reg_module));
+	}
+	if ((IrqStatus & HW_PASS1_DON_ST) && g_ExpectedBufCqCnt[module] != 0) {
+		if (g_ExpectedBufCqCnt[module] == g_CompletedBufCqCnt[module]) {
+			g_ExpectedBufCqCnt[module] = 0;
+			spin_unlock(&(SpinLockCqCnt[module]));
+	#else /*OPLUS_FEATURE_CAMERA_COMMON*/
 	if ((IrqStatus & HW_PASS1_DON_ST) && g_isSwitch[module]) {
+	#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 		//disable TG db buffer
 		ISP_WR32(CAM_REG_TG_PATH_CFG(reg_module),
 			(ISP_RD32(CAM_REG_TG_PATH_CFG(reg_module)) | 0x100));
@@ -12898,6 +13066,13 @@ LB_CAM_SOF_IGNORE:
 #if (ISP_BOTTOMHALF_WORKQ == 1)
 		schedule_work(&isp_workque_switch[module].isp_bh_work);
 #endif
+	#ifdef OPLUS_FEATURE_CAMERA_COMMON
+		} else {
+			spin_unlock(&(SpinLockCqCnt[module]));
+		}
+	} else {
+		spin_unlock(&(SpinLockCqCnt[module]));
+	#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 	}
 
 	/* dump log, use workq */
@@ -13143,8 +13318,11 @@ static void ISP_BH_Switch_Workqueue(struct work_struct *pWork)
 	unsigned long long  sec = 0, usec = 0, m_sec = 0, m_usec = 0;
 	unsigned long long  timeout = 500;/*0.5ms*/
 
-
+	#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	LOG_NOTICE("+ seamless switch REQ CQcnt(%d)", g_RequestBufCqCnt[irq_module]);
+	#else /*OPLUS_FEATURE_CAMERA_COMMON*/
 	LOG_NOTICE("+ seamless switch");
+	#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 
 	/* 0. initial step*/
 	switch (irq_module) {
@@ -13246,6 +13424,7 @@ static void ISP_BH_Switch_Workqueue(struct work_struct *pWork)
 		}
 	}
 
+#ifndef OPLUS_FEATURE_CAMERA_COMMON
 	/* Reset TG Ctrl */
 	if (g_ExposureNum[irq_module] == EXP_ONE) {
 		LOG_NOTICE("switch to 1 exp");
@@ -13272,10 +13451,25 @@ static void ISP_BH_Switch_Workqueue(struct work_struct *pWork)
 	/* 5. CQ immediate trigger */
 	for (i = 0; i < reg_module_count; i++) {
 		LOG_NOTICE("CAMCQ_CQ_EN:0x%x", CAM_REG_CAMCQ_CQ_EN(reg_module_array[i]));
-
+#endif
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	LOG_NOTICE("CAMCQ_CQ_EN:0x%x", CAM_REG_CAMCQ_CQ_EN(reg_module));
+	cq_ctrl.Raw = (unsigned int)ISP_RD32(CAM_REG_CQ_THR0_CTL(
+		reg_module));
+#endif
+#ifndef OPLUS_FEATURE_CAMERA_COMMON
 		cq_ctrl.Raw = (unsigned int)ISP_RD32(CAM_REG_CQ_THR0_CTL(
 			reg_module_array[i]));
-
+#endif
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	if (cq_ctrl.Bits.CAMCQ_CQ_EN == 0x1) {
+		en_ctlStart.Raw = 0x0;
+		ISP_WR32(CAM_REG_CTL_START(reg_module),
+			en_ctlStart.Raw);
+		en_ctlStart.Bits.CQ_THR0_START = 0x1;
+		ISP_WR32(CAM_REG_CTL_START(reg_module),
+			en_ctlStart.Raw);
+#else
 		if (cq_ctrl.Bits.CAMCQ_CQ_EN == 0x1) {
 			en_ctlStart.Raw = 0x0;
 			ISP_WR32(CAM_REG_CTL_START(reg_module_array[i]),
@@ -13283,8 +13477,29 @@ static void ISP_BH_Switch_Workqueue(struct work_struct *pWork)
 			en_ctlStart.Bits.CQ_THR0_START = 0x1;
 			ISP_WR32(CAM_REG_CTL_START(reg_module_array[i]),
 				en_ctlStart.Raw);
-
+#endif
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+		DmaStatus6.Raw = g_cqDoneStatus[index];
+		cq_done = DmaStatus6.Bits.CQ_THR0_DONE_ST;
+		m_sec = ktime_get(); /* ns */
+		do_div(m_sec, 1000); /* usec */
+		m_usec = do_div(m_sec, 1000000);/* sec and usec */
+		/* wait CQ loading done */
+		while ((ISP_RD32(CAM_REG_CTL_START_ST(reg_module)) &
+			en_ctlStart.Bits.CQ_THR0_START) ||
+			(cq_done == 0)) {
+			sec = ktime_get(); /* ns */
+			do_div(sec, 1000); /* usec */
+			usec = do_div(sec, 1000000);/* sec and usec */
+		if ((usec  - m_usec) > timeout) {
+			LOG_NOTICE("wait CQ0 timeout0x%x,0x%x\n",
+			(unsigned int)ISP_RD32(
+			CAM_REG_CTL_START_ST(reg_module)), cq_done);
+			break;
+		}
+#endif
 			DmaStatus6.Raw = g_cqDoneStatus[index];
+#ifndef OPLUS_FEATURE_CAMERA_COMMON
 			cq_done = DmaStatus6.Bits.CQ_THR0_DONE_ST;
 			m_sec = ktime_get(); /* ns */
 			do_div(m_sec, 1000); /* usec */
@@ -13311,7 +13526,17 @@ static void ISP_BH_Switch_Workqueue(struct work_struct *pWork)
 			reg_module_array[i])),
 			(unsigned int)ISP_RD32(CAM_REG_CQ_THR0_BASEADDR(
 			reg_module_array[i])));
+#else
+			cq_done |= DmaStatus6.Bits.CQ_THR0_DONE_ST;
+#endif
 		}
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+		LOG_NOTICE("wait CQ0 start 0x%x, base 0x%x\n",
+		(unsigned int)ISP_RD32(CAM_REG_CTL_START_ST(
+		reg_module)),
+		(unsigned int)ISP_RD32(CAM_REG_CQ_THR0_BASEADDR(
+		reg_module)));
+#endif
 	}
 
 	/* Reset TG Ctrl*/
@@ -13352,10 +13577,18 @@ static void ISP_BH_Switch_Workqueue(struct work_struct *pWork)
 
 
 	/* 7. enable TG CMOS & viewFinder */
+	#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	for (i = 0; i < reg_module_count; i++) {
+		index = reg_module_array[i] - ISP_CAM_A_IDX;
+		g_ExpectedBufCqCnt[index] = 0;
+	}
+	g_bSwitchTo1ExpDone = g_ExposureNum[irq_module] ? MTRUE:MFALSE;
+	#else /*OPLUS_FEATURE_CAMERA_COMMON*/
 	for (i = 0; i < reg_module_count; i++) {
 		index = reg_module_array[i] - ISP_CAM_A_IDX;
 		g_isSwitch[index] = MFALSE;
 	}
+	#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 
 	ISP_WR32(CAM_REG_TG_PATH_CFG(reg_module),
 		(ISP_RD32(CAM_REG_TG_PATH_CFG(reg_module)) & ~0x100));

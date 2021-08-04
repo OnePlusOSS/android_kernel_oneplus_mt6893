@@ -370,7 +370,7 @@ static struct sonypi_event sonypi_thumbphraseev[] = {
 /* The set of possible motioneye camera events */
 static struct sonypi_event sonypi_meyeev[] = {
 	{ 0x00, SONYPI_EVENT_MEYE_FACE },
-	{ 0x01, SONYPI_EVENT_MEYE_OPPOSITE },
+	{ 0x01, SONYPI_EVENT_MEYE_OPLUSSITE },
 	{ 0, 0 }
 };
 

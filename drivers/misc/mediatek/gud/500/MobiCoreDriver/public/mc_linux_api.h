@@ -24,5 +24,5 @@
 #if defined(BIG_CORE_SWITCH_AFFINITY_MASK)
 void set_tee_worker_threads_on_big_core(bool big_core);
 #endif
-
+void fp_bind_tee_core(bool enable);
 #endif /* _MC_LINUX_API_H_ */

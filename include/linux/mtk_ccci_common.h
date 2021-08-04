@@ -1,0 +1,1 @@
+../../drivers/misc/mediatek/include/mt-plat/mtk_ccci_common.h

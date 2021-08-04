@@ -26,6 +26,10 @@
 #include <mtk_gauge_time_service.h>
 #include <mtk_gauge_class.h>
 
+#ifndef OPLUS_FEATURE_CHG_BASIC
+#define OPLUS_FEATURE_CHG_BASIC
+#endif
+
 
 /* ============================================================ */
 /* Define Macro Value */
@@ -49,7 +53,11 @@
 #define BAT_VOLTAGE_LOW_BOUND 3400
 #define BAT_VOLTAGE_HIGH_BOUND 3450
 #define LOW_TMP_BAT_VOLTAGE_LOW_BOUND 3350
+#ifndef OPLUS_FEATURE_CHG_BASIC
 #define SHUTDOWN_TIME 40
+#else
+#define SHUTDOWN_TIME 60
+#endif
 #define AVGVBAT_ARRAY_SIZE 30
 #define INIT_VOLTAGE 3450
 #define BATTERY_SHUTDOWN_TEMPERATURE 60
@@ -855,6 +863,10 @@ struct mtk_battery {
 	unsigned int proc_subcmd;
 	unsigned int proc_subcmd_para1;
 	char proc_log[4096];
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/*Yichun.Chen  PSW.BSP.CHG  2020-03-10  for aging issue*/
+	char ag_log[2000];
+#endif
 
 /*battery interrupt*/
 	int fg_bat_int1_gap;
@@ -943,6 +955,7 @@ struct mtk_battery {
 	struct battery_temperature_table rbat;
 
 	struct fgd_cmd_param_t_custom fg_data;
+	bool soc_initial_done;
 };
 
 

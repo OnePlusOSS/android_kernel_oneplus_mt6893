@@ -687,14 +687,14 @@ static void cm_mgr_perf_timeout_timer_fn(unsigned long data)
 	}
 }
 
-#define PERF_TIME 3000
+#define PERF_TIME 100
 
 static ktime_t perf_now;
 void cm_mgr_perf_platform_set_status(int enable)
 {
 	unsigned long expires;
 
-	if (pm_qos_update_request_status) {
+	if (enable || pm_qos_update_request_status) {
 		expires = jiffies + CM_MGR_PERF_TIMEOUT_MS;
 		mod_timer(&cm_mgr_perf_timeout_timer, expires);
 	}
@@ -767,7 +767,7 @@ void cm_mgr_perf_platform_set_force_status(int enable)
 {
 	unsigned long expires;
 
-	if (pm_qos_update_request_status) {
+	if (enable || pm_qos_update_request_status) {
 		expires = jiffies + CM_MGR_PERF_TIMEOUT_MS;
 		mod_timer(&cm_mgr_perf_timeout_timer, expires);
 	}
@@ -908,7 +908,7 @@ int cm_mgr_platform_init(void)
 	mtk_idle_notifier_register(&cm_mgr_idle_notify);
 #endif /* USE_IDLE_NOTIFY */
 
-	init_timer_deferrable(&cm_mgr_ratio_timer);
+	init_timer(&cm_mgr_ratio_timer);
 	cm_mgr_ratio_timer.function = cm_mgr_ratio_timer_fn;
 	cm_mgr_ratio_timer.data = 0;
 

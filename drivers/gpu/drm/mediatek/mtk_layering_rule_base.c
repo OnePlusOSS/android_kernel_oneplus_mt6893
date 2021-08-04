@@ -1497,7 +1497,7 @@ static int ext_layer_grouping(struct drm_device *dev,
 			mtk_get_phy_layer_limit(l_rule_ops->get_mapping_table(
 				dev, disp_idx, DISP_HW_LAYER_TB,
 				MAX_PHY_OVL_CNT));
-		/* Remove the rule here so that we can have more oppotunity to
+		/* Remove the rule here so that we can have more oplustunity to
 		 * test extended layer
 		 * if (phy_layer_cnt > disp_info->layer_num[disp_idx])
 		 *	continue;
@@ -1661,14 +1661,15 @@ static void clear_layer(struct drm_mtk_layering_info *disp_info)
 			disp_info->gles_tail[di]--;
 		else
 			c->layer_caps |= MTK_DISP_CLIENT_CLEAR_LAYER;
-
+/*
 		if ((c->src_width < c->dst_width &&
 		     c->src_height < c->dst_height) &&
 		     get_layering_opt(LYE_OPT_RPO) &&
 		    top < disp_info->gles_tail[di]) {
 			c->layer_caps |= MTK_DISP_RSZ_LAYER;
 			l_rule_info->addon_scn[di] = ONE_SCALING;
-		} else {
+		} else {*/
+		{
 			c->layer_caps &= ~MTK_DISP_RSZ_LAYER;
 			l_rule_info->addon_scn[di] = NONE;
 

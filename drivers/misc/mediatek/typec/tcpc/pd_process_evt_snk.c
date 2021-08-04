@@ -101,10 +101,19 @@ static inline bool pd_process_ctrl_msg(
 		break;
 
 	case PD_CTRL_PS_RDY:
-		if (pd_port->pe_state_curr == PE_SNK_TRANSITION_SINK) {
+		switch (pd_port->pe_state_curr) {
+		case PE_SNK_TRANSITION_SINK:
 			pd_dpm_snk_transition_power(pd_port);
 			PE_TRANSIT_STATE(pd_port, PE_SNK_READY);
 			return true;
+
+#ifdef CONFIG_USB_PD_VBUS_DETECTION_DURING_PR_SWAP
+		case PE_PRS_SRC_SNK_WAIT_SOURCE_ON:
+		case PE_PRS_SNK_SRC_TRANSITION_TO_OFF:
+			return false;
+#endif /* CONFIG_USB_PD_VBUS_DETECTION_DURING_PR_SWAP */
+		default:
+			break;
 		}
 		break;
 
@@ -215,13 +224,15 @@ static inline bool pd_process_ext_msg(
 {
 	switch (pd_event->msg) {
 
-#ifdef CONFIG_USB_PD_REV30_SRC_CAP_EXT_LOCAL
+#ifdef OPLUS_FEATURE_CHG_BASIC
+#ifdef CONFIG_USB_PD_REV30_SRC_CAP_EXT_REMOTE
 	case PD_EXT_SOURCE_CAP_EXT:
 		if (PE_MAKE_STATE_TRANSIT_SINGLE(
 			PE_SNK_GET_SOURCE_CAP_EXT, PE_SNK_READY))
 			return true;
 		break;
-#endif	/* CONFIG_USB_PD_REV30_SRC_CAP_EXT_LOCAL */
+#endif	/* CONFIG_USB_PD_REV30_SRC_CAP_EXT_REMOTE */
+#endif
 
 #ifdef CONFIG_USB_PD_REV30_STATUS_LOCAL
 	case PD_EXT_STATUS:

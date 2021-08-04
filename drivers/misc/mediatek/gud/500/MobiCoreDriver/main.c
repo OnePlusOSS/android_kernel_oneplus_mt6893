@@ -36,7 +36,7 @@
 #include "protocol.h"
 #include "client.h"
 #include "build_tag.h"
-
+#include "public/mc_linux_api.h"
 /* Default entry for our driver in device tree */
 #ifndef MC_DEVICE_PROPNAME
 #define MC_DEVICE_PROPNAME "trustonic,mobicore"
@@ -155,6 +155,14 @@ end:
 	mutex_unlock(&buf->mutex);
 	return ret;
 }
+
+void fp_bind_tee_core(bool enable)
+{
+#if defined(BIG_CORE_SWITCH_AFFINITY_MASK)
+	set_tee_worker_threads_on_big_core(enable);
+#endif
+}
+EXPORT_SYMBOL(fp_bind_tee_core);
 
 int debug_generic_open(struct inode *inode, struct file *file)
 {

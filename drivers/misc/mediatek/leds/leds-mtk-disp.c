@@ -18,7 +18,6 @@
 
 #include "leds-mtk-disp.h"
 
-
 #ifdef CONFIG_DRM_MEDIATEK
 extern int mtkfb_set_backlight_level(unsigned int level);
 #endif
@@ -28,6 +27,7 @@ extern int mtkfb_set_backlight_level(unsigned int level);
 #endif
 
 #define CONFIG_LEDS_BRIGHTNESS_CHANGED
+#define DEFAULT_LED_BITS 8
 /****************************************************************************
  * variables
  ***************************************************************************/
@@ -110,7 +110,7 @@ static int call_notifier(int event, struct mtk_led_data *led_dat)
  ***************************************************************************/
 
 static void led_debug_log(struct mtk_led_data *s_led,
-		int level, int mappingLevel)
+		int brightness, int level)
 {
 	unsigned long cur_time_mod = 0;
 	unsigned long long cur_time_display = 0;
@@ -123,9 +123,9 @@ static void led_debug_log(struct mtk_led_data *s_led,
 
 	ret = snprintf(s_led->debug.buffer + strlen(s_led->debug.buffer),
 		4095 - strlen(s_led->debug.buffer),
-		"T:%lld.%ld,L:%d L:%d map:%d    ",
+		"T:%lld.%ld,B:%d,%d L:%d,%d    ",
 		cur_time_display, cur_time_mod,
-		s_led->conf.cdev.brightness, level, mappingLevel);
+		s_led->brightness, brightness, s_led->last_level, level);
 
 	s_led->debug.count++;
 
@@ -136,7 +136,9 @@ static void led_debug_log(struct mtk_led_data *s_led,
 
 	if (level == 0 || s_led->debug.count >= 5 ||
 		(s_led->debug.current_t - s_led->debug.last_t) > 1000000000) {
-		pr_info("%s", s_led->debug.buffer);
+#ifdef OPLUS_BUG_STABILITY
+		pr_debug("%s", s_led->debug.buffer);
+#endif /* OPLUS_BUG_STABILITY */
 		s_led->debug.count = 0;
 		s_led->debug.buffer[strlen("[Light] Set directly ") +
 			strlen(s_led->conf.cdev.name)] = '\0';
@@ -163,25 +165,36 @@ static int getLedDespIndex(char *name)
  * driver functions
  ***************************************************************************/
 static int led_level_disp_set(struct mtk_led_data *s_led,
-	int brightness)
+	int level)
 {
 
-	brightness = min(brightness, s_led->conf.max_level);
-	if (brightness == s_led->conf.level)
+	int led_level = 0;
+
+	led_level = min(level, s_led->conf.max_level);
+
+#ifndef CONFIG_MTK_SILKY_BRIGHTNESS_SUPPORT
+	led_level = (
+		(((1 << DEFAULT_LED_BITS) - 1) * led_level
+		+ (((1 << s_led->conf.trans_bits) - 1) / 2))
+		/ ((1 << s_led->conf.trans_bits) - 1));
+#endif
+
+	if (led_level == s_led->conf.level)
 		return 0;
 
 #ifdef MET_USER_EVENT_SUPPORT
 	if (enable_met_backlight_tag())
-		output_met_backlight_tag(brightness);
+		output_met_backlight_tag(led_level);
 #endif
+
 #ifdef CONFIG_DRM_MEDIATEK
-	mtkfb_set_backlight_level(brightness);
-	s_led->conf.level = brightness;
+//	pr_info("set backlight level: %d, %d", level, led_level);
+	mtkfb_set_backlight_level(led_level);
+	s_led->conf.level = led_level;
 #endif
 	return 0;
 
 }
-
 
 /****************************************************************************
  * add API for temperature control
@@ -200,7 +213,7 @@ int setMaxBrightness(char *name, int percent, bool enable)
 	led_dat = container_of(leds_info->leds[index],
 		struct mtk_led_data, desp);
 
-	max_l = led_dat->conf.cdev.max_brightness;
+	max_l = (1 << led_dat->conf.trans_bits) - 1;
 	limit_l = (percent * max_l) / 100;
 	pr_info("before: name: %s, percent : %d, limit_l : %d, enable: %d",
 		leds_info->leds[index]->name, percent, limit_l, enable);
@@ -228,7 +241,7 @@ EXPORT_SYMBOL(setMaxBrightness);
 int mt_leds_brightness_set(char *name, int level)
 {
 	struct mtk_led_data *led_dat;
-	int index, led_Level;
+	int index;
 
 	index = getLedDespIndex(name);
 	if (index < 0) {
@@ -237,12 +250,9 @@ int mt_leds_brightness_set(char *name, int level)
 	}
 	led_dat = container_of(leds_info->leds[index],
 		struct mtk_led_data, desp);
-	led_Level = (
-		(((1 << led_dat->conf.led_bits) - 1) * level
-		+ (((1 << led_dat->conf.trans_bits) - 1) / 2))
-		/ ((1 << led_dat->conf.trans_bits) - 1));
-	led_level_disp_set(led_dat, led_Level);
-	led_dat->last_level = led_Level;
+
+	led_level_disp_set(led_dat, level);
+	led_dat->last_level = level;
 
 	return 0;
 }
@@ -263,25 +273,20 @@ static int led_level_set(struct led_classdev *led_cdev,
 
 	trans_level = (
 		(((1 << led_dat->conf.trans_bits) - 1) * brightness
-		+ (((1 << led_dat->conf.led_bits) - 1) / 2))
-		/ ((1 << led_dat->conf.led_bits) - 1));
+		+ (led_dat->conf.cdev.max_brightness / 2))
+		/ (led_dat->conf.cdev.max_brightness));
 
 	led_debug_log(led_dat, brightness, trans_level);
 
-#ifdef MET_USER_EVENT_SUPPORT
-	if (enable_met_backlight_tag())
-		output_met_backlight_tag(brightness);
-#endif
-
-led_dat->brightness = brightness;
+//	pr_info("brightness=%d,trans_level=%d\n",brightness,trans_level);
+	led_dat->brightness = brightness;
 #ifdef CONFIG_LEDS_BRIGHTNESS_CHANGED
 	call_notifier(1, led_dat);
+	disp_pq_notify_backlight_changed(brightness);
 #endif
-#ifdef CONFIG_MTK_AAL_SUPPORT
-	disp_pq_notify_backlight_changed(trans_level);
-#else
-	led_level_disp_set(led_dat, brightness);
-	led_dat->last_level = brightness;
+#ifndef CONFIG_MTK_AAL_SUPPORT
+	led_level_disp_set(led_dat, trans_level);
+	led_dat->last_level = trans_level;
 #endif
 	return 0;
 
@@ -294,8 +299,8 @@ static int led_data_init(struct device *dev, struct mtk_led_data *s_led)
 	s_led->conf.cdev.flags = LED_CORE_SUSPENDRESUME;
 	s_led->conf.cdev.brightness_set_blocking = led_level_set;
 	s_led->brightness = s_led->conf.cdev.max_brightness;
-	s_led->conf.level = s_led->conf.cdev.max_brightness;
-	s_led->last_level = s_led->conf.cdev.max_brightness;
+	s_led->conf.level = s_led->conf.max_level;
+	s_led->last_level = s_led->conf.max_level;
 	ret = devm_led_classdev_register(dev, &(s_led->conf.cdev));
 	if (ret < 0) {
 		pr_notice("led class register fail!");
@@ -319,7 +324,7 @@ static int mtk_leds_parse_dt(struct device *dev,
 {
 	struct device_node *leds_np, *child;
 	struct mtk_led_data *s_led;
-	int ret = 0, num = 0, level = 102;
+	int ret = 0, num = 0, level;
 	const char *state;
 
 	leds_np = of_find_node_by_name(dev->of_node, "backlight");
@@ -345,21 +350,21 @@ static int mtk_leds_parse_dt(struct device *dev,
 			pr_info("No led-bits, use default value 8");
 			s_led->conf.led_bits = 8;
 		}
-		s_led->conf.cdev.max_brightness =
-			(1 << s_led->conf.led_bits) - 1;
+		ret = of_property_read_u32(child,
+			"max-brightness", &(s_led->conf.cdev.max_brightness));
+		if (ret) {
+			pr_info("No max-brightness, use default value 255");
+			s_led->conf.cdev.max_brightness =
+				(1 << s_led->conf.led_bits) - 1;
+		}
 		ret = of_property_read_u32(child,
 			"trans-bits", &(s_led->conf.trans_bits));
 		if (ret) {
-			pr_info("No trans-bits, use default value 10");
+			pr_info("No trans_bits, use default value 10");
 			s_led->conf.trans_bits = 10;
 		}
-		ret = of_property_read_u32(child,
-			"max-brightness", &(s_led->conf.max_level));
-		if (ret) {
-			s_led->conf.max_level = s_led->conf.cdev.max_brightness;
-			pr_info("No max-brightness, use default: %d",
-				s_led->conf.max_level);
-		}
+		s_led->conf.max_level = (1 << s_led->conf.trans_bits) - 1;
+
 		ret = of_property_read_string(child, "default-state", &state);
 		if (!ret) {
 			if (!strcmp(state, "half"))
@@ -368,11 +373,15 @@ static int mtk_leds_parse_dt(struct device *dev,
 				level = s_led->conf.cdev.max_brightness;
 			else
 				level = 0;
-		};
-		pr_info("parse %d leds dt: %s, %d, %d",
+		} else {
+			level = s_led->conf.cdev.max_brightness;
+		}
+		pr_info("parse %d leds dt: %s, %d, %d, %d, %d",
 			num, s_led->conf.cdev.name,
 			s_led->conf.max_level,
-			s_led->conf.led_bits);
+			s_led->conf.cdev.max_brightness,
+			s_led->conf.led_bits,
+			s_led->conf.trans_bits);
 		strncpy(s_led->desp.name, s_led->conf.cdev.name,
 			strlen(s_led->conf.cdev.name));
 		s_led->desp.index = num;

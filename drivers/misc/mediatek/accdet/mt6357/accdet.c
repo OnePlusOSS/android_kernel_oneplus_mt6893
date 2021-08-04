@@ -1969,7 +1969,7 @@ static int accdet_get_dts_data(void)
 	/* if we need moisture detection feature or not */
 	accdet_dts.moisture_detect_enable = moisture_detect_enable;
 	/* select moisture detection mode,
-	 * 1: EINT 1.0, 2: EINT1.1, 3: EINT2.0, 4: EINT2.1, 5: EINT2.1_OPPO
+	 * 1: EINT 1.0, 2: EINT1.1, 3: EINT2.0, 4: EINT2.1, 5: EINT2.1_OPLUS
 	 */
 	if (accdet_dts.moisture_detect_enable == 0x1) {
 		accdet_dts.eint_detect_mode = eint_detect_mode;

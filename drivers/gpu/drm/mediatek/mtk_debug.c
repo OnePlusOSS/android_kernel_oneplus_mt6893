@@ -63,6 +63,14 @@
 #define GET_M4U_PORT 0x1F
 #define MTK_CWB_NO_EFFECT_HRT_MAX_WIDTH 128
 
+#ifdef OPLUS_BUG_STABILITY
+#define PANEL_SERIAL_NUM_REG 0xA1
+#define PANEL_REG_READ_LEN   10
+#endif /*OPLUS_BUG_STABILITY*/
+
+#define OPLUS_SILKY_MAX_BRIGHTNESS 8191
+#define OPLUS_MAX_BRIGHTNESS 4095
+
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 static struct dentry *mtkfb_dbgfs;
 #endif
@@ -80,6 +88,9 @@ bool g_detail_log;
 bool g_trace_log;
 unsigned int mipi_volt;
 unsigned int disp_met_en;
+static unsigned int m_old_pq_persist_property[32];
+unsigned int m_new_pq_persist_property[32];
+extern int oplus_max_brightness;
 
 int gCaptureOVLEn;
 int gCaptureWDMAEn;
@@ -353,6 +364,10 @@ int mtk_dprec_logger_get_buf(enum DPREC_LOGGER_PR_TYPE type, char *stringbuf,
 	return n;
 }
 
+#ifdef OPLUS_BUG_STABILITY
+static int readcount = 0;
+extern int panel_serial_number_read(struct drm_crtc *crtc, char cmd, int num);
+#endif /*OPLUS_BUG_STABILITY*/
 extern int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level);
 int mtkfb_set_backlight_level(unsigned int level)
 {
@@ -365,6 +380,15 @@ int mtkfb_set_backlight_level(unsigned int level)
 		DDPPR_ERR("find crtc fail\n");
 		return 0;
 	}
+
+#ifdef OPLUS_BUG_STABILITY
+	if ((level > 1) && (readcount == 0)) {
+		panel_serial_number_read(crtc, PANEL_SERIAL_NUM_REG, PANEL_REG_READ_LEN);
+		DDPPR_ERR("%s :panel_serial_number_read\n", __func__);
+		readcount = 1;
+	}
+#endif /*OPLUS_BUG_STABILITY*/
+
 	mtk_drm_setbacklight(crtc, level);
 
 	return 0;
@@ -953,6 +977,7 @@ void ddic_dsi_send_cmd_test(unsigned int case_num)
 		vmalloc(sizeof(struct mtk_ddic_dsi_msg));
 	u8 tx[10] = {0};
 	u8 tx_1[10] = {0};
+	u8 tx_2[10] = {0};
 
 	DDPMSG("%s start case_num:%d\n", __func__, case_num);
 
@@ -968,51 +993,128 @@ void ddic_dsi_send_cmd_test(unsigned int case_num)
 		/* Send 0x34 */
 		cmd_msg->channel = 0;
 		cmd_msg->flags = 0;
-		cmd_msg->tx_cmd_num = 1;
-		cmd_msg->type[0] = 0x05;
-		tx[0] = 0x34;
+		/*	cmd_msg->flags |= MIPI_DSI_MSG_USE_LPM; */
+		cmd_msg->tx_cmd_num = 3;
+
+		/* Send 0x34 */
+		cmd_msg->type[0] = 0x39;
+		tx[0] = 0xff;
+		tx[1] = 0xaa;
+		tx[2] = 0x55;
+		tx[3] = 0xa5;
+		tx[4] = 0x81;
 		cmd_msg->tx_buf[0] = tx;
-		cmd_msg->tx_len[0] = 1;
+		cmd_msg->tx_len[0] = 5;
+
+		/* Send 0x28 */
+		cmd_msg->type[1] = 0x15;
+		tx_1[0] = 0x6f;
+		tx_1[1] = 0x0f;
+		cmd_msg->tx_buf[1] = tx_1;
+		cmd_msg->tx_len[1] = 2;
+
+		cmd_msg->type[2] = 0x15;
+		tx_2[0] = 0xfa;
+		tx_2[1] = 0x01;
+		cmd_msg->tx_buf[2] = tx_2;
+		cmd_msg->tx_len[2] = 2;
 
 		break;
 	}
 	case 2:
 	{
-		/* Send 0x35:0x00 */
+		/* Multiple cmd UT case */
 		cmd_msg->channel = 0;
-		cmd_msg->flags = 0;
-		cmd_msg->tx_cmd_num = 1;
-		cmd_msg->type[0] = 0x15;
-		tx[0] = 0x35;
-		tx[1] = 0x00;
+		cmd_msg->flags |= MIPI_DSI_MSG_USE_LPM;
+		cmd_msg->tx_cmd_num = 3;
+
+		/* Send 0x34 */
+		cmd_msg->type[0] = 0x39;
+		tx[0] = 0xff;
+		tx[1] = 0xaa;
+		tx[2] = 0x55;
+		tx[3] = 0xa5;
+		tx[4] = 0x81;
 		cmd_msg->tx_buf[0] = tx;
-		cmd_msg->tx_len[0] = 2;
+		cmd_msg->tx_len[0] = 5;
+
+		/* Send 0x28 */
+		cmd_msg->type[1] = 0x15;
+		tx_1[0] = 0x6f;
+		tx_1[1] = 0x0f;
+		cmd_msg->tx_buf[1] = tx_1;
+		cmd_msg->tx_len[1] = 2;
+
+		cmd_msg->type[2] = 0x15;
+		tx_2[0] = 0xfa;
+		tx_2[1] = 0x01;
+		cmd_msg->tx_buf[2] = tx_2;
+		cmd_msg->tx_len[2] = 2;
 
 		break;
 	}
 	case 3:
 	{
-		/* Send 0x28 */
+		/* Multiple cmd UT case */
 		cmd_msg->channel = 0;
-		cmd_msg->flags |= MIPI_DSI_MSG_USE_LPM;
-		cmd_msg->tx_cmd_num = 1;
-		cmd_msg->type[0] = 0x05;
-		tx[0] = 0x28;
+		cmd_msg->flags = 0;
+		/*	cmd_msg->flags |= MIPI_DSI_MSG_USE_LPM; */
+		cmd_msg->tx_cmd_num = 3;
+
+		/* Send 0x34 */
+		cmd_msg->type[0] = 0x39;
+		tx[0] = 0xff;
+		tx[1] = 0xaa;
+		tx[2] = 0x55;
+		tx[3] = 0xa5;
+		tx[4] = 0x81;
 		cmd_msg->tx_buf[0] = tx;
-		cmd_msg->tx_len[0] = 1;
+		cmd_msg->tx_len[0] = 5;
+
+		/* Send 0x28 */
+		cmd_msg->type[1] = 0x15;
+		tx_1[0] = 0x6f;
+		tx_1[1] = 0x0f;
+		cmd_msg->tx_buf[1] = tx_1;
+		cmd_msg->tx_len[1] = 2;
+
+		cmd_msg->type[2] = 0x15;
+		tx_2[0] = 0xfa;
+		tx_2[1] = 0x00;
+		cmd_msg->tx_buf[2] = tx_2;
+		cmd_msg->tx_len[2] = 2;
 
 		break;
 	}
 	case 4:
 	{
-		/* Send 0x29 */
+		/* Multiple cmd UT case */
 		cmd_msg->channel = 0;
 		cmd_msg->flags |= MIPI_DSI_MSG_USE_LPM;
-		cmd_msg->tx_cmd_num = 1;
-		cmd_msg->type[0] = 0x05;
-		tx[0] = 0x29;
+		cmd_msg->tx_cmd_num = 3;
+
+		/* Send 0x34 */
+		cmd_msg->type[0] = 0x39;
+		tx[0] = 0xff;
+		tx[1] = 0xaa;
+		tx[2] = 0x55;
+		tx[3] = 0xa5;
+		tx[4] = 0x81;
 		cmd_msg->tx_buf[0] = tx;
-		cmd_msg->tx_len[0] = 1;
+		cmd_msg->tx_len[0] = 5;
+
+		/* Send 0x28 */
+		cmd_msg->type[1] = 0x15;
+		tx_1[0] = 0x6f;
+		tx_1[1] = 0x0f;
+		cmd_msg->tx_buf[1] = tx_1;
+		cmd_msg->tx_len[1] = 2;
+
+		cmd_msg->type[2] = 0x15;
+		tx_2[0] = 0xfa;
+		tx_2[1] = 0x00;
+		cmd_msg->tx_buf[2] = tx_2;
+		cmd_msg->tx_len[2] = 2;
 
 		break;
 	}
@@ -1025,16 +1127,21 @@ void ddic_dsi_send_cmd_test(unsigned int case_num)
 		cmd_msg->tx_cmd_num = 2;
 
 		/* Send 0x34 */
-		cmd_msg->type[0] = 0x05;
-		tx[0] = 0x34;
+		cmd_msg->type[0] = 0x39;
+		tx[0] = 0xff;
+		tx[1] = 0xaa;
+		tx[2] = 0x55;
+		tx[3] = 0xa5;
+		tx[4] = 0x81;
 		cmd_msg->tx_buf[0] = tx;
-		cmd_msg->tx_len[0] = 1;
+		cmd_msg->tx_len[0] = 5;
 
 		/* Send 0x28 */
-		cmd_msg->type[1] = 0x05;
-		tx_1[0] = 0x28;
+		cmd_msg->type[1] = 0x15;
+		tx_1[0] = 0x6f;
+		tx_1[1] = 0x0f;
 		cmd_msg->tx_buf[1] = tx_1;
-		cmd_msg->tx_len[1] = 1;
+		cmd_msg->tx_len[1] = 2;
 
 		break;
 	}
@@ -1042,23 +1149,73 @@ void ddic_dsi_send_cmd_test(unsigned int case_num)
 	{
 		/* Multiple cmd UT case */
 		cmd_msg->channel = 0;
-		cmd_msg->flags = 0;
-		/*	cmd_msg->flags |= MIPI_DSI_MSG_USE_LPM; */
+		cmd_msg->flags |= MIPI_DSI_MSG_USE_LPM;
 		cmd_msg->tx_cmd_num = 2;
 
-		/* Send 0x35 */
+		/* Send 0x34 */
+		cmd_msg->type[0] = 0x39;
+		tx[0] = 0xff;
+		tx[1] = 0xaa;
+		tx[2] = 0x55;
+		tx[3] = 0xa5;
+		tx[4] = 0x81;
+		cmd_msg->tx_buf[0] = tx;
+		cmd_msg->tx_len[0] = 5;
+
+		/* Send 0x28 */
+		cmd_msg->type[1] = 0x15;
+		tx_1[0] = 0x6f;
+		tx_1[1] = 0x0f;
+		cmd_msg->tx_buf[1] = tx_1;
+		cmd_msg->tx_len[1] = 2;
+
+		break;
+	}
+	case 7:
+	{
+		/* Multiple cmd UT case */
+		cmd_msg->channel = 0;
+		cmd_msg->flags = 0;
+		cmd_msg->tx_cmd_num = 1;
+
+		/* Send 0x34 */
 		cmd_msg->type[0] = 0x15;
-		tx[0] = 0x35;
+		tx[0] = 0x0A;
 		tx[1] = 0x00;
 		cmd_msg->tx_buf[0] = tx;
 		cmd_msg->tx_len[0] = 2;
+		break;
+	}
+	case 8:
+	{
+		/* Multiple cmd UT case */
+		cmd_msg->channel = 0;
+		cmd_msg->flags |= MIPI_DSI_MSG_USE_LPM;
+		cmd_msg->tx_cmd_num = 1;
 
-		/* Send 0x29 */
-		cmd_msg->type[1] = 0x05;
-		tx_1[0] = 0x29;
-		cmd_msg->tx_buf[1] = tx_1;
-		cmd_msg->tx_len[1] = 1;
+		/* Send 0x34 */
+		cmd_msg->type[0] = 0x15;
+		tx[0] = 0x6F;
+		tx[1] = 0x0F;
+		cmd_msg->tx_buf[0] = tx;
+		cmd_msg->tx_len[0] = 2;
+		break;
+	}
+	case 9:
+	{
+		/* Multiple cmd UT case */
+		cmd_msg->channel = 0;
+		cmd_msg->flags |= MIPI_DSI_MSG_USE_LPM;
+		cmd_msg->tx_cmd_num = 1;
 
+		cmd_msg->type[0] = 0x39;
+		tx[0] = 0xff;
+		tx[1] = 0xaa;
+		tx[2] = 0x55;
+		tx[3] = 0xa5;
+		tx[4] = 0x81;
+		cmd_msg->tx_buf[0] = tx;
+		cmd_msg->tx_len[0] = 5;
 		break;
 	}
 	default:
@@ -1112,8 +1269,8 @@ void ddic_dsi_read_cmd_test(unsigned int case_num)
 		/* Read 0x0A = 0x1C */
 		cmd_msg->channel = 0;
 		cmd_msg->tx_cmd_num = 1;
-		cmd_msg->type[0] = 0x06;
-		tx[0] = 0x0A;
+		cmd_msg->type[0] = 0x14;
+		tx[0] = 0xFA;
 		cmd_msg->tx_buf[0] = tx;
 		cmd_msg->tx_len[0] = 1;
 
@@ -1129,15 +1286,15 @@ void ddic_dsi_read_cmd_test(unsigned int case_num)
 		/* Read 0xe8 = 0x00,0x01,0x23,0x00 */
 		cmd_msg->channel = 0;
 		cmd_msg->tx_cmd_num = 1;
-		cmd_msg->type[0] = 0x06;
-		tx[0] = 0xe8;
+		cmd_msg->type[0] = 0x14;
+		tx[0] = 0x0A;
 		cmd_msg->tx_buf[0] = tx;
 		cmd_msg->tx_len[0] = 1;
 
 		cmd_msg->rx_cmd_num = 1;
-		cmd_msg->rx_buf[0] = vmalloc(8 * sizeof(unsigned char));
+		cmd_msg->rx_buf[0] = vmalloc(4 * sizeof(unsigned char));
 		memset(cmd_msg->rx_buf[0], 0, 4);
-		cmd_msg->rx_len[0] = 4;
+		cmd_msg->rx_len[0] = 1;
 
 		break;
 	}
@@ -1215,6 +1372,53 @@ int mtk_dprec_mmp_dump_ovl_layer(struct mtk_plane_state *plane_state)
 	DDPINFO("%s, gCapturePriLayerEnable is %d\n",
 		__func__, gCaptureOVLEn);
 	return -1;
+}
+
+int mtk_drm_ioctl_pq_get_persist_property(struct drm_device *dev, void *data,
+       struct drm_file *file_priv)
+{
+	int i, ret = 0;
+	unsigned int pq_persist_property[32];
+	struct mtk_drm_private *private = dev->dev_private;
+	struct drm_crtc *crtc = private->crtc[0];
+
+	memset(pq_persist_property, 0, sizeof(pq_persist_property));
+	memcpy(pq_persist_property, (unsigned int *)data, sizeof(pq_persist_property));
+
+	for (i = 0; i < DISP_PQ_PROPERTY_MAX; i++) {
+		m_old_pq_persist_property[i] = m_new_pq_persist_property[i];
+		m_new_pq_persist_property[i] = pq_persist_property[i];
+	}
+
+	if (m_new_pq_persist_property[DISP_PQ_SILKY_BRIGHTNESS])
+		oplus_max_brightness = OPLUS_SILKY_MAX_BRIGHTNESS;
+	else
+		oplus_max_brightness = OPLUS_MAX_BRIGHTNESS;
+
+	DDPFUNC("+");
+
+	if (m_old_pq_persist_property[DISP_PQ_COLOR_BYPASS] !=
+			m_new_pq_persist_property[DISP_PQ_COLOR_BYPASS])
+		disp_color_set_bypass(crtc, m_new_pq_persist_property[DISP_PQ_COLOR_BYPASS]);
+
+	if (m_old_pq_persist_property[DISP_PQ_CCORR_BYPASS] !=
+			m_new_pq_persist_property[DISP_PQ_CCORR_BYPASS])
+		disp_ccorr_set_bypass(crtc, m_new_pq_persist_property[DISP_PQ_CCORR_BYPASS]);
+
+	if (m_old_pq_persist_property[DISP_PQ_GAMMA_BYPASS] !=
+			m_new_pq_persist_property[DISP_PQ_GAMMA_BYPASS])
+		disp_gamma_set_bypass(crtc, m_new_pq_persist_property[DISP_PQ_GAMMA_BYPASS]);
+
+	if (m_old_pq_persist_property[DISP_PQ_DITHER_BYPASS] !=
+			m_new_pq_persist_property[DISP_PQ_DITHER_BYPASS])
+		disp_dither_set_bypass(crtc, m_new_pq_persist_property[DISP_PQ_DITHER_BYPASS]);
+	if (m_old_pq_persist_property[DISP_PQ_AAL_BYPASS] !=
+			m_new_pq_persist_property[DISP_PQ_AAL_BYPASS])
+		disp_aal_set_bypass(crtc, m_new_pq_persist_property[DISP_PQ_AAL_BYPASS]);
+
+	DDPFUNC("-");
+
+	return ret;
 }
 
 int mtk_dprec_mmp_dump_cwb_buffer(struct drm_crtc *crtc,
@@ -1363,6 +1567,9 @@ bool mtk_drm_cwb_enable(int en,
 
 	return true;
 }
+#ifdef CONFIG_OPLUS_FEATURE_DISPCAP
+	EXPORT_SYMBOL(mtk_drm_cwb_enable);
+#endif
 
 bool mtk_drm_set_cwb_roi(struct mtk_rect rect)
 {
@@ -1459,6 +1666,9 @@ bool mtk_drm_set_cwb_roi(struct mtk_rect rect)
 	return true;
 
 }
+#ifdef CONFIG_OPLUS_FEATURE_DISPCAP
+	EXPORT_SYMBOL(mtk_drm_set_cwb_roi);
+#endif
 
 void mtk_drm_cwb_backup_copy_size(void)
 {
@@ -1516,6 +1726,9 @@ bool mtk_drm_set_cwb_user_buf(void *user_buffer, enum CWB_BUFFER_TYPE type)
 
 	return true;
 }
+#ifdef CONFIG_OPLUS_FEATURE_DISPCAP
+	EXPORT_SYMBOL(mtk_drm_set_cwb_user_buf);
+#endif
 
 static void process_dbg_opt(const char *opt)
 {
@@ -1846,6 +2059,20 @@ static void process_dbg_opt(const char *opt)
 
 		DDPINFO("mipi_ccci:%d\n", en);
 		mtk_disp_mipi_ccci_callback(en, 0);
+	/*#ifdef OPLUS_BUG_STABILITY*/
+	} else if (!strncmp(opt, "osc_ccci:", 9)) {
+		unsigned int en, ret;
+
+		ret = sscanf(opt, "osc_ccci:%d\n", &en);
+                if (ret != 1) {
+                        DDPPR_ERR("%d error to parse cmd %s\n",
+                                __LINE__, opt);
+                        return;
+                }
+
+                DDPINFO("osc_ccci:%d\n", en);
+                mtk_disp_osc_ccci_callback(en, 0);
+	/*#endif*/
 	} else if (strncmp(opt, "aal:", 4) == 0) {
 		disp_aal_debug(opt + 4);
 	} else if (strncmp(opt, "aee:", 4) == 0) {
@@ -2027,6 +2254,26 @@ static void process_dbg_opt(const char *opt)
 			display_enter_tui();
 		else
 			display_exit_tui();
+	}  else if (strncmp(opt, "drm:", 4) == 0) {
+		disp_drm_debug(opt + 4);
+	} else if (strncmp(opt, "hbm:", 4) == 0) {
+		struct drm_crtc *crtc;
+		struct mtk_drm_crtc *mtk_crtc;
+		mtk_drm_idlemgr_kick(__func__, crtc, 1);
+		mtk_crtc = to_mtk_crtc(crtc);
+		if (strncmp(opt + 4, "on", 2) == 0) {
+			disp_aal_set_bypass(crtc, 1);
+			disp_ccorr_set_bypass(crtc, 1);
+			mtk_crtc_check_trigger(mtk_crtc, false, true);
+			mtk_drm_crtc_set_panel_hbm(crtc, NULL, true);
+			mtk_drm_crtc_hbm_wait(crtc, true);
+		} else if (strncmp(opt + 4, "off", 3) == 0) {
+			disp_aal_set_bypass(crtc, 0);
+			disp_ccorr_set_bypass(crtc, 0);
+			mtk_crtc_check_trigger(mtk_crtc, false, true);
+			mtk_drm_crtc_set_panel_hbm(crtc, NULL, false);
+			mtk_drm_crtc_hbm_wait(crtc, false);
+		}
 	} else if (strncmp(opt, "cwb_en:", 7) == 0) {
 		unsigned int ret, enable;
 
@@ -2200,12 +2447,14 @@ static int idletime_set(void *data, u64 val)
 	if (val > 1000000)
 		val = 1000000;
 
-	crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-				typeof(*crtc), head);
-	if (!crtc) {
-		DDPPR_ERR("find crtc fail\n");
-		return -ENODEV;
+	if((&(drm_dev)->mode_config.crtc_list) != NULL){
+		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list, typeof(*crtc), head);
+		if (!crtc) {
+			DDPPR_ERR("find crtc fail\n");
+			return -ENODEV;
+		}
 	}
+
 	ret = mtk_drm_set_idle_check_interval(crtc, val);
 	if (ret == 0)
 		return -ENODEV;
@@ -2215,18 +2464,24 @@ static int idletime_set(void *data, u64 val)
 
 static int idletime_get(void *data, u64 *val)
 {
-	struct drm_crtc *crtc;
+	#ifdef CONFIG_DRM_MTK_20817_CUSTOM
 
-	crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-				typeof(*crtc), head);
-	if (!crtc) {
-		DDPPR_ERR("find crtc fail\n");
-		return -ENODEV;
-	}
-	*val = mtk_drm_get_idle_check_interval(crtc);
-	if (*val == 0)
-		return -ENODEV;
+	#else
+    struct drm_crtc *crtc;
+    if((&(drm_dev)->mode_config.crtc_list) != NULL) {
+        crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list, typeof(*crtc), head);
 
+        if (!crtc) {
+            DDPPR_ERR("find crtc fail\n");
+            return -ENODEV;
+        }
+        *val = mtk_drm_get_idle_check_interval(crtc);
+        if (*val == 0)
+            return -ENODEV;
+    }
+    else
+        return -ENODEV;
+	#endif
 	return 0;
 }
 
@@ -2478,3 +2733,11 @@ void get_disp_dbg_buffer(unsigned long *addr, unsigned long *size,
 		*start = 0;
 	}
 }
+
+struct drm_device *get_drm_device(){
+    return drm_dev;
+}
+EXPORT_SYMBOL(get_drm_device);
+//#endif
+
+

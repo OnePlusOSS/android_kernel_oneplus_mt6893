@@ -86,3 +86,34 @@ obj-y				+= l3mdev/
 endif
 obj-$(CONFIG_QRTR)		+= qrtr/
 obj-$(CONFIG_NET_NCSI)		+= ncsi/
+
+#ifdef OPLUS_FEATURE_DATA_EVAL
+obj-y				+= oplus_kernel2user/
+#endif /* OPLUS_FEATURE_DATA_EVAL */
+
+OPLUS_FEATURE_WIFI_LUCKYMONEY=1
+ifneq ($(OPLUS_FEATURE_WIFI_LUCKYMONEY),)
+obj-y				+= oplus_nf_hooks/
+endif #/* OPLUS_FEATURE_WIFI_LUCKYMONEY */
+
+#ifdef OPLUS_FEATURE_WIFI_SLA
+obj-y                   	+= oplus_sla/
+#endif /* OPLUS_FEATURE_WIFI_SLA */
+
+#ifdef OPLUS_FEATURE_IPV6_OPTIMIZE
+obj-y                       += oplus_ipv6/
+#endif /* OPLUS_FEATURE_IPV6_OPTIMIZE */
+
+OPLUS_FEATURE_DHCP=1
+ifneq ($(OPLUS_FEATURE_DHCP),)
+obj-y				+= oplus_dhcp/
+endif #/* OPLUS_FEATURE_DHCP */
+
+#ifdef OPLUS_FEATURE_NWPOWER
+obj-y				+= oplus_nwpower/
+#endif /* OPLUS_FEATURE_NWPOWER */
+
+OPLUS_FEATURE_WIFI_CAP_CENTER=1
+ifneq ($(OPLUS_FEATURE_WIFI_CAP_CENTER),)
+obj-y				+= oplus_wificapcenter/
+endif #/* OPLUS_FEATURE_WIFI_CAP_CENTER */

@@ -146,10 +146,13 @@ static void wk_auxadc_dbg_dump(void)
 					reg_log);
 				strncpy(reg_log, "", 860);
 			}
+/*
 			snprintf(reg_str, 20, "Reg[0x%x]=0x%x, ",
 				adc_dbg_addr[j],
 				pmic_adc_dbg[dbg_stamp].reg[j]);
 			strncat(reg_log, reg_str, 860);
+*/
+//#endif
 		}
 		pr_notice("%d %s\n",
 			pmic_adc_dbg[dbg_stamp].ktime_sec,
@@ -590,6 +593,7 @@ void pmic_auxadc_chip_timeout_handler(
 		upmu_get_reg_value(MT6357_AUXADC_STA0),
 		upmu_get_reg_value(MT6357_AUXADC_STA1),
 		upmu_get_reg_value(MT6357_AUXADC_STA2));
+/*
 	dev_notice(dev, "RST: Reg[0x%x]=0x%x, Reg[0x%x]=0x%x\n",
 		MT6357_STRUP_CON6,
 		upmu_get_reg_value(MT6357_STRUP_CON6),
@@ -600,6 +604,8 @@ void pmic_auxadc_chip_timeout_handler(
 		upmu_get_reg_value(MT6357_HK_TOP_CLK_CON0),
 		MT6357_HK_TOP_CLK_CON1,
 		upmu_get_reg_value(MT6357_HK_TOP_CLK_CON1));
+*/
+//#endif
 }
 
 int pmic_auxadc_chip_init(struct device *dev)

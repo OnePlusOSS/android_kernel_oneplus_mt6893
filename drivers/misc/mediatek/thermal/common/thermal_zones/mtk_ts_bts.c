@@ -503,6 +503,13 @@ static struct BTS_TEMPERATURE BTS_Temperature_Table7[] = {
 	{125, 2522}
 };
 
+#ifdef CONFIG_OPLUS_CHARGER_MTK6769
+static int ap_temp = 25000;
+int get_ap_temp(void)
+{
+	return ap_temp;
+}
+#endif /*CONFIG_OPLUS_CHARGER_MTK6769*/
 
 /* convert register to temperature  */
 static __s32 mtkts_bts_thermistor_conver_temp(__s32 Res)
@@ -744,7 +751,9 @@ int mtkts_bts_get_hw_temp(void)
 
 	if (t_ret > 40000)	/* abnormal high temp */
 		mtkts_bts_printk("T_AP=%d\n", t_ret);
-
+#ifdef CONFIG_OPLUS_CHARGER_MTK6769
+	ap_temp = t_ret;
+#endif /*CONFIG_OPLUS_CHARGER_MTK6769*/
 	mtkts_bts_dprintk("[%s] T_AP, %d\n", __func__, t_ret);
 	return t_ret;
 }

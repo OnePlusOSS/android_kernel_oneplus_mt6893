@@ -170,7 +170,6 @@ void __fpsgo_systrace_e(void)
 	char buf2[256];
 	if (unlikely(!fpsgo_update_tracemark()))
 		return;
-
 	snprintf(buf2, sizeof(buf2), "E\n");
 	tracing_mark_write(buf2);
 }

@@ -554,6 +554,44 @@ TRACE_EVENT(sched_util,
 	)
 );
 
+TRACE_EVENT(iowait_task,
+
+	TP_PROTO(struct task_struct *t),
+
+	TP_ARGS(t),
+
+	TP_STRUCT__entry(
+		__array(	char,	comm,	TASK_COMM_LEN	)
+		__field(	pid_t,	pid			)
+	),
+
+	TP_fast_assign(
+		memcpy(__entry->comm, t->comm, TASK_COMM_LEN);
+		__entry->pid		= t->pid;
+	),
+
+	TP_printk("comm=%s pid=%d",
+		  __entry->comm, __entry->pid)
+);
+
+TRACE_EVENT(cpu_iowait_util,
+	TP_PROTO(unsigned int cpu, unsigned int iowait_boost),
+
+	TP_ARGS(cpu, iowait_boost),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, cpu)
+		__field(unsigned int, iowait_boost)
+	),
+
+	TP_fast_assign(
+		__entry->cpu		= cpu;
+		__entry->iowait_boost	= iowait_boost;
+	),
+
+	TP_printk("cpu=%d iowait_boost=%u",
+		__entry->cpu, __entry->iowait_boost)
+);
 /*
  * Tracepoint for accounting wait time (time the task is runnable
  * but not actually running due to scheduler contention).

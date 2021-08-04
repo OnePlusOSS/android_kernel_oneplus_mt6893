@@ -21,7 +21,9 @@
 #include "SCP_power_monitor.h"
 #include <linux/pm_wakeup.h>
 
-
+#ifdef OPLUS_FEATURE_SENSOR
+#include "../../oplus_sensor_devinfo/sensor_devinfo.h"
+#endif
 #define ALSPSHUB_DEV_NAME     "alsps_hub_pl"
 
 struct alspshub_ipi_data {

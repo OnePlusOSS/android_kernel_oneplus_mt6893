@@ -112,6 +112,15 @@ config MTK_AAL_SUPPORT
 	  This feature requires the cowork of AAL user-space algorithm process.
 	  Please also turn on MTK_AAL_SUPPORT in ProjectConfig.mk.
 
+config MTK_SILKY_BRIGHTNESS_SUPPORT
+	bool "support silky brightness"
+	default n
+	help
+	  Decide whether to support silky brightness feature.
+	  This feature requires the cowork of silky berightness
+	  user-space algorithm process(PQ service).
+	  Please also turn on MTK_SILKY_BRIGHTNESS_SUPPORT in ProjectConfig.mk.
+
 config MTK_OD_SUPPORT
 	bool "support od"
 	default n

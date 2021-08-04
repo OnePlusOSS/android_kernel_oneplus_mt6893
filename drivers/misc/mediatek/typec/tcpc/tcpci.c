@@ -749,6 +749,15 @@ int tcpci_enable_auto_discharge(struct tcpc_device *tcpc, bool en)
 	return ret;
 }
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+int tcpci_enable_bleed_discharge(struct tcpc_device *tcpc, bool en)
+{
+	if (tcpc->ops->set_bleed_discharge)
+		return tcpc->ops->set_bleed_discharge(tcpc, en);
+	return 0;
+}
+#endif /* OPLUS_FEATURE_CHG_BASIC */
+
 int __tcpci_enable_force_discharge(struct tcpc_device *tcpc, bool en, int mv)
 {
 	int ret = 0;

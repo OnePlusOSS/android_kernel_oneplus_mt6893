@@ -45,9 +45,9 @@ static DEFINE_MUTEX(param_lock);
 static struct tcpc_device *tcpc_dev;
 static struct notifier_block pd_nb;
 static int pd_sink_voltage_new;
-static int pd_sink_voltage_old;
+static int pd_sink_voltage_old = -1;
 static int pd_sink_current_new;
-static int pd_sink_current_old;
+static int pd_sink_current_old = -1;
 static bool tcpc_kpoc;
 #if 0 /* vconn is from vsys on mt6763 */
 /* vconn boost gpio pin */
@@ -190,8 +190,12 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 
 		if ((pd_sink_voltage_new != pd_sink_voltage_old) ||
 		    (pd_sink_current_new != pd_sink_current_old)) {
+
+#ifndef OPLUS_FEATURE_CHG_BASIC
 			pd_sink_voltage_old = pd_sink_voltage_new;
 			pd_sink_current_old = pd_sink_current_new;
+#endif /* OPLUS_FEATURE_CHG_BASIC */
+
 			if ((!pd_sink_voltage_old || !pd_sink_current_old) &&
 			    (pd_sink_voltage_new && pd_sink_current_new)) {
 #if CONFIG_MTK_GAUGE_VERSION == 30
@@ -211,6 +215,10 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 				mtk_chr_pd_enable_power_path(0);
 #endif
 			}
+#ifdef OPLUS_FEATURE_CHG_BASIC
+			pd_sink_voltage_old = pd_sink_voltage_new;
+			pd_sink_current_old = pd_sink_current_new;
+#endif /* OPLUS_FEATURE_CHG_BASIC */
 		}
 		mutex_unlock(&param_lock);
 		break;

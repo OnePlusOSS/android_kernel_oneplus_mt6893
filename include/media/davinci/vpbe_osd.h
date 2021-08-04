@@ -130,7 +130,6 @@ enum osd_zoom_factor {
 
 /**
  * enum osd_clut
- * @ROM_CLUT: ROM CLUT
  * @RAM_CLUT: RAM CLUT
  *
  * Description:
@@ -143,8 +142,6 @@ enum osd_clut {
 
 /**
  * enum osd_rom_clut
- * @ROM_CLUT0: Macintosh CLUT
- * @ROM_CLUT1: CLUT from DM270 and prior devices
  *
  * Description:
  * An enumeration of the ROM Color Lookup Table (CLUT) options.

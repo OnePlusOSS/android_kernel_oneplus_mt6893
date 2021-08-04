@@ -3021,6 +3021,12 @@ page_owner=on loop.max_part=7";
 		io-channel-names = "thermistor-ch2";
 	};
 
+	tboard_thermistor4: thermal-sensor4 {
+		compatible = "mediatek,mtboard-thermistor4";
+		io-channels = <&auxadc 3>;
+		io-channel-names = "thermistor-ch3";
+	};
+
 	mt6315_them_intr {
 		compatible = "mediatek,mt6315_therm_intr";
 		interrupts-extended =

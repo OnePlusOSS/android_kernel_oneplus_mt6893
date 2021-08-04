@@ -307,7 +307,11 @@ u64 walt_irqload(int cpu) {
 }
 
 int walt_cpu_high_irqload(int cpu) {
+#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_SCHED_WALT)
+	return false;
+#else
 	return walt_irqload(cpu) >= sysctl_sched_walt_cpu_high_irqload;
+#endif
 }
 
 static int account_busy_for_cpu_time(struct rq *rq, struct task_struct *p,
@@ -800,6 +804,9 @@ void walt_mark_task_starting(struct task_struct *p)
 	}
 
 	wallclock = walt_ktime_clock();
+#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_SCHED_WALT)
+	p->last_wake_ts = wallclock;
+#endif
 	p->ravg.mark_start = wallclock;
 }
 

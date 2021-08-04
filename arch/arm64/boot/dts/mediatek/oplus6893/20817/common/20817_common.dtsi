@@ -1,0 +1,122 @@
+&odm {
+	oplus_devinfo:oplus_devinfo {
+	compatible = "oplus-devinfo";
+	pinctrl-names = "default", "aboard_gpio0_sleep", "aboard_gpio0_active", "aboard_gpio0_idle";
+	pinctrl-0 = <&hw_pins_default>;
+	pinctrl-1 = <&aboard_pin_gpio0_sleep>;
+	pinctrl-2 = <&aboard_pin_gpio0_active>;
+	pinctrl-3 = <&aboard_pin_gpio0_idle>;
+
+	main-sub {
+		use_tristate_gpio;
+		tristate_gpio_num = <2>;
+		compatible = "hw-match, main-sub";
+		aboard-gpio0 = <&pio 112 0x00>;
+		aboard-patterns = <0 1 2>;
+		/*main board*/
+
+		match-projects = <20817 20827 20831>;
+	};
+	};
+
+	mtk_nanohub_info:mtk_nanohub_info@0 {
+		compatible = "mediatek,mtk_nanohub_info";
+		vdd-supply = <&mt_pmic_vibr_ldo_reg>;
+	};
+};
+
+&pio {
+	hw_pins_default:default@hw_sub_id {
+	};
+
+	aboard_pin_gpio0_sleep:sleep@id0 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO112__FUNC_GPIO112>;
+			slew-rate = <0>;
+			bias-pull-down;
+			input-enable;
+		};
+	};
+
+	aboard_pin_gpio0_active:active@id0 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO112__FUNC_GPIO112>;
+			slew-rate = <0>;
+			bias-pull-up;
+			input-enable;
+		};
+	};
+
+	aboard_pin_gpio0_idle:idle@id0 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO112__FUNC_GPIO112>;
+			slew-rate = <0>;
+			bias-disable;
+			input-enable;
+		};
+	};
+
+};
+//#ifdef OPLUS_FEATURE_CHG_BASIC
+&lk_charger{
+	charger_by_buckboost;
+	support_tuv_authentication;
+};
+//#endif
+
+/*#ifdef VENDOE_EDIT*/
+&i2c8 {
+	   fan53870: fan53870@35 {
+               compatible = "fan53870";
+               reg = <0x35>;
+               ldo1_min_vol = <800000>;  /*uV*/
+               ldo1_max_vol = <1504000>;
+               ldo1_step_vol = <8000>;
+       };
+};
+/*#endif*/
+
+
+&i2c9 {
+       status = "okay";
+       nfc_nxp@28 {
+               compatible = "nxp,pn544";
+               reg = <0x28>;
+               nxp,pn544-irq = <&pio 7 0x0>;
+               nxp,pn544-ven = <&pio 16 0x0>;
+               nxp,pn544-fw-dwnld = <&pio 19 0x0>;
+               nxp,pn544-clkreq = <&pio 17 0x0>;
+               interrupt-parent = <&pio>;
+       };
+};
+//#endif /* OPLUS_FEATURE_NFC_BRINGUP */
+
+&disp_leds {
+	backlight {
+		max-brightness = <10239>;
+		led-bits = <13>;
+	};
+};
+
+&pwm_leds {
+	backlight {
+		max-brightness = <10239>;
+		led-bits = <13>;
+		trans-bits = <12>;
+		default-state = "on";
+	};
+};
+
+&swtp{
+	compatible = "mediatek, swtp-eint";
+	debounce = <512000>;
+};
+
+/*#ifdef VENDOE_EDIT*/
+&i2c3 {
+	   mn29xxxals: mn29xxxals@49 {
+               compatible = "mediatek,mn29xxxals";
+               reg = <0x49>;
+       };
+};
+/*#endif*/

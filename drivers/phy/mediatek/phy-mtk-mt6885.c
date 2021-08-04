@@ -122,6 +122,8 @@ static void phy_efuse_settings(struct mtk_phy_instance *instance)
 	u32 evalue;
 
 	evalue = (get_devinfo_with_index(108) & (0x1f<<0)) >> 0;
+	evalue = 0x1E;
+	/*END*/
 	if (evalue) {
 		phy_printk(K_INFO, "RG_USB20_INTR_CAL=0x%x\n",
 			evalue);
@@ -390,33 +392,75 @@ reg_done:
 	usb_enable_clock(phy_drv, false);
 }
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+bool g_is_host = false;
+#endif
+
+#ifdef OPLUS_FEATURE_CHG_BASIC
+extern unsigned int usb_mode;
+#endif
+
+
 #define VAL_MAX_WIDTH_2	0x3
 #define VAL_MAX_WIDTH_3	0x7
 static void usb_phy_tuning(struct mtk_phy_instance *instance)
 {
 	s32 u2_vrt_ref, u2_term_ref, u2_enhance;
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	s32 host_u2_vrt_ref, host_u2_term_ref, host_u2_enhance;
+#endif
 	struct device_node *of_node;
 
 	if (!instance->phy_tuning.inited) {
 		instance->phy_tuning.u2_vrt_ref = 6;
 		instance->phy_tuning.u2_term_ref = 6;
 		instance->phy_tuning.u2_enhance = 1;
+#ifdef OPLUS_FEATURE_CHG_BASIC
+		instance->phy_tuning.host_u2_vrt_ref = 6;
+		instance->phy_tuning.host_u2_term_ref = 6;
+		instance->phy_tuning.host_u2_enhance = 1;
+#endif
 		of_node = of_find_compatible_node(NULL, NULL,
 			instance->phycfg->tuning_node_name);
 		if (of_node) {
-			/* value won't be updated if property not being found */
+#ifdef OPLUS_FEATURE_CHG_BASIC
+			of_property_read_u32(of_node, "u2_vrt_ref_host",
+			(u32 *) &instance->phy_tuning.host_u2_vrt_ref);
+
+			of_property_read_u32(of_node, "u2_term_ref_host",
+			(u32 *) &instance->phy_tuning.host_u2_term_ref);
+
+			of_property_read_u32(of_node, "u2_enhance_host",
+			(u32 *) &instance->phy_tuning.host_u2_enhance);
+#endif
+/* value won't be updated if property not being found */
 			of_property_read_u32(of_node, "u2_vrt_ref",
-				(u32 *) &instance->phy_tuning.u2_vrt_ref);
+			(u32 *) &instance->phy_tuning.u2_vrt_ref);
+
 			of_property_read_u32(of_node, "u2_term_ref",
-				(u32 *) &instance->phy_tuning.u2_term_ref);
+			(u32 *) &instance->phy_tuning.u2_term_ref);
+
 			of_property_read_u32(of_node, "u2_enhance",
-				(u32 *) &instance->phy_tuning.u2_enhance);
+			(u32 *) &instance->phy_tuning.u2_enhance);
 		}
 		instance->phy_tuning.inited = true;
-	}
+}
+#ifndef OPLUS_FEATURE_CHG_BASIC
 	u2_vrt_ref = instance->phy_tuning.u2_vrt_ref;
 	u2_term_ref = instance->phy_tuning.u2_term_ref;
 	u2_enhance = instance->phy_tuning.u2_enhance;
+#else /*OPLUS_FEATURE_CHG_BASIC*/
+	if(usb_mode == 0) {
+		u2_vrt_ref = instance->phy_tuning.host_u2_vrt_ref;
+		u2_term_ref = instance->phy_tuning.host_u2_term_ref;
+		u2_enhance = instance->phy_tuning.host_u2_enhance;
+	} else {
+		u2_vrt_ref = instance->phy_tuning.u2_vrt_ref;
+		u2_term_ref = instance->phy_tuning.u2_term_ref;
+		u2_enhance = instance->phy_tuning.u2_enhance;
+    }
+	phy_printk(K_ERR, "%s - u2_vrt_ref =%d u2_term_ref=%d u2_enhance=%d g_is_host=%s usb_mode =%d\n", __func__,u2_vrt_ref,u2_term_ref,u2_enhance,g_is_host == true ?"true":"false",usb_mode);
+#endif /*!OPLUS_FEATURE_CHG_BASIC*/
 
 	if (u2_vrt_ref != -1) {
 		if (u2_vrt_ref <= VAL_MAX_WIDTH_3) {
@@ -524,7 +568,13 @@ static void phy_recover(struct mtk_phy_instance *instance)
 	phy_efuse_settings(instance);
 
 	u3phywrite32(U3D_USBPHYACR6, RG_USB20_DISCTH_OFST,
+		RG_USB20_DISCTH, 0xD);
+/*ELSE*/
+/*
+	u3phywrite32(U3D_USBPHYACR6, RG_USB20_DISCTH_OFST,
 		RG_USB20_DISCTH, 0x7);
+*/
+/*END*/
 
 	usb_phy_tuning(instance);
 	phy_advance_settings(instance);
@@ -632,6 +682,8 @@ static int phy_lpm_enable(struct mtk_phy_instance  *instance, bool on)
 static int phy_host_mode(struct mtk_phy_instance  *instance, bool on)
 {
 	phy_printk(K_DEBUG, "%s+ = %d\n", __func__, on);
+
+	g_is_host = on;
 
 	return 0;
 }

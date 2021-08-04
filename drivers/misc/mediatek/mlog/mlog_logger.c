@@ -35,6 +35,10 @@
 #include <linux/poll.h>
 #include <linux/init.h>
 
+#if defined(OPLUS_FEATURE_MULTI_FREEAREA) && defined(CONFIG_PHYSICAL_ANTI_FRAGMENTATION)
+#include <linux/mmzone.h>
+#endif
+
 #ifdef CONFIG_MTK_GPU_SUPPORT
 #include <mt-plat/mtk_gpu_utility.h>
 #endif
@@ -404,17 +408,36 @@ static void mlog_buddyinfo(void)
 	for_each_populated_zone(zone) {
 		unsigned long flags;
 		unsigned int order;
+#if defined(OPLUS_FEATURE_MULTI_FREEAREA) && defined(CONFIG_PHYSICAL_ANTI_FRAGMENTATION)
+		unsigned long nr[FREE_AREA_COUNTS][MAX_ORDER] = {0};
+		unsigned int flc;
+#else
 		unsigned long nr[MAX_ORDER] = {0};
+#endif
 
 		spin_lock_irqsave(&zone->lock, flags);
+#if defined(OPLUS_FEATURE_MULTI_FREEAREA) && defined(CONFIG_PHYSICAL_ANTI_FRAGMENTATION)
+		for (flc = 0; flc < FREE_AREA_COUNTS; ++flc) {
+			for (order = 0; order < MAX_ORDER; ++order)
+				nr[flc][order] = zone->free_area[flc][order].nr_free;
+		}
+#else
 		for (order = 0; order < MAX_ORDER; ++order)
 			nr[order] = zone->free_area[order].nr_free;
+#endif
 		spin_unlock_irqrestore(&zone->lock, flags);
 
 		/* emit logs */
 		spin_lock_bh(&mlogbuf_lock);
+#if defined(OPLUS_FEATURE_MULTI_FREEAREA) && defined(CONFIG_PHYSICAL_ANTI_FRAGMENTATION)
+		for (flc = 0; flc < FREE_AREA_COUNTS; ++flc) {
+			for (order = 0; order < MAX_ORDER; ++order)
+				mlog_emit(nr[flc][order]);
+		}
+#else
 		for (order = 0; order < MAX_ORDER; ++order)
 			mlog_emit(nr[order]);
+#endif
 		spin_unlock_bh(&mlogbuf_lock);
 	}
 }

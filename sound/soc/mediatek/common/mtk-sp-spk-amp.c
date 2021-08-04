@@ -30,9 +30,9 @@
 #include "../../codecs/tfa98xx/inc/tfa98xx_ext.h"
 #endif
 
-#ifdef CONFIG_SND_SOC_AW87339
-#include "aw87339.h"
-#endif
+// #ifdef CONFIG_SND_SOC_AW87339
+// #include "aw87339.h"
+// #endif
 
 #define MTK_SPK_NAME "Speaker Codec"
 #define MTK_SPK_REF_NAME "Speaker Codec Ref"
@@ -132,19 +132,19 @@ EXPORT_SYMBOL(mtk_spk_get_i2s_in_type);
 
 int mtk_ext_spk_get_status(void)
 {
-#ifdef CONFIG_SND_SOC_AW87339
-	return aw87339_spk_status_get();
-#else
+// #ifdef CONFIG_SND_SOC_AW87339
+//	 return aw87339_spk_status_get();
+// #else
 	return 0;
-#endif
+// #endif
 }
 EXPORT_SYMBOL(mtk_ext_spk_get_status);
 
 void mtk_ext_spk_enable(int enable)
 {
-#ifdef CONFIG_SND_SOC_AW87339
-	aw87339_spk_enable_set(enable);
-#endif
+// #ifdef CONFIG_SND_SOC_AW87339
+// 	  aw87339_spk_enable_set(enable);
+// #endif
 }
 EXPORT_SYMBOL(mtk_ext_spk_enable);
 
@@ -444,7 +444,9 @@ int mtk_spk_recv_ipi_buf_from_dsp(int8_t *buffer,
 EXPORT_SYMBOL(mtk_spk_recv_ipi_buf_from_dsp);
 
 static const struct i2c_device_id mtk_spk_i2c_id[] = {
+#ifdef CONFIG_SND_SOC_TFA9874
 	{ "tfa98xx", 0},
+#endif
 	{ "speaker_amp", 0},
 	{}
 };
@@ -452,7 +454,9 @@ MODULE_DEVICE_TABLE(i2c, mtk_spk_i2c_id);
 
 #ifdef CONFIG_OF
 static const struct of_device_id mtk_spk_match_table[] = {
+#ifdef CONFIG_SND_SOC_TFA9874
 	{.compatible = "nxp,tfa98xx",},
+#endif
 	{.compatible = "mediatek,speaker_amp",},
 	{},
 };

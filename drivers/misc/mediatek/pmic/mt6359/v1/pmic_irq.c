@@ -260,11 +260,14 @@ static void md_oc_int_handler(enum PMIC_IRQ_ENUM intNo, const char *int_name)
 		break;
 	case INT_VFE28_OC:
 		data_int32 = 1 << 1;
+/*
 		pr_notice("Reg[0x1B8A]=0x%x,Reg[0x1B88]=0x%x,Reg[0x1B8C]=0x%x,Reg[0x1B92]=0x%x\n"
 			, upmu_get_reg_value(0x1B8A),
 			upmu_get_reg_value(0x1B88),
 			upmu_get_reg_value(0x1B8C),
 			upmu_get_reg_value(0x1B92));
+*/
+//#endif
 		if (times >= 10) {
 			pmic_enable_interrupt(intNo, 0, "PMIC");
 			pr_notice("disable OC interrupt: %s\n", int_name);

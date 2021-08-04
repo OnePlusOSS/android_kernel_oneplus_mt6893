@@ -35,7 +35,7 @@
 #include <linux/mfd/mt6390/registers.h>
 #endif
 #include <linux/mfd/mt6358/core.h>
-
+#include <linux/wakeup_reason.h>
 #define MT6357_CID_CODE		0x5700
 #define MT6358_CID_CODE		0x5800
 #define MT6359_CID_CODE		0x5900
@@ -163,7 +163,7 @@ static void mt6358_irq_sp_handler(struct mt6358_chip *chip,
 	unsigned int sta_reg, sp_int_status = 0;
 	unsigned int hwirq, virq;
 	int ret, i, j;
-
+	
 	for (i = 0; i < sp_top_ints[sp].num_int_regs; i++) {
 		sta_reg = sp_top_ints[sp].sta_reg + 0x2 * i;
 		ret = regmap_read(chip->regmap, sta_reg, &sp_int_status);
@@ -184,6 +184,8 @@ static void mt6358_irq_sp_handler(struct mt6358_chip *chip,
 				sta_reg, sp_int_status,
 				pmic_irqs[hwirq].name, hwirq,
 				irq_get_trigger_type(virq));
+
+			log_irq_wakeup_reason(chip->irq);
 			log_threaded_irq_wakeup_reason(virq, chip->irq);
 			if (virq)
 				handle_nested_irq(virq);

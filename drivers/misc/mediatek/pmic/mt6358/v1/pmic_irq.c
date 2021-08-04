@@ -31,6 +31,10 @@
 #include <mt-plat/mtk_ccci_common.h>
 #include <linux/mfd/mt6358/core.h>
 
+#ifdef CONFIG_OPLUS_CHARGER_MTK6771
+#include <mt-plat/charger_type.h>
+extern enum charger_type g_chr_type;
+#endif /* CONFIG_OPLUS_CHARGER_MTK6771 */
 struct legacy_pmic_callback {
 	bool has_requested;
 	void (*callback)(void);
@@ -82,6 +86,56 @@ irqreturn_t legacy_pmic_int_handler(int irq, void *data)
 	pmic_cb->callback();
 	return IRQ_HANDLED;
 }
+#ifdef CONFIG_OPLUS_CHARGER_MTK6771
+extern bool oplus_chg_wake_update_work(void);
+extern bool mt_usb_is_device(void);
+extern bool oplus_wrap_get_fastchg_started(void);
+extern int oplus_wrap_get_adapter_update_status(void);
+extern void oplus_wrap_reset_fastchg_after_usbout(void);
+extern void oplus_chg_clear_chargerid_info(void);
+extern void oplus_chg_set_chargerid_switch_val(int);
+
+#if defined(CONFIG_OPLUS_CHARGER_MTK6771) && defined(CONFIG_OPLUS_CHARGER_MT6370_TYPEC)
+extern void oplus_chg_set_charger_type_unknown(void);
+#endif
+void chrdet_int_handler(void)
+{
+	pr_err("[chrdet_int_handler]CHRDET status = %d....\n",
+		pmic_get_register_value(PMIC_RGS_CHRDET));
+	if (mt_usb_is_device() == false) {
+		return;
+	}
+
+	if(oplus_wrap_get_fastchg_started() == true && oplus_wrap_get_adapter_update_status() != 1){
+		pr_err("[do_charger_detect] opchg_get_prop_fast_chg_started = true!\n");
+            if (!upmu_get_rgs_chrdet()) {
+#if defined(CONFIG_OPLUS_CHARGER_MTK6771) && defined(CONFIG_OPLUS_CHARGER_MT6370_TYPEC)
+		oplus_chg_set_charger_type_unknown();
+#else
+                g_chr_type = CHARGER_UNKNOWN;
+#endif
+            }
+		return;
+	}
+	if (upmu_get_rgs_chrdet()){
+		pr_err("[chrdet_int_handler]charger in\n");
+	} else {
+		pr_err("[chrdet_int_handler]charger out\n");
+		oplus_wrap_reset_fastchg_after_usbout();
+		if(oplus_wrap_get_fastchg_started() == false) {
+				oplus_chg_set_chargerid_switch_val(0);
+				oplus_chg_clear_chargerid_info();
+		}
+#if defined(CONFIG_OPLUS_CHARGER_MTK6771) && defined(CONFIG_OPLUS_CHARGER_MT6370_TYPEC)
+		oplus_chg_set_charger_type_unknown();
+#else
+		g_chr_type = CHARGER_UNKNOWN;
+#endif
+	}
+	printk("g_chr_type = %d\n",g_chr_type);
+	oplus_chg_wake_update_work();
+}
+#endif /* CONFIG_OPLUS_CHARGER_MTK6771 */
 
 /*
  * PMIC Interrupt service
@@ -336,6 +390,10 @@ void PMIC_EINT_SETTING(struct platform_device *pdev)
 		"homekey_r", NULL);
 	if (ret < 0)
 		dev_notice(&pdev->dev, "request HOMEKEY_R irq fail\n");
+#ifdef CONFIG_OPLUS_CHARGER_MTK6771
+	pmic_register_interrupt_callback(INT_CHRDET_EDGE, chrdet_int_handler);
+	pmic_enable_interrupt(INT_CHRDET_EDGE, 1, "PMIC");
+#endif
 }
 
 MODULE_AUTHOR("Jeter Chen");

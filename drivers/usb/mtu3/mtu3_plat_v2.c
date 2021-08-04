@@ -286,10 +286,142 @@ ssize_t musb_sib_enable_store(struct device *dev, struct device_attribute *attr,
 DEVICE_ATTR(sib_enable, 0664, musb_sib_enable_show, musb_sib_enable_store);
 #endif
 
+#ifdef CONFIG_OPLUS_CHARGER_MTK6771
+/* Qiao.Hu@@Prd6.BaseDrv.USB.Basic, 2017/07/28, Add for otg */
+struct ssusb_mtk *mtu3_ssusb;
+extern bool is_switch_done(void);
+extern void mtk_xhci_eint_iddig_gpio_mode(void);
+#ifdef CONFIG_MTK_USB_IDDIG
+extern int iddig_gpio_mode(int mode);
+#else
+static int iddig_gpio_mode(int mode)
+{
+	return -1;
+}
+#endif
 
+static bool start_id_polling= false;
+static bool id_polling_state = false;
+void somc_chg_usbid_start_polling_delay_work(struct work_struct *work)
+{
+	struct ssusb_mtk *usb_id;
+	usb_id =mtu3_ssusb;
+	spin_lock(&usb_id->change_irq_lock);
+	iddig_gpio_mode(0);
+	id_polling_state = true;
+	spin_unlock(&usb_id->change_irq_lock);
+
+}
+
+void somc_chg_usbid_stop_polling_delay_work(struct work_struct *work)
+{
+	struct ssusb_mtk *usb_id;
+	usb_id =mtu3_ssusb;
+	spin_lock(&usb_id->change_irq_lock);
+	id_polling_state = false;
+	iddig_gpio_mode(1);
+	spin_unlock(&usb_id->change_irq_lock);
+}
+
+static void somc_chg_usbid_start_polling(struct ssusb_mtk *usb_id)
+{
+	printk("somc_chg_usbid_start_polling\n");
+	schedule_delayed_work(&usb_id->start_polling_delay, 0);
+}
+
+static void somc_chg_usbid_stop_polling(struct ssusb_mtk *usb_id)
+{
+	printk("somc_chg_usbid_stop_polling\n");
+	cancel_delayed_work_sync(&usb_id->stop_polling_delay);
+	schedule_delayed_work(&usb_id->stop_polling_delay, 0);
+}
+
+static int set_start_id_polling(void)
+{
+	int ret = 1;
+	struct ssusb_mtk *usb_id;
+	usb_id =mtu3_ssusb;
+	if(start_id_polling) {
+		usb_id->user_request_polling = true;
+		somc_chg_usbid_start_polling(usb_id);
+	} else {
+		usb_id->user_request_polling = false;
+		somc_chg_usbid_stop_polling(usb_id);
+	}
+
+	return ret;
+}
+
+ #ifndef CONFIG_OPLUS_CHARGER_MT6370_TYPEC
+void oplus_set_otg_switch_status(bool value)
+{
+	start_id_polling = value;
+	printk("start_id_polling_store_start_id_polling =%d\n", start_id_polling);
+	set_start_id_polling();
+}
+EXPORT_SYMBOL(oplus_set_otg_switch_status);
+#endif /* CONFIG_OPLUS_CHARGER_MT6370_TYPEC */
+
+static ssize_t start_id_polling_show(struct device* dev, struct device_attribute *attr, char *buf)
+{
+	if (!dev) {
+	    return 0;
+	}
+	return sprintf(buf, "%d\n", start_id_polling);
+}
+
+static ssize_t start_id_polling_store(struct device* dev, struct device_attribute *attr,
+                const char *buf, size_t count)
+{
+	int value;
+	printk("start_id_polling_store\n");
+	if (!dev) {
+		return count;
+	} else {
+		sscanf(buf, "%d", &value);
+		start_id_polling = value;
+		printk("start_id_polling_store_start_id_polling =%d\n",start_id_polling);
+		set_start_id_polling();
+	}
+	return count;
+}
+
+static ssize_t ssusb_mtk_id_state_show(struct device* dev, struct device_attribute *attr, char *buf)
+{
+	if (!dev) {
+		return 0;
+	}
+	return sprintf(buf, "%d\n", id_polling_state);
+}
+
+static ssize_t ssusb_mtk_id_state_store(struct device* dev, struct device_attribute *attr,
+                const char *buf, size_t count)
+{
+	int value;
+	struct ssusb_mtk *usb_id;
+
+	usb_id = mtu3_ssusb;
+	if (!dev) {
+		return count;
+	} else {
+		sscanf(buf, "%d", &value);
+		spin_lock(&usb_id->change_irq_lock);
+		id_polling_state = value;
+		spin_unlock(&usb_id->change_irq_lock);
+	}
+	return count;
+}
+DEVICE_ATTR(idpolling, 0664, start_id_polling_show, start_id_polling_store);
+DEVICE_ATTR(idstate, 0664, ssusb_mtk_id_state_show, ssusb_mtk_id_state_store);
+#endif /* CONFIG_OPLUS_CHARGER_MTK6771 */
 struct attribute *mtu3_attributes[] = {
 	&dev_attr_cmode.attr,
 	&dev_attr_saving.attr,
+#ifdef CONFIG_OPLUS_CHARGER_MTK6771
+/* Qiao.Hu@@Prd6.BaseDrv.USB.Basic, 2017/07/25, Add for charger */
+	&dev_attr_idpolling.attr,
+	&dev_attr_idstate.attr,
+#endif /* CONFIG_OPLUS_CHARGER_MTK6771 */
 #ifdef CONFIG_MTK_UART_USB_SWITCH
 	&dev_attr_portmode.attr,
 #endif
@@ -667,6 +799,16 @@ static int mtu3_probe(struct platform_device *pdev)
 		goto comm_exit;
 	}
 
+#ifdef CONFIG_OPLUS_CHARGER_MTK6771
+/* Qiao.Hu@@Prd6.BaseDrv.USB.Basic, 2017/07/28, Add for otg */
+	mtu3_ssusb = ssusb;
+	mtu3_ssusb->user_request_polling = false;
+	spin_lock_init(&mtu3_ssusb->change_irq_lock);
+	INIT_DELAYED_WORK(&mtu3_ssusb->start_polling_delay,
+				somc_chg_usbid_start_polling_delay_work);
+	INIT_DELAYED_WORK(&mtu3_ssusb->stop_polling_delay,
+				somc_chg_usbid_stop_polling_delay_work);
+#endif /* CONFIG_OPLUS_CHARGER_MTK6771 */
 #ifdef CONFIG_SYSFS
 #if !defined(CONFIG_USB_MU3D_DRV)
 	ret = sysfs_create_group(&dev->kobj, &mtu3_attr_group);

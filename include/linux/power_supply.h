@@ -92,7 +92,7 @@ enum {
 
 enum power_supply_property {
 	/* Properties of type `int' */
-	POWER_SUPPLY_PROP_STATUS = 0,
+	POWER_SUPPLY_PROP_STATUS,
 	POWER_SUPPLY_PROP_CHARGE_TYPE,
 	POWER_SUPPLY_PROP_HEALTH,
 	POWER_SUPPLY_PROP_PRESENT,
@@ -161,6 +161,7 @@ enum power_supply_property {
 	POWER_SUPPLY_PROP_CHARGE_ENABLED,
 	/* Local extensions of type int64_t */
 	POWER_SUPPLY_PROP_CHARGE_COUNTER_EXT,
+	POWER_SUPPLY_PROP_BAT_TYPE,
 	/* Properties of type `const char *' */
 	POWER_SUPPLY_PROP_MODEL_NAME,
 	POWER_SUPPLY_PROP_MANUFACTURER,
@@ -181,6 +182,10 @@ enum power_supply_type {
 	POWER_SUPPLY_TYPE_USB_PD_DRP,		/* PD Dual Role Port */
 	POWER_SUPPLY_TYPE_APPLE_BRICK_ID,	/* Apple Charging Method */
 	POWER_SUPPLY_TYPE_WIRELESS,		/* Wireless Charger */
+#if defined(CONFIG_OPLUS_HVDCP_SUPPORT) || defined(CONFIG_OPLUS_CHARGER_MTK6785)
+	POWER_SUPPLY_TYPE_USB_HVDCP,		/* High Voltage DCP */
+	POWER_SUPPLY_TYPE_USB_HVDCP_3,		/* Efficient High Voltage DCP */
+#endif
 };
 
 enum power_supply_notifier_events {

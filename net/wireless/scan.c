@@ -71,7 +71,12 @@ module_param(bss_entries_limit, int, 0644);
 MODULE_PARM_DESC(bss_entries_limit,
                  "limit to number of scan BSS entries (per wiphy, default 1000)");
 
+#ifndef OPLUS_BUG_STABILITY
+//Modify for make scan result cache more time
 #define IEEE80211_SCAN_RESULT_EXPIRE	(7 * HZ)
+#else
+#define IEEE80211_SCAN_RESULT_EXPIRE	(30 * HZ)
+#endif  /*OPLUS_BUG_STABILITY*/
 
 static void bss_free(struct cfg80211_internal_bss *bss)
 {

@@ -30,7 +30,27 @@ extern int AK7371AF_Release(struct inode *a_pstInode, struct file *a_pstFile);
 extern int AK7371AF_PowerDown(struct i2c_client *pstAF_I2Cclient,
 				int *pAF_Opened);
 extern int AK7371AF_GetFileName(unsigned char *pFileName);
-
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+/*20201225 add for 20817 sensor af*/
+extern int AK7377AF_SetI2Cclient(struct i2c_client *pstAF_I2Cclient,
+				 spinlock_t *pAF_SpinLock, int *pAF_Opened);
+extern long AK7377AF_Ioctl(struct file *a_pstFile, unsigned int a_u4Command,
+			   unsigned long a_u4Param);
+extern int AK7377AF_Release(struct inode *a_pstInode, struct file *a_pstFile);
+extern int AK7377AF_PowerDown(struct i2c_client *pstAF_I2Cclient,
+				int *pAF_Opened);
+extern int AK7377AF_GetFileName(unsigned char *pFileName);
+extern int AK7377AF_DoExtLdo(int enable);
+extern int AK7375CAF_SetI2Cclient(struct i2c_client *pstAF_I2Cclient,
+				 spinlock_t *pAF_SpinLock, int *pAF_Opened);
+extern long AK7375CAF_Ioctl(struct file *a_pstFile, unsigned int a_u4Command,
+			   unsigned long a_u4Param);
+extern int AK7375CAF_Release(struct inode *a_pstInode, struct file *a_pstFile);
+extern int AK7375CAF_PowerDown(struct i2c_client *pstAF_I2Cclient,
+				int *pAF_Opened);
+extern int AK7375CAF_GetFileName(unsigned char *pFileName);
+extern int AK7375CAF_DoExtLdo(int enable);
+#endif
 #define BU6424AF_SetI2Cclient BU6424AF_SetI2Cclient_Main
 #define BU6424AF_Ioctl BU6424AF_Ioctl_Main
 #define BU6424AF_Release BU6424AF_Release_Main
@@ -125,6 +145,20 @@ extern long DW9718TAF_Ioctl(struct file *a_pstFile, unsigned int a_u4Command,
 			   unsigned long a_u4Param);
 extern int DW9718TAF_Release(struct inode *a_pstInode, struct file *a_pstFile);
 extern int DW9718TAF_GetFileName(unsigned char *pFileName);
+
+#define DW9800AF_SetI2Cclient DW9800AF_SetI2Cclient_Main
+#define DW9800AF_Ioctl DW9800AF_Ioctl_Main
+#define DW9800AF_Release DW9800AF_Release_Main
+#define DW9800AF_PowerDown DW9800AF_PowerDown_Main
+#define DW9800AF_GetFileName DW9800AF_GetFileName_Main
+extern int DW9800AF_SetI2Cclient(struct i2c_client *pstAF_I2Cclient,
+				 spinlock_t *pAF_SpinLock, int *pAF_Opened);
+extern long DW9800AF_Ioctl(struct file *a_pstFile, unsigned int a_u4Command,
+			   unsigned long a_u4Param);
+extern int DW9800AF_Release(struct inode *a_pstInode, struct file *a_pstFile);
+extern int DW9800AF_PowerDown(struct i2c_client *pstAF_I2Cclient,
+				int *pAF_Opened);
+extern int DW9800AF_GetFileName(unsigned char *pFileName);
 
 #define FP5510E2AF_SetI2Cclient FP5510E2AF_SetI2Cclient_Main
 #define FP5510E2AF_Ioctl FP5510E2AF_Ioctl_Main

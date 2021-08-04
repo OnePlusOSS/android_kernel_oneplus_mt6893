@@ -22,3 +22,6 @@ obj-$(CONFIG_USB_POWER_DELIVERY)	+= tcpci_event.o \
 		pd_policy_engine_src.o pd_policy_engine_snk.o pd_policy_engine_ufp.o pd_policy_engine_vcs.o \
 		pd_policy_engine_dfp.o pd_policy_engine_dr.o pd_policy_engine_drs.o pd_policy_engine_prs.o \
 		pd_policy_engine_dbg.o pd_policy_engine_com.o pd_dpm_alt_mode_dc.o
+ifeq ($(CONFIG_OPLUS_CHARGER_MTK6769),y)
+obj-$(CONFIG_TCPC_RT1711H)	+= tcpc_rt1711h.o
+endif	

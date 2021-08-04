@@ -33,6 +33,11 @@
 
 #include <mtk_gpufreq.h>
 
+#ifdef CONFIG_OPLUS_FEATURE_MM_FEEDBACK
+#include <soc/oplus/system/oplus_mm_kevent_fb.h>
+#define OPLUS_GPU_FAULT_RATELIMIT 10*1000
+#endif /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
+
 /*
  * Hold the runpool_mutex for this
  */
@@ -196,12 +201,22 @@ static enum hrtimer_restart timer_callback(struct hrtimer *timer)
 						js_devdata->scheduling_period_ns
 								/ 1000000u;
 
+					#ifdef CONFIG_OPLUS_FEATURE_MM_FEEDBACK
+					unsigned char fb_str[256] = "";
+					#endif //CONFIG_OPLUS_FEATURE_MM_FEEDBACK
+
 					/* MTK add for gpu_freq information */
 					mt_gpufreq_dump_infra_status();
 
 					dev_warn(kbdev->dev, "JS: Job Hard-Stopped (took more than %lu ticks at %lu ms/tick)",
 							(unsigned long)ticks,
 							(unsigned long)ms);
+
+					#ifdef CONFIG_OPLUS_FEATURE_MM_FEEDBACK
+					scnprintf(fb_str, sizeof(fb_str), "GPUHardstop@EventID=%d", OPLUS_DISPLAY_EVENTID_GPU_FAULT);
+					upload_mm_fb_kevent_to_atlas_limit(OPLUS_DISPLAY_EVENTID_GPU_FAULT, fb_str, OPLUS_GPU_FAULT_RATELIMIT);
+					#endif //CONFIG_OPLUS_FEATURE_MM_FEEDBACK1
+
 					kbase_job_slot_hardstop(atom->kctx, s,
 									atom);
 

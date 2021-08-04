@@ -35,6 +35,14 @@ enum GPIO_CTRL_STATE_CAM {
 	GPIO_CTRL_STATE_LDO_VCAMD_L,
 	GPIO_CTRL_STATE_LDO_VCAMIO_H,
 	GPIO_CTRL_STATE_LDO_VCAMIO_L,
+	GPIO_CTRL_STATE_LDO_VCAMA1_H,
+	GPIO_CTRL_STATE_LDO_VCAMA1_L,
+	GPIO_CTRL_STATE_LDO_VCAMD1_H,
+	GPIO_CTRL_STATE_LDO_VCAMD1_L,
+	GPIO_CTRL_STATE_LDO_VCAMOIS_H,
+	GPIO_CTRL_STATE_LDO_VCAMOIS_L,
+	GPIO_CTRL_STATE_LDO_VCAMOIS1_H,
+	GPIO_CTRL_STATE_LDO_VCAMOIS1_L,
 	GPIO_CTRL_STATE_MAX_NUM_CAM,
 };
 
@@ -67,6 +75,9 @@ struct GPIO {
 	struct pinctrl_state *ppinctrl_state_switch[
 		GPIO_CTRL_STATE_MAX_NUM_SWITCH];
 #endif
+    struct pinctrl_state *pinctrl_state_ldo_enable;
+	struct pinctrl_state *pinctrl_state_gpio_power_enable;
+	struct pinctrl_state *pinctrl_state_gpio_power_disable;
 	struct mutex         *pgpio_mutex;
 };
 
