@@ -5869,7 +5869,8 @@
 			/* Rx Interrupt */
 		interrupts = <GIC_SPI 464 IRQ_TYPE_LEVEL_HIGH>,
 			/* Assert & FW log interrupt */
-			<GIC_SPI 479 IRQ_TYPE_LEVEL_HIGH>;
+			<GIC_SPI 479 IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI 465 IRQ_TYPE_LEVEL_HIGH>;
 	};
 
 	afe: mt6877-afe-pcm@11210000 {
