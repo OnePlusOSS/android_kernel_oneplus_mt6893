@@ -149,13 +149,11 @@ static DEFINE_MUTEX(mdp_job_mapping_list_mutex);
 #define MAX_COUNT_IN_RB_SLOT 0x1000 /* 4KB */
 #define SLOT_ID_SHIFT 16
 #define SLOT_OFFSET_MASK 0xFFFF
-#define MAX_REF_COUNT 100000
 
 struct mdp_readback_slot {
 	u32 count;
 	dma_addr_t pa_start;
 	void *fp;
-	u32 reference_count;
 };
 
 static struct mdp_readback_slot rb_slot[MAX_RB_SLOT_NUM];
@@ -176,10 +174,8 @@ static dma_addr_t translate_read_id_ex(u32 read_id, u32 *slot_offset)
 		*slot_offset = 0;
 		return 0;
 	}
-	if (!rb_slot[slot_id].pa_start) {
+	if (!rb_slot[slot_id].pa_start)
 		*slot_offset = 0;
-		return 0;
-	}
 	return rb_slot[slot_id].pa_start;
 }
 
@@ -200,8 +196,7 @@ static s32 mdp_process_read_request(struct mdp_read_readback *req_user)
 	void *ids_user = NULL;
 	void *values_user = NULL;
 	s32 status = -EINVAL;
-	u32 count, i, slot_id, j;
-	u32 slot_ids[3] = {-1, -1, -1};
+	u32 count, i;
 
 	CMDQ_SYSTRACE_BEGIN("%s\n", __func__);
 
@@ -230,7 +225,7 @@ static s32 mdp_process_read_request(struct mdp_read_readback *req_user)
 		}
 
 		addrs = kcalloc(count, sizeof(u32), GFP_KERNEL);
-		if (!addrs) {
+		if (!ids) {
 			CMDQ_ERR("[READ_PA] fail to alloc addr buf\n");
 			status = -ENOMEM;
 			break;
@@ -258,20 +253,6 @@ static s32 mdp_process_read_request(struct mdp_read_readback *req_user)
 				status = -EINVAL;
 				break;
 			}
-			slot_id = ids[i] >> SLOT_ID_SHIFT;
-			for (j = 0; j < 3; j++) {
-				if (slot_id == slot_ids[j])
-					break;
-				else if (slot_ids[j] == -1) {
-					slot_ids[j] = slot_id;
-					break;
-				}
-				if (rb_slot[slot_id].reference_count == MAX_REF_COUNT) {
-					CMDQ_ERR("slot[%d] reach maximum reference_count\n",
-						slot_id);
-					return -EINVAL;
-				}
-			}
 		}
 		if (status < 0)
 			break;
@@ -285,15 +266,6 @@ static s32 mdp_process_read_request(struct mdp_read_readback *req_user)
 		if (copy_to_user(values_user, values, count * sizeof(u32))) {
 			CMDQ_ERR("[READ_PA] fail to copy to user\n");
 			status = -EINVAL;
-		}
-
-		/* reference count for slot */
-		for (i = 0; i < 3; i++) {
-			if (slot_ids[i] != -1) {
-				rb_slot[slot_ids[i]].reference_count--;
-				CMDQ_MSG("slot id %d, count-- by read > %d\n", slot_ids[i],
-					rb_slot[slot_ids[i]].reference_count);
-			}
 		}
 
 		CMDQ_SYSTRACE_END();
@@ -479,8 +451,7 @@ static s32 translate_user_job(struct mdp_submit *user_job,
 {
 	struct op_meta *metas;
 	s32 status = 0;
-	u32 i, copy_size, copy_count, remain_count, slot_id = -1, j;
-	u32 slot_ids[3] = {-1, -1, -1};
+	u32 i, copy_size, copy_count, remain_count;
 	void *cur_src = CMDQ_U32_PTR(user_job->metas);
 	const u32 meta_count_in_page = PAGE_SIZE / sizeof(struct op_meta);
 
@@ -517,35 +488,9 @@ static s32 translate_user_job(struct mdp_submit *user_job,
 					metas[i].value, metas[i].mask);
 				break;
 			}
-			if (metas[i].op == CMDQ_MOP_READ || metas[i].op == CMDQ_MOP_READBACK) {
-				slot_id = metas[i].readback_id >> SLOT_ID_SHIFT;
-				for (j = 0; j < 3; j++) {
-					if (slot_id == slot_ids[j])
-						break;
-					else if (slot_ids[j] == -1) {
-						slot_ids[j] = slot_id;
-						break;
-					}
-				}
-				if (rb_slot[slot_id].reference_count == MAX_REF_COUNT) {
-					CMDQ_ERR("slot[%d] reach maximum reference_count\n",
-						slot_id);
-					kfree(metas);
-					return -EINVAL;
-				}
-			}
 		}
 		remain_count -= copy_count;
 		cur_src += copy_size;
-	}
-
-	/* reference count for slot */
-	for (i = 0; i < 3; i++) {
-		if (slot_ids[i] != -1) {
-			rb_slot[slot_ids[i]].reference_count++;
-			CMDQ_MSG("slot id %d, count++ > %d\n", slot_ids[i],
-				rb_slot[slot_ids[i]].reference_count);
-		}
 	}
 
 	kfree(metas);
@@ -1065,12 +1010,6 @@ s32 mdp_ioctl_alloc_readback_slots(void *fp, unsigned long param)
 		alloc_slot_group |= 1LL << free_slot_group;
 
 	alloc_slot_index = free_slot + free_slot_group * 64;
-	if (rb_slot[alloc_slot_index].reference_count) {
-		CMDQ_ERR("%s alloc slot which is being used, slot id: %d\n",
-			__func__, alloc_slot_index);
-		return -ENOMEM;
-	}
-	rb_slot[alloc_slot_index].reference_count = 0;
 	rb_slot[alloc_slot_index].count = rb_req.count;
 	rb_slot[alloc_slot_index].pa_start = paStart;
 	rb_slot[alloc_slot_index].fp = fp;
@@ -1131,20 +1070,12 @@ s32 mdp_ioctl_free_readback_slots(void *fp, unsigned long param)
 			alloc_slot[free_slot_group]);
 		return -EINVAL;
 	}
-
 	if (rb_slot[free_slot_index].fp != fp) {
 		mutex_unlock(&rb_slot_list_mutex);
 		CMDQ_ERR("%s fp %p different:%p\n", __func__,
 			fp, rb_slot[free_slot_index].fp);
 		return -EINVAL;
 	}
-
-	if (rb_slot[free_slot_index].reference_count) {
-		CMDQ_ERR("%s slot group[%d] is in use, using slot count : %d\n", __func__,
-			free_slot_group, rb_slot[free_slot_index].reference_count);
-		return -EINVAL;
-	}
-
 	alloc_slot[free_slot_group] &= ~(1LL << free_slot);
 	if (alloc_slot[free_slot_group] != ~0UL)
 		alloc_slot_group &= ~(1LL << free_slot_group);
@@ -1328,7 +1259,7 @@ void mdp_ioctl_free_readback_slots_by_node(void *fp)
 
 	mutex_lock(&rb_slot_list_mutex);
 	for (i = 0; i < ARRAY_SIZE(rb_slot); i++) {
-		if (rb_slot[i].fp != fp || rb_slot[i].reference_count)
+		if (rb_slot[i].fp != fp)
 			continue;
 
 		free_slot_group = i >> 6;
