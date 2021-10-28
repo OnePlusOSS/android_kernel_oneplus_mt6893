@@ -1852,6 +1852,7 @@ page_owner=on loop.max_part=7";
 
 	extcon_usb: extcon_usb {
 		compatible = "mediatek,extcon-usb";
+		support_u3;
 	};
 
 	usb_boost_manager {
