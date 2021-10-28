@@ -1685,6 +1685,17 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 		DDPDBG("%s, vtotal=%d, vact=%d\n",
 			__func__, vtotal, vact);
 
+		if (drm_crtc_index(&comp->mtk_crtc->base) == 2 &&
+			(fmt == DRM_FORMAT_RGBA8888 || fmt == DRM_FORMAT_BGRA8888 ||
+			fmt == DRM_FORMAT_ARGB8888 || fmt == DRM_FORMAT_ABGR8888))
+			cmdq_pkt_write(handle, comp->cmdq_base,
+		       comp->regs_pa + DISP_REG_OVL_ROI_BGCLR, 0x0,
+		       ~0);
+		else
+			cmdq_pkt_write(handle, comp->cmdq_base,
+		       comp->regs_pa + DISP_REG_OVL_ROI_BGCLR, OVL_ROI_BGCLR,
+		       ~0);
+
 		mtk_ovl_layer_on(comp, lye_idx, ext_lye_idx, handle);
 		/*constant color :non RDMA source*/
 		/* TODO: cause RPO abnormal */
