@@ -262,7 +262,8 @@ static int eem_aee_log_cur_volt(struct eem_det *det)
 		str_len = snprintf(aee_log_buf + str_len,
 		PTP_MEM_SIZE - str_len,
 		"Bank_number = %d\n", det->ctrl_id);
-
+		if (str_len <= 0)
+			continue;
 		str_len += snprintf(aee_log_buf + str_len,
 		PTP_MEM_SIZE - str_len,
 		"mode = init2%d\n", i);
@@ -284,7 +285,8 @@ static int eem_aee_log_cur_volt(struct eem_det *det)
 
 		/* fill data to aee_log_buf */
 		if ((str_len > 0) &&
-			((cur_oft + str_len) < PTP_MEM_SIZE)) {
+			((cur_oft + str_len) < PTP_MEM_SIZE) &&
+			det->ctrl_id >= 0 && det->ctrl_id < NR_EEM_DET) {
 			memcpy(aee_volt->aee_v_det[det->ctrl_id].dumpbuf +
 			cur_oft, aee_log_buf, str_len + 1);
 			cur_oft += str_len;
@@ -1530,13 +1532,15 @@ static void get_volt_table_in_thread(struct eem_det *det)
 				ndet->temp,
 				ndet->volt_tbl_pmic[0],
 				ktime_to_us(start));
-			eem_printf(ndet->ctrl_id, tempstr, str_len);
+			if (str_len > 0) {
+				eem_printf(ndet->ctrl_id, tempstr, str_len);
 #if 0
-			eem_error(
-				"id:%d, nsec:%lld, oopp0:0x%x, pmic[0]:0x%x, len:%d\n",
-				ndet->ctrl_id, ktime_to_us(start),
-				org_opp0, ndet->volt_tbl_pmic[0], str_len);
+				eem_error(
+					"id:%d, nsec:%lld, oopp0:0x%x, pmic[0]:0x%x, len:%d\n",
+					ndet->ctrl_id, ktime_to_us(start),
+					org_opp0, ndet->volt_tbl_pmic[0], str_len);
 #endif
+			}
 		}
 #endif
 	/* Check volt */
