@@ -302,7 +302,7 @@ static ssize_t monitor_hang_write(struct file *filp, const char __user *buf,
 {
 
 	/* LOGV("%s\n", __func__); */
-	return 0;
+	return count;
 }
 
 
