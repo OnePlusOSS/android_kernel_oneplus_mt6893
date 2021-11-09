@@ -510,7 +510,7 @@ static s32 translate_user_job(struct mdp_submit *user_job,
 					if (handle->slot_ids[j] == -1) {
 						handle->slot_ids[j] = slot_id;
 						rb_slot[slot_id].ref_cnt++;
-						CMDQ_LOG("slot id %d, count++ > %d\n", slot_id,
+						CMDQ_MSG("slot id %d, count++ > %d\n", slot_id,
 							rb_slot[slot_id].ref_cnt);
 						break;
 					}
@@ -976,7 +976,7 @@ s32 mdp_ioctl_async_wait(unsigned long param)
 		for (i = 0; i < ARRAY_SIZE(handle->slot_ids); i++) {
 			if (handle->slot_ids[i] != -1) {
 				rb_slot[handle->slot_ids[i]].ref_cnt--;
-				CMDQ_LOG("slot id %d, count-- by read > %d\n", handle->slot_ids[i],
+				CMDQ_MSG("slot id %d, count-- by read > %d\n", handle->slot_ids[i],
 					rb_slot[handle->slot_ids[i]].ref_cnt);
 			}
 		}

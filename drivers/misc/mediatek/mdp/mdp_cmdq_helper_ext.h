@@ -40,7 +40,7 @@ enum TASK_STATE_ENUM {
 	TASK_STATE_ERR_IRQ,	/* task execution invalid instruction */
 	TASK_STATE_DONE,	/* task finished */
 	TASK_STATE_WAITING,	/* allocated but waiting for available thread */
-	TASK_STATE_TIMEOUT,	 /* task timeout */
+	TASK_STATE_TIMEOUT,	/* task timeout */
 };
 
 
