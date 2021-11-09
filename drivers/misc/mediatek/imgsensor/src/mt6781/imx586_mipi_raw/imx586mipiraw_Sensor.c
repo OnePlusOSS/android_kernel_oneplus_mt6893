@@ -691,7 +691,6 @@ static void write_shutter(kal_uint32 shutter)
 
 	pr_debug("shutter =%d, framelength =%d\n",
 		shutter, imgsensor.frame_length);
-
 }	/*	write_shutter  */
 
 /*************************************************************************
@@ -4414,7 +4413,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 		}
 		break;
 	case SENSOR_FEATURE_GET_OFFSET_TO_START_OF_EXPOSURE:
-		*(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = 1500000;
+		*(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = 3000000;
 		break;
 	case SENSOR_FEATURE_GET_PERIOD_BY_SCENARIO:
 		switch (*feature_data) {
