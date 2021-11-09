@@ -118,7 +118,7 @@ _get_session_sync_info(unsigned int session)
 	    DISP_SESSION_TYPE(session) != DISP_SESSION_MEMORY &&
 	    DISP_SESSION_TYPE(session) != DISP_SESSION_EXTERNAL) {
 		DISPERR("invalid session id:0x%08x\n", session);
-		return NULL;
+		ASSERT(0);
 	}
 
 	mutex_lock(&_disp_fence_mutex);
@@ -374,7 +374,7 @@ static size_t mtkfb_ion_phys_mmu_addr(struct ion_client *client,
 				      unsigned int *mva,
 					  int type)
 {
-	size_t size;
+	size_t size = 0;
 	ion_phys_addr_t phy_addr = 0;
 	struct ion_mm_data mm_data;
 
