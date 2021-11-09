@@ -444,7 +444,7 @@ int dpmgr_modify_path(disp_path_handle dp_handle,
 int dpmgr_destroy_path_handle(disp_path_handle dp_handle)
 {
 	int i = 0;
-	int m;
+	unsigned int m;
 	struct ddp_path_handle *phandle;
 	int *list;
 	int m_num;

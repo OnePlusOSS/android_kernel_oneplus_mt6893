@@ -1541,6 +1541,7 @@ void DSI_PHY_TIMCONFIG(enum DISP_MODULE_ENUM module, struct cmdqRecStruct *cmdq,
 	if (cycle_time == 0) {
 		DISPERR("[dsi_dsi.c] cycle_time not be 0!!!\n");
 		ASSERT(0);
+		return;
 	}
 
 	hs_trail_m = 1;
@@ -2336,6 +2337,7 @@ void DSI_set_cmdq_V3(enum DISP_MODULE_ENUM module, struct cmdqRecStruct *cmdq,
 				t2.CONFG = 2;
 				t2.Data_ID = data_id;
 				t2.WC16 = count + 1;
+				t2.pdata = NULL;
 
 				DSI_OUTREG32(cmdq, &dsi_data[0].byte0,
 					     AS_UINT32(&t2));
