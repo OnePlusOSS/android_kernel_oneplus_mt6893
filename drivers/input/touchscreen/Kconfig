@@ -31,6 +31,17 @@ config TOUCHSCREEN_88PM860X
 	  To compile this driver as a module, choose M here: the
 	  module will be called 88pm860x-ts.
 
+config TOUCHSCREEN_HIMAX_CHIPSET
+	bool "Himax touchpanel CHIPSET"
+	depends on I2C
+	help
+	Say Y here if you have a Himax CHIPSET touchscreen.
+	HIMAX controllers are multi touch controllers which can
+	report 10 touches at a time.
+
+	If unsure, say N.
+source "drivers/input/touchscreen/hxchipset/Kconfig"
+
 config TOUCHSCREEN_ADS7846
 	tristate "ADS7846/TSC2046/AD7873 and AD(S)7843 based touchscreens"
 	depends on SPI_MASTER
