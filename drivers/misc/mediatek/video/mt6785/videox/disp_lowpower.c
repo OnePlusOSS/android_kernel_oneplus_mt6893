@@ -331,7 +331,7 @@ int _blocking_flush(void)
 	return ret;
 }
 
-#ifndef CONFIG_MTK_HIGH_FRAME_RATE
+#ifndef CONFIG_MTK_MT6382_BDG
 static int _vfp_chg_callback(unsigned long userdata);
 
 int _vfp_chg_callback(unsigned long userdata)
