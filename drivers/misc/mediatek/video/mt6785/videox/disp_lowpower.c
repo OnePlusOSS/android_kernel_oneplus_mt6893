@@ -330,6 +330,8 @@ int _blocking_flush(void)
 #endif
 	return ret;
 }
+
+#ifndef CONFIG_MTK_HIGH_FRAME_RATE
 static int _vfp_chg_callback(unsigned long userdata);
 
 int _vfp_chg_callback(unsigned long userdata)
@@ -357,6 +359,8 @@ int _vfp_chg_callback(unsigned long userdata)
 	}
 	return 0;
 }
+#endif
+
 static int primary_display_dsi_vfp_change(int state)
 {
 	int ret = 0;
