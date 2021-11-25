@@ -700,7 +700,7 @@ static int rt9458_charger_dump_registers(struct charger_device *chg_dev)
 	dev_info(ri->dev,
 		"%s: CV = %dmV, vmreg = %dmV, CHG_EN = %d, CHG_STATUS = %s\n",
 		__func__, voreg / 1000, pdata->vmreg / 1000, chg_en,
-		rt9458_chg_stat_name[chg_stat]);
+		rt9458_chg_stat_name[(unsigned int)chg_stat]);
 	return 0;
 }
 
