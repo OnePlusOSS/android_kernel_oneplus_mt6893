@@ -2930,7 +2930,7 @@ page_owner=on loop.max_part=7";
 		mtk_dsp_capture1 = <0x1 0xffffffff 0xd 0x13 0x20000>;
 		mtk_dsp_a2dp = <0x0 0xffffffff 0xffffffff 0xffffffff 0x40000>;
 		mtk_dsp_dataprovider = <0x0 0xffffffff 0xf 0xffffffff 0x30000>;
-		mtk_dsp_call_final = <0x5 0x4 0x10 0x14 0x18000>;
+		mtk_dsp_call_final = <0x5 0x0 0x10 0x14 0x18000>;
 		mtk_dsp_fast = <0x5 0xffffffff 0xffffffff 0xffffffff 0x5000>;
 		mtk_dsp_ktv = <0x1 0x8 0x12 0xffffffff 0x10000>;
 		mtk_dsp_capture_raw = <0x1 0xffffffff 0xffffffff 0xffffffff 0x20000>;
@@ -5239,13 +5239,13 @@ page_owner=on loop.max_part=7";
 		reg = <0 0x1a078000 0 0x8000>;
 	};
 
-	cam1: cam1@1a030000 {
+	cam1@1a030000 {
 		compatible = "mediatek,cam1";
 		reg = <0 0x1a030000 0 0x8000>;
 		interrupts = <GIC_SPI 320 IRQ_TYPE_LEVEL_HIGH>;
 	};
 
-	cam2: cam2@1a050000 {
+	cam2@1a050000 {
 		compatible = "mediatek,cam2";
 		reg = <0 0x1a050000 0 0x8000>;
 		interrupts = <GIC_SPI 321 IRQ_TYPE_LEVEL_HIGH>;
