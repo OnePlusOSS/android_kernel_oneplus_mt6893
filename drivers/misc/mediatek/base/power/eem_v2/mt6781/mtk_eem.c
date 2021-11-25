@@ -440,9 +440,7 @@ static int get_devinfo(void)
 			gpu_opp0_t_volt[efuse_val];
 		eem_debug("gpu_vb_volt:%d, efuse_val:%d\n",
 			gpu_vb_volt, efuse_val);
-	} else
-		gpu_vb_volt =
-			gpu_opp0_t_volt[0];
+	}
 
 	/* NR_HW_RES_FOR_BANK =  10 for 5 banks efuse */
 	if (val[0] == 0) {
@@ -1382,6 +1380,8 @@ static void get_volt_table_in_thread(struct eem_det *det)
 
 	ndet = (det->loo_role == HIGH_BANK) ?
 		id_to_eem_det(det->loo_couple) : det;
+	if (ndet == NULL)
+		return;
 #endif
 	eem_debug("@@! In %s\n", __func__);
 	read_volt_from_VOP(det);
