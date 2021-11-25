@@ -41,7 +41,7 @@ static int fmt_check_reg_base(struct mtk_vdec_fmt *fmt, u64 addr, u64 length)
 		if (addr >= (u64)fmt->map_base[i].base &&
 			addr + length <= (u64)fmt->map_base[i].base + fmt->map_base[i].len)
 			return 0;
-	fmt_err("addr %x length %x not found!", addr, length);
+	fmt_err("addr 0x%llx length 0x%llx not found!", addr, length);
 
 	return -EINVAL;
 }
@@ -150,26 +150,26 @@ static void fmt_set_gce_cmd(struct cmdq_pkt *pkt,
 
 	switch (cmd) {
 	case CMD_READ:
-		fmt_debug(3, "CMD_READ addr 0x%x", addr);
+		fmt_debug(3, "CMD_READ addr 0x%llx", addr);
 		if (fmt_check_reg_base(fmt, addr, 4) == 0)
 			cmdq_pkt_read_addr(pkt, addr, CMDQ_THR_SPR_IDX1);
 		else
-			fmt_err("CMD_READ wrong addr: 0x%x", addr);
+			fmt_err("CMD_READ wrong addr: 0x%llx", addr);
 	break;
 	case CMD_WRITE:
-		fmt_debug(3, "CMD_WRITE addr 0x%x data 0x%x mask 0x%x", addr, data, mask);
+		fmt_debug(3, "CMD_WRITE addr 0x%llx data 0x%llx mask 0x%x", addr, data, mask);
 		if (fmt_check_reg_base(fmt, addr, 4) == 0)
 			cmdq_pkt_write(pkt, fmt->clt_base, addr, data, mask);
 		else
-			fmt_err("CMD_WRITE wrong addr: 0x%x 0x%x 0x%x",
+			fmt_err("CMD_WRITE wrong addr: 0x%llx 0x%llx 0x%x",
 				addr, data, mask);
 	break;
 	case CMD_POLL_REG:
-		fmt_debug(3, "CMD_POLL_REG addr 0x%x data 0x%x mask 0x%x", addr, data, mask);
+		fmt_debug(3, "CMD_POLL_REG addr 0x%llx data 0x%llx mask 0x%x", addr, data, mask);
 		if (fmt_check_reg_base(fmt, addr, 4) == 0)
 			cmdq_pkt_poll_addr(pkt, data, addr, mask, gpr);
 		else
-			fmt_err("CMD_POLL_REG wrong addr: 0x%x 0x%x 0x%x",
+			fmt_err("CMD_POLL_REG wrong addr: 0x%llx 0x%llx 0x%x",
 				addr, data, mask);
 	break;
 	case CMD_WAIT_EVENT:
@@ -189,12 +189,12 @@ static void fmt_set_gce_cmd(struct cmdq_pkt *pkt,
 				data);
 	break;
 	case CMD_WRITE_FD:
-		fmt_debug(3, "CMD_WRITE_FD addr 0x%x fd 0x%x offset 0x%x", addr, data, mask);
+		fmt_debug(3, "CMD_WRITE_FD addr 0x%llx fd 0x%llx offset 0x%x", addr, data, mask);
 		if (fmt_check_reg_base(fmt, addr, 4) == 0)
 			cmdq_pkt_write(pkt, fmt->clt_base, addr,
 						fmt_translate_fd(data, mask, map), ~0);
 		else
-			fmt_err("CMD_WRITE_FD wrong addr: 0x%x 0x%x 0x%x",
+			fmt_err("CMD_WRITE_FD wrong addr: 0x%llx 0x%llx 0x%x",
 				addr, data, mask);
 	break;
 	default:

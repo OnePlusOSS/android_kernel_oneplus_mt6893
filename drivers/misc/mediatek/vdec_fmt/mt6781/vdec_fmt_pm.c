@@ -137,7 +137,7 @@ void fmt_start_dvfs_emi_bw(struct fmt_pmqos pmqos_param)
 				pmqos_param.wdma_datasize);
 
 	do_gettimeofday(&curr_time);
-	fmt_debug(1, "curr time tv_sec %d tv_usec %d", curr_time.tv_sec, curr_time.tv_usec);
+	fmt_debug(1, "curr time tv_sec %ld tv_usec %ld", curr_time.tv_sec, curr_time.tv_usec);
 
 	FMT_TIMER_GET_DURATION_IN_US(curr_time, pmqos_param, duration);
 	request_freq = pmqos_param.pixel_size / duration;
@@ -145,7 +145,7 @@ void fmt_start_dvfs_emi_bw(struct fmt_pmqos pmqos_param)
 	if (request_freq > fmt_freq_steps[0])
 		request_freq = fmt_freq_steps[0];
 
-	fmt_debug(1, "request_freq %d", request_freq);
+	fmt_debug(1, "request_freq %lld", request_freq);
 
 	pm_qos_update_request(&fmt_qos_req_f, request_freq);
 	FMT_BANDWIDTH(pmqos_param.rdma_datasize, pmqos_param.pixel_size, request_freq, bandwidth);
@@ -173,21 +173,21 @@ void fmt_dump_addr_reg(struct mtk_vdec_fmt *fmt, int port)
 	switch (port) {
 	case M4U_PORT_L4_MINI_MDP_R0_EXT:
 		for (i = 0; i < 313; i++)
-			fmt_debug(0, "FMT RDMA0(0x%x) 0x%x",
+			fmt_debug(0, "FMT RDMA0(0x%lx) 0x%x",
 				fmt->map_base[0].base + i*4,
 				FMT_GET32(fmt->map_base[0].va + i*4));
 		for (i = 960; i < 982; i++)
-			fmt_debug(0, "FMT RDMA0(0x%x) 0x%x",
+			fmt_debug(0, "FMT RDMA0(0x%lx) 0x%x",
 				fmt->map_base[0].base + i*4,
 				FMT_GET32(fmt->map_base[0].va + i*4));
 		break;
 	case M4U_PORT_L4_MINI_MDP_W0_EXT:
 		for (i = 0; i < 60; i++)
-			fmt_debug(0, "FMT WROT0(0x%x) 0x%x",
+			fmt_debug(0, "FMT WROT0(0x%lx) 0x%x",
 				fmt->map_base[1].base + i*4,
 				FMT_GET32(fmt->map_base[1].va + i*4));
 		for (i = 960; i < 973; i++)
-			fmt_debug(0, "FMT WROT0(0x%x) 0x%x",
+			fmt_debug(0, "FMT WROT0(0x%lx) 0x%x",
 				fmt->map_base[1].base + i*4,
 				FMT_GET32(fmt->map_base[1].va + i*4));
 		break;
@@ -202,7 +202,7 @@ enum mtk_iommu_callback_ret_t fmt_translation_fault_callback(
 {
 	struct mtk_vdec_fmt *fmt = (struct mtk_vdec_fmt *) data;
 
-	fmt_debug(0, "TF callback, port:%d, mva:0x%x", port, mva);
+	fmt_debug(0, "TF callback, port:%d, mva:0x%lx", port, mva);
 	fmt_dump_addr_reg(fmt, port);
 
 	return MTK_IOMMU_CALLBACK_HANDLED;

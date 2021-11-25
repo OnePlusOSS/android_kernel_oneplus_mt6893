@@ -153,7 +153,7 @@ u64 fmt_translate_fd(u64 fd, u32 offset, struct ionmap map[])
 
 	for (i = 0; i < FMT_FD_RESERVE; i++) {
 		if (fd == map[i].fd) {
-			fmt_debug(1, "quick search iova 0x%x",
+			fmt_debug(1, "quick search iova 0x%llx",
 				map[i].iova + offset);
 			return map[i].iova + offset;
 		}
@@ -175,7 +175,7 @@ u64 fmt_translate_fd(u64 fd, u32 offset, struct ionmap map[])
 
 	iova += offset;
 
-	fmt_debug(1, "iova 0x%x", iova);
+	fmt_debug(1, "iova 0x%llx", iova);
 
 	return iova;
 }
