@@ -1991,6 +1991,10 @@ static int ffs_func_eps_enable(struct ffs_function *func)
 
 		ret = usb_ep_enable(ep->ep);
 		if (likely(!ret)) {
+			if (epfile == NULL) {
+				pr_info("% - UAF fix\n", __func__);
+				break;
+			}
 			epfile->ep = ep;
 			epfile->in = usb_endpoint_dir_in(ep->ep->desc);
 			epfile->isoc = usb_endpoint_xfer_isoc(ep->ep->desc);
