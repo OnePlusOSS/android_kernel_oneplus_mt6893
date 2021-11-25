@@ -1291,9 +1291,10 @@ static int is_module_in_path(enum DISP_MODULE_ENUM module,
 			     struct ddp_path_handle *phandle)
 {
 	struct DDP_MANAGER_CONTEXT *c = _get_context();
+	unsigned int idx = (unsigned int)module;
 
 	ASSERT(module < DISP_MODULE_UNKNOWN);
-	if (c->module_path_table[module] == phandle)
+	if (c->module_path_table[idx] == phandle)
 		return 1;
 
 	return 0;
@@ -1472,16 +1473,17 @@ int dpmgr_enable_event(disp_path_handle dp_handle, enum DISP_PATH_EVENT event)
 {
 	struct ddp_path_handle *phandle;
 	struct DPMGR_WQ_HANDLE *wq_handle;
+	unsigned int idx = (unsigned int)event;
 
 	ASSERT(dp_handle);
 	if (!dp_handle)
 		return 0;
 	phandle = (struct ddp_path_handle *)dp_handle;
-	wq_handle = &phandle->wq_list[event];
+	wq_handle = &phandle->wq_list[idx];
 
 	DDPDBG("enable event %s on scenario %s, irtbit 0x%x\n",
 	       path_event_name(event), ddp_get_scenario_name(phandle->scenario),
-	       phandle->irq_event_map[event].irq_bit);
+	       phandle->irq_event_map[idx].irq_bit);
 
 	if (!wq_handle->init) {
 		init_waitqueue_head(&(wq_handle->wq));
@@ -1729,16 +1731,17 @@ int dpmgr_signal_event(disp_path_handle dp_handle, enum DISP_PATH_EVENT event)
 {
 	struct ddp_path_handle *phandle;
 	struct DPMGR_WQ_HANDLE *wq_handle;
+	unsigned int idx = (unsigned int)event;
 
 	ASSERT(dp_handle);
 	if (!dp_handle)
 		return 0;
 	phandle = (struct ddp_path_handle *)dp_handle;
-	wq_handle = &phandle->wq_list[event];
+	wq_handle = &phandle->wq_list[idx];
 
-	if (phandle->wq_list[event].init) {
+	if (phandle->wq_list[idx].init) {
 		wq_handle->data = ktime_to_ns(ktime_get());
-		wake_up_interruptible(&(phandle->wq_list[event].wq));
+		wake_up_interruptible(&(phandle->wq_list[idx].wq));
 	}
 	return 0;
 }
