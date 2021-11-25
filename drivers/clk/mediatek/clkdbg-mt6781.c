@@ -1124,9 +1124,6 @@ void print_subsys_reg(char *subsys_name)
 	struct regbase *rb_dump;
 	const struct regname *rns = &rn[0];
 
-	if (rns == NULL)
-		return;
-
 	rb_dump = lookup_regbase(subsys_name);
 	if (rb_dump == NULL) {
 		pr_info("wrong regbase name:%s\n", subsys_name);
