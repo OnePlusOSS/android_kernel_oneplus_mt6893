@@ -2444,7 +2444,7 @@ static int color_is_reg_addr_valid(struct mtk_ddp_comp *comp,
 			break;
 	}
 
-	if (i < regTableSize) {
+	if (i < regTableSize && (color->data->reg_table[i] != 0)) {
 		DDPINFO("addr valid, addr=0x%08lx\n", addr);
 		return i;
 	}
