@@ -120,7 +120,7 @@
 /************************************************************************
  *
  ************************************************************************/
-//+liuyuwei@wt, add, 2021/11/02, M10 sensor bringup
+
 #define OV13B10_SENSOR_ID                       0x560D42
 #define SENSOR_DRVNAME_OV13B10_MIPI_RAW         "ov13b10_mipi_raw"
 #define OV13B10TXD_SENSOR_ID                    0x560D43
@@ -133,10 +133,11 @@
 #define SENSOR_DRVNAME_GC08A3_MIPI_RAW          "gc08a3_mipi_raw"
 #define GC08A3SUBMIPI_SENSOR_ID                 0x08a4
 #define SENSOR_DRVNAME_GC08A3SUB_MIPI_RAW       "gc08a3sub_mipi_raw"
-//-liuyuwei@wt, add, 2021/11/02, M10 sensor bringup
+
 
 /* SENSOR CHIP VERSION */
 /*IMX*/
+#define IMX766_SENSOR_ID                        0x0766
 #define IMX499_SENSOR_ID                        0x0499
 #define IMX481_SENSOR_ID                        0x0481
 #define IMX486_SENSOR_ID                        0x0486
@@ -419,6 +420,7 @@
 #define SENSOR_DRVNAME_IMX105_MIPI_RAW          "imx105_mipi_raw"
 #define SENSOR_DRVNAME_IMX091_MIPI_RAW          "imx091_mipi_raw"
 #define SENSOR_DRVNAME_IMX073_MIPI_RAW          "imx073_mipi_raw"
+#define SENSOR_DRVNAME_IMX766_MIPI_RAW          "imx766_mipi_raw"
 /*OV*/
 #define SENSOR_DRVNAME_OV23850_MIPI_RAW         "ov23850_mipi_raw"
 #define SENSOR_DRVNAME_OV16880_MIPI_RAW         "ov16880_mipi_raw"
