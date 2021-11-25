@@ -19,6 +19,11 @@
 #include <linux/sched/clock.h>
 #include <mt-plat/mtk-mbox.h>
 
+static void mbox_monitor(struct mtk_mbox_info *minfo, int stamp)
+{
+	minfo->record.mbox_record[stamp].idx = stamp;
+	minfo->record.mbox_record[stamp].ts = cpu_clock(0);
+}
 /*
  * memory copy to tiny
  * @param dest: dest address
@@ -438,6 +443,7 @@ int mtk_mbox_polling(struct mtk_mbox_device *mbdev, unsigned int mbox,
 	recv_pin_index = pin_recv->pin_index;
 	minfo = &(mbdev->info_table[mbox]);
 
+	mbox_monitor(minfo, 5);
 	spin_lock_irqsave(&mbdev->info_table[mbox].mbox_lock, flags);
 	/*check lock for */
 	if (pin_recv->lock == MBOX_PIN_BUSY) {
@@ -449,6 +455,7 @@ int mtk_mbox_polling(struct mtk_mbox_device *mbdev, unsigned int mbox,
 	/*check bit*/
 	reg = mtk_mbox_read_recv_irq(mbdev, mbox);
 	irq_state = (reg & (0x1 << recv_pin_index));
+	mbox_monitor(minfo, 6);
 
 	if (irq_state > 0) {
 		/*clear bit*/
@@ -465,6 +472,7 @@ int mtk_mbox_polling(struct mtk_mbox_device *mbdev, unsigned int mbox,
 	ret = mtk_mbox_read(mbdev, mbox, pin_recv->offset, data,
 		pin_recv->msg_size * MBOX_SLOT_SIZE);
 
+	mbox_monitor(minfo, 7);
 	if (ret != MBOX_DONE)
 		return ret;
 
@@ -495,7 +503,6 @@ static void mtk_mbox_set_lock(struct mtk_mbox_device *mbdev, unsigned int mbox,
 	}
 }
 
-
 /*
  * mbox driver isr, in isr context
  */
@@ -513,6 +520,8 @@ static irqreturn_t mtk_mbox_isr(int irq, void *dev_id)
 
 	mbox = minfo->id;
 	ret = MBOX_DONE;
+
+	mbox_monitor(minfo, 0);
 
 	spin_lock_irqsave(&minfo->mbox_lock, flags);
 	/*lock pin*/
@@ -600,9 +609,11 @@ static irqreturn_t mtk_mbox_isr(int irq, void *dev_id)
 	/*clear irq status*/
 	spin_lock_irqsave(&minfo->mbox_lock, flags);
 	mtk_mbox_clr_irq(mbdev, mbox, irq_temp);
+	mbox_monitor(minfo, 1);
 	/*release pin*/
 	mtk_mbox_set_lock(mbdev, mbox, MBOX_DONE);
 	spin_unlock_irqrestore(&minfo->mbox_lock, flags);
+	mbox_monitor(minfo, 2);
 
 	if (irq_temp == 0 && irq_status != 0) {
 		pr_err("[MBOX ISR]dev=%s pin table err, status=%x",
@@ -622,11 +633,13 @@ static irqreturn_t mtk_mbox_isr(int irq, void *dev_id)
 		if (((0x1 << pin_recv->pin_index) & irq_status) > 0x0) {
 			/*notify task*/
 			if (mbdev->ipi_cb) {
+				mbox_monitor(minfo, 3);
 				mbdev->ipi_cb(pin_recv, mbdev->ipi_priv);
 				pin_recv->recv_record.notify_count++;
 			}
 		}
 	}
+	mbox_monitor(minfo, 4);
 
 	return IRQ_HANDLED;
 }
@@ -828,11 +841,19 @@ void mtk_mbox_print_minfo(struct mtk_mbox_device *mbdev,
 		, minfo->send_status_reg
 		, minfo->recv_status_reg);
 
-	pr_notice("[MBOX]dev=%s write=%u busy=%u tri_irq=%u\n"
+	pr_notice("[MBOX]dev=%s write=%u busy=%u tri_irq=%u rec0=%lld  rec1=%lld  rec2=%lld rec3=%lld rec4=%lld  rec5=%lld rec6=%lld rec7=%lld\n"
 		, mbdev->name
 		, minfo->record.write_count
 		, minfo->record.busy_count
-		, minfo->record.trig_irq_count);
+		, minfo->record.trig_irq_count
+		, minfo->record.mbox_record[0].ts
+		, minfo->record.mbox_record[1].ts
+		, minfo->record.mbox_record[2].ts
+		, minfo->record.mbox_record[3].ts
+		, minfo->record.mbox_record[4].ts
+		, minfo->record.mbox_record[5].ts
+		, minfo->record.mbox_record[6].ts
+		, minfo->record.mbox_record[7].ts);
 }
 
 
