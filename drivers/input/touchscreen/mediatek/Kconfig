@@ -181,4 +181,15 @@ config TOUCHSCREEN_MTK_GT9157
 
 source "drivers/input/touchscreen/mediatek/GT9157/Kconfig"
 
+config TOUCHSCREEN_HIMAX_CHIPSET
+	bool "Himax touchpanel CHIPSET"
+	depends on SPI
+	help
+	Say Y here if you have a Himax CHIPSET touchscreen.
+	HIMAX controllers are multi touch controllers which can
+	report 10 touches at a time.
+
+	If unsure, say N.
+source "drivers/input/touchscreen/mediatek/hxchipset_hx83102p/Kconfig"
+
 endif
