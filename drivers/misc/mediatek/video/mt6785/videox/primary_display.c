@@ -4206,6 +4206,10 @@ int primary_display_init(char *lcm_name, unsigned int lcm_fps,
 
 	dprec_init();
 	dpmgr_init();
+#ifdef MTK_FB_MMDVFS_SUPPORT
+	disp_pm_qos_init();
+	dvfs_last_ovl_req = 0;
+#endif
 #ifdef CONFIG_MTK_MT6382_BDG
 	if (is_lcm_inited) {
 		disp_pm_qos_update_mmclk(559);
@@ -4214,10 +4218,6 @@ int primary_display_init(char *lcm_name, unsigned int lcm_fps,
 		set_deskew_status(1);
 	} else
 		set_mt6382_init(0);
-#endif
-#ifdef MTK_FB_MMDVFS_SUPPORT
-	disp_pm_qos_init();
-	dvfs_last_ovl_req = 0;
 #endif
 
 	init_cmdq_slots(&(pgc->ovl_config_time), 3, 0);
