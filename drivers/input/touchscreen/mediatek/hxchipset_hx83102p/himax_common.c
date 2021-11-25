@@ -1038,7 +1038,7 @@ static int i_update_FW(void)
 
 #if defined(HX_ZERO_FLASH)
 
-	g_core_fp.fp_firmware_update_0f(hxfw);
+//	g_core_fp.fp_firmware_update_0f(hxfw);
 
 //	g_core_fp.fp_reload_disable(0);
 
@@ -2768,13 +2768,14 @@ enum hrtimer_restart himax_ts_timer_func(struct hrtimer *timer)
 #if defined(HX_BOOT_UPGRADE) || defined(HX_ZERO_FLASH)
 static void himax_boot_upgrade(struct work_struct *work)
 {
-	int fw_sts = -1;
+//	int fw_sts = -1;
 
-	fw_sts = i_get_FW();
-	if (fw_sts < NO_ERR)
-		return;
+//	fw_sts = i_get_FW();
+	i_get_FW();
+	//if (fw_sts < NO_ERR)
+	//	return;
 
-	g_core_fp.fp_bin_desc_get((unsigned char *)hxfw->data, HX1K);
+	//g_core_fp.fp_bin_desc_get((unsigned char *)hxfw->data, HX1K);
 
 	if (g_boot_upgrade_flag == true) {
 		I("%s: Forced upgrade\n", __func__);
@@ -2791,8 +2792,8 @@ UPDATE_FW:
 		I("%s: Update FW success\n", __func__);
 
 SKIP_UPDATE_FW:
-	if (fw_sts == NO_ERR)
-		release_firmware(hxfw);
+	//if (fw_sts == NO_ERR)
+	//	release_firmware(hxfw);
 	hxfw = NULL;
 
 }
@@ -3229,6 +3230,7 @@ void himax_chip_common_deinit(void)
 
 int himax_chip_common_suspend(struct himax_ts_data *ts)
 {
+	return 0;
 	if (ts->suspended) {
 		I("%s: Already suspended. Skipped.\n", __func__);
 		goto END;
@@ -3303,6 +3305,7 @@ int himax_chip_common_resume(struct himax_ts_data *ts)
 #endif
 	I("%s: enter\n", __func__);
 
+	return 0;
 	if (ts->suspended == false) {
 		I("%s: It had entered resume, skip this step\n", __func__);
 		goto END;
