@@ -95,6 +95,7 @@
 #define I2C_DMA_INT_FLAG_NONE	0x0000
 #define I2C_DMA_CLR_FLAG		0x0000
 #define I2C_DMA_WARM_RST		0x0001
+#define I2C_DMA_HARD_RST		0x0002
 #define I2C_DMA_4G_MODE		0x0001
 
 #define I2C_DMA_DIR_CHANGE              (0x1 << 9)

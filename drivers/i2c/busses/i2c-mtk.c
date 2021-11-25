@@ -1011,6 +1011,11 @@ static int mt_i2c_do_transfer(struct mt_i2c *i2c)
 			udelay(5);
 		}
 
+		if (i2c->ch_offset != 0) {
+			i2c_writel_dma(I2C_DMA_HARD_RST, i2c, OFFSET_RST);
+			i2c_writel_dma(0, i2c, OFFSET_RST);
+		}
+
 		if (i2c->op == I2C_MASTER_RD) {
 			i2c_writel_dma(I2C_DMA_INT_FLAG_NONE,
 				i2c, OFFSET_INT_FLAG);
