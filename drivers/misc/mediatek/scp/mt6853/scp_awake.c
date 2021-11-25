@@ -62,6 +62,7 @@ int scp_awake_lock(void *_scp_id)
 	int count = 0;
 	int ret = -1;
 	unsigned int tmp;
+	unsigned int tmp_clr;
 
 	if (scp_id >= SCP_CORE_TOTAL) {
 		pr_notice("%s: SCP ID >= SCP_CORE_TOTAL\n", __func__);
@@ -124,6 +125,12 @@ int scp_awake_lock(void *_scp_id)
 
 			/* trigger halt isr, force scp enter wfi */
 			writel(B_GIPC4_SETCLR_0, R_GIPC_IN_SET);
+			/* For mb() hang debug, trigger wdt isr */
+			writel(V_INSTANT_WDT, R_CORE0_WDT_CFG);
+			tmp = readl(INFRA_IRQ_SET);
+			tmp_clr = readl(INFRA_IRQ_CLEAR);
+			pr_notice("%s: INFRA_IRQ_SET %x INFRA_IRQ_CLEAR %x\n",
+				__func__, tmp, tmp_clr);
 
 			scp_send_reset_wq(RESET_TYPE_AWAKE);
 		} else
