@@ -73,7 +73,7 @@
 #define LSC2_PAGE_START  6
 #define LSC1_FLAG1_ADDRESS  0x0A04
 #define LSC2_FLAG2_ADDRESS  0x0A2C
-
+#if 0
 struct {
 	unsigned short module_integrator_id;
 	unsigned short lens_id;
@@ -90,6 +90,7 @@ struct {
 } OTP;
 
 OTP otp_data_infosub = {0};
+#endif
 unsigned char g_sub_reg_data[40] = {0};
 
 /*********  S5K4H7SUB otp end  *************************************/
@@ -225,7 +226,7 @@ static struct imgsensor_info_struct imgsensor_info = {
 	.mipi_sensor_type = MIPI_OPHY_NCSI2,	/* 0,MIPI_OPHY_NCSI2;  1,MIPI_OPHY_CSI2 */
 	.mipi_settle_delay_mode = 0,
 	/* 0,MIPI_SETTLEDELAY_AUTO; 1,MIPI_SETTLEDELAY_MANNUAL */
-	.sensor_output_dataformat = SENSOR_OUTPUT_FORMAT_RAW_Gr
+	.sensor_output_dataformat = SENSOR_OUTPUT_FORMAT_RAW_Gr,
 	/* SENSOR_OUTPUT_FORMAT_RAW_Gr, */
 	.mclk = 24,
 	.mipi_lane_num = SENSOR_MIPI_4_LANE,
@@ -375,7 +376,7 @@ static bool zte_s5k4h7sub_127_awb(void)
 	} else {
 		LOG_INF(" Checksum error!");
 		}
-
+#if 0
 	if (checksum == 1) {
 		otp_data_infosub.r_cur = buf[0] << 8 | buf[1];
 		otp_data_infosub.b_cur = buf[2] << 8 | buf[3];
@@ -389,6 +390,7 @@ static bool zte_s5k4h7sub_127_awb(void)
 		// apply_zte_4h7_otp_awb();
 		ret = true;
 	}
+#endif
 	kfree(buf);
 	return ret;
 }
@@ -469,7 +471,7 @@ static bool zte_s5k4h7sub_127_lsc(void)
 	flag1 = read_cmos_sensor_8(0x0A04);
 	LOG_INF("flag=%d, flag1=%d\n", flag, flag1);
 	if (flag1 != 0) {
-		otp_data_infosub.lsc_group = 1;
+		//otp_data_infosub.lsc_group = 1;
 		for (page_start = 1, page_end = 6; page_start <= page_end; page_start++) {
 			/* LOG_INF("1-23 page_start=%d\n", page_start); */
 			bresult &= read_4h7_page(page_start, page_start, data_p[page_start-1]);
@@ -491,7 +493,7 @@ static bool zte_s5k4h7sub_127_lsc(void)
 		/* LOG_INF("LSC1 checksum=%d, sum_slc=%d\n", checksum, sum_slc); */
 		if (checksum != 0 || sum_slc != 0) {
 			LOG_INF("LSC1 data ok\n");
-			otp_data_infosub.lsc_check_flag = 1;
+			//otp_data_infosub.lsc_check_flag = 1;
 		}
 
 	} else {
@@ -502,7 +504,7 @@ static bool zte_s5k4h7sub_127_lsc(void)
 		flag2 = read_cmos_sensor_8(0x0A2C);
 		LOG_INF("flag=%d, flag2=%d\n", flag, flag2);
 		if (flag2 != 0) {
-			otp_data_infosub.lsc_group = 2;
+			//otp_data_infosub.lsc_group = 2;
 			for (page_start = 6, page_end = 12; page_start <= page_end; page_start++) {
 				bresult &= read_4h7_page(
 					page_start, page_start, data_p[page_start-1]);
@@ -530,22 +532,23 @@ static bool zte_s5k4h7sub_127_lsc(void)
 		LOG_INF("LSC2 checksum=%d, sum_slc=%d\n", checksum, sum_slc);
 		if (checksum != 0 || sum_slc != 0) {
 			LOG_INF("LSC2 data ok\n");
-			otp_data_infosub.lsc_check_flag = 1;
+			//otp_data_infosub.lsc_check_flag = 1;
 		}
 
 	}
-
+#if 0
 	if (otp_data_infosub.lsc_check_flag == 1)
 		apply_s5k4h7sub_otp_enb_lsc();
 	else
 		bresult &= 0;
+#endif
 	return bresult;
 
 }
 
 static bool update_otp(void)
 {
-	memset(&otp_data_infosub, 0, sizeof(OTP));
+	//memset(&otp_data_infosub, 0, sizeof(OTP));
 	if (!zte_s5k4h7sub_127_awb())
 		return false;
 	if (!zte_s5k4h7sub_127_lsc())
@@ -1762,7 +1765,7 @@ static kal_uint32 set_max_framerate_by_scenario(enum MSDK_SCENARIO_ID_ENUM scena
 			}
 			frame_length =
 			    imgsensor_info.cap.pclk / framerate * 10 /
-						mgsensor_info.cap.linelength;
+						imgsensor_info.cap.linelength;
 			spin_lock(&imgsensor_drv_lock);
 			imgsensor.dummy_line = (frame_length > imgsensor_info.cap.framelength)
 				? (frame_length - imgsensor_info.cap.framelength) : 0;
