@@ -39,6 +39,21 @@ enum IMGSENSOR_MODE {
 	IMGSENSOR_MODE_SLIM_VIDEO,
 };
 
+struct OTP {
+	unsigned short module_integrator_id;
+	unsigned short lens_id;
+	unsigned short production_year;
+	unsigned short production_month;
+	unsigned short production_day;
+	unsigned int    awb_group;
+	unsigned short	r_cur;
+	unsigned short	b_cur;
+	unsigned short	r_golden_cur;
+	unsigned short	b_golden_cur;
+	unsigned int	lsc_group;
+	unsigned int	lsc_check_flag;
+};
+
 struct imgsensor_mode_struct {
 	kal_uint32 pclk;	/* record different mode's pclk */
 	kal_uint32 linelength;	/* record different mode's linelength */

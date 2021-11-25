@@ -73,24 +73,9 @@
 #define LSC2_PAGE_START  6
 #define LSC1_FLAG1_ADDRESS  0x0A04
 #define LSC2_FLAG2_ADDRESS  0x0A2C
-#if 0
-struct {
-	unsigned short module_integrator_id;
-	unsigned short lens_id;
-	unsigned short production_year;
-	unsigned short production_month;
-	unsigned short production_day;
-	unsigned int    awb_group;
-	unsigned short	r_cur;
-	unsigned short	b_cur;
-	unsigned short	r_golden_cur;
-	unsigned short	b_golden_cur;
-	unsigned int	lsc_group;
-	unsigned int	lsc_check_flag;
-} OTP;
 
-OTP otp_data_info = {0};
-#endif
+static struct OTP otp_data_info = {0};
+
 unsigned char g_reg_data[33];
 
 /*********  S5K4H7 otp end  *************************************/
@@ -383,7 +368,7 @@ static bool zte_s5k4h7_127_awb(void)
 	} else {
 		LOG_INF(" Checksum error!");
 	}
-#if 0
+
 	if (checksum == 1) {
 		otp_data_info.module_integrator_id = buf[start_address];
 		otp_data_info.lens_id = buf[start_address+5];
@@ -403,7 +388,7 @@ static bool zte_s5k4h7_127_awb(void)
 
 		ret = true;
 	}
-#endif
+
 	kfree(buf);
 	return ret;
 }
@@ -484,7 +469,7 @@ static bool zte_s5k4h7_127_lsc(void)
 	flag1 = read_cmos_sensor_8(0x0A04);
 	LOG_INF("flag=%d, flag1=%d\n", flag, flag1);
 	if (flag1 != 0) {
-		//otp_data_info.lsc_group = 1;
+		otp_data_info.lsc_group = 1;
 		for (page_start = 1, page_end = 6; page_start <= page_end; page_start++) {
 			/* LOG_INF("1-23 page_start=%d\n", page_start); */
 			bresult &= read_4h7_page(page_start, page_start, data_p[page_start-1]);
@@ -507,7 +492,7 @@ static bool zte_s5k4h7_127_lsc(void)
 		LOG_INF("LSC1 checksum=%d, sum_slc=%d\n", checksum, sum_slc);
 		if (checksum != 0 || sum_slc != 0) {
 			LOG_INF("LSC1 data ok\n");
-			//otp_data_info.lsc_check_flag = 1;
+			otp_data_info.lsc_check_flag = 1;
 		}
 
 	} else {
@@ -518,7 +503,7 @@ static bool zte_s5k4h7_127_lsc(void)
 		flag2 = read_cmos_sensor_8(0x0A2C);
 		/*LOG_INF("flag=%d, flag2=%d\n", flag, flag2);*/
 		if (flag2 != 0) {
-			//otp_data_info.lsc_group = 2;
+			otp_data_info.lsc_group = 2;
 			for (page_start = 6, page_end = 12; page_start <= page_end; page_start++) {
 				bresult &= read_4h7_page(page_start, page_start,
 				data_p[page_start-1]);
@@ -547,16 +532,16 @@ static bool zte_s5k4h7_127_lsc(void)
 		LOG_INF("LSC2 checksum=%d, sum_slc=%d\n", checksum, sum_slc);
 		if (checksum != 0 || sum_slc != 0) {
 			LOG_INF("LSC2 data ok\n");
-			//otp_data_info.lsc_check_flag = 1;
+			otp_data_info.lsc_check_flag = 1;
 		}
 
 	}
-#if 0
+
 	if (otp_data_info.lsc_check_flag == 1)
 		apply_s5k4h7_otp_enb_lsc();
 	else
 		bresult &= 0;
-#endif
+
 	return bresult;
 
 }
@@ -605,7 +590,7 @@ static bool zte_s5k4h7_127_af(void)
 
 static bool update_otp(void)
 {
-	//memset(&otp_data_info, 0, sizeof(OTP));
+	memset(&otp_data_info, 0, sizeof(struct OTP));
 	/*LOG_INF("update_otp start!");*/
 
 	/*if (!zte_s5k4h7_127_read_info()) return false;*/
