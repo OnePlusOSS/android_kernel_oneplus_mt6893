@@ -738,7 +738,7 @@ static bool mtk_is_mipi_tx_enable(struct clk_hw *hw)
 	return ((tmp & RG_DSI_PLL_EN) > 0);
 }
 
-static inline unsigned int _dsi_get_pcw(unsigned long data_rate,
+inline unsigned int _dsi_get_pcw(unsigned long data_rate,
 	unsigned int pcw_ratio)
 {
 	unsigned int pcw, tmp, pcw_floor;
@@ -1900,7 +1900,11 @@ void mtk_mipi_tx_pll_rate_switch_gce(struct phy *phy,
 static long mtk_mipi_tx_pll_round_rate(struct clk_hw *hw, unsigned long rate,
 				       unsigned long *prate)
 {
+#ifndef CONFIG_MTK_MT6382_BDG
 	return clamp_val(rate, 50000000, 1250000000);
+#else
+	return clamp_val(rate, 50000000, 2300000000);
+#endif
 }
 
 static int mtk_mipi_tx_pll_set_rate(struct clk_hw *hw, unsigned long rate,
@@ -1911,7 +1915,6 @@ static int mtk_mipi_tx_pll_set_rate(struct clk_hw *hw, unsigned long rate,
 	DDPDBG("%s set rate: %lu Hz\n", __func__, rate);
 
 	dev_dbg(mipi_tx->dev, "set rate: %lu Hz\n", rate);
-
 	mipi_tx->data_rate = rate;
 
 	return 0;

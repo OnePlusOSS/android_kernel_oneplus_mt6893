@@ -1014,6 +1014,7 @@ static int mtk_spi_probe(struct platform_device *pdev)
 	ret = devm_spi_register_master(&pdev->dev, master);
 	if (ret) {
 		dev_notice(&pdev->dev, "failed to register master (%d)\n", ret);
+		clk_disable(mdata->spi_clk);
 		goto err_disable_runtime_pm;
 	}
 	return 0;
