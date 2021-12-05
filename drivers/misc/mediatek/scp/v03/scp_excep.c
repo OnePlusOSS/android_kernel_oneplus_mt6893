@@ -167,6 +167,52 @@ void scp_do_l1cdump(uint32_t *out, uint32_t *out_end)
 
 void scp_do_tbufdump(uint32_t *out, uint32_t *out_end)
 {
+
+	uint32_t *buf = out;
+	uint32_t index, raw, wbuf_ptr, wptr_value, i;
+
+	wptr_value = readl(R_CORE0_TBUF_WPTR);
+	/* tbuf wptr0 for bit[0:5], 0~63 for ring buffer */
+	wbuf_ptr = wptr_value & 0x3f;
+
+	pr_notice("%s\n", __func__);
+	pr_notice("[SCP] TBUF_WPTR = 0x%08x\n", wptr_value);
+
+	for (i = 0; i < 32; ++i) {
+		/* ring buffer, 0, 2, 4, ... 58, 60, 62 */
+		index = (wbuf_ptr + (i << 1)) & 0x3f;
+		/* raw:0 ~ 15, each raw has tbuf0 && tbuf1
+		 * each tbuf have 128 bit(4 word)
+		 */
+		raw = index / 4;
+		/* tbuf1 index is 2, 6, 10, 14 ... */
+		if (index & 0x2) {
+			/* bit16~19 for tbuf1 */
+			writel(raw << 16, R_CORE0_DBG_CTRL);
+			buf[0] = readl(R_CORE0_TBUF1_DATA31_0);
+			buf[1] = readl(R_CORE0_TBUF1_DATA63_32);
+			buf[2] = readl(R_CORE0_TBUF1_DATA95_64);
+			buf[3] = readl(R_CORE0_TBUF1_DATA127_96);
+		/* tbuf0 index is 0, 4, 8, 12 ... */
+		} else {
+			/* bit4~7 for tbuf0 */
+			writel(raw << 4, R_CORE0_DBG_CTRL);
+			buf[0] = readl(R_CORE0_TBUF_DATA31_0);
+			buf[1] = readl(R_CORE0_TBUF_DATA63_32);
+			buf[2] = readl(R_CORE0_TBUF_DATA95_64);
+			buf[3] = readl(R_CORE0_TBUF_DATA127_96);
+		}
+		buf += 4;
+	}
+
+	/* read start from out */
+	buf = out;
+	for (i = 0; i < 32; i++) {
+		pr_notice("[SCP] C0:%02d:0x%08x::0x%08x::0x%08x::0x%08x\n",
+			i, buf[0], buf[1], buf[2], buf[3]);
+		buf += 4;
+	}
+#if 0
 	uint32_t *buf = out;
 	uint32_t tmp, tmp1, index, offset, wbuf_ptr, wbuf1_ptr;
 	int i;
@@ -201,6 +247,7 @@ void scp_do_tbufdump(uint32_t *out, uint32_t *out_end)
 		pr_notice("[SCP] C1:%02d:0x%08x::0x%08x\n",
 			i, *(out + 64 + i * 2), *(out + 64 + i * 2 + 1));
 	}
+#endif
 }
 
 /*
