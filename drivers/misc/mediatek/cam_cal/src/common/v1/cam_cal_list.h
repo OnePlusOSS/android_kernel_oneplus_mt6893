@@ -13,7 +13,6 @@
 #ifndef __CAM_CAL_LIST_H
 #define __CAM_CAL_LIST_H
 #include <linux/i2c.h>
-
 #define DEFAULT_MAX_EEPROM_SIZE_8K 0x2000
 
 typedef unsigned int (*cam_cal_cmd_func) (struct i2c_client *client,
@@ -26,27 +25,6 @@ struct stCAM_CAL_LIST_STRUCT {
 	unsigned int maxEepromSize;
 };
 
-extern unsigned int gc08a3_main_read_region(
-	struct i2c_client *client,
-	unsigned int addr,
-	unsigned char *data,
-	unsigned int size);
-extern unsigned int gc08a3_sub_read_region(
-	struct i2c_client *client,
-	unsigned int addr,
-	unsigned char *data,
-	unsigned int size);
-__weak unsigned int gc08a3_sub_read_region(
-	struct i2c_client *client,
-	unsigned int addr,
-	unsigned char *data,
-	unsigned int size);
-
-__weak unsigned int gc08a3_main_read_region(
-	struct i2c_client *client,
-	unsigned int addr,
-	unsigned char *data,
-	unsigned int size);
 
 unsigned int cam_cal_get_sensor_list
 		(struct stCAM_CAL_LIST_STRUCT **ppCamcalList);
