@@ -104,7 +104,10 @@ struct mtk_dsi {
 	unsigned int hsa_byte;
 	unsigned int hbp_byte;
 	unsigned int hfp_byte;
-
+#ifdef CONFIG_MTK_MT6382_BDG
+	/* for 6382 mipi hopping */
+	bool bdg_mipi_hopping_sta;
+#endif
 	bool mipi_hopping_sta;
 	bool panel_osc_hopping_sta;
 	unsigned int data_phy_cycle;

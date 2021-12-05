@@ -300,6 +300,9 @@
 #define DSI_GERNERIC_READ_LONG_PACKET_ID 0x14
 
 struct phy;
+unsigned int bdg_rxtx_ratio = 229;
+unsigned int line_back_to_LP = 1;
+
 #ifdef CONFIG_MTK_MT6382_BDG
 unsigned int data_phy_cycle;
 #else
@@ -1062,7 +1065,7 @@ static int mtk_dsi_set_data_rate(struct mtk_dsi *dsi)
 
 	data_rate = mtk_dsi_default_rate(dsi);
 #ifdef CONFIG_MTK_MT6382_BDG
-	data_rate = data_rate * RXTX_RATIO / 100;
+	data_rate = data_rate * bdg_rxtx_ratio / 100;
 #endif
 	mipi_tx_rate = data_rate * 1000000;
 
@@ -1264,7 +1267,7 @@ static void mtk_dsi_ps_control_vact(struct mtk_dsi *dsi)
 
 	if (dsc_params->enable == 0) {
 		ps_wc = width * dsi_buf_bpp;
-		SET_VAL_MASK(value, mask, ps_wc, DSI_PS_WC);
+		SET_VAL_MASK(value, mask, ps_wc * line_back_to_LP, DSI_PS_WC);
 
 		switch (dsi->format) {
 		case MIPI_DSI_FMT_RGB888:
@@ -1280,7 +1283,7 @@ static void mtk_dsi_ps_control_vact(struct mtk_dsi *dsi)
 			SET_VAL_MASK(value, mask, 0, DSI_PS_SEL);
 			break;
 		}
-		size = (height << 16) + width;
+		size = ((height / line_back_to_LP) << 16) + (width * line_back_to_LP);
 	} else {
 		ps_wc = (((dsc_params->chunk_size + 2) / 3) * 3);
 		if (dsc_params->slice_mode == 1)
@@ -1292,7 +1295,7 @@ static void mtk_dsi_ps_control_vact(struct mtk_dsi *dsi)
 		size = (height << 16) + (ps_wc / 3);
 	}
 
-	writel(height, dsi->regs + DSI_VACT_NL);
+	writel(height / line_back_to_LP, dsi->regs + DSI_VACT_NL);
 
 	val = readl(dsi->regs + DSI_PSCTRL);
 	val = (val & ~mask) | (value & mask);
@@ -1500,7 +1503,7 @@ void DSI_Config_VDO_Timing_with_DSC(struct mtk_dsi *dsi)
 	ps_wc = width * dsiTmpBufBpp / 8;
 	t_hbllp = 16 * dsi->lanes;
 	ap_tx_total_word_cnt =
-		(get_bdg_line_cycle() * lanes * RXTX_RATIO + 99) / 100;
+		(get_bdg_line_cycle() * lanes * bdg_rxtx_ratio + 99) / 100;
 
 	if (dsi->mode_flags & MIPI_DSI_MODE_VIDEO) {
 		if (dsi->mode_flags & MIPI_DSI_MODE_VIDEO_BURST) {
@@ -2122,9 +2125,13 @@ static void mtk_output_en_doze_switch(struct mtk_dsi *dsi)
 		dsi->mode_flags =
 			panel_funcs->doze_get_mode_flags(
 				dsi->panel, doze_enabled);
-
+#ifdef CONFIG_MTK_MT6382_BDG
+		if (mtk_dsi_is_cmd_mode(&dsi->ddp_comp))
+			writel(0x0000023c, dsi->regs + DSI_TXRX_CTRL);
+#else
 		if (mtk_dsi_is_cmd_mode(&dsi->ddp_comp))
 			writel(0x0001023c, dsi->regs + DSI_TXRX_CTRL);
+#endif
 
 		mtk_dsi_set_mode(dsi);
 		mtk_dsi_clk_hs_mode(dsi, 1);
@@ -2419,7 +2426,8 @@ static void _mtk_dsi_read_ddic_by6382(struct mtk_dsi *dsi,
 
 	/* config 6382 after ap read ddic */
 	mipi_dsi_write_6382(dsi, handle, rxbypass0, 8);
-	mipi_dsi_write_6382(dsi, handle, rxsel1, 8);
+	if (dsi->mode_flags & MIPI_DSI_MODE_VIDEO)
+		mipi_dsi_write_6382(dsi, handle, rxsel1, 8);
 
 done:
 	DDPMSG("%s -\n", __func__);
@@ -2461,17 +2469,17 @@ static void mtk_dsi_porch_setting_6382(struct mtk_dsi *dsi, struct cmdq_pkt *han
 		return;
 	}
 
-	t_hfp = (dsi->mipi_hopping_sta) ?
+	t_hfp = (dsi->bdg_mipi_hopping_sta) ?
 			((dyn && !!dyn->hfp) ?
 			 dyn->hfp : vm->hfront_porch) :
 			vm->hfront_porch;
 
-	t_hbp = (dsi->mipi_hopping_sta) ?
+	t_hbp = (dsi->bdg_mipi_hopping_sta) ?
 			((dyn && !!dyn->hbp) ?
 			 dyn->hbp : vm->hback_porch) :
 			vm->hback_porch;
 
-	t_hsa = (dsi->mipi_hopping_sta) ?
+	t_hsa = (dsi->bdg_mipi_hopping_sta) ?
 			((dyn && !!dyn->hsa) ?
 			 dyn->hsa : vm->hsync_len) :
 			vm->hsync_len;
@@ -2538,6 +2546,31 @@ static void mtk_dsi_vfp_porch_setting_6382(struct mtk_dsi *dsi,
 
 	set_value_to_arr(setvfpporch, 8, value);
 	mipi_dsi_write_6382(dsi, handle, setvfpporch, 8);
+}
+
+static void bdg_cmd_mode_trigger(struct mtk_dsi *dsi, struct cmdq_pkt *handle)
+{
+	char para[8] = {0x00, 0x10, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00};
+	char para1[8] = {0x00, 0x10, 0x02, 0x00, 0x01, 0x00, 0x00, 0x00};
+	char para2[8] = {0x20, 0x50, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00};
+	char para3[8] = {0x20, 0x50, 0x02, 0x00, 0x01, 0x00, 0x00, 0x00};
+	char para4[8] = {0x90, 0x10, 0x02, 0x00, 0x3c, 0x00, 0x00, 0x00};
+	char para5[8] = {0x00, 0x1d, 0x02, 0x00, 0x09, 0x39, 0x2c, 0x00};
+	char para6[8] = {0x60, 0x10, 0x02, 0x00, 0x01, 0x00, 0x00, 0x00};
+
+    /* mem conti */
+	mipi_dsi_write_6382(dsi, handle, para4, 8);
+	/* cmdq dcs cmd */
+	mipi_dsi_write_6382(dsi, handle, para5, 8);
+	/* 6382 dsi cmdq size*/
+	mipi_dsi_write_6382(dsi, handle, para6, 8);
+	/* 6382 dsi start */
+	mipi_dsi_write_6382(dsi, handle, para, 8);
+	mipi_dsi_write_6382(dsi, handle, para1, 8);
+	/* 6382 mutex */
+	mipi_dsi_write_6382(dsi, handle, para2, 8);
+	mipi_dsi_write_6382(dsi, handle, para3, 8);
+
 }
 
 #define MIPI_TX_PLL_CON1_ADDR 0x22030
@@ -2632,7 +2665,7 @@ static void mtk_dsi_clk_change_6382(struct mtk_dsi *dsi, int en)
 
 	index = drm_crtc_index(crtc);
 
-	dsi->mipi_hopping_sta = en;
+	dsi->bdg_mipi_hopping_sta = en;
 
 	if (!(ext && ext->params &&
 			ext->params->dyn.switch_en == 1))
@@ -2676,6 +2709,17 @@ static void mtk_dsi_clk_change_6382(struct mtk_dsi *dsi, int en)
 
 		mtk_disp_mutex_trigger(output_comp->mtk_crtc->mutex[0], cmdq_handle);
 		mtk_dsi_trigger(output_comp, cmdq_handle);
+		cmdq_pkt_flush(cmdq_handle);
+		cmdq_pkt_destroy(cmdq_handle);
+	} else {
+		mtk_crtc_pkt_create(&cmdq_handle, &mtk_crtc->base,
+				mtk_crtc->gce_obj.client[CLIENT_DSI_CFG]);
+
+		cmdq_pkt_wait_no_clear(cmdq_handle,
+				mtk_crtc->gce_obj.event[EVENT_STREAM_EOF]);
+		/* cmd mode only change mipi clk and make sure tx buf enough */
+		mtk_mipi_clk_change_6382(dsi, cmdq_handle, data_rate);
+
 		cmdq_pkt_flush(cmdq_handle);
 		cmdq_pkt_destroy(cmdq_handle);
 	}
@@ -2815,8 +2859,13 @@ static void mtk_output_dsi_enable(struct mtk_dsi *dsi,
 	 * after
 	 * lcm initialize.
 	 */
+#ifdef CONFIG_MTK_MT6382_BDG
+	if (mtk_dsi_is_cmd_mode(&dsi->ddp_comp))
+		writel(0x0000023c, dsi->regs + DSI_TXRX_CTRL);
+#else
 	if (mtk_dsi_is_cmd_mode(&dsi->ddp_comp))
 		writel(0x0001023c, dsi->regs + DSI_TXRX_CTRL);
+#endif
 
 	mtk_dsi_set_mode(dsi);
 	mtk_dsi_clk_hs_mode(dsi, 1);
@@ -2830,10 +2879,16 @@ static void mtk_output_dsi_enable(struct mtk_dsi *dsi,
 	}
 
 #ifdef CONFIG_MTK_MT6382_BDG
-	bdg_tx_set_mode(DISP_BDG_DSI0, NULL, dsi);
-	bdg_tx_start(DISP_BDG_DSI0, NULL);
+	if (get_bdg_tx_mode() != CMD_MODE) {
+		bdg_tx_set_mode(DISP_BDG_DSI0, NULL, dsi);
+		bdg_tx_start(DISP_BDG_DSI0, NULL);
+	} else {
+	    /* to fix cmd mode resume cant show issue */
+		bdg_rx_reset(NULL);
+		bdg_tx_reset(DISP_BDG_DSI0, NULL);
+	}
 
-	if (get_ap_data_rate() > 1500)
+	if (get_ap_data_rate() > RX_V12)
 		DSI_MIPI_deskew(dsi);
 #endif
 
@@ -3039,7 +3094,7 @@ void mtk_output_bdg_enable(struct mtk_dsi *dsi,
 {
 	if (need_6382_init) {
 		bdg_common_init(DISP_BDG_DSI0, dsi, NULL);
-		if (dsi->mipi_hopping_sta)
+		if (dsi->bdg_mipi_hopping_sta)
 			bdg_mipi_clk_change(DISP_BDG_DSI0, dsi, NULL);
 		mipi_dsi_rx_mac_init(DISP_BDG_DSI0, dsi, NULL);
 
@@ -3872,6 +3927,15 @@ static void mtk_dsi_config_trigger(struct mtk_ddp_comp *comp,
 
 	switch (flag) {
 	case MTK_TRIG_FLAG_TRIGGER:
+#ifdef CONFIG_MTK_MT6382_BDG
+		/* to fix cmd mode 6382 cant trigger issue , so add reset*/
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DSI_CON_CTRL, DSI_RESET, DSI_RESET);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DSI_CON_CTRL, 0, DSI_RESET);
+
+		bdg_cmd_mode_trigger(dsi, handle);
+#endif
 		/* TODO: avoid hardcode: 0xF0 register offset  */
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->mtk_crtc->config_regs_pa + 0xF0, 0x1, 0x1);
@@ -3881,14 +3945,6 @@ static void mtk_dsi_config_trigger(struct mtk_ddp_comp *comp,
 		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DSI_CMDQ_SIZE,
 					1, ~0);
 
-#ifdef CONFIG_MTK_MT6382_BDG
-	if (get_mt6382_init() &&  (get_bdg_tx_mode() == 0)) {
-		bdg_tx_cmd_mode(DISP_BDG_DSI0, NULL);
-		bdg_tx_start(DISP_BDG_DSI0, NULL);
-		bdg_mutex_trigger(DISP_BDG_DSI0, NULL);
-	}
-
-#endif
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			       comp->regs_pa + DSI_START, 0, ~0);
 		cmdq_pkt_write(handle, comp->cmdq_base,
@@ -4020,14 +4076,24 @@ static void mtk_dsi_leave_idle(struct mtk_dsi *dsi)
 
 	mtk_dsi_exit_ulps(dsi);
 
+#ifdef CONFIG_MTK_MT6382_BDG
+	bdg_rx_reset(NULL);
+	bdg_tx_reset(DISP_BDG_DSI0, NULL);
+#endif
+
 	/*
 	 * TODO: It's a temp workaround for cmd mode. When set the EXT_TE_EN bit
 	 * before sending DSI cmd. System would hang. So move the bit control
 	 * after
 	 * lcm initialize.
 	 */
+#ifdef CONFIG_MTK_MT6382_BDG
+	if (mtk_dsi_is_cmd_mode(&dsi->ddp_comp))
+		writel(0x0000023c, dsi->regs + DSI_TXRX_CTRL);
+#else
 	if (mtk_dsi_is_cmd_mode(&dsi->ddp_comp))
 		writel(0x0001023c, dsi->regs + DSI_TXRX_CTRL);
+#endif
 
 	mtk_dsi_set_mode(dsi);
 	mtk_dsi_clk_hs_mode(dsi, 1);
@@ -5715,7 +5781,7 @@ void mtk_dsi_set_mmclk_by_datarate(struct mtk_dsi *dsi,
 	dsi->ext = find_panel_ext(dsi->panel);
 	data_rate = mtk_dsi_default_rate(dsi);
 #ifdef CONFIG_MTK_MT6382_BDG
-	data_rate = data_rate * RXTX_RATIO / 100;
+	data_rate = data_rate * bdg_rxtx_ratio / 100;
 #endif
 
 	if (!dsi->ext) {
@@ -5788,7 +5854,7 @@ unsigned long long mtk_dsi_get_frame_hrt_bw_base_by_datarate(
 	u32 bpp = mipi_dsi_pixel_format_to_bpp(dsi->format);
 
 #ifdef CONFIG_MTK_MT6382_BDG
-	data_rate = data_rate * RXTX_RATIO / 100;
+	data_rate = data_rate * bdg_rxtx_ratio / 100;
 #endif
 
 	bw_base = vact * hact * vrefresh * 4 / 1000;
@@ -5861,6 +5927,12 @@ static void mtk_dsi_cmd_timing_change(struct mtk_dsi *dsi,
 	cmdq_pkt_flush(cmdq_handle);
 	cmdq_pkt_destroy(cmdq_handle);
 
+#ifdef CONFIG_MTK_MT6382_BDG
+	bdg_tx_wait_for_idle(DISP_BDG_DSI0);
+	bdg_rx_reset(NULL);
+	bdg_tx_reset(DISP_BDG_DSI0, NULL);
+	mtk_dsi_reset_engine(dsi);
+#endif
 	/*	send lcm cmd before DSI power down if needed */
 	if (dsi->ext && dsi->ext->funcs &&
 		dsi->ext->funcs->mode_switch)
@@ -6523,6 +6595,7 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		break;
 #endif
 		mtk_dsi_clk_change(dsi, *en);
+
 	}
 		break;
 	case DYN_FPS_INDEX:
@@ -6812,6 +6885,12 @@ static int mtk_dsi_probe(struct platform_device *pdev)
 		}
 	}
 
+#ifdef CONFIG_MTK_MT6382_BDG
+	if ((dsi->mode_flags & MIPI_DSI_MODE_VIDEO) == 0) {
+		bdg_rxtx_ratio = 300;
+		line_back_to_LP = 6;
+	}
+#endif
 	dsi->engine_clk = devm_clk_get(dev, "engine");
 	if (IS_ERR(dsi->engine_clk)) {
 		ret = PTR_ERR(dsi->engine_clk);

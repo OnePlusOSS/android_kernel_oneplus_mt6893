@@ -19,13 +19,19 @@
 #include <linux/interrupt.h>
 
 #define HW_NUM			(1)
-#ifdef _HIGH_FRM_	 //for cmd 120Hz
-#define RXTX_RATIO		(299)
+#define RX_V12			(1700)
+
+#ifdef _90HZ_
+#define _Disable_HS_DCO_
+#define _Disable_LP_TX_L023_
 #else
-#define RXTX_RATIO		(229)
+#define _G_MODE_EN_
 #endif
+
 extern unsigned int need_6382_init;
 extern atomic_t bdg_eint_wakeup;
+extern unsigned int line_back_to_LP;
+extern unsigned int bdg_rxtx_ratio;
 
 enum DISP_BDG_ENUM {
 	DISP_BDG_DSI0 = 0,
@@ -112,6 +118,7 @@ int set_bdg_data_rate(unsigned int data_rate);
 unsigned int get_bdg_line_cycle(void);
 unsigned int get_dsc_state(void);
 int check_stopstate(void *cmdq);
+int lcm_init(enum DISP_BDG_ENUM module);
 void BDG_set_cmdq_V2_DSI0(void *cmdq, unsigned int cmd, unsigned char count,
 	unsigned char *para_list, unsigned char force_update);
 unsigned int get_mt6382_init(void);
@@ -123,6 +130,7 @@ int mtk_spi_write(u32 addr, unsigned int regval);
 int mtk_spi_mask_write(u32 addr, u32 msk, u32 value);
 void bdg_mipi_clk_change(enum DISP_BDG_ENUM module,
 			struct mtk_dsi *dsi, void *cmdq);
+int bdg_tx_reset(enum DISP_BDG_ENUM module, void *cmdq);
 
 //irqreturn_t bdg_eint_irq_handler(int irq, void *data);
 void bdg_first_init(void);

@@ -3627,9 +3627,9 @@ void mtk_crtc_start_trig_loop(struct drm_crtc *crtc)
 
 		/*Trigger*/
 		mtk_disp_mutex_enable_cmdq(mtk_crtc->mutex[0], cmdq_handle,
-					   mtk_crtc->gce_obj.base);
+			mtk_crtc->gce_obj.base);
 		mtk_crtc_comp_trigger(mtk_crtc, cmdq_handle,
-				      MTK_TRIG_FLAG_TRIGGER);
+			MTK_TRIG_FLAG_TRIGGER);
 
 		cmdq_pkt_wfe(cmdq_handle,
 			     mtk_crtc->gce_obj.event[EVENT_CMD_EOF]);

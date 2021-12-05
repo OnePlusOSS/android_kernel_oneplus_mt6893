@@ -900,7 +900,7 @@ static int tianma_setbacklight_cmdq(void *dsi, dcs_write_gce cb,
 	return 0;
 }
 
-struct drm_display_mode *get_mode_by_id(struct drm_panel *panel,
+static struct drm_display_mode *get_mode_by_id(struct drm_panel *panel,
 	unsigned int mode)
 {
 	struct drm_display_mode *m;
@@ -1089,14 +1089,14 @@ static int tianma_probe(struct mipi_dsi_device *dsi)
 				pr_info("No panel connected,skip probe lcm\n");
 				return -ENODEV;
 			}
-			pr_info("device node name:%s\n", remote_node->name);
+			pr_info("tianma_nt36672e_vdo_120hz_vfp_6382 %s\n", remote_node->name);
 		}
 	}
 	if (remote_node != dev->of_node) {
-		pr_info("%s+ skip probe due to not current lcm\n", __func__);
+		pr_info(" tianma_nt36672e_vdo_120hz_vfp_6382 isn't current lcm\n");
 		return -ENODEV;
 	}
-	DDPMSG("[error]c%s+\n", __func__);
+	pr_info("%s+\n", __func__);
 	ctx = devm_kzalloc(dev, sizeof(struct tianma), GFP_KERNEL);
 	if (!ctx)
 		return -ENOMEM;
@@ -1165,7 +1165,7 @@ static int tianma_probe(struct mipi_dsi_device *dsi)
 		return ret;
 #endif
 
-	DDPMSG("[error]%s-\n", __func__);
+	pr_info("%s+\n", __func__);
 
 	return ret;
 }
