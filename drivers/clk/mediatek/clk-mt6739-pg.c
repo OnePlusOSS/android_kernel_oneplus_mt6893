@@ -1314,9 +1314,10 @@ static int enable_subsys(enum subsys_id id)
 		if (!pgcb) {
 			pr_notice("pgcb(%d) null\r\n", id);
 			WARN_ON(1);
+		} else {
+			if (pgcb->after_on)
+				pgcb->after_on(id);
 		}
-		if (pgcb && pgcb->after_on)
-			pgcb->after_on(id);
 	}
 	spin_unlock_irqrestore(&pgcb_lock, spinlock_save_flags);
 
