@@ -944,7 +944,7 @@ void mtk_vdec_dvfs_end(struct mtk_vcodec_ctx *ctx, int hw_id)
 		vdec_req_freq[hw_id] = 546;
 	}
 
-	if (dev->dec_cnt > 2)
+	if (dev->dec_cnt > 5)
 		vdec_req_freq[hw_id] = 546;
 
 	pm_qos_update_request(&vdec_qos_req_f, vdec_freq);
