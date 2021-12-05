@@ -3391,6 +3391,7 @@ void DSI_CPHY_TIMCONFIG(enum DISP_MODULE_ENUM module, struct cmdqRecStruct *cmdq
 	} else {
 		DISPCHECK("[dsi_dsi.c] PLL clock should not be 0!\n");
 		ASSERT(0);
+		return;
 	}
 #ifdef CONFIG_MTK_MT6382_BDG
 #define NS_TO_CYCLE(n, c)	((n) / (c) + (((n) % (c)) ? 1 : 0))
