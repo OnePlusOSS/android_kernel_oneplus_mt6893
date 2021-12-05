@@ -26,6 +26,7 @@
 #include "ultra_ipi.h"
 #include "mtk-scp-ultra_dump.h"
 #include "scp_feature_define.h"
+#include "mtk-afe-fe-dai.h"
 
 
 //static DEFINE_SPINLOCK(scp_ultra_ringbuf_lock);
@@ -508,10 +509,7 @@ static int mtk_scp_ultra_pcm_start(struct snd_pcm_substream *substream)
 			fs << irq_data_dl->irq_fs_shift);
 
 	/* start dl memif */
-	regmap_update_bits(afe->regmap,
-			memif->data->enable_reg,
-			1 << memif->data->enable_shift,
-			1 << memif->data->enable_shift);
+	mtk_dsp_memif_set_enable(afe, ultra_mem->ultra_dl_memif_id);
 
 	/* set ul irq counter */
 	counter = param_config.period_in_size;
@@ -535,15 +533,10 @@ static int mtk_scp_ultra_pcm_start(struct snd_pcm_substream *substream)
 			  fs << irq_data_ul->irq_fs_shift);
 
 	/* Start ul memif */
-	regmap_update_bits(afe->regmap,
-			   memiful->data->enable_reg,
-			   1 << memiful->data->enable_shift,
-			   1 << memiful->data->enable_shift);
+	mtk_dsp_memif_set_enable(afe, ultra_mem->ultra_ul_memif_id);
 
 	/* start ul irq */
-	regmap_update_bits(afe->regmap, irq_data_ul->irq_en_reg,
-			1 << irq_data_ul->irq_en_shift,
-			1 << irq_data_ul->irq_en_shift);
+	mtk_dsp_irq_set_enable(afe, irq_data_ul);
 	return 0;
 }
 
@@ -577,25 +570,16 @@ static int mtk_scp_ultra_pcm_stop(struct snd_pcm_substream *substream)
 	}
 
 	/* stop dl memif */
-	regmap_update_bits(afe->regmap,
-			   memif->data->enable_reg,
-			   1 << memif->data->enable_shift,
-			   0);
+	mtk_dsp_memif_set_disable(afe, ultra_mem->ultra_dl_memif_id);
+
 	/* stop ul memif */
-	regmap_update_bits(afe->regmap,
-			   memiful->data->enable_reg,
-			   1 << memiful->data->enable_shift,
-			   0);
+	mtk_dsp_memif_set_disable(afe, ultra_mem->ultra_ul_memif_id);
+
 	/* stop dl irq */
-	regmap_update_bits(afe->regmap,
-			   irq_data_dl->irq_en_reg,
-			   1 << irq_data_dl->irq_en_shift,
-			   0);
+	mtk_dsp_irq_set_disable(afe, irq_data_dl);
 
 	/* stop ul irq */
-	regmap_update_bits(afe->regmap, irq_data_ul->irq_en_reg,
-			   1 << irq_data_ul->irq_en_shift,
-			   0);
+	mtk_dsp_irq_set_disable(afe, irq_data_ul);
 
 	/* clear pending dl irq */
 	regmap_write(afe->regmap, irq_data_dl->irq_clr_reg,
