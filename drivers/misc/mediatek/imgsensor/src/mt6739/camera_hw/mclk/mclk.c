@@ -108,7 +108,10 @@ static enum IMGSENSOR_RETURN mclk_set(
 		ret = IMGSENSOR_RETURN_ERROR;
 	} else {
 		state_index = (pin_state > IMGSENSOR_HW_PIN_STATE_LEVEL_0) ? MCLK_STATE_ENABLE : MCLK_STATE_DISABLE;
-
+		if (sensor_idx < 0) {
+			pr_info("%s : sensor_idx < 0\n", __func__);
+			return IMGSENSOR_RETURN_ERROR;
+		}
 		ppinctrl_state = pinst->ppinctrl_state[sensor_idx][state_index];
 		mutex_lock(&pinctrl_mutex);
 		if (!IS_ERR(ppinctrl_state))
