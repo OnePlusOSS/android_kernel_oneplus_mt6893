@@ -1861,15 +1861,19 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id, UINT8 *fe
 		break;
 	case SENSOR_FEATURE_GET_PDAF_TYPE:
 		*feature_para = pdaf_sensor_type;
-		if (pdaf_sensor_type == PDAF_NO_PDAF)
-			sprintf(feature_para, "configure as type 1");
-		else if (pdaf_sensor_type == PDAF_VC_TYPE)
-			sprintf(feature_para, "configure as type 2");
-		else if (pdaf_sensor_type == PDAF_RAW_TYPE)
-			sprintf(feature_para, "configure as type 3");
-		else
-			sprintf(feature_para, "configure as unknown type");
-
+		if (pdaf_sensor_type == PDAF_NO_PDAF) {
+			if (sprintf(feature_para, "configure as type 1") < 0)
+				LOG_INF("PDAF_NO_PDAF sprintf fail\n");
+		} else if (pdaf_sensor_type == PDAF_VC_TYPE) {
+			if (sprintf(feature_para, "configure as type 2") < 0)
+				LOG_INF("PDAF_VC_TYPE sprintf fail\n");
+		} else if (pdaf_sensor_type == PDAF_RAW_TYPE) {
+			if (sprintf(feature_para, "configure as type 3") < 0)
+				LOG_INF("PDAF_RAW_TYPE sprintf fail\n");
+		} else {
+			if (sprintf(feature_para, "configure as unknown type") < 0)
+				LOG_INF("configure as unknown type sprintf fail\n");
+		}
 		LOG_INF("get PDAF type = %d\n", pdaf_sensor_type);
 		break;
 	case SENSOR_FEATURE_SET_PDAF_TYPE:
