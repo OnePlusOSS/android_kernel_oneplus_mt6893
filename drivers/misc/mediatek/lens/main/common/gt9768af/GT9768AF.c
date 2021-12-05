@@ -308,8 +308,15 @@ int GT9768AF_GetFileName_Main(unsigned char *pFileName)
 	char FilePath[256];
 	char *FileString;
 
-	sprintf(FilePath, "%s", __FILE__);
+	if (sprintf(FilePath, "%s", __FILE__) < 0) {
+		LOG_INF("err : sprintf < 0 !!\n");
+		return 0;
+	}
 	FileString = strrchr(FilePath, '/');
+	if (FileString == NULL) {
+		LOG_INF("FileString strrchr return NULL!!\n");
+		return 0;
+	}
 	*FileString = '\0';
 	FileString = (strrchr(FilePath, '/') + 1);
 	strncpy(pFileName, FileString, AF_MOTOR_NAME);
