@@ -4462,7 +4462,7 @@ void mtk_dsi_cmdq_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 			goto_addr, (0xFFu << ((goto_addr & 0x3u) * 8)),
 			handle);
 
-		DDPINFO("set cmdqaddr 0x%08x, val:0x%08x, mask:0x%08x\n", goto_addr,
+		DDPINFO("set cmdqaddr 0x%08lx, val:0x%08x, mask:0x%08x\n", goto_addr,
 			tx_buf[i] << ((goto_addr & 0x3u) * 8),
 			(0xFFu << ((goto_addr & 0x3u) * 8)));
 	}
@@ -6060,6 +6060,7 @@ static void mtk_dsi_vdo_timing_change(struct mtk_dsi *dsi,
 		comp = mtk_ddp_comp_request_output(mtk_crtc);
 		if (!comp) {
 			DDPMSG("[error]ddp comp is NULL\n");
+			kfree(cb_data);
 			return;
 		}
 		if (dsi->mipi_hopping_sta && dsi->ext->params->dyn.vfp) {
