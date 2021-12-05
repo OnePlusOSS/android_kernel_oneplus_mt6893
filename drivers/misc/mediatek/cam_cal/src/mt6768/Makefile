@@ -31,6 +31,10 @@ obj-y += ../common/$(COMMON_VERSION)/eeprom_i2c_common_driver.o
 
 # Platform code
 obj-y += eeprom_i2c_custom_driver.o
+ifeq ($(CONFIG_ARCH_MTK_PROJECT), "tb8786p2_64_wifi")
+obj-y += gc08a3_main_otp.o
+obj-y += gc08a3_sub_otp.o
+endif
 
 
 define INC_CUSTOM_SRC
