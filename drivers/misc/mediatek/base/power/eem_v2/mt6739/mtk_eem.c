@@ -2207,6 +2207,10 @@ static void eem_restore_eem_volt(struct eem_det *det)
 {
 	#if SET_PMIC_VOLT
 		struct eem_ctrl *ctrl = id_to_eem_ctrl(det->ctrl_id);
+		if (!ctrl) {
+			eem_debug("ctrl is NULL\n");
+			return;
+		}
 
 		ctrl->volt_update |= EEM_VOLT_RESTORE;
 		#ifdef __KERNEL__
@@ -3710,6 +3714,10 @@ int mt_eem_opp_num(enum eem_det_id id)
 	FUNC_ENTER(FUNC_LV_API);
 	FUNC_EXIT(FUNC_LV_API);
 
+	if (!det) {
+		eem_debug("det is NULL\n");
+		return 0;
+	}
 	return det->num_freq_tbl;
 }
 EXPORT_SYMBOL(mt_eem_opp_num);
@@ -3720,6 +3728,11 @@ void mt_eem_opp_freq(enum eem_det_id id, unsigned int *freq)
 	int i = 0;
 
 	FUNC_ENTER(FUNC_LV_API);
+
+	if (!det) {
+		eem_debug("det is NULL\n");
+		return;
+	}
 
 	for (i = 0; i < det->num_freq_tbl; i++)
 		freq[i] = det->freq_tbl[i];
@@ -3734,6 +3747,11 @@ void mt_eem_opp_status(enum eem_det_id id, unsigned int *temp, unsigned int *vol
 	int i = 0;
 
 	FUNC_ENTER(FUNC_LV_API);
+
+	if (!det) {
+		eem_debug("det is NULL\n");
+		return;
+	}
 
 	*temp = 0;
 #if defined(__KERNEL__) && defined(CONFIG_THERMAL) && !(EARLY_PORTING)
@@ -4844,6 +4862,11 @@ void eem_set_pi_offset(enum eem_ctrl_id id, int step)
 {
 	struct eem_det *det = id_to_eem_det(id);
 
+	if (!det) {
+		eem_debug("det is NULL\n");
+		return;
+	}
+
 	det->pi_offset = step;
 
 #if (defined(CONFIG_EEM_AEE_RR_REC) && !(EARLY_PORTING)) /* irene */
@@ -4855,6 +4878,11 @@ void eem_set_pi_offset(enum eem_ctrl_id id, int step)
 void eem_set_pi_efuse(enum eem_det_id id, unsigned int pi_efuse)
 {
 	struct eem_det *det = id_to_eem_det(id);
+
+	if (!det) {
+		eem_debug("det is NULL\n");
+		return;
+	}
 
 	det->pi_efuse = pi_efuse;
 }
