@@ -480,7 +480,8 @@ ccflags-y += \
     -I$(srctree)/drivers/misc/mediatek/lcm/inc/ \
     -I$(srctree)/drivers/misc/mediatek/dfrc/ \
     -I$(srctree)/drivers/gpu/mediatek/gpufreq/include/ \
-    -I$(srctree)/drivers/misc/mediatek/sspm/
+    -I$(srctree)/drivers/misc/mediatek/sspm/ \
+    -I$(srctree)/drivers/gpu/drm/mediatek/
 
 obj-$(CONFIG_MTK_GPU_SUPPORT) += ged.o
 

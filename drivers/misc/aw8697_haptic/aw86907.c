@@ -29,6 +29,7 @@
 #include <asm/uaccess.h>
 #include <linux/syscalls.h>
 #include <linux/power_supply.h>
+#include <linux/mman.h>
 #include "aw86907.h"
 #include "aw86907_reg.h"
 #include "aw86907_config.h"
@@ -2128,7 +2129,7 @@ static void aw86907_rtp_loaded(const struct firmware *cont, void *context)
 
     /* aw86907 rtp update */
     mutex_lock(&aw86907->rtp_lock);
-    #ifndef OPLUS_FEATURE_CHG_BASIC
+#ifndef OPLUS_FEATURE_CHG_BASIC
     aw86907_rtp = kzalloc(cont->size+sizeof(int), GFP_KERNEL); 
     if (!aw86907_rtp) {
         release_firmware(cont);
@@ -2136,7 +2137,7 @@ static void aw86907_rtp_loaded(const struct firmware *cont, void *context)
         pr_err("%s: Error allocating memory\n", __func__);
         return;
     }
-    #else
+#else
     ret = aw86907_container_init(cont->size+sizeof(int));
     if (ret < 0) {
         release_firmware(cont);
@@ -2443,6 +2444,7 @@ static int aw86907_haptic_play_mode(struct aw86907 *aw86907, unsigned char play_
             aw86907_i2c_write_bits(aw86907, AW86907_REG_PLAYCFG1,
                        AW86907_BIT_PLAYCFG1_BST_MODE_MASK,
                        AW86907_BIT_PLAYCFG1_BST_MODE_BOOST);
+			mdelay(2);
             break;
         case AW86907_HAPTIC_RAM_LOOP_MODE:
             pr_info("%s: enter ram loop mode\n",
@@ -2455,6 +2457,10 @@ static int aw86907_haptic_play_mode(struct aw86907 *aw86907, unsigned char play_
             aw86907_i2c_write_bits(aw86907, AW86907_REG_PLAYCFG1,
                            AW86907_BIT_PLAYCFG1_BST_MODE_MASK,
                            AW86907_BIT_PLAYCFG1_BST_MODE_BYPASS);
+            aw86907_i2c_write_bits(aw86907, AW86907_REG_PLAYCFG1,
+                           AW86907_BIT_PLAYCFG1_BST_MODE_MASK,
+                           AW86907_BIT_PLAYCFG1_BST_MODE_BOOST);
+		    mdelay(2);
             break;
         case AW86907_HAPTIC_RTP_MODE:
             pr_info("%s: enter rtp mode\n", __func__);
@@ -2466,6 +2472,7 @@ static int aw86907_haptic_play_mode(struct aw86907 *aw86907, unsigned char play_
             aw86907_i2c_write_bits(aw86907, AW86907_REG_PLAYCFG1,
                            AW86907_BIT_PLAYCFG1_BST_MODE_MASK,
                            AW86907_BIT_PLAYCFG1_BST_MODE_BOOST);
+		    mdelay(2);
             break;
         case AW86907_HAPTIC_TRIG_MODE:
             pr_info("%s: enter trig mode\n", __func__);
@@ -2473,6 +2480,7 @@ static int aw86907_haptic_play_mode(struct aw86907 *aw86907, unsigned char play_
             aw86907_i2c_write_bits(aw86907, AW86907_REG_PLAYCFG3,
                            AW86907_BIT_PLAYCFG3_PLAY_MODE_MASK,
                            AW86907_BIT_PLAYCFG3_PLAY_MODE_RAM);
+			mdelay(2);
             break;
         case AW86907_HAPTIC_CONT_MODE:
             pr_info("%s: enter cont mode\n", __func__);
@@ -3037,6 +3045,7 @@ static int aw86907_haptic_rtp_init(struct aw86907 *aw86907)
         /* enter standby mode */
         aw86907_haptic_stop(aw86907);
         pr_err("%s failed to enter RTP_GO status!\n", __func__);
+        mutex_unlock(&aw86907->rtp_lock);
         return 0;
     }
 
@@ -3574,7 +3583,7 @@ static void aw86907_rtp_work_routine(struct work_struct *work)
     aw86907->rtp_init = 0;
 
     mutex_lock(&aw86907->rtp_lock);
-    #ifndef OPLUS_FEATURE_CHG_BASIC
+#ifndef OPLUS_FEATURE_CHG_BASIC
     kfree(aw86907_rtp);
     aw86907_rtp = kzalloc(rtp_file->size+sizeof(int), GFP_KERNEL);
     if (!aw86907_rtp) {
@@ -3583,7 +3592,7 @@ static void aw86907_rtp_work_routine(struct work_struct *work)
         pr_err("%s: error allocating memory\n", __func__);
         return;
     }
-    #else
+#else
     ret = aw86907_container_init(rtp_file->size+sizeof(int));
     if (ret < 0) {
         release_firmware(rtp_file);
@@ -3594,7 +3603,7 @@ static void aw86907_rtp_work_routine(struct work_struct *work)
         aw86907->rtp_routine_on = 0;
         return;
     }
-    #endif
+#endif
     aw86907_rtp->len = rtp_file->size;
 
 
@@ -5094,6 +5103,80 @@ static int aw86907_haptic_f0_calibration(struct aw86907 *aw86907)
     return ret;
 }
 
+#ifdef AAC_RICHTAP
+static void haptic_clean_buf(struct aw86907 *aw86907, int status)
+{
+    struct mmap_buf_format *opbuf = aw86907->start_buf;
+    int i = 0;
+
+    for(i = 0; i < RICHTAP_MMAP_BUF_SUM; i++)
+    {
+        opbuf->status = status;
+        opbuf = opbuf->kernel_next;
+    }
+}
+
+static inline unsigned int aw86907_get_sys_msecs()
+{
+    struct timespec64 ts64 = current_kernel_time64();
+    return jiffies_to_msecs(timespec64_to_jiffies(&ts64));
+}
+
+static void rtp_work_proc(struct work_struct *work)
+{
+    struct aw86907 *aw86907 = container_of(work, struct aw86907, haptic_rtp_work);
+    struct mmap_buf_format *opbuf = aw86907->start_buf;
+    uint32_t count = 100;
+    uint8_t reg_val = 0x10;
+    unsigned int write_start;
+
+    opbuf = aw86907->start_buf;
+    count = 100;
+    while(true && count--)
+    {
+        if(opbuf->status == MMAP_BUF_DATA_VALID) {
+            mutex_lock(&aw86907->lock);
+            aw86907_haptic_play_mode(aw86907, AW86907_HAPTIC_RTP_MODE);
+            aw86907_haptic_set_rtp_aei(aw86907, true);
+            aw86907_interrupt_clear(aw86907);
+            aw86907_haptic_start(aw86907);
+            mutex_unlock(&aw86907->lock);
+            break;
+        }
+        else {
+            msleep(1);
+        }
+    }
+    write_start = aw86907_get_sys_msecs();
+    reg_val = 0x10;
+    while(true)
+    {
+        if(aw86907_get_sys_msecs() > (write_start + 800))
+        {
+            pr_info("Failed ! %s endless loop\n", __func__);
+            break;
+        }
+        if(reg_val & 0x01 || (aw86907->done_flag == true) || (opbuf->status == MMAP_BUF_DATA_FINISHED) \
+                          || (opbuf->status == MMAP_BUF_DATA_INVALID)) {
+            break;
+        }
+        else if(opbuf->status == MMAP_BUF_DATA_VALID && (reg_val & 0x01 << 4)) {
+            aw86907_i2c_writes(aw86907, AW86907_REG_PLAYCFG1, opbuf->data, opbuf->length);
+            memset(opbuf->data, 0, opbuf->length);
+            opbuf->status = MMAP_BUF_DATA_INVALID;
+            opbuf = opbuf->kernel_next;
+            write_start = aw86907_get_sys_msecs();
+        }
+        else {
+            msleep(1);
+        }
+        aw86907_i2c_read(aw86907, AW86907_REG_SYSST, &reg_val);
+    }
+    aw86907_haptic_set_rtp_aei(aw86907, false);
+    aw86907->haptic_rtp_mode = false;
+}
+#endif
+
 /*****************************************************
  *
  * haptic fops
@@ -5121,7 +5204,7 @@ static int aw86907_file_release(struct inode *inode, struct file *file)
 static long aw86907_file_unlocked_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
     struct aw86907 *aw86907 = (struct aw86907 *)file->private_data;
-
+    uint32_t tmp;
     int ret = 0;
 
     dev_info(aw86907->dev, "%s: cmd=0x%x, arg=0x%lx\n",
@@ -5129,6 +5212,71 @@ static long aw86907_file_unlocked_ioctl(struct file *file, unsigned int cmd, uns
 
     mutex_lock(&aw86907->lock);
 
+#ifdef AAC_RICHTAP
+    switch(cmd)
+    {
+        case RICHTAP_GET_HWINFO:
+            tmp = RICHTAP_AW_8697;
+            if(copy_to_user((void __user *)arg, &tmp, sizeof(uint32_t)))
+                ret = -EFAULT;
+            break;
+        case RICHTAP_RTP_MODE:
+            aw86907_haptic_stop(aw86907);
+            if(copy_from_user(aw86907->rtp_ptr, (void __user *)arg, RICHTAP_MMAP_BUF_SIZE * RICHTAP_MMAP_BUF_SUM)) {
+                ret = -EFAULT;
+                break;
+            }
+            tmp = *((uint32_t*)aw86907->rtp_ptr);
+            if(tmp > (RICHTAP_MMAP_BUF_SIZE * RICHTAP_MMAP_BUF_SUM - 4)) {
+                dev_err(aw86907->dev, "rtp mode date len error %d\n", tmp);
+                ret = -EINVAL;
+                break;
+            }
+            aw86907_haptic_set_bst_vol(aw86907, 0x11);
+            aw86907_haptic_play_mode(aw86907, AW86907_HAPTIC_RTP_MODE);
+            aw86907_haptic_start(aw86907);
+            usleep_range(2000, 2500);
+            aw86907_i2c_writes(aw86907, AW86907_REG_PLAYCFG1, &aw86907->rtp_ptr[4], tmp);
+            break;
+        case RICHTAP_OFF_MODE:
+            break;
+        case RICHTAP_GET_F0:
+            tmp = aw86907->f0;
+            if(copy_to_user((void __user *)arg, &tmp, sizeof(uint32_t)))
+                ret = -EFAULT;
+            break;
+        case RICHTAP_SETTING_GAIN:
+            if(arg > 0x80)
+                arg = 0x80;
+            aw86907_i2c_write(aw86907, AW86907_REG_TRGCFG7, arg);
+            break;
+        case RICHTAP_STREAM_MODE:
+            haptic_clean_buf(aw86907, MMAP_BUF_DATA_INVALID);
+            aw86907_haptic_stop(aw86907);
+            aw86907->done_flag = false;
+            aw86907->haptic_rtp_mode = true;
+            aw86907_haptic_set_bst_vol(aw86907, 0x11);
+            schedule_work(&aw86907->haptic_rtp_work);
+            break;
+        case RICHTAP_STOP_MODE:
+            dev_warn(aw86907->dev,"%s,RICHTAP_STOP_MODE  stop enter\n", __func__);
+            aw86907->done_flag = true;
+            aw86907_op_clean_status(aw86907);
+            //hrtimer_cancel(&aw86907->timer);
+            //aw86907->state = 0;
+            //haptic_clean_buf(aw86907, MMAP_BUF_DATA_FINISHED);
+            usleep_range(2000, 2000);
+            aw86907_haptic_set_rtp_aei(aw86907, false);
+            aw86907_haptic_stop(aw86907);
+            aw86907->haptic_rtp_mode = false;
+            dev_warn(aw86907->dev,"%s,RICHTAP_STOP_MODE  stop end\n", __func__);
+            //wait_event_interruptible(haptic->doneQ, !haptic->task_flag);
+            break;
+        default:
+            dev_err(aw86907->dev, "%s, unknown cmd = %d\n", __func__,cmd);
+            break;
+    }
+#else
     if(_IOC_TYPE(cmd) != AW86907_HAPTIC_IOCTL_MAGIC) {
         dev_err(aw86907->dev, "%s: cmd magic err\n",
                 __func__);
@@ -5141,7 +5289,7 @@ static long aw86907_file_unlocked_ioctl(struct file *file, unsigned int cmd, uns
             dev_err(aw86907->dev, "%s, unknown cmd\n", __func__);
             break;
     }
-
+#endif
     mutex_unlock(&aw86907->lock);
 
     return ret;
@@ -5257,11 +5405,42 @@ static ssize_t aw86907_file_write(struct file* filp, const char* buff, size_t le
     return len;
 }
 
+#ifdef AAC_RICHTAP
+static int aw86907_file_mmap(struct file *filp, struct vm_area_struct *vma)
+{
+    unsigned long phys;
+    struct aw86907 *aw86907 = (struct aw86907 *)filp->private_data;
+    int ret = 0;
+#if LINUX_VERSION_CODE > KERNEL_VERSION(4,7,0)
+    //only accept PROT_READ, PROT_WRITE and MAP_SHARED from the API of mmap
+    vm_flags_t vm_flags = calc_vm_prot_bits(PROT_READ|PROT_WRITE, 0) | calc_vm_flag_bits(MAP_SHARED);
+    vm_flags |= current->mm->def_flags | VM_MAYREAD | VM_MAYWRITE | VM_MAYEXEC| VM_SHARED | VM_MAYSHARE;
+    if(vma && (pgprot_val(vma->vm_page_prot) != pgprot_val(vm_get_page_prot(vm_flags))))
+        return -EPERM;
+
+    if(vma && ((vma->vm_end - vma->vm_start) != (PAGE_SIZE << RICHTAP_MMAP_PAGE_ORDER)))
+        return -ENOMEM;
+#endif
+    phys = virt_to_phys(aw86907->start_buf);
+
+    ret = remap_pfn_range(vma, vma->vm_start, (phys >> PAGE_SHIFT), (vma->vm_end - vma->vm_start), vma->vm_page_prot);
+    if(ret) {
+        dev_err(aw86907->dev, "Error mmap failed\n");
+        return ret;
+    }
+
+    return ret;
+}
+#endif
+
 static struct file_operations fops =
 {
     .owner = THIS_MODULE,
     .read = aw86907_file_read,
     .write = aw86907_file_write,
+#ifdef AAC_RICHTAP
+    .mmap = aw86907_file_mmap,
+#endif
     .unlocked_ioctl = aw86907_file_unlocked_ioctl,
     .open = aw86907_file_open,
     .release = aw86907_file_release,
@@ -5879,15 +6058,15 @@ static struct aw86907_vmax_map vmax_map[] = {
 	{1300, 0x00, 0x6B},
 	{1400, 0x00, 0x73},
 	{1500, 0x00, 0x7C},
-	{1600, 0x01, 0x80},
-	{1700, 0x04, 0x80},
-	{1800, 0x07, 0x80},
-	{1900, 0x0A, 0x80},
-	{2000, 0x0D, 0x80},
-	{2100, 0x10, 0x80},
-	{2200, 0x12, 0x80},
-	{2300, 0x15, 0x80},
-	{2400, 0x18, 0x80},
+	{1600, 0x02, 0x80},
+	{1700, 0x08, 0x80},
+	{1800, 0x0D, 0x80},
+	{1900, 0x12, 0x80},
+	{2000, 0x17, 0x80},
+	{2100, 0x1C, 0x80},
+	{2200, 0x21, 0x80},
+	{2300, 0x26, 0x80},
+	{2400, 0x2B, 0x80},
 };
 
 int aw86907_convert_level_to_vmax(struct aw86907 *aw86907, int val)
@@ -6261,6 +6440,9 @@ static ssize_t aw86907_rtp_store(struct device *dev, struct device_attribute *at
     /*OP add for juge rtp on end*/
     if (((val >=  RINGTONES_START_INDEX && val <= RINGTONES_END_INDEX)
         || (val >=  NEW_RING_START && val <= NEW_RING_END)
+        || (val >=  REALME_RING_START && val <= REALME_RING_END)
+        || (val >=  OPLUS_NEW_RING_1_START && val <= OPLUS_NEW_RING_1_END)
+        || (val >=  OPLUS_NEW_RING_2_START && val <= OPLUS_NEW_RING_2_END)
         || val == RINGTONES_SIMPLE_INDEX
         || val == RINGTONES_PURE_INDEX
         || val == AUDIO_READY_STATUS)) {
@@ -6926,6 +7108,30 @@ static ssize_t aw86907_f0_data_store(struct device *dev, struct device_attribute
     return count;
 }
 
+
+static ssize_t aw86907_rtp_going_show(struct device *dev, struct device_attribute *attr,
+		char *buf)
+{
+#ifdef TIMED_OUTPUT
+	struct timed_output_dev *to_dev = dev_get_drvdata(dev);
+	struct aw86907 *aw86907 = container_of(to_dev, struct aw86907, to_dev);
+#else
+	struct led_classdev *cdev = dev_get_drvdata(dev);
+	struct aw86907 *aw86907 = container_of(cdev, struct aw86907, cdev);
+#endif
+	ssize_t len = 0;
+	int val = -1;
+
+	val = aw86907_haptic_juge_RTP_is_going_on(aw86907);
+	len += snprintf(buf+len, PAGE_SIZE-len, "%d\n", val);
+	return len;
+}
+
+static ssize_t aw86907_rtp_going_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	return count;
+}
 
 static ssize_t aw86907_osc_cali_show(struct device *dev, struct device_attribute *attr,
         char *buf)
@@ -7997,6 +8203,8 @@ static DEVICE_ATTR(waveform_index, S_IWUSR | S_IRUGO, aw86907_waveform_index_sho
 static DEVICE_ATTR(osc_data, S_IWUSR | S_IRUGO, aw86907_osc_data_show, aw86907_osc_data_store);
 static DEVICE_ATTR(ram_test, S_IWUSR | S_IRUGO, aw86907_haptic_ram_test_show, aw86907_haptic_ram_test_store);
 static DEVICE_ATTR(f0_data, S_IWUSR | S_IRUGO, aw86907_f0_data_show, aw86907_f0_data_store);
+static DEVICE_ATTR(rtp_going, S_IWUSR | S_IRUGO, aw86907_rtp_going_show, aw86907_rtp_going_store);
+
 #endif
 #ifdef OPLUS_FEATURE_CHG_BASIC
 static DEVICE_ATTR(device_id, S_IWUSR | S_IRUGO, aw86907_device_id_show, aw86907_device_id_store);
@@ -8052,6 +8260,7 @@ static struct attribute *aw86907_vibrator_attributes[] = {
     &dev_attr_osc_data.attr,
     &dev_attr_ram_test.attr,
     &dev_attr_f0_data.attr,
+    &dev_attr_rtp_going.attr,
 #endif
 #ifdef OPLUS_FEATURE_CHG_BASIC
     &dev_attr_device_id.attr,
@@ -8233,6 +8442,12 @@ static irqreturn_t aw86907_irq(int irq, void *data)
     unsigned int buf_len = 0;
 
     pr_debug("%s enter\n", __func__);
+
+#ifdef AAC_RICHTAP
+    if(aw86907->haptic_rtp_mode) {
+        return IRQ_HANDLED;
+    }
+#endif
 
     aw86907_i2c_read(aw86907, AW86907_REG_SYSINT, &reg_val);
     //pr_info("%s: reg SYSINT=0x%x\n", __func__, reg_val);
@@ -8669,6 +8884,37 @@ static int aw86907_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id 
         goto err_sysfs;
     }
 
+#ifdef AAC_RICHTAP
+    aw86907->rtp_ptr = kmalloc(RICHTAP_MMAP_BUF_SIZE * RICHTAP_MMAP_BUF_SUM, GFP_KERNEL);
+    if(aw86907->rtp_ptr == NULL) {
+        dev_err(&i2c->dev, "malloc rtp memory failed\n");
+        return -ENOMEM;
+    }
+
+    aw86907->start_buf = (struct mmap_buf_format *)__get_free_pages(GFP_KERNEL, RICHTAP_MMAP_PAGE_ORDER);
+    if(aw86907->start_buf == NULL) {
+            dev_err(&i2c->dev, "Error __get_free_pages failed\n");
+            return -ENOMEM;
+    }
+    SetPageReserved(virt_to_page(aw86907->start_buf));
+    {
+        struct mmap_buf_format *temp;
+        uint32_t i = 0;
+        temp = aw86907->start_buf;
+        for( i = 1; i < RICHTAP_MMAP_BUF_SUM; i++)
+        {
+                temp->kernel_next = (aw86907->start_buf + i);
+                temp = temp->kernel_next;
+        }
+        temp->kernel_next = aw86907->start_buf;
+    }
+
+    INIT_WORK(&aw86907->haptic_rtp_work, rtp_work_proc);
+    //init_waitqueue_head(&aw86907->doneQ);
+    aw86907->done_flag = true;
+    aw86907->haptic_rtp_mode = false;
+#endif
+
     g_aw86907 = aw86907;
 
     aw86907_vibrator_init(aw86907);
@@ -8690,6 +8936,10 @@ static int aw86907_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id 
 
 err_sysfs:
     devm_free_irq(&i2c->dev, gpio_to_irq(aw86907->irq_gpio), aw86907);
+#ifdef AAC_RICHTAP
+    kfree(aw86907->rtp_ptr);
+    free_pages((unsigned long)aw86907->start_buf, RICHTAP_MMAP_PAGE_ORDER);
+#endif
 err_irq:
 err_qualify:
 err_id:
@@ -8719,6 +8969,11 @@ static int aw86907_i2c_remove(struct i2c_client *i2c)
         devm_gpio_free(&i2c->dev, aw86907->irq_gpio);
     if (gpio_is_valid(aw86907->reset_gpio))
         devm_gpio_free(&i2c->dev, aw86907->reset_gpio);
+
+#ifdef AAC_RICHTAP
+    kfree(aw86907->rtp_ptr);
+    free_pages((unsigned long)aw86907->start_buf, RICHTAP_MMAP_PAGE_ORDER);
+#endif
 
     devm_kfree(&i2c->dev, aw86907);
     aw86907 = NULL;

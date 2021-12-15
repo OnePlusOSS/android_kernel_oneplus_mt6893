@@ -2158,6 +2158,10 @@ static int mt_hp_event(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
+#ifdef CONFIG_SND_SOC_FSA
+extern int fsa4480_sense_to_ground(bool bstate);
+#endif
+
 static int mt_rcv_event(struct snd_soc_dapm_widget *w,
 			struct snd_kcontrol *kcontrol,
 			int event)
@@ -2173,6 +2177,9 @@ static int mt_rcv_event(struct snd_soc_dapm_widget *w,
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 		/* Disable handset short-circuit protection */
+#ifdef CONFIG_SND_SOC_FSA
+		fsa4480_sense_to_ground(true);
+#endif
 		regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON6, 0x0010);
 
 		/* Set RCV DR bias current optimization, 010: 6uA */
@@ -2236,6 +2243,9 @@ static int mt_rcv_event(struct snd_soc_dapm_widget *w,
 		/* Disable HS driver bias circuits */
 		regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON6,
 				   RG_AUDHSPWRUP_IBIAS_VAUDP32_MASK_SFT, 0x0);
+#ifdef CONFIG_SND_SOC_FSA
+		fsa4480_sense_to_ground(false);
+#endif
 		break;
 	default:
 		break;

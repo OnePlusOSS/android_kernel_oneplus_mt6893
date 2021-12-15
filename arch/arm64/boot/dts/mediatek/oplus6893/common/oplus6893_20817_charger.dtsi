@@ -237,6 +237,7 @@
 &lk_charger {
 	charger_by_buckboost;
 	support_tuv_authentication;
+	max_charger_voltage = <9900000>;
 };
 
 /delete-node/ &ext_buck_vmddr_mtk;
@@ -295,6 +296,84 @@
 		qcom,batt_bq28z610 = <1>;
 		qcom,sha1_key_index = <1>;
 		//qcom,bq28z610_need_balancing;
+		zy,afi_data{
+			battery,name = "BLP861";
+			qmax_min = <1776>;
+			qmax_max = <2553>;
+			static_df_checksum_3e = [25 E4];			//len 2
+			static_df_checksum_60 = [3A 06];			//len 2
+			afi_buf_num = <7>;
+			afi_buf_0 = [	//diffrent from BLP863
+				11 D0 11 17 11 D0 11 17 11 D0 11 17 11 D0 11 17
+				01 0A 8C 0A 0C 1C 21 34 02 FF CE 02 EC 78 02 FF
+				CE 05 C2 0A C2 0A 72 A3 0A 0C D1 02 0C 9F 0D 03
+				02 0C D1 0A 79 02 0A AB 09 E3 02 0A 15 07 D0 07
+				08 07 08 00 02 09 C4 07 D0 D2 F0 00 02 03 E8 05
+				11 EE 05 0E 74 00 0A 01 F4 0A 07 08 0E 74 00 0A
+				01 F4 0A 00 0A 05 FF F6 05 0A 0A AB 0B 23 0B 73
+				0B A5 0B D7 0C D1 00 0A 00 58 00 2C 11 5D 00 84
+				01 60 01 08 11 5D 07 BC 0F A4 0B B0 11 5D 09 CC
+				11 88 0D C0 11 5D 03 F4 07 BC 05 D8 09 C4 0D 48
+				0E D8 0F A0 00 01 01 2C 01 2C 01 2C 01 2C 00 4B
+				03 84 28 01 65 01 6B 03 00 00 46 50 50 00 30 00
+				96 00 AF 08 AC 06 B6 1E 3C 5A
+				];
+			afi_buf_1 = [
+				64 63 64 61 00 01 01 02 05 21 1C 00 A2 40 05 57
+				20 00 00 03 00 00 0A F0 0A 28 14 0A 14 10 E0 64
+				07 D0 00 03 0F 00 14 04 19 C8 00
+				];
+			afi_buf_2 = [	//diffrent from BLP863
+				AA 21 10 03 03 05 41 07 00 09 C3 0B CB 0D 07 0F
+				B8 11 5A 13 BC 15 DE 17 D1 19 D7 1B A9 5D 28 B5
+				00 33 22 A4 24 82 26 6F 28 C0 2A 03 2C 44 2E E7
+				30 79 32 9B 34 3C 36 DE 38 D5 3A 88 7C 4D 08 C2
+				08 C6 33
+				];
+			afi_buf_3 = [
+				11 38 11 38 01 2C FF 38 FE 20 FE D5 FC 18 00 6A
+				00 32 00 32
+				];
+			afi_buf_4 = [25 E4];	//diffrent from BLP863
+			afi_buf_5 = [			//diffrent from BLP863
+				FF 21 10 03 03 05 41 07 00 09 C3 0B CB 0D 07 0F
+				B8 11 5A 13 BC 15 DE 17 D1 19 D7 1B A9 5D 28 E0
+				00 33 22 A4 24 82 26 6F 28 C0 2A 03 2C 44 2E E7
+				30 79 32 9B 34 3C 36 DE 38 D5 3A 6A 7C FB 01 01
+				00 00 00 00 00 14 00 0F 00 46 00 3C 00 3C 01 3C
+				FF F6 FE 0C 32
+				];
+			afi_buf_6 = [			//diffrent from BLP863
+				E4 E3 20 28 26 A2 24 43 2A E9 08 96 0E 94 0C BA
+				12 C0 10 FE 16 DC 14 11 1A 5B FB C5 FD 66 FF 27
+				C1 F5 C3 72 C5 0B C7 AD C9 4F CB 4F CD 6F CF 8F
+				F1 2E F3 EE F5 A9 F7 AC F9 43 FB E2 FD 24 FF A8
+				81 77 83 B0 85 17 87 E8 89 87 8B 85 8D 41 EF 56
+				31 8F CD CE CB 8F C9 B1 C7 D0 C5 F9 C3 93 C1 25
+				FF 8D FD 72 DB AB D9 14 D7 52 D5 96 B3 CF B1 2F
+				8F BE 8D 68 AB 52 A9 88 78 4F 7A 94 5C 7F 5E FF
+				A0 22 82 58 84 74 86 0B 88 0F 15 34 D3 C5 B1 7D
+				8F 00 CD 5B AB 20 A9 29 E7 80 C5 8E 62 18 43 E2
+				9E 61 5D F0 5B 76 59 13 57 DB 55 A0 53 98 51 9A
+				4F 27 4D C4 4B 22 49 42 47 E1 45 01 BC EF BE FF
+				1F 99 1D 5A 1B 1E 19 5B 37 EF 15 35 33 8C 11 F5
+				0F E9 0D E4 0B 62 09 E2 07 0D 05 E0 23 03 FE 5A
+				E0 E1 E2 20 E4 26 E6 FE C8 6C 8A EB AC AC ED EB
+				90 10 B3 F3 78 F5 B6 D4 E1 38 66 3A 17 DD EC FF
+				8C 21 62 A3 A4 A1 CE 07 8A 05 4B 28 09 81 4E 04
+				10 51 12 13 75 02 36 92 5E 5F 5B 5B 7C 5D 5F 5E
+				61 67 E3 83 A4 CA 86 A5 28 30 6A BC EC 2D 2E AD
+				54 31 2B 73 E9 16 BA 76 58 69 DC FB 93 3D 3E DE
+				B0 41 A3 A3 3C 45 46 47 48 49 A7 2A 05 4D E2 6E
+				19 51 B7 73 7D 55 B7 57 70 59 BF BA 14 5D 5E 5F
+				60 61 62 63 64 65 C3 86 21 69 4B AA A4 6D 6E 6F
+				70 71 72 73 74 75 76 77 78 79 7A 7B 7C 7D 7E 7F
+				80 7E 02 83 E4 C5 C6 87 C8 89 8A 8B 8C 8D 4F 8D
+				90 9E FC 99 D4 74 B6 85 98 80 9A 82 1C 9D 5D FF
+				A0 2D A2 FC 04 29 A6 BE C8 89 61 AB F3 2F 8E BD
+				15 3D 12 F8 14 B5 B6 B7 0C B2 0C E4 0A 5F 01 2C
+				];
+		};
 	};
 
 	charge_pump-divider@68 {

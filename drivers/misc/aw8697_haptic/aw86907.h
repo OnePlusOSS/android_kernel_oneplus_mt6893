@@ -342,6 +342,51 @@ struct trig{
     unsigned char second_seq;
 };
 
+#define AAC_RICHTAP
+#ifdef AAC_RICHTAP
+
+enum {
+    RICHTAP_UNKNOWN = -1,
+    RICHTAP_AW_8697 = 0x05,
+};
+
+enum {
+    MMAP_BUF_DATA_VALID = 0x55,
+    MMAP_BUF_DATA_FINISHED = 0xAA,
+    MMAP_BUF_DATA_INVALID = 0xFF,
+};
+
+#define RICHTAP_IOCTL_GROUP 0x52
+#define RICHTAP_GET_HWINFO          _IO(RICHTAP_IOCTL_GROUP, 0x03)
+#define RICHTAP_SET_FREQ            _IO(RICHTAP_IOCTL_GROUP, 0x04)
+#define RICHTAP_SETTING_GAIN        _IO(RICHTAP_IOCTL_GROUP, 0x05)
+#define RICHTAP_OFF_MODE            _IO(RICHTAP_IOCTL_GROUP, 0x06)
+#define RICHTAP_TIMEOUT_MODE        _IO(RICHTAP_IOCTL_GROUP, 0x07)
+#define RICHTAP_RAM_MODE            _IO(RICHTAP_IOCTL_GROUP, 0x08)
+#define RICHTAP_RTP_MODE            _IO(RICHTAP_IOCTL_GROUP, 0x09)
+#define RICHTAP_STREAM_MODE         _IO(RICHTAP_IOCTL_GROUP, 0x0A)
+#define RICHTAP_UPDATE_RAM          _IO(RICHTAP_IOCTL_GROUP, 0x10)
+#define RICHTAP_GET_F0              _IO(RICHTAP_IOCTL_GROUP, 0x11)
+#define RICHTAP_STOP_MODE           _IO(RICHTAP_IOCTL_GROUP, 0x12)
+
+#define RICHTAP_MMAP_BUF_SIZE   1000
+#define RICHTAP_MMAP_PAGE_ORDER   2
+#define RICHTAP_MMAP_BUF_SUM    16
+
+#pragma pack(4)
+struct mmap_buf_format {
+    uint8_t status;
+    uint8_t bit;
+    int16_t length;
+    uint32_t reserve;
+    struct mmap_buf_format *kernel_next;
+    struct mmap_buf_format *user_next;
+    uint8_t data[RICHTAP_MMAP_BUF_SIZE];
+};
+#pragma pack()
+
+#endif
+
 struct aw86907 {
     struct regmap *regmap;
     struct i2c_client *i2c;
@@ -448,6 +493,15 @@ struct aw86907 {
     unsigned int clock_standard_OSC_lra_rtim_code;
     unsigned int clock_system_f0_cali_lra;
 
+#ifdef AAC_RICHTAP
+    uint8_t *rtp_ptr;
+    struct mmap_buf_format *start_buf;
+    struct work_struct haptic_rtp_work;
+        //wait_queue_head_t doneQ;
+    bool done_flag;
+    bool haptic_rtp_mode;
+#endif
+
     struct work_struct  motor_old_test_work;
     unsigned int motor_old_test_mode;
     atomic_t qos_cnt;
@@ -523,8 +577,14 @@ struct aw86907_que_seq {
 #define RINGTONES_END_INDEX                              40
 #define RINGTONES_SIMPLE_INDEX                           48
 #define RINGTONES_PURE_INDEX                             49
-#define NEW_RING_START                                   120
+#define NEW_RING_START                                   118
 #define NEW_RING_END                                     160
+#define REALME_RING_START                                161
+#define REALME_RING_END                                  170
+#define OPLUS_NEW_RING_1_START                           201
+#define OPLUS_NEW_RING_1_END                             280
+#define OPLUS_NEW_RING_2_START                           292
+#define OPLUS_NEW_RING_2_END                             293
 
 
 #define AW86907_OPLUS_WAVEFORM_INDEX_CS_PRESS             16
