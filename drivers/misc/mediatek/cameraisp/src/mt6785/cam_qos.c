@@ -639,8 +639,9 @@ int SV_SetPMQOS(
 	case E_BW_ADD:
 		{
 			u32 i = 0;
+			if (gSVBW_LIST(module))
+				plist_head_init(gSVBW_LIST(module));
 
-			plist_head_init(gSVBW_LIST(module));
 			for (; i < _camsv_max_; i++)
 				mtk_pmqos_add(module, i);
 
