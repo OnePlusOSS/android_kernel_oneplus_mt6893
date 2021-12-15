@@ -3712,13 +3712,10 @@ void cmdq_core_release_handle_by_file_node(void *file_node)
 		 * immediately, but we cannot do so due to SMI hang risk.
 		 */
 		client = cmdq_clients[(u32)handle->thread];
-#if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
-#if defined(CONFIG_MTK_SEC_VIDEO_PATH_SUPPORT) || \
-			defined(CONFIG_MTK_CAM_SECURITY_SUPPORT)
+#if defined(CMDQ_SECURE_PATH_SUPPORT)
 		if (handle->pkt->sec_data)
 			cmdq_sec_mbox_stop(client);
 		else
-#endif
 #endif
 			cmdq_mbox_thread_remove_task(client->chan, handle->pkt);
 		cmdq_pkt_auto_release_task(handle, true);
