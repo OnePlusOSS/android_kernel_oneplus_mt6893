@@ -103,13 +103,13 @@ static inline void PDA_Prepare_Enable_ccf_clock(void)
 
 	LOG_INF("clock begin");
 
+	smi_bus_prepare_enable(SMI_LARB13, PDA_DEV_NAME);
+
 #ifdef CONFIG_OF
 	/* consumer device starting work*/
 	pm_runtime_get_sync(g_dev); //Note: It‘s not larb's device.
 	LOG_INF("pm_runtime_get_sync done\n");
 #endif
-
-	smi_bus_prepare_enable(SMI_LARB13, PDA_DEV_NAME);
 
 	ret = clk_prepare_enable(pda_clk.CG_PDA_TOP_MUX);
 	if (ret)
@@ -122,13 +122,13 @@ static inline void PDA_Disable_Unprepare_ccf_clock(void)
 	clk_disable_unprepare(pda_clk.CG_PDA_TOP_MUX);
 	LOG_INF("clk_disable_unprepare: pda_clk.CG_PDA_TOP_MUX ");
 
-	smi_bus_disable_unprepare(SMI_LARB13, PDA_DEV_NAME);
-
 #ifdef CONFIG_OF
 	/* consumer device starting work*/
 	pm_runtime_put(g_dev); //Note: It‘s not larb's device.
 	LOG_INF("pm_runtime_put done\n");
 #endif
+
+	smi_bus_disable_unprepare(SMI_LARB13, PDA_DEV_NAME);
 }
 
 #ifdef CONFIG_MTK_IOMMU_V2
