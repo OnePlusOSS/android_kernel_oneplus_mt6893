@@ -26,6 +26,7 @@
 /* VPROC2 + VPROC1 + VDRAM + VGPU + VCORE */
 #define DEFAULT_LOG_MASK			(0x1F)
 
+#define POWER_CHAR_SIZE				(256)
 #define POWER_INDEX_CHAR_SIZE			(4096)
 
 #define NR_CORE_VOLT				(4)
