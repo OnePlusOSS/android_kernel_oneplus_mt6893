@@ -165,7 +165,7 @@ static int rt_spm_trigger_calibration(struct device *dev, void *data)
 			break;
 		case RTK_IPI_CMD_VVALIDATION:
 			dev_err(dev, "vvalidation failed...\n");
-			if (rdc->ops->post_vvalid)
+			if (rdc->ops && rdc->ops->post_vvalid)
 				rdc->ops->post_vvalid(rdc);
 			break;
 		default:
