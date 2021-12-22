@@ -1212,6 +1212,7 @@ static int bq2589x_update_chg_type(struct charger_device *chg_dev, bool en)
 		return -EINVAL;
 	}
 
+	mutex_lock(&bq2589x_type_det_lock);
 	if (en) {
 		if (first_connect) {
 			while (wait_cdp_cnt >= 0) {
@@ -1228,7 +1229,6 @@ static int bq2589x_update_chg_type(struct charger_device *chg_dev, bool en)
 			else
 				pr_info("CDP, free\n");
 		}
-		mutex_lock(&bq2589x_type_det_lock);
 		Charger_Detect_Init();
 		while (wait_plugin_cnt >= 0) {
 			if (bq->status&BQ2589X_STATUS_PLUGIN)
