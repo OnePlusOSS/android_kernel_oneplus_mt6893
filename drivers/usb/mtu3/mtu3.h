@@ -321,6 +321,7 @@ struct ssusb_mtk {
 	/* keep infra power on*/
 	bool infra_on;
 	bool force_vbus;
+	bool noise_still_tr;
 	bool u1u2_disable;
 	bool u3_loopb_support;
 	struct clk *wk_deb_p0;

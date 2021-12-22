@@ -542,6 +542,8 @@ static int get_ssusb_rscs(struct platform_device *pdev, struct ssusb_mtk *ssusb)
 
 	ssusb->force_vbus =
 		of_property_read_bool(node, "mediatek,force_vbus_det");
+	ssusb->noise_still_tr =
+		of_property_read_bool(node, "mediatek,noise_still_tr");
 
 	if (ssusb->dr_mode == USB_DR_MODE_PERIPHERAL)
 		return 0;

@@ -216,7 +216,7 @@ static void switch_port_to_none(struct ssusb_mtk *ssusb)
 static void switch_port_to_host(struct ssusb_mtk *ssusb)
 {
 	int retval;
-
+	u32 temp;
 	u32 check_clk = 0;
 
 	dev_info(ssusb->dev, "%s\n", __func__);
@@ -239,6 +239,11 @@ static void switch_port_to_host(struct ssusb_mtk *ssusb)
 		ssusb->is_host = true;
 
 	/* after all clocks are stable */
+	if (ssusb->noise_still_tr) {
+		temp = readl(ssusb->mac_base + U3D_USB_BUS_PERFORMANCE);
+		temp |= NOISE_STILL_TRANSFER;
+		writel(temp, ssusb->mac_base + U3D_USB_BUS_PERFORMANCE);
+	}
 }
 
 static void switch_port_to_device(struct ssusb_mtk *ssusb)
