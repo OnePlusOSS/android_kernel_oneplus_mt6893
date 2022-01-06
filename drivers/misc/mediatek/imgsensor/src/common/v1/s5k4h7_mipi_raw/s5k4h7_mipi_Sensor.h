@@ -94,7 +94,7 @@ struct imgsensor_struct {
 
 	kal_uint16 current_fps;	/* current max fps */
 	kal_bool autoflicker_en;	/* record autoflicker enable or disable */
-	kal_uint32 test_pattern;	/* record test pattern mode or not */
+	kal_uint8 test_pattern;	/* record test pattern mode or not */
 	enum MSDK_SCENARIO_ID_ENUM current_scenario_id;	/* current scenario id */
 	kal_uint8 ihdr_en;	/* ihdr enable or disable */
 
@@ -167,6 +167,5 @@ extern int iReadRegI2C(u8 *a_pSendData, u16 a_sizeSendData, u8 *a_pRecvData, u16
 		       u16 i2cId);
 extern int iWriteRegI2C(u8 *a_pSendData, u16 a_sizeSendData, u16 i2cId);
 
-unsigned int zte_s5k4h7_read_region(struct i2c_client *client,
-					unsigned int addr, unsigned char *data, unsigned int size);
+
 #endif
