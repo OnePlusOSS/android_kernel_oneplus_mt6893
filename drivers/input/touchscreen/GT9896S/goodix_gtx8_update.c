@@ -1380,6 +1380,18 @@ static ssize_t gt9896s_sysfs_fwimage_store(struct file *file,
 
 	if (pos + count > fw_data->firmware->size)
 		return -EFAULT;
+
+	if (IS_ERR_OR_NULL(&fw_ctrl->mutex)) {
+		ts_err("ERROR:fw_ctrl->mutex is NULL!!!\n");
+		return -ENOMEM;
+	}
+
+	if (IS_ERR_OR_NULL(&fw_data->firmware->data[pos])) {
+		ts_err("ERROR:fw_data->firmware->data[pos] is NULL!!! pos:%d,count:%d\n",
+			pos, count);
+		return -ENOMEM;
+	}
+
 	mutex_lock(&fw_ctrl->mutex);
 	memcpy((u8 *)&fw_data->firmware->data[pos], buf, count);
 	mutex_unlock(&fw_ctrl->mutex);
