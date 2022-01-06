@@ -710,8 +710,6 @@ static int rtc_ops_read_time(struct device *dev, struct rtc_time *tm)
 	tm->tm_year += RTC_MIN_YEAR_OFFSET;
 	tm->tm_mon--;
 	time = rtc_tm_to_time64(tm);
-	if (time > (unsigned long long)ULLONG_MAX)
-		return -EINVAL;
 #if RTC_OVER_TIME_RESET
 	if (unlikely(time > (unsigned long)LONG_MAX)) {
 		rtc_reset_to_deftime(tm);
