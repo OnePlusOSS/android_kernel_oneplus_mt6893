@@ -74,9 +74,9 @@
 #define LSC1_FLAG1_ADDRESS  0x0A04
 #define LSC2_FLAG2_ADDRESS  0x0A2C
 
-static struct OTP otp_data_info = {0};
+struct OTP otp_data_info = {0};
 
-unsigned char g_reg_data[33];
+unsigned char g_reg_data[34];
 
 /*********  S5K4H7 otp end  *************************************/
 #define LOG_INF(fmt, args...)	pr_debug(PFX "[%s] " fmt, __func__, ##args)
@@ -233,7 +233,7 @@ static struct imgsensor_struct imgsensor = {
 	.dummy_line = 0,	/* current dummyline */
 	.current_fps = 0,	/* full size current fps : 24fps for PIP, 30fps for Normal or ZSD */
 	.autoflicker_en = KAL_FALSE,
-	.test_pattern = KAL_FALSE,
+	.test_pattern = 0,
 	.current_scenario_id = MSDK_SCENARIO_ID_CAMERA_PREVIEW,	/* current scenario id */
 	.ihdr_en = 0,		/* sensor need support LE, SE with HDR feature */
 
@@ -599,15 +599,16 @@ static bool update_otp(void)
 		return false;
 	if (!zte_s5k4h7_127_lsc())
 		return false;
-	zte_s5k4h7_127_af();
-
+	if (!zte_s5k4h7_127_af())
+		return false;
+	g_reg_data[33] = 1;
 	return true;
 }
 
 unsigned int zte_s5k4h7_read_region(struct i2c_client *client, unsigned int addr,
 			unsigned char *data, unsigned int size)
 {
-	memcpy(data, g_reg_data, 33*sizeof(kal_uint8));
+	memcpy(data, g_reg_data, 34*sizeof(kal_uint8));
 	return 5376;
 }
 
@@ -1397,7 +1398,7 @@ static kal_uint32 open(void)
 	imgsensor.dummy_pixel = 0;
 	imgsensor.dummy_line = 0;
 	imgsensor.ihdr_en = 0;
-	imgsensor.test_pattern = KAL_FALSE;
+	imgsensor.test_pattern = 0;
 	imgsensor.current_fps = imgsensor_info.pre.max_framerate;
 	spin_unlock(&imgsensor_drv_lock);
 
@@ -1891,21 +1892,38 @@ static kal_uint32 get_default_framerate_by_scenario(enum MSDK_SCENARIO_ID_ENUM s
 	return ERROR_NONE;
 }
 
-static kal_uint32 set_test_pattern_mode(kal_bool enable)
+static kal_uint32 set_test_pattern_mode(kal_uint32 modes,
+	struct SET_SENSOR_PATTERN_SOLID_COLOR *pdata)
 {
-	LOG_INF("enable: %d\n", enable);
-	/* enable = false; */
-	if (enable) {
+	kal_uint16 Color_R, Color_Gr, Color_Gb, Color_B;
 
-		/* 0x0601[2:0]; 0=no pattern,1=solid colour,*/
-		/*2 = 100% colour bar ,3 = Fade to gray' colour bar */
-		write_cmos_sensor_8(0x0601, 0x02);
+	LOG_INF("set_test_pattern enum: %d\n", modes);
+
+	if (modes) {
+		write_cmos_sensor_8(0x0601, modes);
+		if (modes == 1 && (pdata != NULL)) { //Solid Color
+			pr_debug("R=0x%x,Gr=0x%x,B=0x%x,Gb=0x%x",
+				pdata->COLOR_R, pdata->COLOR_Gr, pdata->COLOR_B, pdata->COLOR_Gb);
+			Color_R = (pdata->COLOR_R >> 22) & 0x3FF; //10bits depth color
+			Color_Gr = (pdata->COLOR_Gr >> 22) & 0x3FF;
+			Color_B = (pdata->COLOR_B >> 22) & 0x3FF;
+			Color_Gb = (pdata->COLOR_Gb >> 22) & 0x3FF;
+			write_cmos_sensor_8(0x0602, (Color_R >> 8) & 0x3);
+			write_cmos_sensor_8(0x0603, Color_R & 0xFF);
+			write_cmos_sensor_8(0x0604, (Color_Gr >> 8) & 0x3);
+			write_cmos_sensor_8(0x0605, Color_Gr & 0xFF);
+			write_cmos_sensor_8(0x0606, (Color_B >> 8) & 0x3);
+			write_cmos_sensor_8(0x0607, Color_B & 0xFF);
+			write_cmos_sensor_8(0x0608, (Color_Gb >> 8) & 0x3);
+			write_cmos_sensor_8(0x0609, Color_Gb & 0xFF);
+		}
 	} else {
 		write_cmos_sensor_8(0x0601, 0x00);
 	}
-	/* write_cmos_sensor(0x3200, 0x00); */
+	//write_cmos_sensor_8(0x3200, 0x00);
+
 	spin_lock(&imgsensor_drv_lock);
-	imgsensor.test_pattern = enable;
+	imgsensor.test_pattern = modes;
 	spin_unlock(&imgsensor_drv_lock);
 	return ERROR_NONE;
 }
@@ -1983,7 +2001,8 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 						  (MUINT32 *) (uintptr_t) (*(feature_data + 1)));
 		break;
 	case SENSOR_FEATURE_SET_TEST_PATTERN:
-		set_test_pattern_mode((BOOL) * feature_data);
+		set_test_pattern_mode((UINT32)*feature_data,
+		(struct SET_SENSOR_PATTERN_SOLID_COLOR *)(feature_data+1));
 		break;
 	case SENSOR_FEATURE_GET_TEST_PATTERN_CHECKSUM_VALUE:
 		/* for factory mode auto testing */
