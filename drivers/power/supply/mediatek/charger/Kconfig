@@ -220,3 +220,10 @@ config LOAD_SWITCH_RT9750
 	  It is a load switch,
 	  which is good for direct charge.
 	  It depends on config MTK_CHARGER.
+
+config CHARGER_MM8013
+	bool "CHARGER MM8013"
+	help
+	  Say Y to enable
+	  mm8013 driver.
+	  Set to Yes if MM8013 is used.
