@@ -96,7 +96,6 @@ static unsigned int GPIO_LCD_PWR_ENN = 494;/* GPIO169 */
 static unsigned int GPIO_LCD_PWR_ENP = 490;/* GPIO165 */
 static unsigned int GPIO_LCD_PWM_EN  = 368;/* GPIO43 */
 static unsigned int GPIO_LCD_BL_EN   = 483;/* GPIO158 */
-static unsigned int GPIO_CTP_RST   = 348;/* GPIO23 */
 
 #ifndef BUILD_LK
 static void lcm_request_gpio_control(struct device *dev)
@@ -232,7 +231,7 @@ static struct LCM_UTIL_FUNCS lcm_util = {0};
 #else
 #define LCD_DEBUG(fmt)  pr_debug(fmt)
 #endif
-static unsigned short s_last_backlight_level;
+static unsigned short s_last_backlight_level = 255; //default level, must align with lk
 
 static void lcm_set_gpio_output(unsigned int GPIO, unsigned int output)
 {
@@ -424,19 +423,37 @@ static void lcm_get_params(struct LCM_PARAMS *params)
 static void lcm_init_power(void)
 {
 	pr_info("[Kernel/LCM] %s()\n", __func__);
+	/* set AVDD*/
+	/*5.7V + 0.1* 100mV*/
+	ocp2138_write_byte(0x00, 0x11);
+	/* set AVEE */
+	/*-5.70V - 0.1* 100mV*/
+	ocp2138_write_byte(0x01, 0x11);
+	MDELAY(5);
+
+	lcm_set_gpio_output(GPIO_LCD_PWR_ENP, GPIO_OUT_ONE);
+	MDELAY(5);
+	lcm_set_gpio_output(GPIO_LCD_PWR_ENN, GPIO_OUT_ONE);
+	MDELAY(5);
 }
 
 static void lcm_init_lcm(void)
 {
 	pr_info("[KERNEL/LCM] hx83102p %s enter\n", __func__);
 
-	lcm_set_gpio_output(GPIO_CTP_RST, GPIO_OUT_ONE);
 	lcm_set_gpio_output(GPIO_LCD_RST, GPIO_OUT_ONE);
 	MDELAY(10);
 	lcm_set_gpio_output(GPIO_LCD_RST, GPIO_OUT_ZERO);
 	MDELAY(10);
 	lcm_set_gpio_output(GPIO_LCD_RST, GPIO_OUT_ONE);
 	MDELAY(50);
+
+	lcm_set_gpio_output(GPIO_LCD_BL_EN, GPIO_OUT_ONE);
+	MDELAY(5);
+	//register
+	sgm37604a_write_byte(0x11, 0x00);
+	MDELAY(10);
+
 	push_table(lcm_initinal_setting,
 		sizeof(lcm_initinal_setting) / sizeof(struct LCM_setting_table), 1);
 }
@@ -454,27 +471,15 @@ static void lcm_suspend_power(void)
 {
 	pr_info("[Kernel/LCM] %s\n", __func__);
 
-	lcm_set_gpio_output(GPIO_CTP_RST, GPIO_OUT_ZERO);
 	lcm_set_gpio_output(GPIO_LCD_RST, GPIO_OUT_ZERO);
 	MDELAY(3);
 	lcm_set_gpio_output(GPIO_LCD_PWR_ENN, GPIO_OUT_ZERO);
 	MDELAY(3);
 	lcm_set_gpio_output(GPIO_LCD_PWR_ENP, GPIO_OUT_ZERO);
+	MDELAY(15);
 }
 static void lcm_resume_power(void)
 {
-	/* set AVDD*/
-	/*5.7V + 0.1* 100mV*/
-	ocp2138_write_byte(0x00, 0x11);
-	/* set AVEE */
-	/*-5.70V - 0.1* 100mV*/
-	ocp2138_write_byte(0x01, 0x11);
-	MDELAY(5);
-
-	lcm_set_gpio_output(GPIO_LCD_PWR_ENP, GPIO_OUT_ONE);
-	MDELAY(5);
-	lcm_set_gpio_output(GPIO_LCD_PWR_ENN, GPIO_OUT_ONE);
-	MDELAY(5);
 	lcm_init_power();
 }
 
@@ -482,24 +487,7 @@ static void lcm_resume(void)
 {
 	pr_info("[Kernel/LCM] hx83102p %s enter\n", __func__);
 	lcm_init_lcm();
-	MDELAY(10);
-	lcm_set_gpio_output(GPIO_LCD_BL_EN, GPIO_OUT_ONE);
-	MDELAY(5);
-	//register
-	sgm37604a_write_byte(0x11, 0x00);
 
-	pr_info("[Kernel/LCM] backlight --> success\n");
-#if 0
-	unsigned short lsb_level, msb_level, index;
-	sgm37604a_read_byte(0x1A, (unsigned char *)&lsb_level);
-	sgm37604a_read_byte(0x19, (unsigned char *)&msb_level);
-
-	s_last_backlight_level = (msb_level<<4) | (lsb_level & 0x0F);
-
-	for (index = 1; index < 256 && s_last_backlight_level >= backlight_i2c_map[index]; index++)
-		;
-	s_last_backlight_level = index - 1;
-#endif
 	pr_info("[Kernel/LCM] %s s_last_backlight_level=%d\n", __func__, s_last_backlight_level);
 }
 
