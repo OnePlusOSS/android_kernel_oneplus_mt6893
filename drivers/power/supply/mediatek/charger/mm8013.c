@@ -31,6 +31,7 @@
 #define REG_TEMPERATURE                     0x06
 #define REG_VOLTAGE                         0x08
 #define REG_FLAGS                           0x0a
+#define REG_CURRENT_AVG                     0x14
 #define REG_CYCLECOUNT                      0x2a
 #define REG_SOC                             0x2c
 #define REG_CHARGEVOLT                      0x30
@@ -100,6 +101,20 @@ static int mm8013_voltage(struct mm8013_chip *chip, int *val)
 	return 0;
 }
 
+static int mm8013_current_avg(struct mm8013_chip *chip, int *val)
+{
+	int curr = mm8013_read_reg(chip->client, REG_CURRENT_AVG);
+
+	if (curr < 0)
+		return curr;
+
+	if (curr > 32767)
+		curr -= 65536;
+
+	*val = curr*10;
+
+	return 0;
+}
 static int mm8013_current(struct mm8013_chip *chip, int *val)
 {
 	int curr = mm8013_read_reg(chip->client, REG_CURRENT);
@@ -143,50 +158,75 @@ static int mm8013_fgstatus(struct mm8013_chip *chip)
 	int st;
 	int cycle;
 	int volt;
+	//bool bat_maintain;
 	int req = 0;
 
 	//Full Charge bit check
 	ret = mm8013_read_reg(chip->client, REG_FLAGS);
-	if (ret < 0)
+	if (ret < 0) {
+		dev_info(&chip->client->dev, "[%s] get REG_FLAGS failed!\n", __func__);
 		return ret;
-	st = (int)(ret & 0x0200);
+	}
+	st = ret & 0x0200;
+	dev_info(&chip->client->dev, "[%s] get REG_FLAGS<%.4x>!\n", __func__, st);
 	if (st != 0x0200)
 		return ret;
 
+	//Rtc battery maintain flag check
+	//ret = rtc_get_bat_maintain(&bat_maintain);
+	//if (ret) {
+	//	dev_info(&chip->client->dev, "[%s] get RTC bat maintain flag failed!\n", __func__);
+	//	return ret;
+	//}
+	//dev_info(&chip->client->dev, "[%s] bat maintain flag<%d/%s>!\n", __func__,
+	//		bat_maintain, bat_maintain?"enable":"disable");
+	//if (!bat_maintain) {
+	//	return 0;
+	//}
 	//CycleCount check
 	ret = mm8013_read_reg(chip->client, REG_CYCLECOUNT);
-	if (ret < 0)
+	if (ret < 0) {
+		dev_info(&chip->client->dev, "[%s] get REG_CYCLECOUNT failed!\n", __func__);
 		return ret;
-	cycle = (int)ret;
+	}
+	cycle = ret;
+	dev_info(&chip->client->dev, "[%s] get REG_CYCLECOUNT<%d>!\n", __func__, cycle);
 
 	//ChargeVoltage check
 	ret = mm8013_read_reg(chip->client, REG_CHARGEVOLT);
-	if (ret < 0)
+	if (ret < 0) {
+		dev_info(&chip->client->dev, "[%s] get REG_CHARGEVOLT failed!\n", __func__);
 		return ret;
+	}
+	volt = ret;
+	dev_info(&chip->client->dev, "[%s] get REG_CHARGEVOLT<%d>!\n", __func__, ret);
 
-	volt = (int)ret;
-
-	if (cycle < 250) {
-		if (volt != 4400)
-			req = 4400;
-	} else if (cycle < 500) {
-		if (volt != 4350)
-			req = 4350;
-	} else if (cycle < 800) {
-		if (volt != 4300)
-			req = 4300;
+	if (cycle < 150) {
+		if (volt != 4430)
+			req = 4430;
+	} else if (cycle < 400) {
+		if (volt != 4380)
+			req = 4380;
 	} else {
-		if (volt != 4250)
-			req = 4250;
+		if (volt != 4230)
+			req = 4230;
 	}
 
 	if (req != 0) {
 		ret = mm8013_write_reg(chip->client, REG_CHARGEVOLT, req);
-		if (ret < 0)
+		if (ret < 0) {
+			dev_info(&chip->client->dev, "[%s] set REG_CHARGEVOLT<%d> failed!\n",
+					__func__, ret);
 			return ret;
+		}
 		ret = mm8013_read_reg(chip->client, REG_CHARGEVOLT);
-		if (ret < 0)
+		if (ret < 0) {
+			dev_info(&chip->client->dev, "[%s] get REG_CHARGEVOLT<%d> failed!\n",
+				__func__, ret);
 			return ret;
+		}
+		dev_info(&chip->client->dev, "[%s] update REG_CHARGEVOLT<req:%d ret:%d>!\n",
+				__func__, req, ret);
 		if (ret != req)
 			return ret;
 	}
@@ -240,6 +280,9 @@ int mm8013_get_info(enum power_supply_property info_type, int *val)
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
 		ret = mm8013_current(_chip, val);
 		break;
+	case POWER_SUPPLY_PROP_CURRENT_AVG:
+		ret = mm8013_current_avg(_chip, val);
+			break;
 	case POWER_SUPPLY_PROP_TEMP:
 		ret = mm8013_temperature(_chip, val);
 		break;
@@ -278,6 +321,8 @@ static int force_get_tbat_mm8013(bool update, int *temp)
 		}
 		pre_bat_temp = bat_temp;
 		*temp = bat_temp;
+		pre_time = ctime;
+
 	} else {
 		*temp = pre_bat_temp;
 	}
@@ -285,28 +330,69 @@ static int force_get_tbat_mm8013(bool update, int *temp)
 	return 0;
 }
 
-static bool battery_adjust_capacity(int *capacity)
+/* keep 100% after battery full, and hold until battery voltage
+ * below 4250mV. To avoid capacity jump, only 1% change is
+ * allowed in 1 minute.
+ */
+bool battery_adjust_capacity(int *capacity)
 {
-	static int last_battery_capacity = -1;
+	static bool keep_full;
+	static int last_capacity = -1;
+	static struct timespec pre_time;
+	struct timespec ctime, dtime;
+	int avg_value;
 
-	if (last_battery_capacity < 0 && *capacity >= 0) {
-		last_battery_capacity = *capacity;
-		return false;
+	if (battery_main.BAT_STATUS == POWER_SUPPLY_STATUS_FULL
+		&& *capacity == 100) {
+		keep_full = 1;
+	} else if (battery_main.BAT_STATUS == POWER_SUPPLY_STATUS_CHARGING) {
+		if (keep_full && battery_main.BAT_batt_vol > 4250)
+			*capacity = 100;
+		else if (keep_full && battery_main.BAT_batt_vol <= 4250)
+			keep_full = 1;
+	} else {
+		keep_full = 1;
 	}
 
-	if (last_battery_capacity > *capacity
-			&& battery_main.BAT_STATUS != POWER_SUPPLY_STATUS_DISCHARGING) {
-		bm_debug("[%s] last_battery_capacity:%d capacity:%d\n",
-				__func__, last_battery_capacity, *capacity);
-		bm_debug("cap decrease while charging is not allowed!\n");
-
-		*capacity = last_battery_capacity;
-		return true;
+	if (last_capacity == -1) {
+		get_monotonic_boottime(&pre_time);
+		last_capacity = *capacity;
+	} else if (keep_full) {
+		get_monotonic_boottime(&pre_time);
+		last_capacity = 100;
+	} else if (last_capacity != *capacity) {
+		get_monotonic_boottime(&ctime);
+		dtime = timespec_sub(ctime, pre_time);
+		if (battery_main.BAT_STATUS == POWER_SUPPLY_STATUS_FULL && *capacity < 100) {
+			if (dtime.tv_sec >= 10) {
+				*capacity = last_capacity+(last_capacity < 100?1:0);
+				pre_time = ctime;
+				last_capacity = *capacity;
+			} else {
+				*capacity = last_capacity;
+			}
+		} else {
+			if (dtime.tv_sec >= 60) {
+				mm8013_current_avg(_chip, &avg_value);
+				if (avg_value < 0 && last_capacity > *capacity) {
+					*capacity = last_capacity - 1;
+				} else if (battery_main.BAT_STATUS == POWER_SUPPLY_STATUS_CHARGING
+							&& *capacity > last_capacity) {
+					*capacity = last_capacity + 1;
+				} else {
+					*capacity = last_capacity;
+				}
+				pre_time = ctime;
+				last_capacity = *capacity;
+			} else {
+				*capacity = last_capacity;
+			}
+		}
 	}
 
-	last_battery_capacity = *capacity;
 	return false;
 }
+
 
 static void mm8013_battery_update_work(struct work_struct *work)
 {
@@ -366,7 +452,8 @@ static int mm8013_probe(struct i2c_client *client,
 	ret = mm8013_checkdevice(chip);
 	if (ret < 0) {
 		dev_info(&client->dev, "[%s] failed to access\n", __func__);
-		kfree(chip);
+		if (ret == -EREMOTEIO)
+			ret = -EPROBE_DEFER;
 		return ret;
 	}
 	switch (ret) {
@@ -399,6 +486,16 @@ static int mm8013_remove(struct i2c_client *client)
 	return 0;
 }
 
+static void mm8013_shutdown(struct i2c_client *client)
+{
+	int ret;
+
+	ret = mm8013_write_reg(client, REG_CONTROL, 0x0013);
+	if (ret < 0)
+		return;
+
+	dev_info(&client->dev, "%s shutdown\n", __func__, ret);
+}
 static const struct i2c_device_id mm8013_id[] = {
 	{ "mm8013", 0 },
 	{},
@@ -418,6 +515,7 @@ static struct i2c_driver mm8013_i2c_driver = {
 	.probe     = mm8013_probe,
 	.remove    = mm8013_remove,
 	.id_table  = mm8013_id,
+	.shutdown = mm8013_shutdown,
 };
 static inline int mm8013_i2c_init(void)
 {
