@@ -44,7 +44,10 @@ static struct mm_qos_request wdma0_request;
 
 static struct pm_qos_request ddr_opp_request;
 static struct pm_qos_request mm_freq_request;
+
+#ifdef CONFIG_MTK_MT6382_BDG
 static struct pm_qos_request vcore_request;
+#endif
 
 static struct plist_head hrt_request_list;
 static struct mm_qos_request ovl0_hrt_request;
@@ -141,8 +144,12 @@ void disp_pm_qos_init(void)
 			   PM_QOS_DDR_OPP_DEFAULT_VALUE);
 	pm_qos_add_request(&mm_freq_request, PM_QOS_DISP_FREQ,
 			   PM_QOS_MM_FREQ_DEFAULT_VALUE);
+
+#ifdef CONFIG_MTK_MT6382_BDG
 	pm_qos_add_request(&vcore_request, PM_QOS_VCORE_OPP,  //add for mipi clk 1.7GHz //
 				VCORE_OPP_1);
+#endif
+
 	plist_head_init(&hrt_request_list);
 
 	mm_qos_add_request(&hrt_request_list, &ovl0_hrt_request,
@@ -170,7 +177,9 @@ void disp_pm_qos_deinit(void)
 	mm_qos_remove_all_request(&bw_request_list);
 	pm_qos_remove_request(&ddr_opp_request);
 	pm_qos_remove_request(&mm_freq_request);
+#ifdef CONFIG_MTK_MT6382_BDG
 	pm_qos_remove_request(&vcore_request);
+#endif
 #endif
 }
 
@@ -329,7 +338,9 @@ int disp_pm_qos_update_mmclk(int mm_freq)
 	DISPMSG("%s, force set mmclk=%d, vcore=%s\n",
 		__func__, mm_freq, vcore_value == VCORE_OPP_0 ? "0.825v" : "0.725v");
 	pm_qos_update_request(&mm_freq_request, mm_freq);
+#ifdef CONFIG_MTK_MT6382_BDG
 	pm_qos_update_request(&vcore_request, vcore_value);
+#endif
 #endif
 #if 0
 	   mmprofile_log_ex(ddp_mmp_get_events()->primary_pm_qos,
