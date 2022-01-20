@@ -16,20 +16,7 @@
 #include "eeprom_i2c_custom_driver.h"
 #include "kd_imgsensor.h"
 
-unsigned int __attribute__((weak)) zte_s5k4h7_read_region(struct i2c_client *client,
-	unsigned int addr,
-	unsigned char *data,
-	unsigned int size)
-{
-	return 0;
-}
-unsigned int __attribute__((weak)) zte_s5k4h7_sub_read_region(struct i2c_client *client,
-	unsigned int addr,
-	unsigned char *data,
-	unsigned int size)
-{
-	return 0;
-}
+
 
 
 struct stCAM_CAL_LIST_STRUCT g_camCalList[] = {
@@ -47,9 +34,10 @@ struct stCAM_CAL_LIST_STRUCT g_camCalList[] = {
 	{IMX386_MONO_SENSOR_ID, 0xA0, Common_read_region},
 	/*B+B. No Cal data for main2 OV8856*/
 	{S5K2P7_SENSOR_ID, 0xA0, Common_read_region},
+#ifdef SUPPORT_S5K4H7
 	{S5K4H7_SENSOR_ID, 0xA0, zte_s5k4h7_read_region},
 	{S5K4H7SUB_SENSOR_ID, 0xA0, zte_s5k4h7_sub_read_region},
-
+#endif
 	/*  ADD before this line */
 	{0, 0, 0}       /*end of list */
 };
