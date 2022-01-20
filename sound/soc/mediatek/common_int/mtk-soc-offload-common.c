@@ -365,6 +365,11 @@ static int mtk_compr_offload_set_params(struct snd_compr_stream *stream,
 	}
 
 	/* gen pool related */
+	if (!dsp) {
+		pr_debug("dsp is null\n", __func__);
+		return -1;
+	}
+
 	if (dsp)
 		mtk_adsp_genpool_free_sharemem_ring(&dsp->dsp_mem[ID], ID);
 	dsp->dsp_mem[ID].gen_pool_buffer =
