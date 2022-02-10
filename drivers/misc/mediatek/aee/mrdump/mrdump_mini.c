@@ -297,7 +297,7 @@ static int fill_psinfo(struct elf_prpsinfo *psinfo)
 #define __pa_nodebug __pa
 #endif
 #endif
-static void mrdump_mini_add_misc_pa(unsigned long va, unsigned long pa,
+void mrdump_mini_add_misc_pa(unsigned long va, unsigned long pa,
 		unsigned long size, unsigned long start, char *name)
 {
 	int i;
