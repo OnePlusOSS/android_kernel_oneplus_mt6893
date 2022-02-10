@@ -447,7 +447,7 @@ static struct clk *mtk_clk_register_pll(const struct mtk_pll_data *data,
 	pll->data = data;
 
 	init.name = data->name;
-	init.flags = (data->flags & PLL_AO) ? CLK_IS_CRITICAL : 0;
+	init.flags = data->flags | ((data->flags & PLL_AO) ? CLK_IS_CRITICAL : 0);
 	init.ops = &mtk_pll_ops;
 	if (data->parent_name)
 		init.parent_names = &data->parent_name;
