@@ -526,6 +526,18 @@ static struct drm_display_mode default_mode = {
 	.vrefresh = 60,
 #endif
 };
+static const struct drm_display_mode performance_mode_1 = {
+	.clock       = 270000,
+	.hdisplay    = HAC,
+	.hsync_start = HAC  + HFP,
+	.hsync_end   = HAC  + HFP + HSA,
+	.htotal      = HAC  + HFP + HSA + HBP,
+	.vdisplay    = VAC,
+	.vsync_start = VAC + VFP,
+	.vsync_end   = VAC + VFP + VSA,
+	.vtotal      = VAC + VFP + VSA + VBP,
+	.vrefresh	 = 60,
+};
 
 #if defined(CONFIG_MTK_PANEL_EXT)
 
@@ -668,8 +680,92 @@ static int setbacklight_cmdq(void *dsi, dcs_write_gce cb, void *handle,
 	return 0;
 }
 
+struct drm_display_mode *get_mode_by_id(struct drm_panel *panel,
+	unsigned int mode)
+{
+	struct drm_display_mode *m;
+	unsigned int i = 0;
+
+	list_for_each_entry(m, &panel->connector->modes, head) {
+		if (i == mode)
+			return m;
+		i++;
+	}
+	pr_info("%s, %d, failed to get mode:%d, total:%u\n", __func__, __LINE__, mode, i);
+	return NULL;
+}
+
+static void lcm_mode_switch_to_120(struct drm_panel *panel,
+	enum MTK_PANEL_MODE_SWITCH_STAGE stage)
+{
+	if (stage == BEFORE_DSI_POWERDOWN) {
+		struct lcm *ctx = panel_to_lcm(panel);
+
+		pr_info("%s\n", __func__);
+		lcm_dcs_write_seq_static(ctx, 0xFE, 0x40);
+		lcm_dcs_write_seq_static(ctx, 0xBD, 0x00);//00:120HZ,05:60HZ
+		lcm_dcs_write_seq_static(ctx, 0xFE, 0x00);
+	}
+}
+
+static void lcm_mode_switch_to_60(struct drm_panel *panel,
+	enum MTK_PANEL_MODE_SWITCH_STAGE stage)
+{
+	if (stage == BEFORE_DSI_POWERDOWN) {
+		struct lcm *ctx = panel_to_lcm(panel);
+
+		pr_info("%s\n", __func__);
+		lcm_dcs_write_seq_static(ctx, 0xFE, 0x40);
+		lcm_dcs_write_seq_static(ctx, 0xBD, 0x05);//00:120HZ,05:60HZ
+		lcm_dcs_write_seq_static(ctx, 0xFE, 0x00);
+	}
+}
+
+static int mode_switch(struct drm_panel *panel, unsigned int cur_mode,
+		unsigned int dst_mode, enum MTK_PANEL_MODE_SWITCH_STAGE stage)
+{
+	int ret = 0;
+	struct drm_display_mode *m = get_mode_by_id(panel, dst_mode);
+
+	if (cur_mode == dst_mode)
+		return ret;
+
+	if (m == NULL)
+		return -EINVAL;
+
+	if (m->vrefresh == 60) { /*switch to 60 */
+		lcm_mode_switch_to_60(panel, stage);
+	} else if (m->vrefresh == 120) { /*switch to 120 */
+		lcm_mode_switch_to_120(panel, stage);
+	} else
+		ret = 1;
+
+	return ret;
+}
+
+static int mtk_panel_ext_param_set(struct drm_panel *panel,
+			 unsigned int mode)
+{
+	struct mtk_panel_ext *ext = find_panel_ext(panel);
+	int ret = 0;
+
+	pr_info("%s+:mode=%d\n", __func__, mode);
+	if (mode == 0)
+		ext_params.pll_clk = 272;
+	else if (mode == 1)
+		ext_params.pll_clk = 136;
+	else
+		ret = 1;
+
+	ext->params = &ext_params;
+
+	return ret;
+}
+
 static struct mtk_panel_funcs ext_funcs = {
 	.set_backlight_cmdq = setbacklight_cmdq,
+	.ext_param_set = mtk_panel_ext_param_set,
+	.mode_switch = mode_switch,
 };
 #endif
 
@@ -695,6 +791,7 @@ struct panel_desc {
 static int lcm_get_modes(struct drm_panel *panel)
 {
 	struct drm_display_mode *mode;
+	struct drm_display_mode *mode_2;
 
 	pr_info("%s+\n", __func__);
 
@@ -710,6 +807,18 @@ static int lcm_get_modes(struct drm_panel *panel)
 	mode->type = DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED;
 	drm_mode_probed_add(panel->connector, mode);
 
+	mode_2 = drm_mode_duplicate(panel->drm, &performance_mode_1);
+	if (!mode_2) {
+		dev_info(panel->drm->dev, "failed to add mode %ux%ux@%u\n",
+			performance_mode_1.hdisplay,
+			performance_mode_1.vdisplay,
+			performance_mode_1.vrefresh);
+		return -ENOMEM;
+	}
+
+	drm_mode_set_name(mode_2);
+	mode_2->type = DRM_MODE_TYPE_DRIVER;
+	drm_mode_probed_add(panel->connector, mode_2);
 	panel->connector->display_info.width_mm = 129;
 	panel->connector->display_info.height_mm = 64;
 

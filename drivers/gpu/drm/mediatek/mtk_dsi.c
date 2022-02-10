@@ -5974,6 +5974,8 @@ static void mtk_dsi_cmd_timing_change(struct mtk_dsi *dsi,
 	while (dsi->clk_refcnt != 1)
 		mtk_dsi_ddp_unprepare(&dsi->ddp_comp);
 	mtk_dsi_enter_idle(dsi);
+	if (dsi->slave_dsi)
+		mtk_dsi_enter_idle(dsi->slave_dsi);
 
 	if (dsi->ext && dsi->ext->funcs &&
 		dsi->ext->funcs->ext_param_set)
@@ -5982,11 +5984,18 @@ static void mtk_dsi_cmd_timing_change(struct mtk_dsi *dsi,
 
 	/* Power on DSI */
 	mtk_dsi_leave_idle(dsi);
+	if (dsi->slave_dsi)
+		mtk_dsi_leave_idle(dsi->slave_dsi);
 	while (dsi->clk_refcnt != clk_cnt)
 		mtk_dsi_ddp_prepare(&dsi->ddp_comp);
 
 	mtk_dsi_set_mode(dsi);
 	mtk_dsi_clk_hs_mode(dsi, 1);
+
+	if (dsi->slave_dsi) {
+		mtk_dsi_set_mode(dsi->slave_dsi);
+		mtk_dsi_clk_hs_mode(dsi->slave_dsi, 1);
+	}
 	mtk_dsi_set_mmclk_by_datarate(dsi, mtk_crtc, 1);
 skip_change_mipi:
 	/*	send lcm cmd after DSI power on if needed */
