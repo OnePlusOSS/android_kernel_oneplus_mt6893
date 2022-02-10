@@ -1292,7 +1292,7 @@ static void mtk_dsi_ps_control_vact(struct mtk_dsi *dsi)
 		SET_VAL_MASK(value, mask, ps_wc, DSI_PS_WC);
 		SET_VAL_MASK(value, mask, 5, DSI_PS_SEL);
 
-		size = (height << 16) + ((dsc_params->chunk_size + 2) / 3);
+		size = (height << 16) + ((ps_wc + 2) / 3);
 	}
 
 	writel(height / line_back_to_LP, dsi->regs + DSI_VACT_NL);

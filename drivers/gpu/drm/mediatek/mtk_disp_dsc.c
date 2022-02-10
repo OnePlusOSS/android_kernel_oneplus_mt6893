@@ -372,7 +372,8 @@ static void mtk_dsc1_config(struct mtk_ddp_comp *comp,
 		/* 128=1/3, 196=1/2 */
 		bit_per_pixel = dsc_params->bit_per_pixel;
 		chrunk_size = (slice_width*bit_per_pixel/8/16);
-		pad_num = (chrunk_size + 2)/3*3 - chrunk_size;
+		pad_num = (chrunk_size * (dsc_params->slice_mode + 1) + 2)/3*3
+			- chrunk_size * (dsc_params->slice_mode + 1);
 		if (pad_num)
 			pad_num |= (1 << 2);
 
@@ -694,7 +695,8 @@ static void mtk_dsc_config(struct mtk_ddp_comp *comp,
 		/* 128=1/3, 196=1/2 */
 		bit_per_pixel = dsc_params->bit_per_pixel;
 		chrunk_size = (slice_width*bit_per_pixel/8/16);
-		pad_num = (chrunk_size + 2)/3*3 - chrunk_size;
+		pad_num = (chrunk_size * (dsc_params->slice_mode + 1) + 2)/3*3
+			- chrunk_size * (dsc_params->slice_mode + 1);
 		if (pad_num)
 			pad_num |= (1 << 2);
 
