@@ -112,8 +112,13 @@ static int dump_buffer(struct adsp_exception_control *ctrl, int coredump_id)
 	pdata = (struct adsp_priv *)ctrl->priv_data;
 
 	if (ctrl->buf_backup) {
+#ifdef  OPLUS_ARCH_EXTENDS
+//Kunhao.Yan@AudioDriver, remove for adsp dump time out waiting
+		ret = 0;
+#else
 		/* wait last dump done, and release buf_backup */
 		ret = wait_for_completion_timeout(&ctrl->done, 10 * HZ);
+#endif
 
 		/* if not release buf, return EBUSY */
 		if (ctrl->buf_backup)

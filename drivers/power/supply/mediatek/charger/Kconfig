@@ -154,6 +154,14 @@ config CHARGER_RT9471
 	  which RT9470D, RT9471D and RT9472D support BC1.2
 	  It depends on config MTK_CHARGER.
 
+config CHARGER_SY6974
+        bool "Charger Driver for Richtek SY6974 Charger IC"
+        default n
+        depends on MTK_CHARGER
+        help
+          Say Yes to enable SY6974 driver.
+          It depends on config MTK_CHARGER.
+
 config CHARGER_RT9759
 	bool "Richtek RT9759 Divider Charger Driver"
 	depends on MTK_CHARGER
@@ -220,6 +228,32 @@ config LOAD_SWITCH_RT9750
 	  It is a load switch,
 	  which is good for direct charge.
 	  It depends on config MTK_CHARGER.
+
+config CHARGER_BQ2589X
+        bool "Charger Driver for BQ2589X Charger IC"
+        default n
+        depends on MTK_CHARGER
+        help
+          Say Yes to enable Richtek BQ2589X driver.
+          It is mainly used as slave IC for dual charger
+          application.
+          It depends on config MTK_CHARGER.
+
+config CHARGER_BQ2591X
+        bool "Charger Driver for Richtek BQ2591X Charger IC"
+        default n
+        depends on MTK_CHARGER
+        help
+          Say Yes to enable BQ2591X driver.
+          It depends on config MTK_CHARGER.
+
+config CHARGER_SY6970
+        bool "Charger Driver for sy6970 Charger IC"
+        default n
+        depends on MTK_CHARGER
+        help
+          Say Yes to enable sy6970 driver.
+          It depends on config MTK_CHARGER.
 
 config CHARGER_MM8013
 	bool "CHARGER MM8013"

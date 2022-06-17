@@ -364,7 +364,7 @@ static void mtk_dsc1_config(struct mtk_ddp_comp *comp,
 			dsc_params->slice_mode,	dsc_params->slice_width,
 			dsc_params->slice_height, dsc_params->bit_per_pixel);
 
-		pic_group_width = (dsc_params->slice_width + 2)/3;
+		pic_group_width = (dsc_params->slice_width * (dsc_params->slice_mode + 1) + 2)/3;
 		slice_width = dsc_params->slice_width;
 		slice_height = dsc_params->slice_height;
 		pic_height_ext_num = (cfg->h + slice_height - 1) / slice_height;
@@ -671,7 +671,7 @@ static void mtk_dsc_config(struct mtk_ddp_comp *comp,
 	unsigned int init_delay_height;
 	struct mtk_panel_dsc_params *dsc_params;
 
-	DDPFUNC();
+	DDPDBG("%s: line:%d",__func__,__LINE__);
 	if (!comp->mtk_crtc || (!comp->mtk_crtc->panel_ext
 				&& !comp->mtk_crtc->is_dual_pipe))
 		return;
@@ -687,7 +687,7 @@ static void mtk_dsc_config(struct mtk_ddp_comp *comp,
 			dsc_params->slice_mode,	dsc_params->slice_width,
 			dsc_params->slice_height, dsc_params->bit_per_pixel);
 
-		pic_group_width = (dsc_params->slice_width + 2)/3;
+		pic_group_width = (dsc_params->slice_width * (dsc_params->slice_mode + 1) + 2)/3;
 		slice_width = dsc_params->slice_width;
 		slice_height = dsc_params->slice_height;
 		pic_height_ext_num = (cfg->h + slice_height - 1) / slice_height;
@@ -713,7 +713,7 @@ static void mtk_dsc_config(struct mtk_ddp_comp *comp,
 			dsc_con, DISP_REG_DSC_CON, handle);
 
 		mtk_ddp_write_relaxed(comp,
-			(pic_group_width - 1) << 16 | dsc_params->slice_width,
+			(pic_group_width - 1) << 16 | dsc_params->slice_width * (dsc_params->slice_mode + 1),
 			DISP_REG_DSC_PIC_W, handle);
 
 		mtk_ddp_write_relaxed(comp,

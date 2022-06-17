@@ -69,11 +69,9 @@
 	register_setting = <&msdc1_register_setting_default>;
 
 	host_function = /bits/ 8 <MSDC_SD>;
-
-	cd_level = /bits/ 8 <MSDC_CD_LOW>;
+	cd_level = /bits/ 8 <MSDC_CD_HIGH>;
 	cd-gpios = <&pio 4 0>;
-
-	status = "okay";
+	status = "disable";
 
 #ifndef CONFIG_FPGA_EARLY_PORTING
 	vmmc-supply = <&mt_pmic_vmch_ldo_reg>;

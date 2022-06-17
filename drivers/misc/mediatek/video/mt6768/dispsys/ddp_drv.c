@@ -73,6 +73,7 @@
 #include "disp_helper.h"
 #include <linux/of_platform.h>
 #include "smi_public.h"
+#include <soc/oplus/system/oplus_project.h>
 
 #define DISP_DEVNAME "DISPSYS"
 
@@ -602,6 +603,11 @@ static int disp_probe(struct platform_device *pdev)
 	pr_info("disp driver(1) %s end\n", __func__);
 
 	disp_probe_1();
+
+	if (/*is_userdebug() || */(get_eng_version() == AGING)) {
+		pr_info("%s, enable g_mobilelog for AGING\n", __func__);
+		g_mobilelog = 1;
+	}
 
 	return 0;
 }

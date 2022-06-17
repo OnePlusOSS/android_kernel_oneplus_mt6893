@@ -179,6 +179,12 @@ static const rt_register_map_t rt1711_chip_regmap[] = {
 #define RT1711_CHIP_REGMAP_SIZE ARRAY_SIZE(rt1711_chip_regmap)
 
 #endif /* CONFIG_RT_REGMAP */
+enum LOGIC_CC_ID
+{
+	RT1711,
+	ET7303,
+};
+static int logic_cc_id;
 
 static int rt1711_read_device(void *client, u32 reg, int len, void *dst)
 {
@@ -1541,6 +1547,7 @@ static int rt1711_tcpcdev_init(struct rt1711_chip *chip, struct device *dev)
 }
 
 #define RICHTEK_1711_VID	0x29cf
+#define RICHTEK_7303_VID	0x6dcf
 #define RICHTEK_1711_PID	0x1711
 
 static inline int rt1711h_check_revision(struct i2c_client *client)
@@ -1555,9 +1562,17 @@ static inline int rt1711h_check_revision(struct i2c_client *client)
 		return -EIO;
 	}
 
-	if (vid != RICHTEK_1711_VID) {
-		pr_info("%s failed, VID=0x%04x\n", __func__, vid);
+	if ((vid != RICHTEK_1711_VID) && (vid != RICHTEK_7303_VID)) {
+		pr_err("%s failed, VID=0x%04x\n", __func__, vid);
 		return -ENODEV;
+	}
+
+	if (vid == RICHTEK_7303_VID) {
+		logic_cc_id = ET7303;
+		pr_err("%s found ET7303\n", __func__);
+	}else {
+		logic_cc_id = RT1711;
+		pr_err("%s found RT1711\n", __func__);
 	}
 
 	ret = rt1711_read_device(client, TCPC_V10_REG_PID, 2, &pid);

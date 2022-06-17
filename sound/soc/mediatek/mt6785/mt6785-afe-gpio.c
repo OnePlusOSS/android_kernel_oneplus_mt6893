@@ -36,6 +36,10 @@ enum mt6785_afe_gpio {
 	MT6785_AFE_GPIO_VOW_DAT_ON,
 	MT6785_AFE_GPIO_VOW_CLK_OFF,
 	MT6785_AFE_GPIO_VOW_CLK_ON,
+	#ifdef OPLUS_BUG_STABILITY
+	MT6785_AFE_GPIO_EXTAMP_PULLHIGH,
+	MT6785_AFE_GPIO_EXTAMP_PULLLOW,
+	#endif /* OPLUS_BUG_STABILITY */
 	MT6785_AFE_GPIO_GPIO_NUM
 };
 
@@ -72,6 +76,10 @@ static struct audio_gpio_attr aud_gpios[MT6785_AFE_GPIO_GPIO_NUM] = {
 					       false, NULL},
 	[MT6785_AFE_GPIO_DAT_MOSI_CH34_ON] = {"aud_dat_mosi_ch34_on",
 					      false, NULL},
+	#ifdef OPLUS_BUG_STABILITY
+	[MT6785_AFE_GPIO_EXTAMP_PULLHIGH] = {"aud_gpio_extamp_pullhigh", false, NULL},
+	[MT6785_AFE_GPIO_EXTAMP_PULLLOW] = {"aud_gpio_extamp_pulllow", false, NULL},
+	#endif /* OPLUS_BUG_STABILITY */
 };
 
 static DEFINE_MUTEX(gpio_request_mutex);
@@ -178,6 +186,50 @@ static int mt6785_afe_gpio_adda_ch34_ul(struct mtk_base_afe *afe, bool enable)
 			MT6785_AFE_GPIO_DAT_MISO_CH34_OFF);
 	}
 }
+
+#ifdef OPLUS_BUG_STABILITY
+static DEFINE_MUTEX(extamp_gpio_request_mutex);
+
+int mt6785_afe_gpio_extamp_select(struct mtk_base_afe *afe, bool enable, int mode)
+{
+	int extamp_mode = 0;
+	int retval = -1;
+	int i = 0;
+	mutex_lock(&extamp_gpio_request_mutex);
+
+	//pr_info("[WENDELL] %s enter, enable = %d, mode = %d", __func__, enable, mode);
+
+	if (enable) {
+		if (mode == 1)
+			extamp_mode = 1;
+		else if (mode == 2)
+			extamp_mode = 2;
+		else
+			extamp_mode = 3; /* default mode is 3 */
+
+		for (i = 0; i < extamp_mode; i++) {
+			retval = mt6785_afe_gpio_select(afe, MT6785_AFE_GPIO_EXTAMP_PULLLOW);
+			if (retval)
+				pr_err("could not set aud_gpios[MT6785_AFE_GPIO_EXTAMP_PULLLOW] pins\n");
+			udelay(2);
+
+			retval = mt6785_afe_gpio_select(afe, MT6785_AFE_GPIO_EXTAMP_PULLHIGH);
+			if (retval)
+				pr_err("could not set aud_gpios[MT6785_AFE_GPIO_EXTAMP_PULLHIGH] pins\n");
+			udelay(2);
+		}
+	} else {
+		retval = mt6785_afe_gpio_select(afe, MT6785_AFE_GPIO_EXTAMP_PULLLOW);
+		if (retval)
+			pr_err("could not set aud_gpios[MT6785_AFE_GPIO_EXTAMP_PULLLOW] pins\n");
+		udelay(2);
+	}
+	//pr_info("[WENDELL] %s exit, enable = %d, mode = %d", __func__, enable, mode);
+	mutex_unlock(&extamp_gpio_request_mutex);
+
+	return retval;
+}
+#endif /* OPLUS_BUG_STABILITY */
 
 int mt6785_afe_gpio_request(struct mtk_base_afe *afe, bool enable,
 			    int dai, int uplink)

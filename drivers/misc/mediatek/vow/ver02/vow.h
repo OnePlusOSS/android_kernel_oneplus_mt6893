@@ -129,6 +129,9 @@
 #define VOW_SET_PAYLOADDUMP_INFO      _IOW(VOW_IOC_MAGIC, 0x16, unsigned int)
 #define VOW_READ_VOICE_DATA           _IOW(VOW_IOC_MAGIC, 0x17, unsigned int)
 #define VOW_READ_VOW_DUMP_DATA        _IOW(VOW_IOC_MAGIC, 0x18, unsigned int)
+//#ifdef OPLUS_ARCH_EXTENDS
+#define VOW_GET_BARGEIN_FLAG          _IOW(VOW_IOC_MAGIC, 0x19, unsigned int)
+//#endif /* OPLUS_ARCH_EXTENDS */
 
 #ifdef VOW_ECHO_SW_SRC
 #define VOW_BARGEIN_AFE_MEMIF_SIZE    0x1E00
@@ -285,6 +288,7 @@ enum vow_model_control_t {
 enum {
 	VENDOR_ID_MTK = 77,     //'M'
 	VENDOR_ID_AMAZON = 65,  //'A'
+	VENDOR_ID_SPEECH = 83,  //'S'
 	VENDOR_ID_OTHERS = 71,
 	VENDOR_ID_NONE = 0
 };

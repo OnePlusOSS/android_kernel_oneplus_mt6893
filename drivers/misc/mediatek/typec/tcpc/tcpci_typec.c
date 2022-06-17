@@ -142,6 +142,7 @@ static inline int typec_enable_vconn(struct tcpc_device *tcpc)
 	return tcpci_set_vconn(tcpc, true);
 }
 
+#ifndef OPLUS_FEATURE_CHG_BASIC
 /*
  * [BLOCK] TYPEC Connection State Definition
  */
@@ -222,6 +223,7 @@ enum TYPEC_CONNECTION_STATE {
 
 	typec_unattachwait_pe,	/* Wait Policy Engine go to Idle */
 };
+#endif /* OPLUS_FEATURE_CHG_BASIC */
 
 #if TYPEC_INFO_ENABLE || TCPC_INFO_ENABLE
 static const char *const typec_state_name[] = {
@@ -374,6 +376,7 @@ static int typec_check_water_status(struct tcpc_device *tcpc)
 #ifdef CONFIG_TYPEC_CAP_NORP_SRC
 static bool typec_try_enter_norp_src(struct tcpc_device *tcpc)
 {
+#ifndef OPLUS_FEATURE_CHG_BASIC
 	if (tcpci_check_vbus_valid_from_ic(tcpc) &&
 	    typec_is_cc_no_res() &&
 	    tcpc->typec_state == typec_unattached_snk) {
@@ -381,6 +384,15 @@ static bool typec_try_enter_norp_src(struct tcpc_device *tcpc)
 		tcpc_enable_timer(tcpc, TYPEC_TIMER_NORP_SRC);
 		return true;
 	}
+#else
+	if (tcpci_check_vbus_valid(tcpc)) {
+		if (tcpc->typec_state == typec_unattached_snk) {
+			TYPEC_DBG("norp_src=1\r\n");
+			tcpc_enable_timer(tcpc, TYPEC_TIMER_NORP_SRC);
+		}
+		return true;
+	}
+#endif /* OPLUS_FEATURE_CHG_BASIC */
 
 	return false;
 }
@@ -407,9 +419,13 @@ static inline int typec_norp_src_attached_entry(struct tcpc_device *tcpc)
 	if (!tcpc->typec_power_ctrl) {
 		if (get_boot_mode() == KERNEL_POWER_OFF_CHARGING_BOOT ||
 		    get_boot_mode() == LOW_POWER_OFF_CHARGING_BOOT)
-			typec_check_water_status(tcpc);
-
+#ifndef OPLUS_FEATURE_CHG_BASIC
+		typec_check_water_status(tcpc);
 		tcpci_set_usbid_polling(tcpc, false);
+#else
+		if (typec_check_water_status(tcpc))
+			return 0;
+#endif
 	}
 #else
 	if (!tcpc->typec_power_ctrl && typec_check_water_status(tcpc))
@@ -568,8 +584,10 @@ static inline void typec_unattached_cc_entry(struct tcpc_device *tcpc)
 	    tcpc->typec_state == typec_unattachwait_pe)
 		tcpc_typec_handle_ctd(tcpc, TCPC_CABLE_TYPE_NONE);
 #endif /* CONFIG_CABLE_TYPE_DETECTION */
-
+	#ifdef OPLUS_FEATURE_CHG_BASIC
+	//add by tongfeng
 	tcpc->typec_role = tcpc->typec_role_new;
+	#endif
 	switch (tcpc->typec_role) {
 	case TYPEC_ROLE_SNK:
 		TYPEC_NEW_STATE(typec_unattached_snk);
@@ -1673,6 +1691,9 @@ static inline void typec_detach_wait_entry(struct tcpc_device *tcpc)
 	typec_legacy_handle_detach(tcpc);
 #endif	/* CONFIG_TYPEC_CHECK_LEGACY_CABLE */
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	TYPEC_INFO("typec_detach_wait_entry typec_state[%d]\n", tcpc->typec_state);
+#endif
 	switch (tcpc->typec_state) {
 #ifdef TYPEC_EXIT_ATTACHED_SNK_VIA_VBUS
 	case typec_attached_snk:
@@ -1812,6 +1833,9 @@ static inline bool typec_is_cc_attach(struct tcpc_device *tcpc)
 		}
 		break;
 	}
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	TYPEC_INFO("%s: cc_attach[%d]\n", __func__, cc_attach);
+#endif
 
 	return cc_attach;
 }
@@ -2062,8 +2086,21 @@ int tcpc_typec_handle_cc_change(struct tcpc_device *tcpc)
 		return 0;
 #endif	/* CONFIG_TYPEC_CAP_NORP_SRC */
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	TYPEC_INFO("[CC_Alert] cc1/cc2[%d/%d], typec_state[%d]\r\n", typec_get_cc1(),
+			typec_get_cc2(), tcpc->typec_state);
+#else
+	TYPEC_INFO("[CC_Alert] %d/%d\r\n", typec_get_cc1(), typec_get_cc2());
+#endif
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	if (typec_is_ignore_cc_change(tcpc, rp_present)) {
+		TYPEC_INFO("tcpc_typec_handle_cc_change ignore cc_change\n");
+		return 0;
+	}
+#else
 	if (typec_is_ignore_cc_change(tcpc, rp_present))
 		return 0;
+#endif
 
 	if (tcpc->typec_state == typec_attachwait_snk
 		|| tcpc->typec_state == typec_attachwait_src)
@@ -2144,8 +2181,16 @@ static inline int typec_handle_debounce_timeout(struct tcpc_device *tcpc)
 {
 #ifdef CONFIG_TYPEC_CAP_NORP_SRC
 	if (typec_is_cc_no_res() && tcpci_check_vbus_valid(tcpc)
+#ifndef OPLUS_FEATURE_CHG_BASIC
 		&& (tcpc->typec_state == typec_unattached_snk))
 		return typec_norp_src_attached_entry(tcpc);
+#else
+		&& (tcpc->typec_state == typec_unattached_snk)) {
+		typec_norp_src_attached_entry(tcpc);
+		TYPEC_DBG("attached norp.src\r\n");
+		return 0;
+	}
+#endif /*OPLUS_FEATURE_CHG_BASIC*/
 #endif
 
 	if (typec_is_drp_toggling()) {
@@ -2522,6 +2567,9 @@ static inline int typec_handle_vbus_absent(struct tcpc_device *tcpc)
 
 int tcpc_typec_handle_ps_change(struct tcpc_device *tcpc, int vbus_level)
 {
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	bool old_power_ctrl = false;
+#endif
 	tcpc->typec_reach_vsafe0v = false;
 
 #ifdef CONFIG_TYPEC_CHECK_LEGACY_CABLE
@@ -2546,10 +2594,20 @@ int tcpc_typec_handle_ps_change(struct tcpc_device *tcpc, int vbus_level)
 	}
 
 #ifdef CONFIG_TYPEC_CAP_AUDIO_ACC_SINK_VBUS
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	if (tcpc->typec_state == typec_audioaccessory) {
+		old_power_ctrl = tcpc->typec_power_ctrl;
+		typec_audio_acc_sink_vbus(
+			tcpc, vbus_level >= TCPC_VBUS_VALID);
+		if (old_power_ctrl != tcpc->typec_power_ctrl)
+			tcpci_notify_typec_state(tcpc);
+	}
+#else
 	if (tcpc->typec_state == typec_audioaccessory) {
 		return typec_audio_acc_sink_vbus(
 			tcpc, vbus_level >= TCPC_VBUS_VALID);
 	}
+#endif
 #endif	/* CONFIG_TYPEC_CAP_AUDIO_ACC_SINK_VBUS */
 
 	if (vbus_level >= TCPC_VBUS_VALID)
@@ -2729,6 +2787,7 @@ int tcpc_typec_change_role(
 		return 0;
 }
 
+
 #ifdef CONFIG_TYPEC_CAP_POWER_OFF_CHARGE
 static int typec_init_power_off_charge(struct tcpc_device *tcpc)
 {
@@ -2786,7 +2845,10 @@ int tcpc_typec_init(struct tcpc_device *tcpc, uint8_t typec_role)
 	TYPEC_INFO("typec_init: %s\n", typec_role_name[typec_role]);
 
 	tcpc->typec_role = typec_role;
+	#ifdef OPLUS_FEATURE_CHG_BASIC
+	//add by tongfeng
 	tcpc->typec_role_new = typec_role;
+	#endif
 	tcpc->typec_attach_new = TYPEC_UNATTACHED;
 	tcpc->typec_attach_old = TYPEC_UNATTACHED;
 
@@ -2837,6 +2899,19 @@ int tcpc_typec_handle_wd(struct tcpc_device *tcpc, bool wd)
 		return 0;
 
 	TYPEC_INFO("%s %d\n", __func__, wd);
+
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	tcpc->wd_already = wd;
+#endif
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	tcpci_set_water_protection(tcpc, wd);
+	if (wd)
+		ret = tcpci_set_cc(tcpc, TYPEC_CC_OPEN);
+	else
+		tcpc_typec_error_recovery(tcpc);
+	tcpci_notify_wd_status(tcpc, wd);
+	return ret;
+#endif
 	if (!wd) {
 		tcpci_set_water_protection(tcpc, false);
 		tcpc_typec_error_recovery(tcpc);

@@ -101,6 +101,7 @@ obj-$(CONFIG_DRM_ZTE)	+= zte/
 obj-$(CONFIG_DRM_MXSFB)	+= mxsfb/
 obj-$(CONFIG_DRM_TINYDRM) += tinydrm/
 obj-$(CONFIG_DRM_PL111) += pl111/
+obj-$(CONFIG_DRM_MEDIATEK) += oplus/
 
 ccflags-y += -I$(srctree)/drivers/gpu/drm/mediatek/			\
              -I$(srctree)/drivers/misc/mediatek/dramc/$(MTK_PLATFORM)	\

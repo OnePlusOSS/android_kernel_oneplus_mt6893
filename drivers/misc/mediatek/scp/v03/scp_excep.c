@@ -27,6 +27,10 @@
 #include "scp_excep.h"
 #include "scp_feature_define.h"
 #include "scp_l1c.h"
+#ifdef OPLUS_FEATURE_SENSOR
+
+#include <soc/oplus/system/kernel_fb.h>
+#endif /* OPLUS_FEATURE_SENSOR */
 
 struct scp_dump_st {
 	uint8_t *detail_buff;
@@ -362,6 +366,10 @@ void scp_aed(enum SCP_RESET_TYPE type, enum scp_core_id id)
 {
 	char *scp_aed_title = NULL;
 
+#ifdef OPLUS_FEATURE_SENSOR
+	unsigned char fb_str[256] = "";
+#endif /*OPLUS_FEATURE_SENSOR*/
+
 	if (!scp_ee_enable) {
 		pr_debug("[SCP]ee disable value=%d\n", scp_ee_enable);
 		return;
@@ -414,9 +422,16 @@ void scp_aed(enum SCP_RESET_TYPE type, enum scp_core_id id)
 	/* scp aed api, only detail information available*/
 	aed_common_exception_api("scp", NULL, 0, NULL, 0,
 			scp_dump.detail_buff, DB_OPT_DEFAULT);
-
+#ifndef OPLUS_FEATURE_SENSOR
+	unsigned char fb_str[256] = "";
+	/* scp aed api, only detail information available*/
 	pr_debug("[SCP] scp exception dump is done\n");
+#else
+	pr_info("[SCP] scp exception dump is done\n");
+	scnprintf(fb_str,sizeof(fb_str),"%s: core0 pc:0x%08x,lr:0x%08x;core1 pc:0x%08x,lr:0x%08x:$$module@@scp",scp_aed_title,c0_m.pc,c0_m.lr,c1_m.pc,c1_m.lr);
 
+	oplus_kevent_fb_str(FB_SENSOR,FB_SENSOR_ID_CRASH,fb_str);
+#endif  //OPLUS_FEATURE_SENSOR
 }
 
 

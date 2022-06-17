@@ -25,6 +25,10 @@
 
 static DEFINE_MUTEX(disp_session_lock);
 
+#ifdef OPLUS_BUG_STABILITY
+int mtk_drm_session_created = 0;
+#endif /* OPLUS_BUG_STABILITY */
+
 int mtk_drm_session_create(struct drm_device *dev,
 			   struct drm_mtk_session *config)
 {
@@ -285,6 +289,10 @@ int mtk_drm_session_create_ioctl(struct drm_device *dev, void *data,
 
 	if (mtk_drm_session_create(dev, config) != 0)
 		ret = -EFAULT;
+
+	#ifdef OPLUS_BUG_STABILITY
+	mtk_drm_session_created = 1;
+	#endif /* OPLUS_BUG_STABILITY */
 
 	return ret;
 }

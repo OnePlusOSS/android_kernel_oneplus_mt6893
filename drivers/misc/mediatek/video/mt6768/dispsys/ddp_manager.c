@@ -1705,6 +1705,8 @@ int dpmgr_enable_event(disp_path_handle dp_handle, enum DISP_PATH_EVENT event)
 
 	if (!wq_handle->init) {
 		init_waitqueue_head(&(wq_handle->wq));
+		/* Yuwei.Zhang.MULTIMEDIA.DISPLAY.LCD. MTK's patch(ALPS06709953) for fixing 3090029 */
+		smp_wmb();
 		wq_handle->init = 1;
 		wq_handle->data = 0;
 		wq_handle->event = event;

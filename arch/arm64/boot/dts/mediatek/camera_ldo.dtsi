@@ -1,0 +1,46 @@
+/ {
+	camera_ldo:camera_ldo {
+		compatible = "mediatek,gpio_camera_ldo";
+	};
+};
+
+&i2c6 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	clock-frequency = <400000>;
+	i2c_camera_ldo@29{
+		compatible = "mediatek,i2c_camera_ldo";
+		reg = <0x29>;
+		status = "okay";
+	};
+};
+
+&camera_ldo {
+	pinctrl-names = "default", "camera_ldo_gpio_enp0", "camera_ldo_gpio_enp1";
+	pinctrl-0 = <&camera_ldo_pins_default>;
+	pinctrl-1 = <&camera_ldo_pins_enp0>;
+	pinctrl-2 = <&camera_ldo_pins_enp1>;
+	status = "okay";
+};
+
+&pio {
+	camera_ldo_pins_enp0: camera_ldo_gpio_enp0 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO122__FUNC_GPIO122>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+
+	camera_ldo_pins_enp1: camera_ldo_gpio_enp1 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO122__FUNC_GPIO122>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+
+
+	camera_ldo_pins_default: camera_ldo_pins_default {
+	};
+};

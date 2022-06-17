@@ -96,6 +96,12 @@ static int g_old_pq_backlight;
 static int g_pq_backlight;
 static int g_pq_backlight_db;
 static atomic_t g_ccorr_is_init_valid = ATOMIC_INIT(0);
+#ifdef OPLUS_BUG_STABILITY
+extern unsigned long oplus_display_brightness;
+#if defined(OPLUS_BUG_STABILITY) && defined(CONFIG_LEDS_MTK_DISP)
+extern int oplus_disp_ccorr_without_gamma;
+#endif
+#endif
 
 static DEFINE_MUTEX(g_ccorr_global_lock);
 // For color conversion bug fix
@@ -533,8 +539,12 @@ void disp_pq_notify_backlight_changed(int bl_1024)
 	DDPINFO("%s: %d\n", __func__, bl_1024);
 
 	if (m_new_pq_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS]) {
-		if (default_comp != NULL &&
-			g_ccorr_relay_value[index_of_ccorr(default_comp->id)] != 1) {
+		if (default_comp != NULL
+			/*#ifdef OPLUS_BUG_STABILITY*/
+			/* to keep value of backlight for FOD while screen is turning on*/
+			/* && g_ccorr_relay_value[index_of_ccorr(default_comp->id)] != 1 */
+			/*#endif OPLUS_BUG_STABILITY*/
+			) {
 			disp_ccorr_set_interrupt(default_comp, 1);
 
 			if (default_comp != NULL &&
@@ -660,7 +670,11 @@ int disp_ccorr_set_color_matrix(struct mtk_ddp_comp *comp,
 {
 	int ret = 0;
 	int i, j;
+	#if defined(OPLUS_BUG_STABILITY) && defined(CONFIG_LEDS_MTK_DISP)
+	int ccorr_without_gamma = oplus_disp_ccorr_without_gamma;
+	#else
 	int ccorr_without_gamma = 0;
+	#endif
 	bool need_refresh = false;
 	bool identity_matrix = true;
 	int id = index_of_ccorr(comp->id);
@@ -818,6 +832,10 @@ int disp_ccorr_set_RGB_Gain(struct mtk_ddp_comp *comp,
 	g_rgb_matrix[2][2] = b;
 
 	DDPINFO("%s: r[%d], g[%d], b[%d]", __func__, r, g, b);
+	#if defined(OPLUS_BUG_STABILITY) && defined(CONFIG_LEDS_MTK_DISP)
+	if (oplus_disp_ccorr_without_gamma == 1)
+		g_disp_ccorr_without_gamma = oplus_disp_ccorr_without_gamma;
+	#endif
 	ret = disp_ccorr_write_coef_reg(comp, NULL, 0);
 	mutex_unlock(&g_ccorr_global_lock);
 
@@ -842,6 +860,9 @@ int mtk_drm_ioctl_set_ccorr(struct drm_device *dev, void *data,
 			DDPINFO("brightness = %d, silky_bright_flag = %d",
 				ccorr_config->FinalBacklight,
 				ccorr_config->silky_bright_flag);
+			#ifdef OPLUS_BUG_STABILITY
+			oplus_display_brightness = ccorr_config->FinalBacklight;
+			#endif
 			mt_leds_brightness_set("lcd-backlight",
 				ccorr_config->FinalBacklight);
 		}

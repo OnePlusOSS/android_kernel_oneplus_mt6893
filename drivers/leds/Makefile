@@ -86,3 +86,7 @@ obj-$(CONFIG_LEDS_USER)			+= uleds.o
 
 # LED Triggers
 obj-$(CONFIG_LEDS_TRIGGERS)		+= trigger/
+
+ifeq ($(CONFIG_DRM_MEDIATEK),y)
+ccflags-y += -DDRM_OPLUS_DISPLAY_NODES
+endif

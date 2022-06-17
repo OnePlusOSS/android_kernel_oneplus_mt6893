@@ -1042,8 +1042,13 @@ static netdev_tx_t eth_start_xmit(struct sk_buff *skb,
 	}
 
 
-	/* NCM requires no zlp if transfer is dwNtbInMaxSize */
-	if (dev->port_usb->is_fixed &&
+/* NCM requires no zlp if transfer is dwNtbInMaxSize */
+//#ifdef OPLUS_BUG_STABILITY
+	if (dev->port_usb &&
+		dev->port_usb->is_fixed &&
+//#else
+	//if (dev->port_usb->is_fixed &&
+//#endif /*OPLUS_BUG_STABILITY*/
 	    length == dev->port_usb->fixed_in_len &&
 	    (length % in->maxpacket) == 0)
 		req->zero = 0;

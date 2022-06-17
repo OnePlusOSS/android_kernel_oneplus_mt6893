@@ -44,6 +44,12 @@ struct mt6360_regulator_desc {
 	unsigned int moder_mask;
 };
 
+#ifdef CONFIG_OPLUS_FEATURE_SDCARD
+static const u8 ldo_ctrl_mask[MT6360_LDO_CTRLS_NUM] = {
+	0xff, 0x8f, 0xff, 0xff, 0xff
+};
+#endif
+
 static int mt6360_ldo_read_device(void *client, u32 addr, int len, void *dst)
 {
 	struct i2c_client *i2c = client;
@@ -319,6 +325,8 @@ static int mt6360_ldo_enable(struct regulator_dev *rdev)
 	int id = rdev_get_id(rdev), ret;
 
 	mt_dbg(&rdev->dev, "%s, id = %d\n", __func__, id);
+
+	printk(KERN_ERR "%s: sdcard_det_en=%d, sdcard_hlact=%d\n",__func__, pdata->sdcard_det_en, pdata->sdcard_hlact);
 
 	/* Enable SDCARD_DET before LDO5 enables. */
 	if (id == MT6360_LDO_LDO5 && pdata->sdcard_det_en) {
@@ -633,13 +641,27 @@ static const struct mt6360_pdata_prop mt6360_pdata_props[] = {
 static int mt6360_ldo_apply_pdata(struct mt6360_ldo_info *mli,
 				  struct mt6360_ldo_platform_data *pdata)
 {
+#ifdef CONFIG_OPLUS_FEATURE_SDCARD
+	int i, ret;
+#else
 	int ret;
+#endif
 
 	dev_dbg(mli->dev, "%s ++\n", __func__);
 	ret = mt6360_pdata_apply_helper(mli, pdata, mt6360_pdata_props,
 					ARRAY_SIZE(mt6360_pdata_props));
 	if (ret < 0)
 		return ret;
+#ifdef CONFIG_OPLUS_FEATURE_SDCARD
+	for (i = 0; i < MT6360_LDO_CTRLS_NUM; i++) {
+		ret = mt6360_ldo_reg_update_bits(mli,
+					MT6360_LDO_LDO5_EN_CTRL1 + i, ldo_ctrl_mask[i],
+					pdata->ldo5_ctrls[i]);
+		if (ret < 0)
+			return ret;
+	}
+#endif
+
 	dev_dbg(mli->dev, "%s --\n", __func__);
 	return 0;
 }
@@ -671,6 +693,10 @@ static int mt6360_ldo_parse_dt_data(struct device *dev,
 	ret = of_irq_to_resource_table(np, res, res_cnt);
 	pdata->irq_res = res;
 	pdata->irq_res_cnt = ret;
+#ifdef CONFIG_OPLUS_FEATURE_SDCARD
+	of_property_read_u8_array(np, "ldo5_ctrls",
+				pdata->ldo5_ctrls, MT6360_LDO_CTRLS_NUM);
+#endif
 bypass_irq_res:
 	dev_dbg(dev, "%s --\n", __func__);
 	return 0;

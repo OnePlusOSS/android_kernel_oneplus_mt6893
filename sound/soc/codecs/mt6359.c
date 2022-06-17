@@ -40,6 +40,31 @@
 
 #include "mt6359.h"
 
+#ifdef CONFIG_SND_SOC_OPLUS_PA_MANAGER
+#include "audio/oplus_speaker_manager/oplus_speaker_manager_platform.h"
+#include "audio/oplus_speaker_manager/oplus_speaker_manager_codec.h"
+#endif /* CONFIG_SND_SOC_OPLUS_PA_MANAGER */
+
+
+#ifdef CONFIG_SND_SOC_CODEC_AW87339
+extern unsigned char aw87339_audio_spk_if_kspk(void);
+extern unsigned char aw87339_audio_rcv_if_kspk(void);
+extern unsigned char aw87339_audio_rcv_if_drcv(void);
+extern unsigned char aw87339_audio_spk_if_off(void);
+extern unsigned char aw87339_audio_rcv_if_off(void);
+
+extern void aw87339_voice_setting(int bStatus);
+extern int aw87339_voice_status;
+extern void aw87339_audio_spk_low_voltage_status(bool bStatus);
+extern int aw87339_spk_low_voltage_status;
+
+static int aw87339_kspk_control_spk = 0;
+static int aw87339_kspk_control_rcv = 0;
+static int aw87339_drcv_control_rcv = 0;
+
+#endif /* CONFIG_SND_SOC_CODEC_AW87339 */
+
+bool close_noise_headset = 0;
 enum {
 	MT6359_AIF_1 = 0,	/* dl: hp, rcv, hp+lo */
 	MT6359_AIF_2,		/* dl: lo only */
@@ -289,10 +314,44 @@ struct mt6359_priv {
 	/* vow dmic low power mode, 1: enable, 0: disable */
 	int vow_dmic_lp;
 	int vow_single_mic_select;
+
+#ifdef OPLUS_ARCH_EXTENDS
+	int micb0_val;
+	int micb2_val;
+#endif /* OPLUS_ARCH_EXTENDS */
 };
 
 /* static function declaration */
 static int dc_trim_thread(void *arg);
+
+#ifdef CONFIG_SND_SOC_DBMDX
+extern void set_vaud18_enable(bool enable);
+extern struct regmap *mt6359_ep_regmap;
+
+struct regmap *mt6359_ep_regmap;
+
+void set_vaud18_enable(bool enable)
+{
+	pr_info("%s: enable = %d", __func__, enable);
+
+	if (mt6359_ep_regmap == NULL) {
+		pr_err("%s: no regmap enable = %d", __func__, enable);
+		return;
+	}
+
+	if (enable) {
+		regmap_write(mt6359_ep_regmap, MT6359_AUDENC_ANA_CON15, 0x0021);
+		regmap_update_bits(mt6359_ep_regmap, MT6359_AUDDEC_ANA_CON13,
+			RG_AUDGLB_PWRDN_VA32_MASK_SFT,
+			0 << RG_AUDGLB_PWRDN_VA32_SFT);
+	} else {
+		regmap_write(mt6359_ep_regmap, MT6359_AUDENC_ANA_CON15, 0x0000);
+	}
+
+	return;
+}
+#endif /* CONFIG_SND_SOC_DBMDX */
+
 
 int mt6359_set_codec_ops(struct snd_soc_component *cmpnt,
 			 struct mt6359_codec_ops *ops)
@@ -458,9 +517,15 @@ static int mt6359_set_clksq(struct mt6359_priv *priv, bool enable)
 /* use only when not govern by DAPM */
 static int mt6359_set_aud_global_bias(struct mt6359_priv *priv, bool enable)
 {
+#ifndef CONFIG_SND_SOC_DBMDX
 	regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON13,
 			   RG_AUDGLB_PWRDN_VA32_MASK_SFT,
 			   (enable ? 0 : 1) << RG_AUDGLB_PWRDN_VA32_SFT);
+#else
+	dev_warn(priv->dev, "%s(), enable= %d ,but not set\n",
+			__func__, enable);
+#endif /*CONFIG_SND_SOC_DBMDX*/
+
 	return 0;
 }
 
@@ -897,6 +962,117 @@ static int dl_pga_set(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+#ifdef CONFIG_SND_SOC_CODEC_AW87339
+static int ext_kspk_amp_get_spk(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+    ucontrol->value.integer.value[0] = aw87339_kspk_control_spk;
+    pr_debug("%s: aw87339_kspk_control = %d\n", __func__, aw87339_kspk_control_spk);
+    return 0;
+}
+static int ext_kspk_amp_put_spk(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+    if(ucontrol->value.integer.value[0] == aw87339_kspk_control_spk)
+        return 1;
+    aw87339_kspk_control_spk = ucontrol->value.integer.value[0];
+    if(ucontrol->value.integer.value[0]) {
+        aw87339_audio_spk_if_kspk();
+    } else {
+        aw87339_audio_spk_if_off();
+    }
+    pr_debug("%s: value.integer.value = %d\n", __func__, ucontrol->value.integer.value[0]);
+    return 0;
+}
+static int ext_kspk_amp_get_rcv(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+    ucontrol->value.integer.value[0] = aw87339_kspk_control_rcv;
+    pr_debug("%s: aw87339_kspk_control = %d\n", __func__, aw87339_kspk_control_rcv);
+    return 0;
+}
+static int ext_kspk_amp_put_rcv(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+    if(ucontrol->value.integer.value[0] == aw87339_kspk_control_rcv)
+        return 1;
+    aw87339_kspk_control_rcv = ucontrol->value.integer.value[0];
+    if(ucontrol->value.integer.value[0]) {
+        aw87339_audio_rcv_if_kspk();
+    } else {
+        aw87339_audio_rcv_if_off();
+    }
+    pr_debug("%s: value.integer.value = %d\n", __func__, ucontrol->value.integer.value[0]);
+    return 0;
+}
+
+static int ext_drcv_amp_get_rcv(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+    ucontrol->value.integer.value[0] = aw87339_drcv_control_rcv;
+    pr_debug("%s: aw87339_drcv_control = %d\n", __func__, aw87339_drcv_control_rcv);
+    return 0;
+}
+
+static int ext_drcv_amp_put_rcv(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+    if(ucontrol->value.integer.value[0] == aw87339_drcv_control_rcv)
+        return 1;
+    aw87339_drcv_control_rcv = ucontrol->value.integer.value[0];
+    if(ucontrol->value.integer.value[0]) {
+        aw87339_audio_rcv_if_drcv();
+    } else {
+        aw87339_audio_rcv_if_off();
+    }
+    pr_debug("%s: value.integer.value = %d\n", __func__, ucontrol->value.integer.value[0]);
+    return 0;
+}
+
+static int ext_amp_low_voltage_get(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+        ucontrol->value.integer.value[0] = aw87339_spk_low_voltage_status;
+        pr_info("%s: aw87339_spk_low_voltage_status = %d\n", __func__, aw87339_spk_low_voltage_status);
+        return 0;
+}
+
+static int ext_amp_low_voltage_set(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+        if (ucontrol->value.integer.value[0] == aw87339_spk_low_voltage_status)
+                return 1;
+        if (ucontrol->value.integer.value[0] == 1) {
+                aw87339_audio_spk_low_voltage_status(1);
+        } else {
+                aw87339_audio_spk_low_voltage_status(0);
+        }
+
+        pr_info("%s: value.integer.value = %ld\n", __func__, ucontrol->value.integer.value[0]);
+        return 0;
+}
+
+static int ext_amp_voice_get(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = aw87339_voice_status;
+	pr_info("%s: aw87339_voice_status = %d\n", __func__, aw87339_voice_status);
+	return 0;
+}
+
+static int ext_amp_voice_set(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+	if (ucontrol->value.integer.value[0] == aw87339_voice_status)
+		return 1;
+	if (ucontrol->value.integer.value[0] == 1) {
+		aw87339_voice_setting(1);
+	} else {
+		aw87339_voice_setting(0);
+	}
+
+	pr_info("%s: value.integer.value = %ld\n", __func__, ucontrol->value.integer.value[0]);
+	return 0;
+}
+
+static const char *const ext_kspk_amp_function_spk[] = { "Off", "On" };
+static const char *const ext_kspk_amp_function_rcv[] = { "Off", "On" };
+static const char *const ext_drcv_amp_function_rcv[] = { "Off", "On" };
+static const char *const ext_amp_low_vol_function[] = { "Off", "On" };
+
+static const char *const ext_amp_voice_function[] = { "Off", "On" };
+#endif /* CONFIG_SND_SOC_CODEC_AW87339 */
+
 static int mt6359_put_volsw(struct snd_kcontrol *kcontrol,
 			    struct snd_ctl_elem_value *ucontrol)
 {
@@ -964,6 +1140,13 @@ static const DECLARE_TLV_DB_SCALE(capture_tlv, 0, 600, 0);
 static const struct soc_enum dl_pga_enum[] = {
 	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(dl_pga_gain), dl_pga_gain),
 	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(hp_dl_pga_gain), hp_dl_pga_gain),
+	#ifdef CONFIG_SND_SOC_CODEC_AW87339
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(ext_kspk_amp_function_spk), ext_kspk_amp_function_spk),
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(ext_kspk_amp_function_rcv), ext_kspk_amp_function_rcv),
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(ext_drcv_amp_function_rcv), ext_drcv_amp_function_rcv),
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(ext_amp_low_vol_function), ext_amp_low_vol_function),
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(ext_amp_voice_function), ext_amp_voice_function),
+	#endif /* CONFIG_SND_SOC_CODEC_AW87339 */
 };
 
 #define MT_SOC_ENUM_EXT_ID(xname, xenum, xhandler_get, xhandler_put, id) \
@@ -999,6 +1182,13 @@ static const struct snd_kcontrol_new mt6359_snd_controls[] = {
 	MT_SOC_ENUM_EXT_ID("Lineout_PGAR_GAIN", dl_pga_enum[0],
 			   dl_pga_get, dl_pga_set,
 			   AUDIO_ANALOG_VOLUME_LINEOUTR),
+	#ifdef CONFIG_SND_SOC_CODEC_AW87339
+	SOC_ENUM_EXT("Ext_Speaker_Amp_spkmode", dl_pga_enum[2], ext_kspk_amp_get_spk, ext_kspk_amp_put_spk),
+	SOC_ENUM_EXT("Ext_Receiver_Amp_spkmode", dl_pga_enum[3], ext_kspk_amp_get_rcv, ext_kspk_amp_put_rcv),
+	SOC_ENUM_EXT("Ext_Receiver_Amp_rcvmode", dl_pga_enum[4], ext_drcv_amp_get_rcv, ext_drcv_amp_put_rcv),
+	SOC_ENUM_EXT("Ext_AMP_LOW_VOLTAGE", dl_pga_enum[5], ext_amp_low_voltage_get, ext_amp_low_voltage_set),
+	SOC_ENUM_EXT("EXT_AMP_VOICE_SETTING", dl_pga_enum[6], ext_amp_voice_get, ext_amp_voice_set),
+	#endif /* CONFIG_SND_SOC_CODEC_AW87339 */
 };
 
 /* ul pga gain */
@@ -1188,7 +1378,14 @@ static const char * const lo_in_mux_map[] = {
 };
 
 static int lo_in_mux_map_value[] = {
+#if OPLUS_BUG_COMPATIBILITY
+        LO_MUX_OPEN,
+	LO_MUX_L_DAC,
+	LO_MUX_3RD_DAC,
+	LO_MUX_TEST_MODE,
+#else
 	0x0, 0x1, 0x2, 0x3,
+#endif
 };
 
 static SOC_VALUE_ENUM_SINGLE_DECL(lo_in_mux_map_enum,
@@ -1208,6 +1405,9 @@ enum {
 	HP_MUX_HP,
 	HP_MUX_TEST_MODE,
 	HP_MUX_HP_IMPEDANCE,
+#if OPLUS_BUG_COMPATIBILITY
+	HP_MUX_HP_DUALSPK,
+#endif
 	HP_MUX_MASK = 0x7,
 };
 
@@ -1217,7 +1417,11 @@ static const char * const hp_in_mux_map[] = {
 	"Audio Playback",
 	"Test Mode",
 	"HP Impedance",
+#if OPLUS_BUG_COMPATIBILITY
+	"Loud DualSPK Playback",
+#else
 	"undefined1",
+#endif
 	"undefined2",
 	"undefined3",
 };
@@ -1228,7 +1432,11 @@ static int hp_in_mux_map_value[] = {
 	HP_MUX_HP,
 	HP_MUX_TEST_MODE,
 	HP_MUX_HP_IMPEDANCE,
+#if OPLUS_BUG_COMPATIBILITY
+	HP_MUX_HP_DUALSPK,
+#else
 	HP_MUX_OPEN,
+#endif
 	HP_MUX_OPEN,
 	HP_MUX_OPEN,
 };
@@ -1750,8 +1958,15 @@ static int mtk_hp_enable(struct mt6359_priv *priv)
 		regmap_write(priv->regmap, MT6359_ZCD_CON1, DL_GAIN_0DB);
 	}
 
-	/* Enable AUD_ZCD */
-	zcd_enable(priv, true, DEVICE_HP);
+	if(close_noise_headset)
+	{
+		pr_info("%s pmic LYU THREE_FIVE_MM_HEADSET_COMPATIBLE", __func__);
+		/* Enable AUD_ZCD */
+		zcd_enable(priv, true, DEVICE_HP);
+	}else{
+		/* Enable AUD_ZCD */
+		//zcd_enable(priv, true, DEVICE_HP);
+	}
 
 	if (priv->hp_hifi_mode) {
 		/* Set HP DR bias current optimization, 010: 6uA */
@@ -1861,14 +2076,42 @@ static int mtk_hp_enable(struct mt6359_priv *priv)
 		regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON7, 0x0117);
 	} else if (priv->mux_select[MUX_HP_L] == HP_MUX_HP) {
 		/* Switch HPL MUX to audio DACL */
-		regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON0,
-			RG_AUDHPLMUXINPUTSEL_VAUDP32_MASK_SFT,
-			HP_MUX_HP << RG_AUDHPLMUXINPUTSEL_VAUDP32_SFT);
+		if(close_noise_headset)
+		{
+					pr_info("%s pmic LYU THREE_FIVE_MM_HEADSET_COMPATIBLE", __func__);
+					regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON0,
+							RG_AUDHPLMUXINPUTSEL_VAUDP32_MASK_SFT,
+							HP_MUX_HP << RG_AUDHPLMUXINPUTSEL_VAUDP32_SFT);
+		}else{
+			/*regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON0,
+				RG_AUDHPLMUXINPUTSEL_VAUDP32_MASK_SFT,
+				HP_MUX_HP << RG_AUDHPLMUXINPUTSEL_VAUDP32_SFT); */
+			regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON0, 0x32ff);
+		}
 	}
 	/* Switch HPR MUX to audio DACR */
-	regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON0,
-		RG_AUDHPRMUXINPUTSEL_VAUDP32_MASK_SFT,
-		HP_MUX_HP << RG_AUDHPRMUXINPUTSEL_VAUDP32_SFT);
+	if(close_noise_headset)
+	{
+		pr_info("%s pmic LYU THREE_FIVE_MM_HEADSET_COMPATIBLE", __func__);
+		regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON0,
+			RG_AUDHPRMUXINPUTSEL_VAUDP32_MASK_SFT,
+			HP_MUX_HP << RG_AUDHPRMUXINPUTSEL_VAUDP32_SFT);
+	}else{
+		/*regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON0,
+			RG_AUDHPRMUXINPUTSEL_VAUDP32_MASK_SFT,
+			HP_MUX_HP << RG_AUDHPRMUXINPUTSEL_VAUDP32_SFT); */
+		    regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON0, 0x3aff);
+	}
+	if(close_noise_headset)
+	{
+		pr_info("%s pmic LYU THREE_FIVE_MM_HEADSET_COMPATIBLE", __func__);
+	}else{
+		#if OPLUS_BUG_COMPATIBILITY
+			/* disable L ch invert: MT6359_AFUNC_AUC_CON0[10] = 0 */
+			regmap_update_bits(priv->regmap, MT6359_AFUNC_AUD_CON0,
+					0x0400, 0x0);
+		#endif
+	}
 
 	/* Disable Pull-down HPL/R to AVSS28_AUD */
 	hp_pull_down(priv, false);
@@ -1966,10 +2209,294 @@ static int mtk_hp_disable(struct mt6359_priv *priv)
 	regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON1,
 			   0x3 << 2, 0x0);
 
+	if(close_noise_headset)
+	{
+		pr_info("%s pmic LYU THREE_FIVE_MM_HEADSET_COMPATIBLE", __func__);
+		zcd_enable(priv, false, DEVICE_HP);
+	}
 	/* Disable AUD_ZCD */
-	zcd_enable(priv, false, DEVICE_HP);
+	//zcd_enable(priv, false, DEVICE_HP);
 	return 0;
 }
+
+#if OPLUS_BUG_COMPATIBILITY
+static int mtk_hp_dual_spk_enable(struct mt6359_priv *priv)
+{
+	dev_info(priv->dev, "%s(), dev_counter[DEV_HP] %d, mux %u\n",
+		 __func__, priv->dev_counter[DEVICE_HP], priv->mux_select[MUX_HP_L]);
+
+	/* Disable handset short-circuit protection */
+	regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON7, 0x0010);
+
+	/* Set LO DR bias current optimization, 010: 6uA */
+	regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON11,
+			   DRBIAS_LO_MASK_SFT,
+			   DRBIAS_6UA << DRBIAS_LO_SFT);
+
+	regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON12,
+			   IBIAS_LO_MASK_SFT,
+			   IBIAS_5UA << IBIAS_LO_SFT);
+
+	/* Set LO STB enhance circuits */
+	regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON7, 0x0110);
+
+	/* Set HS STB enhance circuits */
+	regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON6, 0x0090);
+
+	/* Enable LO driver bias circuits */
+	regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON7, 0x0112);
+	/* Enable LO driver core circuits */
+	regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON7, 0x0113);
+
+	/* Set LO gain to 0DB */
+	regmap_write(priv->regmap, MT6359_ZCD_CON1, DL_GAIN_0DB);
+
+	/* Enable AUD_ZCD */
+	zcd_enable(priv, false, DEVICE_LO);
+
+	if (priv->hp_hifi_mode) {
+		/* Set HP DR bias current optimization, 010: 6uA */
+		regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON11,
+				   DRBIAS_HP_MASK_SFT,
+				   DRBIAS_6UA << DRBIAS_HP_SFT);
+		/* Set HP & ZCD bias current optimization */
+		/* 01: ZCD: 4uA, HP/HS/LO: 5uA */
+		regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON12,
+				   IBIAS_ZCD_MASK_SFT,
+				   IBIAS_ZCD_4UA << IBIAS_ZCD_SFT);
+		regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON12,
+				   IBIAS_HP_MASK_SFT,
+				   IBIAS_5UA << IBIAS_HP_SFT);
+	} else {
+		/* Set HP DR bias current optimization, 001: 5uA */
+		regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON11, DRBIAS_5UA << DRBIAS_HP_SFT);
+		/* Set HP & ZCD bias current optimization */
+		/* 00: ZCD: 3uA, HP/HS/LO: 4uA */
+		regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON12,
+				   IBIAS_ZCD_MASK_SFT,
+				   IBIAS_ZCD_3UA << IBIAS_ZCD_SFT);
+		regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON12,
+				   IBIAS_HP_MASK_SFT,
+				   IBIAS_4UA << IBIAS_HP_SFT);
+	}
+
+	/* HP damp circuit enable */
+	/*Enable HPRN/HPLN output 4K to VCM */
+	regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON10, 0x0087);
+
+	/* HP Feedback Cap select 2'b00: 15pF */
+	/* for >= 96KHz sampling rate: 2'b01: 10.5pF */
+	if (priv->dl_rate[MT6359_AIF_1] >= 96000)
+		regmap_update_bits(priv->regmap,
+				   MT6359_AUDDEC_ANA_CON4,
+				   RG_AUDHPHFCOMPBUFGAINSEL_VAUDP32_MASK_SFT,
+				   0x1 << RG_AUDHPHFCOMPBUFGAINSEL_VAUDP32_SFT);
+	else
+		regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON4, 0x0000);
+
+
+	/* Set HPP/N STB enhance circuits */
+	regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON2, 0xf133);
+
+	/* Enable HP aux output stage */
+	regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON1, 0x000c);
+	/* Enable HP aux feedback loop */
+	regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON1, 0x003c);
+	/* Enable HP aux CMFB loop */
+	regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON9, 0x0c00);
+	/* Enable HP driver bias circuits */
+	regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON0, 0x30c0);
+	/* Enable HP driver core circuits */
+	regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON0, 0x30f0);
+	/* Short HP main output to HP aux output stage */
+	regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON1, 0x00fc);
+
+	/* Increase HP input pair current to HPM step by step */
+	hp_in_pair_current(priv, true);
+
+	/* Enable HP main CMFB loop */
+	regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON9, 0x0e00);
+	/* Disable HP aux CMFB loop */
+	regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON9, 0x0200);
+
+	/* Enable HP main output stage */
+	regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON1, 0x00ff);
+	/* Enable HPR/L main output stage step by step */
+	hp_main_output_ramp(priv, true);
+
+	/* Reduce HP aux feedback loop gain */
+	hp_aux_feedback_loop_gain_ramp(priv, true);
+	/* Disable HP aux feedback loop */
+	regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON1, 0x77cf);
+
+	/* apply volume setting */
+	headset_volume_ramp(priv,
+			    DL_GAIN_N_22DB,
+			    priv->ana_gain[AUDIO_ANALOG_VOLUME_HPOUTL]);
+
+	/* Disable HP aux output stage */
+	regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON1, 0x77c3);
+	/* Unshort HP main output to HP aux output stage */
+	regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON1, 0x7703);
+	usleep_range(100, 120);
+
+	/* Enable Audio DAC  */
+	regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON0, 0x30ff);
+	if (priv->hp_hifi_mode) {
+		/* Enable low-noise mode of DAC */
+		regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON9, 0xf201);
+	} else {
+		/* Disable low-noise mode of DAC */
+		regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON9, 0xf200);
+	}
+	usleep_range(100, 120);
+
+	if (priv->mux_select[MUX_HP_L] == HP_MUX_HPSPK) {
+		/* Switch HPL MUX to audio LOL */
+		regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON0,
+			RG_AUDHPLMUXINPUTSEL_VAUDP32_MASK_SFT,
+			HP_MUX_HPSPK << RG_AUDHPLMUXINPUTSEL_VAUDP32_SFT);
+		/* Switch LOL MUX to audio DACL */
+		regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON7, 0x0117);
+	} else if (priv->mux_select[MUX_HP_L] == HP_MUX_HP) {
+		/* Switch HPL MUX to audio DACL */
+		regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON0,
+			RG_AUDHPLMUXINPUTSEL_VAUDP32_MASK_SFT,
+			HP_MUX_HP << RG_AUDHPLMUXINPUTSEL_VAUDP32_SFT);
+	}
+
+	/* Set HS output stage (3'b011 = 4x) for stereo lineout seneario */
+	regmap_update_bits(priv->regmap,
+			   MT6359_AUDDEC_ANA_CON10,
+			   RG_ABIDEC_RSVD2_VAUDP32_MASK_SFT,
+			   0x30 << RG_ABIDEC_RSVD2_VAUDP32_SFT);
+
+	/* Enable HS driver bias circuits */
+	regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON6, 0x0092);
+	/* Enable HS driver core circuits */
+	regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON6, 0x0093);
+
+	/* Set HS gain to normal gain step by step */
+	regmap_write(priv->regmap, MT6359_ZCD_CON3,
+		     priv->ana_gain[AUDIO_ANALOG_VOLUME_HSOUTL]);
+
+	/* Switch HPL MUX to Line-out */
+	regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON0,
+			0x3 << 8, 0x01 << 8);
+
+	/* Switch HPR MUX to HS */
+	regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON0,
+			0x3 << 10, 0x3 << 10);
+
+	/* Switch LOL MUX to audio DAC L */
+	regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON7,
+			0x3 << 2, 0x1 << 2);
+	/* Switch HS MUX to audio DAC R */
+	regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON6,
+			0x3 << 2, 0x1 << 2);
+
+	/* Disable Pull-down HPL/R to AVSS28_AUD */
+	hp_pull_down(priv, false);
+
+	return 0;
+}
+
+static int mtk_hp_dual_spk_disable(struct mt6359_priv *priv)
+{
+	/* Pull-down HPL/R to AVSS28_AUD */
+	hp_pull_down(priv, true);
+
+        /* HPR/HPL mux to open */
+	regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON0,
+			   0x0f00, 0x0000);
+
+	/* Disable LO when MUX to HPSPK*/
+
+	/* Switch LOL MUX to open */
+	regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON7,
+			   RG_AUDLOLMUXINPUTSEL_VAUDP32_MASK_SFT,
+			   LO_MUX_OPEN);
+	/* HS mux to open */
+	regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON6,
+			   0x3 << 2, 0x0 << 2);
+
+	/* decrease LO gain to minimum gain step by step */
+	regmap_write(priv->regmap, MT6359_ZCD_CON1, DL_GAIN_N_40DB);
+
+	/* Disable LO driver core circuits */
+	regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON7,
+			   RG_AUDLOLPWRUP_VAUDP32_MASK_SFT, 0x0);
+
+	/* Disable LO driver bias circuits */
+	regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON7,
+			   RG_AUDLOLPWRUP_IBIAS_VAUDP32_MASK_SFT, 0x0);
+
+	/* Disable low-noise mode of DAC */
+	regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON9,
+			   0x0001, 0x0000);
+
+	/* Disable Audio DAC */
+	regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON0,
+			   0x000f, 0x0000);
+
+	/* Short HP main output to HP aux output stage */
+	regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON1, 0x77c3);
+	/* Enable HP aux output stage */
+	regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON1, 0x77cf);
+
+	/* decrease HPL/R gain to normal gain step by step */
+	headset_volume_ramp(priv,
+			    priv->ana_gain[AUDIO_ANALOG_VOLUME_HPOUTL],
+			    DL_GAIN_N_22DB);
+
+	/* Enable HP aux feedback loop */
+	regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON1, 0x77ff);
+
+	/* Reduce HP aux feedback loop gain */
+	hp_aux_feedback_loop_gain_ramp(priv, false);
+
+	/* decrease HPR/L main output stage step by step */
+	hp_main_output_ramp(priv, false);
+
+	/* Disable HP main output stage */
+	regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON1, 0x3, 0x0);
+
+	/* Enable HP aux CMFB loop */
+	regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON9, 0x0e01);
+
+	/* Disable HP main CMFB loop */
+	regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON9, 0x0c01);
+
+	/* Decrease HP input pair current to 2'b00 step by step */
+	hp_in_pair_current(priv, false);
+
+	/* Unshort HP main output to HP aux output stage */
+	regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON1,
+			   0x3 << 6, 0x0);
+
+	/* Disable HP driver core circuits */
+	regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON0,
+			   0x3 << 4, 0x0);
+
+	/* Disable HP driver bias circuits */
+	regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON0,
+			   0x3 << 6, 0x0);
+
+	/* Disable HP aux CMFB loop */
+	regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON9, 0x201);
+
+	/* Disable HP aux feedback loop */
+	regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON1,
+			   0x3 << 4, 0x0);
+
+	/* Disable HP aux output stage */
+	regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON1,
+			   0x3 << 2, 0x0);
+
+
+	return 0;
+}
+#endif /*OPLUS_BUG_COMPATIBILITY*/
 
 static int mtk_hp_impedance_enable(struct mt6359_priv *priv)
 {
@@ -2062,8 +2589,12 @@ static int mt_hp_event(struct snd_soc_dapm_widget *w,
 
 		priv->mux_select[MUX_HP_L] = mux;
 
-		if (mux == HP_MUX_HP || mux == HP_MUX_HPSPK)
-			mtk_hp_enable(priv);
+ 		if (mux == HP_MUX_HP || mux == HP_MUX_HPSPK)
+ 			mtk_hp_enable(priv);
+#if OPLUS_BUG_COMPATIBILITY
+		else if (mux == HP_MUX_HP_DUALSPK)
+			mtk_hp_dual_spk_enable(priv);
+#endif /*OPLUS_BUG_COMPATIBILITY*/
 		else if (mux == HP_MUX_HP_IMPEDANCE)
 			mtk_hp_impedance_enable(priv);
 		break;
@@ -2082,6 +2613,10 @@ static int mt_hp_event(struct snd_soc_dapm_widget *w,
 		if (priv->mux_select[MUX_HP_L] == HP_MUX_HP ||
 		    priv->mux_select[MUX_HP_L] == HP_MUX_HPSPK)
 			mtk_hp_disable(priv);
+#if OPLUS_BUG_COMPATIBILITY
+		else if (priv->mux_select[MUX_HP_L] == HP_MUX_HP_DUALSPK)
+			mtk_hp_dual_spk_disable(priv);
+#endif /*OPLUS_BUG_COMPATIBILITY*/
 		else if (priv->mux_select[MUX_HP_L] == HP_MUX_HP_IMPEDANCE)
 			mtk_hp_impedance_disable(priv);
 
@@ -2093,6 +2628,10 @@ static int mt_hp_event(struct snd_soc_dapm_widget *w,
 
 	return 0;
 }
+
+#ifdef CONFIG_SND_SOC_FSA
+extern int fsa4480_sense_to_ground(bool bstate);
+#endif
 
 static int mt_rcv_event(struct snd_soc_dapm_widget *w,
 			struct snd_kcontrol *kcontrol,
@@ -2108,10 +2647,17 @@ static int mt_rcv_event(struct snd_soc_dapm_widget *w,
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
+
+#ifdef OPLUS_ARCH_EXTENDS
+#else
 		/* Enable AUD_ZCD */
 		zcd_enable(priv, true, DEVICE_RCV);
+#endif
 
 		/* Disable handset short-circuit protection */
+#ifdef CONFIG_SND_SOC_FSA
+		fsa4480_sense_to_ground(true);
+#endif
 		regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON6, 0x0010);
 
 		/* Set RCV DR bias current optimization, 010: 6uA */
@@ -2141,23 +2687,41 @@ static int mt_rcv_event(struct snd_soc_dapm_widget *w,
 		/* Set HS gain to normal gain step by step */
 		regmap_write(priv->regmap, MT6359_ZCD_CON3,
 			     priv->ana_gain[AUDIO_ANALOG_VOLUME_HSOUTL]);
-
+#if OPLUS_BUG_COMPATIBILITY
+		/* Enable Audio DAC R */
+		regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON0,
+				RG_AUDDACRPWRUP_VAUDP32_MASK_SFT |
+				RG_AUD_DAC_PWR_UP_VA32_MASK_SFT, 0x0006);
+#else
 		/* Enable Audio DAC  */
 		regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON0, 0x0009);
+#endif /*OPLUS_BUG_COMPATIBILITY*/
 		/* Enable low-noise mode of DAC */
 		regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON9, 0x0001);
+#if OPLUS_BUG_COMPATIBILITY
+		/* Switch HS MUX to audio DAC R */
+		regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON6, 0x0097);
+#else
 		/* Switch HS MUX to audio DAC */
 		regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON6, 0x009b);
+#endif /*OPLUS_BUG_COMPATIBILITY*/
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
+
 		/* HS mux to open */
 		regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON6,
 				   RG_AUDHSMUXINPUTSEL_VAUDP32_MASK_SFT,
 				   RCV_MUX_OPEN);
-
+#if OPLUS_BUG_COMPATIBILITY
+		/* Disable Audio DAC R */
+ 		regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON0,
+				RG_AUDDACRPWRUP_VAUDP32_MASK_SFT |
+				RG_AUD_DAC_PWR_UP_VA32_MASK_SFT, 0x0000);
+#else
 		/* Disable Audio DAC */
 		regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON0,
 				   0x000f, 0x0000);
+#endif /*OPLUS_BUG_COMPATIBILITY*/
 
 		/* decrease HS gain to minimum gain step by step */
 		regmap_write(priv->regmap, MT6359_ZCD_CON3, DL_GAIN_N_40DB);
@@ -2169,7 +2733,9 @@ static int mt_rcv_event(struct snd_soc_dapm_widget *w,
 		/* Disable HS driver bias circuits */
 		regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON6,
 				   RG_AUDHSPWRUP_IBIAS_VAUDP32_MASK_SFT, 0x0);
-
+#ifdef CONFIG_SND_SOC_FSA
+		fsa4480_sense_to_ground(false);
+#endif
 		/* Disable AUD_ZCD */
 		zcd_enable(priv, false, DEVICE_RCV);
 		break;
@@ -2193,6 +2759,7 @@ static int mt_lo_event(struct snd_soc_dapm_widget *w,
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
+
 		/* Enable AUD_ZCD */
 		zcd_enable(priv, true, DEVICE_LO);
 
@@ -2237,14 +2804,27 @@ static int mt_lo_event(struct snd_soc_dapm_widget *w,
 					 __func__, priv->dev_counter[DEVICE_HP]);
 				break;
 			}
+
+#if OPLUS_BUG_COMPATIBILITY
+		       /* Enable Audio DAC L */
+		       regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON0,
+				         RG_AUDDACLPWRUP_VAUDP32_MASK_SFT |
+				         RG_AUD_DAC_PWL_UP_VA32_MASK_SFT, 0x0009);
+#else
 			/* Enable DACL and switch HP MUX to open*/
 			regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON0, 0x3009);
+#endif /*OPLUS_BUG_COMPATIBILITY*/
 			/* Disable low-noise mode of DAC */
 			regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON9, 0xf200);
 			usleep_range(100, 120);
-
+#if OPLUS_BUG_COMPATIBILITY
+		        /* Switch LOL MUX to audio DAC L */
+		        regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON7,
+				          0x3 << 2, 0x1 << 2);
+#else
 			/* Switch LOL MUX to DACL */
 			regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON7, 0x0117);
+#endif /*OPLUS_BUG_COMPATIBILITY*/
 		} else if (mux == LO_MUX_3RD_DAC) {
 			/* Enable Audio DAC (3rd DAC) */
 			regmap_write(priv->regmap, MT6359_AUDDEC_ANA_CON7, 0x3113);
@@ -2257,14 +2837,22 @@ static int mt_lo_event(struct snd_soc_dapm_widget *w,
 
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
+
 		/* Switch LOL MUX to open */
 		regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON7,
 				   RG_AUDLOLMUXINPUTSEL_VAUDP32_MASK_SFT,
 				   LO_MUX_OPEN);
 		if (priv->mux_select[MUX_LO] == LO_MUX_L_DAC) {
+#if OPLUS_BUG_COMPATIBILITY
+		        /* Disable Audio DAC L */
+		        regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON0,
+				          RG_AUDDACLPWRUP_VAUDP32_MASK_SFT |
+				          RG_AUD_DAC_PWL_UP_VA32_MASK_SFT, 0x0000);
+#else
 			/* Disable Audio DAC */
 			regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON0,
 					   0x000f, 0x0000);
+#endif /*OPLUS_BUG_COMPATIBILITY*/
 			/* Disable HP driver core circuits */
 			regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON0,
 					   0x3 << 4, 0x0);
@@ -2421,10 +3009,16 @@ static int mt_mic_bias_0_event(struct snd_soc_dapm_widget *w,
 			break;
 		}
 
+#ifdef OPLUS_ARCH_EXTENDS
+		regmap_update_bits(priv->regmap, MT6359_AUDENC_ANA_CON15,
+				   RG_AUDMICBIAS0VREF_MASK_SFT,
+				   priv->micb0_val << RG_AUDMICBIAS0VREF_SFT);
+#else /* OPLUS_ARCH_EXTENDS */
 		/* MISBIAS0 = 1P9V */
 		regmap_update_bits(priv->regmap, MT6359_AUDENC_ANA_CON15,
 				   RG_AUDMICBIAS0VREF_MASK_SFT,
 				   MIC_BIAS_1P9 << RG_AUDMICBIAS0VREF_SFT);
+#endif /* OPLUS_ARCH_EXTENDS */
 		/* vow low power select */
 		regmap_update_bits(priv->regmap, MT6359_AUDENC_ANA_CON15,
 				   RG_AUDMICBIAS0LOWPEN_MASK_SFT,
@@ -2432,8 +3026,10 @@ static int mt_mic_bias_0_event(struct snd_soc_dapm_widget *w,
 				   << RG_AUDMICBIAS0LOWPEN_SFT);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
+#ifndef CONFIG_SND_SOC_DBMDX
 		/* Disable MICBIAS0, MISBIAS0 = 1P7V */
 		regmap_write(priv->regmap, MT6359_AUDENC_ANA_CON15, 0x0000);
+#endif
 		break;
 	default:
 		break;
@@ -2460,8 +3056,13 @@ static int mt_mic_bias_1_event(struct snd_soc_dapm_widget *w,
 			regmap_write(priv->regmap,
 				     MT6359_AUDENC_ANA_CON16, 0x0160);
 		else
+#ifdef OPLUS_BUG_COMPATIBILITY
+			regmap_write(priv->regmap,
+				     MT6359_AUDENC_ANA_CON16, 0x3060);
+#else /* CONFIG_SND_SOC_CODEC_MICBIAS_2P8V */
 			regmap_write(priv->regmap,
 				     MT6359_AUDENC_ANA_CON16, 0x0060);
+#endif /* CONFIG_SND_SOC_CODEC_MICBIAS_2P8V */
 
 		/* vow low power select */
 		regmap_update_bits(priv->regmap, MT6359_AUDENC_ANA_CON16,
@@ -2507,10 +3108,16 @@ static int mt_mic_bias_2_event(struct snd_soc_dapm_widget *w,
 			break;
 		}
 
+#ifdef OPLUS_ARCH_EXTENDS
+		regmap_update_bits(priv->regmap, MT6359_AUDENC_ANA_CON17,
+				   RG_AUDMICBIAS2VREF_MASK_SFT,
+				   priv->micb2_val << RG_AUDMICBIAS2VREF_SFT);
+#else /* OPLUS_ARCH_EXTENDS */
 		/* MISBIAS2 = 1P9V */
 		regmap_update_bits(priv->regmap, MT6359_AUDENC_ANA_CON17,
 				   RG_AUDMICBIAS2VREF_MASK_SFT,
 				   MIC_BIAS_1P9 << RG_AUDMICBIAS2VREF_SFT);
+#endif /* OPLUS_ARCH_EXTENDS */
 		/* vow low power select */
 		regmap_update_bits(priv->regmap, MT6359_AUDENC_ANA_CON17,
 				   RG_AUDMICBIAS2LOWPEN_MASK_SFT,
@@ -3747,6 +4354,26 @@ static int mt_dc_trim_event(struct snd_soc_dapm_widget *w,
 	kthread_run(dc_trim_thread, priv, "dc_trim_thread");
 	return 0;
 }
+#ifdef CONFIG_SND_SOC_DBMDX
+static int mt_aud_gob_bias_event(struct snd_soc_dapm_widget *w,
+				    struct snd_kcontrol *kcontrol,
+				    int event)
+{
+	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
+	struct mt6359_priv *priv = snd_soc_component_get_drvdata(cmpnt);
+
+	switch (event) {
+	case SND_SOC_DAPM_PRE_PMU:
+		regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON13,
+			RG_AUDGLB_PWRDN_VA32_MASK_SFT,
+			0 << RG_AUDGLB_PWRDN_VA32_SFT);
+		break;
+	default:
+		break;
+	}
+	return 0;
+}
+#endif
 
 /* DAPM Widgets */
 static const struct snd_soc_dapm_widget mt6359_dapm_widgets[] = {
@@ -3754,12 +4381,25 @@ static const struct snd_soc_dapm_widget mt6359_dapm_widgets[] = {
 	SND_SOC_DAPM_SUPPLY_S("CLK_BUF", SUPPLY_SEQ_CLK_BUF,
 			      MT6359_DCXO_CW12,
 			      RG_XO_AUDIO_EN_M_SFT, 0, NULL, 0),
+#ifdef CONFIG_SND_SOC_DBMDX
+	SND_SOC_DAPM_SUPPLY_S("LDO_VAUD18", SUPPLY_SEQ_LDO_VAUD18,
+			      SND_SOC_NOPM,
+			      0, 0, NULL, 0),
+#else /* CONFIG_SND_SOC_DBMDX */
 	SND_SOC_DAPM_SUPPLY_S("LDO_VAUD18", SUPPLY_SEQ_LDO_VAUD18,
 			      MT6359_LDO_VAUD18_CON0,
 			      RG_LDO_VAUD18_EN_SFT, 0, NULL, 0),
+#endif /* CONFIG_SND_SOC_DBMDX */
+#ifdef CONFIG_SND_SOC_DBMDX
+	SND_SOC_DAPM_SUPPLY_S("AUDGLB", SUPPLY_SEQ_AUD_GLB,
+			      SND_SOC_NOPM,0, 0,
+			      mt_aud_gob_bias_event,
+			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+#else
 	SND_SOC_DAPM_SUPPLY_S("AUDGLB", SUPPLY_SEQ_AUD_GLB,
 			      MT6359_AUDDEC_ANA_CON13,
 			      RG_AUDGLB_PWRDN_VA32_SFT, 1, NULL, 0),
+#endif /* CONFIG_SND_SOC_DBMDX */
 	SND_SOC_DAPM_SUPPLY_S("AUDGLB_VOW", SUPPLY_SEQ_AUD_GLB_VOW,
 			      MT6359_AUDDEC_ANA_CON13,
 			      RG_AUDGLB_LP2_VOW_EN_VA32_SFT, 0, NULL, 0),
@@ -4140,11 +4780,18 @@ static const struct snd_soc_dapm_widget mt6359_dapm_widgets[] = {
 	SND_SOC_DAPM_INPUT("AIN3_DMIC"),
 
 	/* mic bias */
+#ifdef CONFIG_SND_SOC_DBMDX
+	SND_SOC_DAPM_SUPPLY_S("MIC_BIAS_0", SUPPLY_SEQ_MIC_BIAS,
+			      SND_SOC_NOPM,0, 0,
+			      mt_mic_bias_0_event,
+			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+#else
 	SND_SOC_DAPM_SUPPLY_S("MIC_BIAS_0", SUPPLY_SEQ_MIC_BIAS,
 			      MT6359_AUDENC_ANA_CON15,
 			      RG_AUDPWDBMICBIAS0_SFT, 0,
 			      mt_mic_bias_0_event,
 			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+#endif
 	SND_SOC_DAPM_SUPPLY_S("MIC_BIAS_1", SUPPLY_SEQ_MIC_BIAS,
 			      MT6359_AUDENC_ANA_CON16,
 			      RG_AUDPWDBMICBIAS1_SFT, 0,
@@ -4449,13 +5096,22 @@ static const struct snd_soc_dapm_route mt6359_dapm_routes[] = {
 	{"HPL Mux", "LoudSPK Playback", "DACL"},
 	{"HPR Mux", "LoudSPK Playback", "DACR"},
 
+#if OPLUS_BUG_COMPATIBILITY
+        {"HPL Mux", "Loud DualSPK Playback", "DACL"},
+	{"HPR Mux", "Loud DualSPK Playback", "DACR"},
+#endif
+
 	{"Headphone L", NULL, "HPL Mux"},
 	{"Headphone R", NULL, "HPR Mux"},
 	{"Headphone L Ext Spk Amp", NULL, "HPL Mux"},
 	{"Headphone R Ext Spk Amp", NULL, "HPR Mux"},
 
 	/* Receiver Path */
-	{"RCV Mux", "Voice Playback", "DACL"},
+#if OPLUS_BUG_COMPATIBILITY
+	{"RCV Mux", "Voice Playback", "DACR"},
+#else
+        {"RCV Mux", "Voice Playback", "DACL"},
+#endif
 	{"Receiver", NULL, "RCV Mux"},
 
 	/* VOW */
@@ -4660,6 +5316,7 @@ static void enable_trim_buf(struct mt6359_priv *priv, bool enable)
 #if !defined(CONFIG_FPGA_EARLY_PORTING)
 static void enable_trim_circuit(struct mt6359_priv *priv, bool enable)
 {
+	pr_info("%s: set %d\n", __func__, enable);
 	if (enable) {
 		regmap_update_bits(priv->regmap, MT6359_LDO_VAUD18_CON0,
 				   RG_LDO_VAUD18_EN_MASK_SFT,
@@ -4674,10 +5331,11 @@ static void enable_trim_circuit(struct mt6359_priv *priv, bool enable)
 		regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON2,
 				   RG_AUDHPTRIM_EN_VAUDP32_MASK_SFT,
 				   0 << RG_AUDHPTRIM_EN_VAUDP32_SFT);
-
+#ifndef CONFIG_SND_SOC_DBMDX
 		regmap_update_bits(priv->regmap, MT6359_LDO_VAUD18_CON0,
 				   RG_LDO_VAUD18_EN_MASK_SFT,
 				   0 << RG_LDO_VAUD18_EN_SFT);
+#endif /* CONFIG_SND_SOC_DBMDX */
 	}
 }
 
@@ -6363,8 +7021,10 @@ static int mt6359_rcv_dcc_set(struct snd_kcontrol *kcontrol,
 
 	/* receiver downlink */
 	playback_gpio_set(priv);
+#ifndef CONFIG_SND_SOC_DBMDX
 	regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON13,
 			   RG_AUDGLB_PWRDN_VA32_MASK_SFT, 0x0);
+#endif /* CONFIG_SND_SOC_DBMDX */
 	regmap_update_bits(priv->regmap, MT6359_DCXO_CW12,
 			   0x1 << RG_XO_AUDIO_EN_M_SFT,
 			   0x1 << RG_XO_AUDIO_EN_M_SFT);
@@ -6606,11 +7266,17 @@ static int mt6359_codec_init_reg(struct mt6359_priv *priv)
 	regmap_update_bits(priv->regmap, MT6359_AUDDEC_ANA_CON7,
 			   RG_AUDLOLSCDISABLE_VAUDP32_MASK_SFT,
 			   0x1 << RG_AUDLOLSCDISABLE_VAUDP32_SFT);
-
+#ifdef OPLUS_BUG_COMPATIBILITY
+	/* Set HP_EINT trigger level to 2.0v */
+	//regmap_update_bits(priv->regmap, MT6359_AUDENC_ANA_CON19,
+	//		   RG_EINTCOMPVTH_MASK_SFT,
+	//		   0x2 << RG_EINTCOMPVTH_SFT);
+#else
 	/* Set HP_EINT trigger level to 2.0v */
 	regmap_update_bits(priv->regmap, MT6359_AUDENC_ANA_CON19,
 			   RG_EINTCOMPVTH_MASK_SFT,
 			   0x2 << RG_EINTCOMPVTH_SFT);
+#endif
 
 	/* set gpio */
 	gpio_smt_set(priv);
@@ -6710,6 +7376,11 @@ static int mt6359_codec_probe(struct snd_soc_codec *codec)
 {
 	struct snd_soc_component *cmpnt = &codec->component;
 	struct mt6359_priv *priv = snd_soc_component_get_drvdata(cmpnt);
+	int error_hw;
+	struct device_node *node = NULL;
+#ifdef CONFIG_SND_SOC_OPLUS_PA_MANAGER
+       int ret;
+#endif /* CONFIG_SND_SOC_OPLUS_PA_MANAGER */
 
 	snd_soc_component_init_regmap(cmpnt, priv->regmap);
 
@@ -6727,6 +7398,15 @@ static int mt6359_codec_probe(struct snd_soc_codec *codec)
 				       mt6359_snd_vow_controls,
 				       ARRAY_SIZE(mt6359_snd_vow_controls));
 
+#ifdef CONFIG_SND_SOC_OPLUS_PA_MANAGER
+       ret = oplus_add_pa_manager_snd_controls(cmpnt);
+       if (ret < 0) {
+               pr_err("%s(), add oplus pa manager snd controls failed:\n",
+                       __func__);
+               return -EINVAL;
+       }
+#endif /*CONFIG_SND_SOC_OPLUS_PA_MANAGER*/
+
 	mt6359_codec_init_reg(priv);
 
 	priv->ana_gain[AUDIO_ANALOG_VOLUME_HPOUTL] = 8;
@@ -6737,6 +7417,16 @@ static int mt6359_codec_probe(struct snd_soc_codec *codec)
 
 	priv->hp_current_calibrate_val = get_hp_current_calibrate_val(priv);
 
+	node = of_find_matching_node(node, accdet_of_match);
+	if(!node){
+		pr_notice("accdet %s can't find compatible node\n", __func__);
+	}else{
+		if (0==of_property_read_u32(node, "moisture_disable_error_switch", &error_hw))
+		{
+			pr_info("%s pmic LYU THREE_FIVE_MM_HEADSET_COMPATIBLE", __func__);
+			close_noise_headset = 1;
+		}
+	}
 	return 0;
 }
 
@@ -7834,6 +8524,45 @@ static const struct regmap_config mt6359_regmap = {
 };
 #endif
 
+
+#ifdef OPLUS_ARCH_EXTENDS
+static int mt6359_get_mic_bias_val(int micb_mv)
+{
+	int val = MIC_BIAS_1P9;
+
+	switch (micb_mv) {
+		case 1700:
+			val = MIC_BIAS_1P7;
+			break;
+		case 1800:
+			val = MIC_BIAS_1P8;
+			break;
+		case 1900:
+			val = MIC_BIAS_1P9;
+			break;
+		case 2000:
+			val = MIC_BIAS_2P0;
+			break;
+		case 2100:
+			val = MIC_BIAS_2P1;
+			break;
+		case 2500:
+			val = MIC_BIAS_2P5;
+			break;
+		case 2600:
+			val = MIC_BIAS_2P6;
+			break;
+		case 2700:
+			val = MIC_BIAS_2P7;
+			break;
+		default:
+			pr_warn("%s(), invalid micb_mv %d\n", __func__, micb_mv);
+			val = MIC_BIAS_2P5;
+			break;
+	}
+	return val;
+}
+#endif /* OPLUS_ARCH_EXTENDS */
 static void mt6359_parse_dt(struct mt6359_priv *priv)
 {
 	int ret, i;
@@ -7877,6 +8606,10 @@ static int mt6359_platform_driver_probe(struct platform_device *pdev)
 #ifdef CONFIG_MTK_PMIC_WRAP
 	struct device_node *pwrap_node;
 #endif
+#ifdef OPLUS_ARCH_EXTENDS
+	int micb_mv = 1900;
+	int ret;
+#endif /* OPLUS_ARCH_EXTENDS */
 
 	priv = devm_kzalloc(&pdev->dev,
 			    sizeof(struct mt6359_priv),
@@ -7905,6 +8638,10 @@ static int mt6359_platform_driver_probe(struct platform_device *pdev)
 	if (IS_ERR(priv->regmap))
 		return PTR_ERR(priv->regmap);
 
+#ifdef CONFIG_SND_SOC_DBMDX
+		mt6359_ep_regmap = priv->regmap;
+#endif
+
 #ifdef CONFIG_DEBUG_FS
 	/* create debugfs file */
 	priv->debugfs = debugfs_create_file("mtksocanaaudio",
@@ -7912,6 +8649,24 @@ static int mt6359_platform_driver_probe(struct platform_device *pdev)
 					    priv, &mt6359_debugfs_ops);
 #endif
 	mt6359_parse_dt(priv);
+
+#ifdef OPLUS_ARCH_EXTENDS
+	priv->micb0_val = MIC_BIAS_2P5; //default is 2.5V
+	priv->micb2_val = MIC_BIAS_2P5; //default is 2.5V
+	ret = of_property_read_u32(pdev->dev.of_node,
+			"mediatek,micbias0-mv", &micb_mv);
+	if (!ret) {
+		priv->micb0_val = mt6359_get_mic_bias_val(micb_mv);
+		pr_info("%s(), micb0_val %d\n", __func__, priv->micb0_val);
+	}
+
+	ret = of_property_read_u32(pdev->dev.of_node,
+			"mediatek,micbias2-mv", &micb_mv);
+	if (!ret) {
+		priv->micb2_val = mt6359_get_mic_bias_val(micb_mv);
+		pr_info("%s(), micb2_val %d\n", __func__, priv->micb2_val);
+	}
+#endif /* OPLUS_ARCH_EXTENDS */
 
 	dev_info(priv->dev, "%s(), dev name %s\n",
 		__func__, dev_name(&pdev->dev));

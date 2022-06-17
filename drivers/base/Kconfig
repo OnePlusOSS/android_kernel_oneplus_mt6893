@@ -244,6 +244,9 @@ config SOC_BUS
 	select GLOB
 
 source "drivers/base/regmap/Kconfig"
+#ifdef OPLUS_FEATURE_TP_BASIC
+source "drivers/base/kernelFwUpdate/Kconfig"
+#endif /*OPLUS_FEATURE_TP_BASIC*/
 
 config DMA_SHARED_BUFFER
 	bool

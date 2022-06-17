@@ -31,6 +31,33 @@ struct LCM_DRIVER *lcm_driver_list[] = {
 #if defined(HX83102P_WXGA_VDO_INCELL_BOE)
 	&hx83102p_wxga_vdo_incell_boe_lcm_drv,
 #endif
+#if defined(OPLUS20730_SAMSUNG_AMS643XY04_DSI_CMD)
+	&oplus20730_samsung_ams643xy04_1080p_dsi_vdo_lcm_drv_1,
+	&oplus20730_samsung_ams643xy04_1080p_dsi_vdo_lcm_drv_2,
+        &oplus20730_samsung_ams643xy04_1080p_dsi_vdo_lcm_drv_3,
+#endif
+#if defined(ILT9882N_TRULY_EVEN_HDP_DSI_VDO_LCM)
+	&ilt9882n_truly_even_hdp_dsi_vdo_lcm_drv,
+#endif
+
+#if defined(ILT7807S_HLT_EVEN_HDP_DSI_VDO_LCM)
+	&ilt7807s_hlt_even_hdp_dsi_vdo_lcm_drv,
+#endif
+#if defined(NT36525B_HLT_EVEN_BOE_HDP_DSI_VDO_LCM)
+    &nt36525b_hlt_even_boe_hdp_dsi_vdo_lcm_drv,
+#endif
+#if defined(NT36672C_FHDP_DSI_VDO_TIANMA_ZAL1852)
+	&nt36672c_fhdp_dsi_vdo_tianma_zal1852_lcm_drv,
+#endif //NT36672C_FHDP_DSI_VDO_TIANMA_ZAL1852
+
+#if defined(NT36672C_FHDP_DSI_VDO_JDI_ZAL1852)
+	&nt36672c_fhdp_dsi_vdo_jdi_zal1852_lcm_drv,
+#endif //NT36672C_FHDP_DSI_VDO_JDI_ZAL1852
+
+#if defined(NT36672C_FHDP_DSI_VDO_BOE_ZAL1852)
+	&nt36672c_fhdp_dsi_vdo_boe_zal1852_lcm_drv,
+#endif //NT36672C_FHDP_DSI_VDO_BOE_ZAL1852
+
 #if defined(ES6311_ANX6585_ZIGZAG_WXGA)
 	&es6311_anx6585_zigzag_wxga_lcm_drv,
 #endif

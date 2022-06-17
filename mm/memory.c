@@ -1105,6 +1105,10 @@ static int copy_pte_range(struct mm_struct *dst_mm, struct mm_struct *src_mm,
 	int rss[NR_MM_COUNTERS];
 	swp_entry_t entry = (swp_entry_t){0};
 
+#ifdef OPLUS_BUG_STABILITY
+	unsigned long orig_addr = addr;
+#endif
+
 again:
 	init_rss_vec(rss);
 
@@ -1141,6 +1145,17 @@ again:
 	} while (dst_pte++, src_pte++, addr += PAGE_SIZE, addr != end);
 
 	arch_leave_lazy_mmu_mode();
+
+#ifdef OPLUS_BUG_STABILITY
+	/*
+	 * Prevent the page fault handler to copy the page while stale tlb entry
+	 * are still not flushed.
+	 */
+	if (IS_ENABLED(CONFIG_SPECULATIVE_PAGE_FAULT) &&
+			is_cow_mapping(vma->vm_flags))
+		flush_tlb_range(vma, orig_addr, end);
+#endif
+
 	spin_unlock(src_ptl);
 	pte_unmap(orig_src_pte);
 	add_mm_rss_vec(dst_mm, rss);
@@ -2917,31 +2932,47 @@ static int do_wp_page(struct vm_fault *vmf)
 	 * Take out anonymous pages first, anonymous shared vmas are
 	 * not dirty accountable.
 	 */
-	if (PageAnon(vmf->page)) {
-		struct page *page = vmf->page;
+	if (PageAnon(vmf->page) && !PageKsm(vmf->page)) {
+		int total_map_swapcount;
 
-		/* PageKsm() doesn't necessarily raise the page refcount */
-		if (PageKsm(page) || page_count(page) != 1)
-			goto copy;
-		if (!trylock_page(page))
-			goto copy;
-		if (PageKsm(page) || page_mapcount(page) != 1 || page_count(page) != 1) {
-			unlock_page(page);
-			goto copy;
+		if (!trylock_page(vmf->page)) {
+			get_page(vmf->page);
+			pte_unmap_unlock(vmf->pte, vmf->ptl);
+			lock_page(vmf->page);
+			if (!pte_map_lock(vmf)) {
+				unlock_page(vmf->page);
+				put_page(vmf->page);
+				return VM_FAULT_RETRY;
+			}
+			if (!pte_same(*vmf->pte, vmf->orig_pte)) {
+				unlock_page(vmf->page);
+				pte_unmap_unlock(vmf->pte, vmf->ptl);
+				put_page(vmf->page);
+				return 0;
+			}
+			put_page(vmf->page);
 		}
-		/*
-		 * Ok, we've got the only map reference, and the only
-		 * page count reference, and the page is locked,
-		 * it's dark out, and we're wearing sunglasses. Hit it.
-		 */
-		unlock_page(page);
-		wp_page_reuse(vmf);
-		return VM_FAULT_WRITE;
+		if (reuse_swap_page(vmf->page, &total_map_swapcount)) {
+			if (total_map_swapcount == 1) {
+				/*
+				 * The page is all ours. Move it to
+				 * our anon_vma so the rmap code will
+				 * not search our parent or siblings.
+				 * Protected against the rmap code by
+				 * the page lock.
+				 */
+				page_move_anon_rmap(vmf->page, vma);
+			}
+			unlock_page(vmf->page);
+			wp_page_reuse(vmf);
+			return VM_FAULT_WRITE;
+		}
+		unlock_page(vmf->page);
 	} else if (unlikely((vmf->vma_flags & (VM_WRITE|VM_SHARED)) ==
 					(VM_WRITE|VM_SHARED))) {
 		return wp_page_shared(vmf);
 	}
-copy:
+
 	/*
 	 * Ok, we need to copy. Oh, well..
 	 */
@@ -3271,6 +3302,7 @@ out_release:
 	}
 	return ret;
 }
+EXPORT_SYMBOL(do_swap_page);
 
 /*
  * We enter with non-exclusive mmap_sem (to exclude vma changes,

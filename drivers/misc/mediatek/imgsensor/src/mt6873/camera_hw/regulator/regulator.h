@@ -21,6 +21,9 @@
 
 #include "imgsensor_hw.h"
 #include "imgsensor_common.h"
+#include "imgsensor.h"
+
+extern struct IMGSENSOR gimgsensor;
 
 enum REGULATOR_VOLTAGE {
 	REGULATOR_VOLTAGE_0    = 0,

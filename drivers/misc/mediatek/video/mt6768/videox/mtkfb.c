@@ -96,6 +96,9 @@ static bool no_update;
 static struct disp_session_input_config session_input;
 long dts_gpio_state;
 
+#ifdef OPLUS_BUG_STABILITY
+extern int __attribute((weak)) oplus_mtkfb_custom_data_init(struct platform_device *pdev) { return 0; };
+#endif /* OPLUS_BUG_STABILITY */
 
 /* macro definiton */
 #define ALIGN_TO(x, n)  (((x) + ((n) - 1)) & ~((n) - 1))
@@ -2531,7 +2534,9 @@ static int mtkfb_probe(struct platform_device *pdev)
 			return -EPROBE_DEFER;
 		}
 	}
-
+	#ifdef OPLUS_BUG_STABILITY
+	oplus_mtkfb_custom_data_init(pdev);
+	#endif
 	_parse_tag_videolfb();
 
 	init_state = 0;
@@ -2657,6 +2662,18 @@ static int mtkfb_probe(struct platform_device *pdev)
 		register_ccci_sys_call_back(MD_SYS1,
 			MD_DISPLAY_DYNAMIC_MIPI, mipi_clk_change);
 	}
+#ifdef OPLUS_BUG_STABILITY
+	if (!strcmp(mtkfb_find_lcm_driver(),"ilt9881h_txd_hdp_dsi_vdo_lcm_drv")
+      ||!strcmp(mtkfb_find_lcm_driver(),"ilt9881h_truly_hdp_dsi_vdo_lcm_drv")
+      ||!strcmp(mtkfb_find_lcm_driver(),"nt36525b_hlt_hdp_dsi_vdo_lcm_drv")
+      ||!strcmp(mtkfb_find_lcm_driver(),"nt36525b_hlt_psc_ac_boe_vdo")
+      ||!strcmp(mtkfb_find_lcm_driver(),"ilt9882n_truly_even_hdp_dsi_vdo_lcm")
+      ||!strcmp(mtkfb_find_lcm_driver(),"ilt7807s_hlt_even_hdp_dsi_vdo_lcm")
+      ||!strcmp(mtkfb_find_lcm_driver(),"nt36525b_hlt_psc_ac_vdo")) {
+		register_ccci_sys_call_back(MD_SYS1,
+			MD_DISPLAY_DYNAMIC_MIPI, mipi_clk_change);
+	}
+#endif
 
 	MSG_FUNC_LEAVE();
 	pr_info("disp driver(2) %s end\n", __func__);
@@ -2714,10 +2731,16 @@ static void mtkfb_shutdown(struct platform_device *pdev)
 	MTKFB_LOG("[FB Driver] %s()\n", __func__);
 	if (primary_display_is_sleepd()) {
 		MTKFB_LOG("mtkfb has been power off\n");
+		#ifdef OPLUS_BUG_STABILITY
+		primary_display_shutdown();
+		#endif
 		return;
 	}
 	primary_display_set_power_mode(FB_SUSPEND);
 	primary_display_suspend();
+	#ifdef OPLUS_BUG_STABILITY
+	primary_display_shutdown();
+	#endif
 	MTKFB_LOG("[FB Driver] leave %s\n", __func__);
 }
 

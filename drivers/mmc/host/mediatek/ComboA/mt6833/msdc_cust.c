@@ -1629,6 +1629,8 @@ int msdc_of_parse(struct platform_device *pdev, struct mmc_host *mmc)
 				host->id);
 	}
 
+	printk(KERN_ERR "%s: cd_gpio=%d, cd_level=%d",__func__, cd_gpio, host->hw->cd_level);
+
 	msdc_get_register_settings(host, np);
 #if !defined(FPGA_PLATFORM)
 	msdc_get_pinctl_settings(host, np);

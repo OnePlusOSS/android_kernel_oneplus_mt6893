@@ -1,0 +1,34 @@
+/* Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/* Please modify i2c bus number according to your platform */
+&i2c7 {
+	bq2589x@6a {
+		compatible = "ti,bq25890h";
+		reg = <0x6a>;
+	    interrupt-parent = <&pio>;
+	    interrupts = <20 IRQ_TYPE_EDGE_FALLING 20 0>;
+		ti,bq2589x,usb-vlim =<4400>;
+		ti,bq2589x,precharge-current = <256>;
+		ti,bq2589x,termination-current = <250>;
+		ti,bq2589x,charge-detect-enable;
+
+		/*
+		 * Charger name
+		 * Main charger: primary_chg
+		 * Slave charger: secondary_chg
+		 */
+		charger_name = "primary_chg";
+		status = "okay";
+	};
+};
+

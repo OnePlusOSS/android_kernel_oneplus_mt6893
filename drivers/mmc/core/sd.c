@@ -29,6 +29,10 @@
 #include "sd.h"
 #include "sd_ops.h"
 
+#ifdef OPLUS_FEATURE_SDCARD_INFO
+#include "../host/sdInfo/sdinfo.h"
+#endif
+
 static const unsigned int tran_exp[] = {
 	10000,		100000,		1000000,	10000000,
 	0,		0,		0,		0
@@ -1214,6 +1218,10 @@ static int _mmc_sd_resume(struct mmc_host *host)
 
 out:
 	mmc_release_host(host);
+#ifdef OPLUS_FEATURE_SDCARD_INFO
+	if (err)
+		sdinfo.runtime_resume_error_count += 1;
+#endif
 	return err;
 }
 

@@ -858,6 +858,29 @@ static int show_smap(struct seq_file *m, void *v)
 
 	smap_gather_stats(vma, &mss);
 
+
+
+	if (strcmp(current->comm, "android.bg") == 0) {
+		if ((unsigned long)(mss.pss >> (10 + PSS_SHIFT)) > 0) {
+			seq_printf(m,
+				"Pss:            %8lu kB\n",
+			(	unsigned long)(mss.pss >> (10 + PSS_SHIFT)));
+		}
+		if ((mss.private_clean >> 10) > 0) {
+			seq_printf(m,
+				"Private_Clean:  %8lu kB\n",
+				mss.private_clean >> 10);
+		}
+		if ((mss.private_dirty >> 10) > 0) {
+			seq_printf(m,
+				"Private_Dirty:  %8lu kB\n",
+				mss.private_dirty >> 10);
+		}
+		m_cache_vma(m, vma);
+		return 0;
+	}
+    //#endif /*OPLUS_BUG_STABILITY*/
+
 	show_map_vma(m, vma);
 	if (vma_get_anon_name(vma)) {
 		seq_puts(m, "Name:           ");
@@ -1801,7 +1824,11 @@ cont:
 			break;
 	}
 	pte_unmap_unlock(pte - 1, ptl);
+#if defined(OPLUS_FEATURE_PROCESS_RECLAIM) && defined(CONFIG_PROCESS_RECLAIM_ENHANCE)
+	(void)reclaim_pages_from_list(&page_list, vma, NULL);
+#else
 	reclaim_pages_from_list(&page_list, vma);
+#endif
 	if (addr != end)
 		goto cont;
 

@@ -28,6 +28,17 @@
  */
 #define EXT_SPK_AMP_W_NAME "Ext_Speaker_Amp"
 
+#ifdef OPLUS_ARCH_EXTENDS
+extern void extend_codec_i2s_be_dailinks(struct snd_soc_dai_link *dailink, size_t size);
+extern bool extend_codec_i2s_compare(struct snd_soc_dai_link *dailink, int dailink_num);
+#endif
+
+#ifdef CONFIG_SND_SOC_TFA_HAPTIC
+static const char *const tfa_haptic_ring_sync_str[] = {"Off","On"};
+static int tfa_haptic_sync_status = 0;
+extern void tfa_haptic_i2s_be_dailink(struct snd_soc_dai_link *dailink, size_t size);
+#endif /* CONFIG_SND_SOC_TFA_HAPTIC */
+
 static const char *const mt6877_spk_type_str[] = {MTK_SPK_NOT_SMARTPA_STR,
 						  MTK_SPK_RICHTEK_RT5509_STR,
 						  MTK_SPK_MEDIATEK_MT6660_STR,
@@ -53,6 +64,13 @@ static const struct soc_enum mt6877_spk_type_enum[] = {
 	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(mt6877_spk_i2s_type_str),
 			    mt6877_spk_i2s_type_str),
 };
+
+#ifdef CONFIG_SND_SOC_TFA_HAPTIC
+static const struct soc_enum tfa_haptic_type_enum[] = {
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(tfa_haptic_ring_sync_str),
+				tfa_haptic_ring_sync_str),
+};
+#endif /* CONFIG_SND_SOC_TFA_HAPTIC */
 
 static int mt6877_spk_type_get(struct snd_kcontrol *kcontrol,
 			       struct snd_ctl_elem_value *ucontrol)
@@ -83,6 +101,28 @@ static int mt6877_spk_i2s_in_type_get(struct snd_kcontrol *kcontrol,
 	ucontrol->value.integer.value[0] = idx;
 	return 0;
 }
+
+#ifdef CONFIG_SND_SOC_TFA_HAPTIC
+static int tfa_haptic_ring_sync_set(struct snd_kcontrol *kcontrol,
+				       struct snd_ctl_elem_value *ucontrol)
+{
+	tfa_haptic_sync_status = ucontrol->value.integer.value[0];
+
+	return 0;
+}
+
+static int tfa_haptic_ring_sync_get(struct snd_kcontrol *kcontrol,
+				      struct snd_ctl_elem_value *ucontrol)
+{
+	int idx = tfa_haptic_sync_status;
+
+	pr_debug("%s() = %d\n", __func__, idx);
+	ucontrol->value.integer.value[0] = idx;
+	return 0;
+}
+#endif /*CONFIG_SND_SOC_TFA_HAPTIC*/
+
+
 
 static int mt6877_mt6359_spk_amp_event(struct snd_soc_dapm_widget *w,
 				       struct snd_kcontrol *kcontrol,
@@ -123,6 +163,15 @@ static const struct snd_soc_dapm_route mt6877_mt6359_routes[] = {
 	{EXT_SPK_AMP_W_NAME, NULL, "Headphone R Ext Spk Amp"},
 };
 
+#ifdef CONFIG_OPLUS_FEATURE_MM_FEEDBACK
+#define HAL_FEEDBACK_MAX_BYTES         (256)
+extern int hal_feedback_config_get(struct snd_kcontrol *kcontrol,
+			unsigned int __user *bytes,
+			unsigned int size);
+extern int hal_feedback_config_set(struct snd_kcontrol *kcontrol,
+			const unsigned int __user *bytes,
+			unsigned int size);
+#endif  /*CONFIG_OPLUS_FEATURE_MM_FEEDBACK*/
 static const struct snd_kcontrol_new mt6877_mt6359_controls[] = {
 	SOC_DAPM_PIN_SWITCH(EXT_SPK_AMP_W_NAME),
 	SOC_ENUM_EXT("MTK_SPK_TYPE_GET", mt6877_spk_type_enum[0],
@@ -131,6 +180,15 @@ static const struct snd_kcontrol_new mt6877_mt6359_controls[] = {
 		     mt6877_spk_i2s_out_type_get, NULL),
 	SOC_ENUM_EXT("MTK_SPK_I2S_IN_TYPE_GET", mt6877_spk_type_enum[1],
 		     mt6877_spk_i2s_in_type_get, NULL),
+#ifdef CONFIG_SND_SOC_TFA_HAPTIC
+	SOC_ENUM_EXT("TFA_HAPTIC_RING_SYNC", tfa_haptic_type_enum[0],
+		    tfa_haptic_ring_sync_get, tfa_haptic_ring_sync_set),
+#endif /*CONFIG_SND_SOC_TFA_HAPTIC*/
+#ifdef CONFIG_OPLUS_FEATURE_MM_FEEDBACK
+	SND_SOC_BYTES_TLV("HAL FEEDBACK",
+			  HAL_FEEDBACK_MAX_BYTES,
+			  hal_feedback_config_get, hal_feedback_config_set),
+#endif //CONFIG_OPLUS_FEATURE_MM_FEEDBACK
 };
 
 /*
@@ -1242,11 +1300,24 @@ static int mt6877_mt6359_dev_probe(struct platform_device *pdev)
 			"Property 'audio-codec' missing or invalid\n");
 		return -EINVAL;
 	}
+
+#ifdef CONFIG_SND_SOC_TFA_HAPTIC
+	tfa_haptic_i2s_be_dailink(mt6877_mt6359_dai_links, ARRAY_SIZE(mt6877_mt6359_dai_links));
+#endif /* CONFIG_SND_SOC_TFA_HAPTIC */
+
+//#ifdef OPLUS_ARCH_EXTENDS
+	extend_codec_i2s_be_dailinks(mt6877_mt6359_dai_links, ARRAY_SIZE(mt6877_mt6359_dai_links));
+//#endif /* VENDOR_EDIT */
+
 	for (i = 0; i < card->num_links; i++) {
 		if (mt6877_mt6359_dai_links[i].codec_name ||
 		    i == spk_out_dai_link_idx ||
 		    i == spk_iv_dai_link_idx)
 			continue;
+//#ifdef OPLUS_ARCH_EXTENDS
+		if (extend_codec_i2s_compare(mt6877_mt6359_dai_links, i))
+			continue;
+//#endif /* VENDOR_EDIT */
 		mt6877_mt6359_dai_links[i].codec_of_node = codec_node;
 	}
 

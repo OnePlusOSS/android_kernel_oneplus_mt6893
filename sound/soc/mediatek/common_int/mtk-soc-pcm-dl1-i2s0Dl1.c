@@ -283,7 +283,15 @@ static int mtk_pcm_I2S0dl1_open(struct snd_pcm_substream *substream)
 
 static int mtk_pcm_I2S0dl1_close(struct snd_pcm_substream *substream)
 {
+#ifdef CONFIG_OPLUS_FEATURE_KTV_V2_NONDAPM
+	unsigned long flags;
+#endif /* CONFIG_OPLUS_FEATURE_KTV_V2_NONDAPM */
 	pr_debug("%s\n", __func__);
+#ifdef CONFIG_OPLUS_FEATURE_KTV_V2_NONDAPM
+	spin_lock_irqsave(&ktv_dl_ctrl_lock, flags);
+	write_access = 0;
+	spin_unlock_irqrestore(&ktv_dl_ctrl_lock, flags);
+#endif /* CONFIG_OPLUS_FEATURE_KTV_V2_NONDAPM */
 
 	if (is_irq_from_ext_module()) {
 		ext_sync_signal_lock();
@@ -350,6 +358,9 @@ static int mtk_pcm_I2S0dl1_prepare(struct snd_pcm_substream *substream)
 	unsigned int u32AudioI2S = 0;
 	bool mI2SWLen;
 
+#ifdef CONFIG_OPLUS_FEATURE_KTV_V2_NONDAPM
+	unsigned long flags;
+#endif /* CONFIG_OPLUS_FEATURE_KTV_V2_NONDAPM */
 	pr_debug("%s: mPrepareDone = %d, format = %d, sample rate = %d\n",
 		__func__, mPrepareDone, runtime->format,
 		substream->runtime->rate);
@@ -454,6 +465,11 @@ static int mtk_pcm_I2S0dl1_prepare(struct snd_pcm_substream *substream)
 		EnableAfe(true);
 		mPrepareDone = true;
 	}
+#ifdef CONFIG_OPLUS_FEATURE_KTV_V2_NONDAPM
+	spin_lock_irqsave(&ktv_dl_ctrl_lock, flags);
+	write_access = 1;
+	spin_unlock_irqrestore(&ktv_dl_ctrl_lock, flags);
+#endif /* CONFIG_OPLUS_FEATURE_KTV_V2_NONDAPM */
 	return 0;
 }
 

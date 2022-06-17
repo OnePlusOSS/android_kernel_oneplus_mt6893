@@ -429,3 +429,60 @@ config MTK_ULTRASND_PROXIMITY
 	  emulate physical proximity sensor. Using
 	  IPI interface to communicate with SCP side and
 	  be controlled by sensor hal.
+
+#ifdef OPLUS_BUG_STABILITY
+config SND_SOC_FSA
+	bool "Support fsa switch"
+	default n
+	help
+	  This adds fsa driver for Mediatek boards
+	  that can be used with other platforms
+	  Select Y if you have such device.
+	  If unsure select "N".
+
+config MTK_FSA4480_I2C
+	bool "Support fsa4480 switch"
+	default n
+	help
+	  This adds fsa4480 driver for Mediatek boards
+	  that can be used with other platforms
+	  Select Y if you have such device.
+	  If unsure select "N".
+
+#ifdef OPLUS_BUG_STABILITY
+config SND_SOC_AW87339
+	tristate "SoC Audio for awinic AW87339 Smart K PA"
+	depends on I2C
+	help
+	This option enables support for AW87339 Smart K PA.
+
+config SND_SOC_AW87359
+	tristate "SoC Audio for awinic AW87359 Smart K PA"
+	depends on I2C
+	help
+	This option enables support for AW87359 Smart K PA.
+#endif /* OPLUS_BUG_STABILITY */
+
+config SND_SOC_TFA_HAPTIC
+	bool "Support tfa haptic"
+	default n
+	help
+	  This adds tfa_haptic driver for Mediatek boards
+	  that can be used with other platforms
+	  Select Y if you have such device.
+	  If unsure select "N".
+#endif /* OPLUS_BUG_STABILITY */
+
+#ifdef ODM_HQ_EDIT
+config SND_SOC_AW87319
+	tristate "SoC Audio for awinic AW87319 Smart K PA"
+	depends on I2C
+	help
+	This option enables support for AW87319 Smart K PA.
+
+config SND_SOC_SIA81XX
+	tristate "SoC Audio for awinic SIA81XX Smart PA"
+	depends on I2C
+	help
+	This option enables support for SIA81XX Smart K PA.
+#endif

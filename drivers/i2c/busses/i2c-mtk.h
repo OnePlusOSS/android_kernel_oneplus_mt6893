@@ -131,7 +131,7 @@
 #define I2C_SIDE_BAND_RST		(0x1 << 5)
 
 #define I2C_RECORD_LEN			10
-#define I2C_MAX_CHANNEL		10
+#define I2C_MAX_CHANNEL		12
 
 #define MAX_SCL_LOW_TIME		2/* unit: milli-second */
 #define LSAMPLE_MSK			0x1C0
@@ -450,6 +450,9 @@ struct mt_i2c {
 	const struct mtk_i2c_compatible *dev_comp;
 	struct mtk_i2c_pll *i2c_pll_info;
 	struct i2c_info rec_info[I2C_RECORD_LEN];
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	struct pinctrl *pctrl;
+#endif /*OPLUS_FEATURE_CHG_BASIC*/
 };
 
 #if defined(CONFIG_MTK_FPGA) || defined(CONFIG_FPGA_EARLY_PORTING)

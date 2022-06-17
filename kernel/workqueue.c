@@ -4428,6 +4428,46 @@ void print_worker_info(const char *log_lvl, struct task_struct *task)
 	}
 }
 
+#ifdef CONFIG_OPLUS_FEATURE_MIDAS
+void get_worker_info(struct task_struct *task, char *buf)
+{
+	work_func_t *fn = NULL;
+	char name[WQ_NAME_LEN] = { };
+	char fn_name[WQ_NAME_LEN] = { };
+	char desc[WORKER_DESC_LEN] = { };
+	struct pool_workqueue *pwq = NULL;
+	struct workqueue_struct *wq = NULL;
+	struct worker *worker;
+
+	if (!(task->flags & PF_WQ_WORKER))
+		return;
+
+	/*
+	 * This function is called without any synchronization and @task
+	 * could be in any state.  Be careful with dereferences.
+	 */
+	worker = kthread_probe_data(task);
+
+	/*
+	 * Carefully copy the associated workqueue's workfn and name.  Keep
+	 * the original last '\0' in case the original contains garbage.
+	 */
+	probe_kernel_read(&fn, &worker->current_func, sizeof(fn));
+	probe_kernel_read(&pwq, &worker->current_pwq, sizeof(pwq));
+	probe_kernel_read(&wq, &pwq->wq, sizeof(wq));
+	probe_kernel_read(name, wq->name, sizeof(name) - 1);
+	probe_kernel_read(desc, worker->desc, sizeof(desc) - 1);
+
+	if (name[0]) {
+		strncpy(buf, name, sizeof(name));
+	} else if (fn) {
+		snprintf(fn_name, sizeof(fn_name), "%pf", fn);
+		if (fn_name[0])
+			strncpy(buf, fn_name, sizeof(fn_name));
+	}
+}
+#endif
+
 static void pr_cont_pool_info(struct worker_pool *pool)
 {
 	pr_cont(" cpus=%*pbl", nr_cpumask_bits, pool->attrs->cpumask);

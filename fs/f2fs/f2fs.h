@@ -28,6 +28,10 @@
 #include <linux/fscrypt.h>
 #include <linux/fsverity.h>
 
+#if defined(OPLUS_FEATURE_IOMONITOR) && defined(CONFIG_IOMONITOR)
+#include <linux/iomonitor/iomonitor.h>
+#endif /*OPLUS_FEATURE_IOMONITOR*/
+
 #ifdef CONFIG_F2FS_CHECK_FS
 #define f2fs_bug_on(sbi, condition)	BUG_ON(condition)
 #else
@@ -202,11 +206,19 @@ enum {
 
 #define MAX_DISCARD_BLOCKS(sbi)		BLKS_PER_SEC(sbi)
 #define DEF_MAX_DISCARD_REQUEST		8	/* issue 8 discards per round */
-#define DEF_MIN_DISCARD_ISSUE_TIME	50	/* 50 ms, if exists */
-#define DEF_MID_DISCARD_ISSUE_TIME	500	/* 500 ms, if device busy */
-#define DEF_MAX_DISCARD_ISSUE_TIME	60000	/* 60 s, if no candidates */
+//#define DEF_MIN_DISCARD_ISSUE_TIME	50	/* 50 ms, if exists */
+//#define DEF_MID_DISCARD_ISSUE_TIME	500	/* 500 ms, if device busy */
+//#define DEF_MAX_DISCARD_ISSUE_TIME	60000	/* 60 s, if no candidates */
 #define DEF_DISCARD_URGENT_UTIL		80	/* do more discard over 80% */
 #define DEF_CP_INTERVAL			60	/* 60 secs */
+#define DEF_MIN_DISCARD_ISSUE_TIME	100	/* 100 ms, if exists */
+#define DEF_MID_DISCARD_ISSUE_TIME	2000	/* 2 s, if dev is busy */
+#define DEF_MAX_DISCARD_ISSUE_TIME	120000	/* 120 s, if no candidates */
+#define DEF_DISCARD_WAKEUP_INTERVAL	900	/* 900 secs */
+#define DEF_DISCARD_BALANCE_TIME	8000	/* 8000 ms */
+#define DEF_URGENT_DISCARD_ISSUE_TIME	50	/* 50 ms, if force */
+#define DEF_DISCARD_EMPTY_ISSUE_TIME	600000	/* 10 min, undiscard block=0 */
+#define DEF_GC_IDLE_INTERVAL		1	/* 1 secs */
 #define DEF_IDLE_INTERVAL		5	/* 5 secs */
 #define DEF_DISABLE_INTERVAL		5	/* 5 secs */
 #define DEF_DISABLE_QUICK_INTERVAL	1	/* 1 secs */
@@ -316,6 +328,9 @@ struct discard_cmd {
 	int error;			/* bio error */
 	spinlock_t lock;		/* for state/bio_ref updating */
 	unsigned short bio_ref;		/* bio reference count */
+#ifdef CONFIG_F2FS_BD_STAT
+	u64 discard_time;
+#endif
 };
 
 enum {
@@ -323,6 +338,8 @@ enum {
 	DPOLICY_FORCE,
 	DPOLICY_FSTRIM,
 	DPOLICY_UMOUNT,
+	DPOLICY_BALANCE,
+	DPOLICY_PERFORMANCE,
 	MAX_DPOLICY,
 };
 
@@ -338,6 +355,7 @@ struct discard_policy {
 	bool ordered;			/* issue discard by lba order */
 	bool timeout;			/* discard timeout for put_super */
 	unsigned int granularity;	/* discard granularity */
+	bool io_busy;			/* interrupt by user io */
 };
 
 struct discard_cmd_control {
@@ -1554,6 +1572,10 @@ struct f2fs_sb_info {
 	unsigned int ndirty_inode[NR_INODE_TYPE];	/* # of dirty inodes */
 #endif
 	spinlock_t stat_lock;			/* lock for stat operations */
+#ifdef CONFIG_F2FS_BD_STAT
+	spinlock_t bd_lock;
+	struct f2fs_bigdata_info *bd_info;	/* big data collections */
+#endif
 
 	/* For app/fs IO statistics */
 	spinlock_t iostat_lock;
@@ -1594,6 +1616,14 @@ struct f2fs_sb_info {
 
 	struct kmem_cache *inline_xattr_slab;	/* inline xattr entry */
 	unsigned int inline_xattr_slab_size;	/* default inline xattr slab size */
+
+	bool is_frag;				/* urgent gc flag */
+	unsigned long last_frag_check;		/* last urgent check jiffies */
+	atomic_t need_ssr_gc;			/* ssr gc count */
+	bool gc_opt_enable;
+	bool dc_opt_enable;
+	int dpolicy_expect;
+	bool fsync_protect;
 };
 
 struct f2fs_private_dio {
@@ -3078,6 +3108,13 @@ static inline void f2fs_update_iostat(struct f2fs_sb_info *sbi,
 	spin_lock(&sbi->iostat_lock);
 	sbi->rw_iostat[type] += io_bytes;
 
+#if defined(OPLUS_FEATURE_IOMONITOR) && defined(CONFIG_IOMONITOR)
+	if (type == FS_GC_DATA_IO || type == FS_GC_NODE_IO)
+		iomonitor_update_fs_stats(FS_GC_OPT, 1);
+        else if (type == FS_DISCARD)
+		iomonitor_update_fs_stats(FS_DISCARD_OPT, 1);
+#endif /*OPLUS_FEATURE_IOMONITOR*/
+
 	if (type == APP_WRITE_IO || type == APP_DIRECT_IO)
 		sbi->rw_iostat[APP_BUFFERED_IO] =
 			sbi->rw_iostat[APP_WRITE_IO] -
@@ -3728,6 +3765,12 @@ static inline void f2fs_destroy_root_stats(void) { }
 static inline void f2fs_update_sit_info(struct f2fs_sb_info *sbi) {}
 #endif
 
+#ifdef CONFIG_F2FS_BD_STAT
+#include "of2fs_bigdata.h"
+void f2fs_build_bd_stat(struct f2fs_sb_info *sbi);
+void f2fs_destroy_bd_stat(struct f2fs_sb_info *sbi);
+#endif
+
 extern const struct file_operations f2fs_dir_operations;
 extern const struct file_operations f2fs_file_operations;
 extern const struct inode_operations f2fs_file_inode_operations;
@@ -4128,6 +4171,24 @@ static inline bool is_journalled_quota(struct f2fs_sb_info *sbi)
 		return true;
 #endif
 	return false;
+}
+
+#define F2FS_FS_FREE_PERCENT		20
+#define F2FS_DEVICE_FREE_PERCENT	10
+
+static inline bool f2fs_is_space_free(struct f2fs_sb_info *sbi)
+{
+	struct discard_cmd_control *dcc = SM_I(sbi)->dcc_info;
+	block_t user_blocks = sbi->user_block_count;
+	block_t ovp_cnt = SM_I(sbi)->ovp_segments << sbi->log_blocks_per_seg;
+	block_t avail_block = user_blocks - valid_user_blocks(sbi) + ovp_cnt;
+	block_t fs_threshold = (block_t)(SM_I(sbi)->main_segments *
+			sbi->blocks_per_seg * F2FS_FS_FREE_PERCENT) / 100;
+	block_t device_threshold = (block_t)(SM_I(sbi)->main_segments *
+			sbi->blocks_per_seg * F2FS_DEVICE_FREE_PERCENT) / 100;
+
+	return avail_block > fs_threshold &&
+			avail_block - dcc->undiscard_blks > device_threshold;
 }
 
 #define EFSBADCRC	EBADMSG		/* Bad CRC detected */

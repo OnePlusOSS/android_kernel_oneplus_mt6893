@@ -1,0 +1,23 @@
+&odm {
+    nfc_chipset:nfc_chipset {
+            compatible = "oplus-nfc-chipset";
+            chipset-20795 = "ST21H";
+            chipset-20796 = "ST21H";
+            chipset-2070B = "ST21H";
+            chipset-2070E = "ST21H";
+            chipset-216A1 = "ST21H";
+            chipset-216B6 = "ST21H";
+    };
+};
+
+&i2c3 {
+       nfc_st21@8 {
+            compatible = "st,st21nfc";
+            reg = <0x8>;
+            status = "okay";
+            gpio-irq-std    = <&pio 5 0x0>;
+            gpio-rst-std    = <&pio 11 0x0>;
+            //gpio-pidle-std  = <&pio 16 0x0>;
+            gpio-clkreq-std = <&pio 81 0x0>;
+        };
+};

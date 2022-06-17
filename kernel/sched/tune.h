@@ -19,6 +19,11 @@ int schedtune_prefer_idle(struct task_struct *tsk);
 
 void schedtune_enqueue_task(struct task_struct *p, int cpu);
 void schedtune_dequeue_task(struct task_struct *p, int cpu);
+
+#ifdef CONFIG_SCHEDUTIL_USE_TL
+unsigned int schedtune_window_policy(struct task_struct *p);
+unsigned int uclamp_discount_wait_time(struct task_struct *p);
+#endif
 extern int stune_task_threshold;
 
 #ifdef CONFIG_UCLAMP_TASK_GROUP

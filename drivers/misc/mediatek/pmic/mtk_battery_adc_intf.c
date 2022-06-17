@@ -28,7 +28,8 @@ bool __attribute__ ((weak)) is_power_path_supported(void)
 	pr_notice_once("%s: check mtk_charger\n", __func__);
 	return 0;
 }
-
+extern bool prj_for_mtk_60w_support(void);
+extern int oplus_voocphy_get_cp_vbat(void);
 int pmic_get_battery_voltage(void)
 {
 	int bat = 0;
@@ -41,6 +42,11 @@ int pmic_get_battery_voltage(void)
 	else
 		bat = pmic_get_auxadc_value(AUXADC_LIST_BATADC);
 #endif
+	if (prj_for_mtk_60w_support() == true) {
+		if ((oplus_voocphy_get_cp_vbat() > 0) && (pmic_get_vbus() > 4100)) {
+			bat = oplus_voocphy_get_cp_vbat();
+		}
+	}
 	return bat;
 }
 

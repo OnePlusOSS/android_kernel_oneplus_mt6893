@@ -17,7 +17,13 @@
 #endif
 
 #include "ccci_fsm_internal.h"
-
+//#ifdef OPLUS_FEATURE_SWTP
+//Add for caple detect when SIM plug in
+#include "ccci_swtp.h"
+//#endif /* OPLUS_FEATURE_SWTP */
+//#ifdef OPLUS_FEATURE_SWTP
+#include <linux/proc_fs.h>
+//#endif  /*OPLUS_FEATURE_SWTP*/
 signed int __weak battery_get_bat_voltage(void)
 {
 	pr_debug("[ccci/dummy] %s is not supported!\n", __func__);
@@ -593,6 +599,15 @@ long ccci_fsm_ioctl(int md_id, unsigned int cmd, unsigned long arg)
 			"get modem exception type=%d ret=%d\n",
 			ctl->ee_ctl.ex_type, ret);
 		break;
+    //#ifdef OPLUS_FEATURE_SWTP
+    //Add for caple detect when SIM plug in
+    case CCCI_IOC_SIM_INSERTED_FOR_SWITCH_RF_SAR:
+        CCCI_NORMAL_LOG(md_id, FSM,
+            "SIM inserted notify to ioctl called by %s\n", current->comm);
+        ret = ccci_get_gpio175_value();
+    //Wrire the return value into Node file
+    //....
+    //#endif /* OPLUS_FEATURE_SWTP */
 	default:
 		ret = fsm_md_data_ioctl(md_id, cmd, arg);
 		break;

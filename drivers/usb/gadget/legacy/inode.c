@@ -112,6 +112,7 @@ enum ep0_state {
 
 /* enough for the whole queue: most events invalidate others */
 #define	N_EVENT			5
+#define	RBUF_SIZE		256
 
 #define RBUF_SIZE		256
 

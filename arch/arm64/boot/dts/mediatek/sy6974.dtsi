@@ -1,0 +1,21 @@
+&i2c7 {
+	sy6974-charger@6b {
+        //status = "okay";
+		compatible = "ti,sy6974-charger";
+		reg = <0x6b>;
+		charger_name = "SY6974";
+
+		interrupt-parent = <&pio>;
+		interrupts = <91 IRQ_TYPE_EDGE_FALLING 91 0>;
+        chg-irq-gpio = <&pio 91 0x2002>;
+		ti,charging-disabled;
+		ti,sy6974,enable-term;
+
+		ti,sy6974,charge-voltage = <4400>;
+		ti,sy6974,charge-current = <3000>;
+		ti,sy6974,input-current-limit = <3000>;
+		ti,sy6974,input-voltage-limit = <4500>;
+		ti,sy6974,vbatlow-volt = <3500>;
+		ti,sy6974,term-current = <1000>;
+    };
+};

@@ -23,6 +23,11 @@
 &chosen {
 	/* fpga may has no lk, we need to specify display info here */
 	/* fb buffer is reserved using this dts by memory node above */
+	bootargs = "console=tty0 console=ttyS0,921600n1 root=/dev/ram \
+		loglevel=8 \
+		androidboot.selinux=permissive androidboot.hardware=mt6781 \
+		earlycon=mtk8250,mmio32,0x11002000 \
+		initcall_debug=1";
 	atag,videolfb-fb_base_l = <0x7e605000>;
 	atag,videolfb-fb_base_h = <0x0>;
 	atag,videolfb-islcmfound = <1>;
@@ -85,6 +90,22 @@
 
 	usb_c_pinctrl:usb_c_pinctrl {
 		compatible = "mediatek,usb_c_pinctrl";
+	};
+
+	kpd_volume_up:kpd_volume_up {
+               compatible = "mediatek, VOLUME_UP-eint";
+               interrupt-parent = <&pio>;
+               interrupts = <80 IRQ_TYPE_EDGE_FALLING 80 0>;
+               debounce = <32000>;
+               status = "okay";
+       };
+
+	kpd_volume_down:kpd_volume_down {
+			compatible = "mediatek, VOLUME_DOWN-eint";
+			interrupt-parent = <&pio>;
+			interrupts = <81 IRQ_TYPE_EDGE_FALLING 81 0>;
+			debounce = <32000>;
+			status = "okay";
 	};
 };
 
@@ -165,6 +186,34 @@
 		compatible = "mediatek,mtk-usb";
 		reg = <0x60>;
 		status = "okay";
+	};
+};
+
+&keypad {
+	keypad,volume-up	= <&pio 80 0x00>;
+	keypad,volume-down	= <&pio 81 0x00>;
+	pinctrl-names = "volume_up_as_int", "volume_down_as_int";
+	pinctrl-0 = <&volume_up_gpio_eint>;
+	pinctrl-1 = <&volume_down_gpio_eint>;
+	status = "okay";
+};
+
+&pio {
+	volume_up_gpio_eint:volume_up@0{
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO80__FUNC_GPIO80>;
+			slew-rate = <0>;  /*direction 0:in, 1:out*/
+			bias-pull-up = <00>;
+			input-enable;
+		};
+	};
+	volume_down_gpio_eint:volume_down@0{
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO81__FUNC_GPIO81>;
+			slew-rate = <0>;  /*direction 0:in, 1:out*/
+			bias-pull-up = <00>;
+			input-enable;
+		};
 	};
 };
 
@@ -285,8 +334,8 @@
 
 #endif
 
-
 #include <k6781v1_64/cust.dtsi>
-#include "mediatek/cust_mt6781_camera.dtsi"
+#include "mediatek/camera_ldo_mt6781.dtsi"
+#include "mediatek/cust_mt6781_camera_space.dtsi"
 #include "mediatek/cust_mt6781_touch_1080x2300.dtsi"
 /*End of this file, DO NOT ADD ANYTHING HERE*/

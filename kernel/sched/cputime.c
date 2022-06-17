@@ -9,6 +9,15 @@
 #include "sched.h"
 #include "walt.h"
 
+#ifdef OPLUS_FEATURE_TASK_CPUSTATS
+#ifdef CONFIG_OPLUS_CTP
+#include <linux/task_cpustats.h>
+#endif
+#ifdef CONFIG_OPLUS_SCHED
+#include <linux/task_sched_info.h>
+#endif
+#endif /* OPLUS_FEATURE_TASK_CPUSTATS */
+
 #ifdef CONFIG_IRQ_TIME_ACCOUNTING
 
 /*
@@ -405,14 +414,34 @@ static void irqtime_account_process_tick(struct task_struct *p, int user_tick,
 		 * Also, p->stime needs to be updated for ksoftirqd.
 		 */
 		account_system_index_time(p, cputime, CPUTIME_SOFTIRQ);
+#ifdef OPLUS_FEATURE_TASK_CPUSTATS
+#ifdef CONFIG_OPLUS_CTP
+		account_task_time(p, ticks, CPUTIME_SOFTIRQ);
+#endif
+#endif /* OPLUS_FEATURE_TASK_CPUSTATS */
 	} else if (user_tick) {
 		account_user_time(p, cputime);
+#ifdef OPLUS_FEATURE_TASK_CPUSTATS
+#ifdef CONFIG_OPLUS_CTP
+		account_task_time(p, ticks, CPUTIME_USER);
+#endif
+#endif /* OPLUS_FEATURE_TASK_CPUSTATS */
 	} else if (p == rq->idle) {
 		account_idle_time(cputime);
 	} else if (p->flags & PF_VCPU) { /* System time or guest time */
 		account_guest_time(p, cputime);
+#ifdef OPLUS_FEATURE_TASK_CPUSTATS
+#ifdef CONFIG_OPLUS_CTP
+		account_task_time(p, ticks, CPUTIME_USER);
+#endif
+#endif /* OPLUS_FEATURE_TASK_CPUSTATS */
 	} else {
 		account_system_index_time(p, cputime, CPUTIME_SYSTEM);
+#ifdef OPLUS_FEATURE_TASK_CPUSTATS
+#ifdef CONFIG_OPLUS_CTP
+		account_task_time(p, ticks, CPUTIME_SYSTEM);
+#endif
+#endif /* OPLUS_FEATURE_TASK_CPUSTATS */
 	}
 }
 
@@ -496,6 +525,13 @@ void account_process_tick(struct task_struct *p, int user_tick)
 	u64 cputime, steal;
 	struct rq *rq = this_rq();
 
+#if defined(OPLUS_FEATURE_TASK_CPUSTATS) && defined(CONFIG_OPLUS_SCHED)
+	if (ctp_send_message && (rq->cpu < 2)) {
+		sched_action_trig();
+		ctp_send_message = false;
+	}
+#endif /* defined(OPLUS_FEATURE_TASK_CPUSTATS) && defined(CONFIG_OPLUS_SCHED) */
+
 	if (vtime_accounting_cpu_enabled())
 		return;
 
@@ -512,12 +548,24 @@ void account_process_tick(struct task_struct *p, int user_tick)
 
 	cputime -= steal;
 
+#if defined(OPLUS_FEATURE_TASK_CPUSTATS) && defined(CONFIG_OPLUS_CTP)
+	if (user_tick) {
+		account_user_time(p, cputime);
+		account_task_time(p, 1, CPUTIME_USER);
+	} else if ((p != rq->idle) || (irq_count() != HARDIRQ_OFFSET)) {
+		account_system_time(p, HARDIRQ_OFFSET, cputime);
+		account_task_time(p, 1, CPUTIME_SYSTEM);
+	} else {
+		account_idle_time(cputime);
+	}
+#else
 	if (user_tick)
 		account_user_time(p, cputime);
 	else if ((p != rq->idle) || (irq_count() != HARDIRQ_OFFSET))
 		account_system_time(p, HARDIRQ_OFFSET, cputime);
 	else
 		account_idle_time(cputime);
+#endif /* defined(OPLUS_FEATURE_TASK_CPUSTATS) && defined(CONFIG_OPLUS_CTP) */
 }
 
 /*

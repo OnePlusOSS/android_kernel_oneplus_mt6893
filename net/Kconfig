@@ -454,7 +454,17 @@ config HAVE_CBPF_JIT
 config HAVE_EBPF_JIT
 	bool
 
+source "net/oplus_connectivity_sla/Kconfig"
+
 config MTK_NET_LOGGING
 	bool "Enable MTK Network debug log"
 	---help---
 	  This config helps to enable/disable Network debug log
+
+#ifdef OPLUS_FEATURE_WIFI_CAPCENTER
+source "net/oplus_wificapcenter/Kconfig"
+#endif /* OPLUS_FEATURE_WIFI_CAPCENTER */
+
+source "net/oplus_score/Kconfig"
+
+source "net/oplus_modules/Kconfig"

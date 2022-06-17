@@ -34,6 +34,11 @@
 
 #include <trace/events/ext4.h>
 
+#ifdef CONFIG_OPLUS_FEATURE_EXT4_FSYNC
+bool ext4_fsync_nobarrier = true;
+bool ext4_fsync_protect = false;
+#endif
+
 /*
  * If we're not journaling and this is a just-created file, we have to
  * sync our parent directory (if it was freshly created) since
@@ -146,8 +151,14 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
 	}
 
 	commit_tid = datasync ? ei->i_datasync_tid : ei->i_sync_tid;
+#ifdef CONFIG_OPLUS_FEATURE_EXT4_FSYNC
+	if ((!ext4_fsync_nobarrier || ext4_fsync_protect)
+	    && (journal->j_flags & JBD2_BARRIER) &&
+	    !jbd2_trans_will_send_data_barrier(journal, commit_tid))
+#else
 	if (journal->j_flags & JBD2_BARRIER &&
 	    !jbd2_trans_will_send_data_barrier(journal, commit_tid))
+#endif
 		needs_barrier = true;
 	ret = jbd2_complete_transaction(journal, commit_tid);
 	if (needs_barrier) {
@@ -161,5 +172,8 @@ out:
 	if (ret == 0)
 		ret = err;
 	trace_ext4_sync_file_exit(inode, ret);
+#if defined(CONFIG_EXT4_ASYNC_DISCARD_SUPPORT)
+	ext4_update_time(EXT4_SB(inode->i_sb));
+#endif
 	return ret;
 }

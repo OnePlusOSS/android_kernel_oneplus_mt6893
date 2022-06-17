@@ -86,6 +86,12 @@
 
 #define DDP_OUTPUT_LAYID 4
 
+#ifdef OPLUS_BUG_STABILITY
+#include <mt-plat/mtk_boot_common.h>
+extern unsigned long oplus_silence_mode;
+extern unsigned int oplus_fp_silence_mode;
+#endif /* OPLUS_BUG_STABILITY */
+
 #if defined MTK_FB_SHARE_WDMA0_SUPPORT
 static int idle_flag = 1;
 static int smartovl_flag;
@@ -1613,6 +1619,10 @@ long mtk_disp_mgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	{
 		return _ioctl_set_scenario(arg);
 	}
+#ifdef OPLUS_BUG_STABILITY
+	case DISP_IOCTL_GET_LCM_MODULE_INFO:
+		return _ioctl_get_lcm_module_info(arg);
+#endif /* OPLUS_BUG_STABILITY */
 #ifdef CONFIG_MTK_HIGH_FRAME_RATE
 	case DISP_IOCTL_GET_MULTI_CONFIGS:
 		return _ioctl_get_multi_configs(arg);
@@ -1923,6 +1933,16 @@ static int mtk_disp_mgr_probe(struct platform_device *pdev)
 	    (struct class_device *)device_create(mtk_disp_mgr_class, NULL,
 	    mtk_disp_mgr_devno, NULL,
 						 DISP_SESSION_DEVICE);
+
+	#ifdef OPLUS_BUG_STABILITY
+	if ((oplus_boot_mode == OPLUS_SILENCE_BOOT)
+			||(get_boot_mode() == OPLUS_SAU_BOOT)) {
+		printk("%s OPLUS_SILENCE_BOOT set oplus_silence_mode to 1\n", __func__);
+		oplus_silence_mode = 1;
+		oplus_fp_silence_mode = 1;
+	}
+	#endif /* OPLUS_BUG_STABILITY */
+
 	disp_sync_init();
 
 	external_display_control_init();

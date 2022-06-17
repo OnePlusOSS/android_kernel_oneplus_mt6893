@@ -152,6 +152,10 @@ obj-$(CONFIG_MTK_CCU) += ccu/src/
 
 obj-$(CONFIG_MTK_CQDMA) += cqdma/
 
+#ifdef ODM_HQ_EDIT
+obj-$(CONFIG_SET_LCD_BIAS_ODM_HQ) += lcd_bias/
+#endif #ODM_HQ_EDIT
+
 ifeq ($(CONFIG_MTK_GAUGE_VERSION),30)
 obj-y += power/
 else
@@ -188,3 +192,4 @@ obj-y += subpmic/
 obj-$(CONFIG_MTK_GATE_IC) += gate_ic/
 obj-$(CONFIG_MTK_OTP) += otp/
 obj-$(CONFIG_MTK_SDA) += sda/
+obj-$(CONFIG_CAMERA_LDO) += camera_ldo/

@@ -26,7 +26,7 @@ config FS_MBCACHE
 
 source "fs/reiserfs/Kconfig"
 source "fs/jfs/Kconfig"
-
+source "fs/exfat/Kconfig"
 source "fs/xfs/Kconfig"
 source "fs/gfs2/Kconfig"
 source "fs/ocfs2/Kconfig"
@@ -252,6 +252,7 @@ source "fs/pstore/Kconfig"
 source "fs/sysv/Kconfig"
 source "fs/ufs/Kconfig"
 source "fs/exofs/Kconfig"
+source "fs/erofs/Kconfig"
 
 endif # MISC_FILESYSTEMS
 

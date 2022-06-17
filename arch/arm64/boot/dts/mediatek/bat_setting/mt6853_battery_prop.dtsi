@@ -12,13 +12,13 @@
  */
 bat_gm30: battery{
 	compatible = "mediatek,bat_gm30";
-	DIFFERENCE_FULLOCV_ITH = <(200)>;
+	DIFFERENCE_FULLOCV_ITH = <(250)>;
 /*	Charging termination current*/
-	SHUTDOWN_1_TIME = <(5)>;
+	SHUTDOWN_1_TIME = <(30)>;
 /*	If ui_soc shows 1% more than X minites, system will shutdown*/
-	KEEP_100_PERCENT = <(1)>;
+	KEEP_100_PERCENT = <(2)>;
 /*	The ui_soc will keep 100% until SOC drop X percents after unplugged*/
-	R_FG_VALUE = <(5)>;
+	R_FG_VALUE = <(10)>;
 /*	R_sense resistance*/
 	EMBEDDED_SEL = <(0)>;
 /*	Configures whether using embedded battery or not*/
@@ -46,13 +46,13 @@ bat_gm30: battery{
 /*	Battery temperature T4*/
 	g_FG_PSEUDO100_T0 = <(100)>;
 /*	Pseudo 100% percentage at T0*/
-	g_FG_PSEUDO100_T1 = <(100)>;
+	g_FG_PSEUDO100_T1 = <(97)>;
 /*	Pseudo 100% percentage at T1*/
-	g_FG_PSEUDO100_T2 = <(100)>;
+	g_FG_PSEUDO100_T2 = <(96)>;
 /*	Pseudo 100% percentage at T2*/
-	g_FG_PSEUDO100_T3 = <(100)>;
+	g_FG_PSEUDO100_T3 = <(95)>;
 /*	Pseudo 100% percentage at T3*/
-	g_FG_PSEUDO100_T4 = <(100)>;
+	g_FG_PSEUDO100_T4 = <(95)>;
 /*	Pseudo 100% percentage at T4*/
 	Q_MAX_SYS_VOLTAGE_BAT0 = <(3350)>;
 /*	Pseudo1 for hide percentage*/
@@ -72,6 +72,10 @@ bat_gm30: battery{
 /* Table numbers per battery*/
 	MULTI_TEMP_GAUGE0 = <(1)>;
 /* Multi gauge0 enable*/
-#include "mt6853_battery_table.dtsi"
+/*ifdef OPLUS_FEATURE_CHG_BASIC*/
+#include "mt6853_battery_table_ext.dtsi"
+/*else*/
+/*#include "mt6853_battery_table.dtsi"*/
+/*endif OPLUS_FEATURE_CHG_BASIC*/
 #include "mt6853_battery_prop_dim2_ext.dtsi"
 };

@@ -80,6 +80,12 @@ struct scp_feature_tb feature_table[NUM_FEATURE_ID] = {
 		.sys_id         = SCPSYS_CORE1,
 	},
 	{
+		.feature        = VOW_VENDOR_SPEECH_FEATURE_ID,
+		.freq           = 1,
+		.enable         = 0,
+		.sys_id         = SCPSYS_CORE1,
+	},
+	{
 		.feature        = VOW_VENDOR_G_FEATURE_ID,
 		.freq           = 22,
 		.enable         = 0,

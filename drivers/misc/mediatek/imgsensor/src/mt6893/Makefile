@@ -36,6 +36,12 @@ obj-y += ../common/$(COMMON_VERSION)/imgsensor_sensor_list.o
 obj-y += ../common/$(COMMON_VERSION)/seninf_clk.o
 obj-y += ../common/$(COMMON_VERSION)/seninf.o
 obj-y += ../common/$(COMMON_VERSION)/imgsensor_pwr_seq.o
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+obj-y				+= ../OplusImgsensor/imgsensor_eeprom.o
+obj-y				+= ../OplusImgsensor/imgsensor_hwcfg_custom.o
+obj-y				+= ../OplusImgsensor/imgsensor_hwcfg_20131.o
+#endif
+
 define FILTER_DRV
 ifeq ($(wildcard $(IMGSENSOR_DRIVER_PATH)/$(MTK_PLATFORM)/camera_project/$(ARCH_MTK_PROJECT)/$(1)),)
 ifeq ($(wildcard $(IMGSENSOR_DRIVER_PATH)/$(MTK_PLATFORM)/$(1)),)
@@ -74,5 +80,8 @@ subdir-ccflags-y		+= -I$(IMGSENSOR_DRIVER_PATH)/common/$(COMMON_VERSION)/camera_
 
 # Enable parallelism
 subdir-ccflags-y += -DSENSOR_PARALLEISM
-
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+#oplus platformflag
+subdir-ccflags-y += -DSENSOR_PLATFORM_5G_H
+#endif
 obj-y += seninf/

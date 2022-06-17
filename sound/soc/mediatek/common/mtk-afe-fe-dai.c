@@ -56,6 +56,11 @@
 #include "../scp_ultra/mtk-scp-ultra-mem-control.h"
 #endif
 
+//#ifdef OPLUS_ARCH_EXTENDS
+#include <soc/oplus/system/oplus_mm_kevent_fb.h>
+#define OPLUS_AUDIO_EVENTID_AFE_ERROR  (10026)
+//#endif
+
 #define AFE_BASE_END_OFFSET 8
 
 static bool is_semaphore_control_need(bool is_scp_sema_support)
@@ -794,6 +799,21 @@ int mtk_memif_set_addr(struct mtk_base_afe *afe, int id,
 	int msb_at_bit33 = upper_32_bits(dma_addr) ? 1 : 0;
 	unsigned int phys_buf_addr = lower_32_bits(dma_addr);
 	unsigned int phys_buf_addr_upper_32 = upper_32_bits(dma_addr);
+//#ifdef OPLUS_ARCH_EXTENDS
+	unsigned int value = 0;
+	char buf[MM_KEVENT_MAX_PAYLOAD_SIZE] = {0};
+
+	/* check the memif already disable */
+	regmap_read(afe->regmap, memif->data->enable_reg, &value);
+	if (value & 0x1 << memif->data->enable_shift) {
+		mtk_memif_set_disable(afe, id);
+		pr_info("%s memif[%d] is enabled before set_addr, en:0x%x\n",
+			__func__, id, value);
+		scnprintf(buf, sizeof(buf) - 1, "$$memif_id@@%d$regs@@%x", \
+			id, value);
+		mm_fb_audio_kevent_named(OPLUS_AUDIO_EVENTID_AFE_ERROR, MM_FB_KEY_RATELIMIT_1MIN, buf);
+	}
+//#endif
 
 	memif->dma_area = dma_area;
 	memif->dma_addr = dma_addr;

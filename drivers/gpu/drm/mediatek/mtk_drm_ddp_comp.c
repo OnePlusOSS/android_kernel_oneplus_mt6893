@@ -931,6 +931,8 @@ void mt6877_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 			    struct cmdq_pkt *handle, void *data)
 {
 	struct mtk_drm_private *priv = drm->dev_private;
+	struct mtk_crtc_state *ctrc_state;
+	struct drm_crtc *crtc;
 	unsigned int sodi_req_val = 0, sodi_req_mask = 0;
 	unsigned int emi_req_val = 0, emi_req_mask = 0;
 	unsigned int infra_req_val1 = 0, infra_req_mask1 = 0;
@@ -938,6 +940,8 @@ void mt6877_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 	unsigned int infra_req_val3 = 0, infra_req_mask3 = 0;
 	unsigned int infra_req_val4 = 0, infra_req_mask4 = 0;
 	bool en = *((bool *)data);
+	crtc = priv->crtc[0];
+	ctrc_state = to_mtk_crtc_state(crtc->state);
 
 	if (id == DDP_COMPONENT_ID_MAX) { /* config when top clk on */
 		if (!en)
@@ -1023,6 +1027,12 @@ void mt6877_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 			} else
 				DDPINFO("%s: failed to disable infra ddr control\n", __func__);
 		}
+		if (ctrc_state->prop_val[CRTC_PROP_DOZE_ACTIVE]) {
+			writel_relaxed(0x0, priv->infra_regs + MT6877_INFRA_MEM_IDLE_ASYNC_2);
+			writel_relaxed(0x0, priv->infra_regs + MT6877_INFRA_MEM_IDLE_ASYNC_3);
+			writel_relaxed(0x0, priv->infra_regs + 0x170);
+			writel_relaxed(0x0, priv->infra_regs + 0x174);
+		   }
 	} else {
 		cmdq_pkt_write(handle, NULL, priv->config_regs_pa +
 			MMSYS_SODI_REQ_MASK, sodi_req_val, sodi_req_mask);
@@ -1044,6 +1054,20 @@ void mt6877_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 						infra_req_val4, infra_req_mask4);
 			} else
 				DDPINFO("%s: failed to disable infra ddr control\n", __func__);
+		}
+		if (ctrc_state->prop_val[CRTC_PROP_DOZE_ACTIVE]) {
+			cmdq_pkt_write(handle, NULL,  priv->infra_regs_pa +
+							MT6877_INFRA_MEM_IDLE_ASYNC_2,
+							0x0, ~0);
+			cmdq_pkt_write(handle, NULL,  priv->infra_regs_pa +
+							MT6877_INFRA_MEM_IDLE_ASYNC_3,
+							0x0, ~0);
+			cmdq_pkt_write(handle, NULL,  priv->infra_regs_pa +
+							0x170,
+							0x0, ~0);
+			cmdq_pkt_write(handle, NULL,  priv->infra_regs_pa +
+							0x174,
+							0x0, ~0);
 		}
 	}
 }

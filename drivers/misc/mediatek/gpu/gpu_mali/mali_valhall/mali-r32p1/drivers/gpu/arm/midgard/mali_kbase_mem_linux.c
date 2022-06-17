@@ -689,6 +689,10 @@ unsigned long kbase_mem_evictable_reclaim_scan_objects(struct shrinker *s,
 
 	kctx = container_of(s, struct kbase_context, reclaim);
 
+	if(mutex_is_locked(&kctx->jit_evict_lock)) {
+		return SHRINK_STOP;
+	}
+
 	mutex_lock(&kctx->jit_evict_lock);
 
 	list_for_each_entry_safe(alloc, tmp, &kctx->evict_list, evict_node) {

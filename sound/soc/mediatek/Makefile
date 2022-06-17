@@ -40,6 +40,10 @@ obj-$(CONFIG_SND_SOC_MT6853) += mt6853/
 obj-$(CONFIG_SND_SOC_MT6873) += mt6873/
 obj-$(CONFIG_SND_SOC_MT6885) += mt6885/
 obj-$(CONFIG_SND_SOC_MT8167) += mt8167/
+#ifdef ODM_HQ_EDIT
+obj-$(CONFIG_SND_SOC_SIA81XX) += sia81xx_space/
+obj-$(CONFIG_SND_SOC_AW87319) += aw87319_space/
+#endif
 obj-$(CONFIG_SND_SOC_MT6781) += mt6781/
 
 # mtk new arch
@@ -138,3 +142,7 @@ obj-y += $(AUDIO_PLATFORM)/
 # AP include path
 subdir-ccflags-y += -Werror -I$(src)/$(AUDIO_PLATFORM)
 endif
+
+obj-$(CONFIG_SND_SOC_AW87339) += aw87339/
+
+obj-$(CONFIG_SND_SOC_AW87359) += aw87359/

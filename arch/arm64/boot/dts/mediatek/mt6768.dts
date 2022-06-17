@@ -43,6 +43,18 @@ page_owner=on loop.max_part=7";
 		kaslr-seed = <0 0>;
 	};
 
+        shell_front {
+                compatible = "oplus,shell-temp";
+        };
+
+        shell_frame {
+                compatible = "oplus,shell-temp";
+        };
+
+        shell_back {
+                compatible = "oplus,shell-temp";
+        };
+
 	cpus {
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -1163,6 +1175,9 @@ page_owner=on loop.max_part=7";
 		disp_mutex_reg = <0x14016000 0x1000>;
 		g3d_config_base = <0x13000000 0 0xffff0000>;
 		mmsys_config_base = <0x14000000 1 0xffff0000>;
+//#ifdef ODM_WT_EDIT
+		mipitx0_base = <0x11c80000 99 0xffff0000>;
+//#endif
 		disp_dither_base = <0x14010000 2 0xffff0000>;
 		mm_na_base = <0x14020000 3 0xffff0000>;
 		imgsys_base = <0x15020000 4 0xffff0000>;
@@ -1417,10 +1432,33 @@ defined(CONFIG_MTK_CAM_SECURITY_SUPPORT)
 		reg = <0 0x1023e000 0 0x1000>;
 		interrupts = <GIC_SPI 163 IRQ_TYPE_LEVEL_LOW>;
 	};
+//#ifdef OPLUS_FEATURE_FINGERPRINT
+        goodix_fp: fingerprint {
+                compatible = "mediatek,goodix-fp";
+        };
+        egis_fp: egis_fp {
+                compatible = "mediatek,finger-fp";
+        };
+        chipone_fp: chipone_fp {
+                compatible = "mediatek,fingerprint";
+        };
+        fpc_interrupt:fpc_interrupt {
+                compatible    = "fpc,fpc_irq";
+        };
+        oplus_fp_common:oplus_fp_common {
+                compatible = "oplus,fp_common";
+        };
+//#ifdef OPLUS_FEATURE_BOOT_SECURITY
+    oplus_secure_common:oplus_secure_common {
+        compatible = "oplus,secure_common";
+        oplus,sec_reg_num = <0>;
+        oplus,sec_en_anti_reg = <0>;
+        oplus,sec_override1_reg = <0>;
+        oplus,override1_en_value = <0>;
+    };
+//#endif /* OPLUS_FEATURE_BOOT_SECURITY */
 
-	goodix_fp: fingerprint {
-		compatible = "mediatek,goodix-fp";
-	};
+//#endif //OPLUS_FEATURE_FINGERPRINT
 
 	accdet: accdet {
 		compatible = "mediatek,pmic-accdet";
@@ -2276,6 +2314,9 @@ defined(CONFIG_MTK_CAM_SECURITY_SUPPORT)
 		compatible = "mediatek,msdc";
 		reg = <0 0x11230000 0 0x10000>;
 		interrupts = <GIC_SPI 100 IRQ_TYPE_LEVEL_LOW>;
+	};
+
+	msdc1_ins: msdc1_ins{
 	};
 
 	msdc1: msdc@11240000 {
@@ -3315,6 +3356,16 @@ defined(CONFIG_MTK_CAM_SECURITY_SUPPORT)
 		};
 	};
 
+        flashlights_even: flashlights_even {
+                compatible = "mediatek,flashlights_even";
+                decouple = <1>;
+                channel@1 {
+                        type = <0>;
+                        ct = <0>;
+                        part = <0>;
+                };
+	};
+
 	camsv1@1a050000 {
 		compatible = "mediatek,camsv1";
 		reg = <0 0x1a050000 0 0x1000>;
@@ -3535,6 +3586,14 @@ defined(CONFIG_MTK_CAM_SECURITY_SUPPORT)
 		ibus_err = <14>;
 		vsys_watt = <5000000>;
 	};
+
+        oplus_fast_charger: oplus_fast_charger {
+                compatible = "mediatek,oplus-fastcharger";
+        };
+
+        otg_iddig: otg_iddig {
+        };
+
 
 	pd_adapter: pd_adapter {
 		compatible = "mediatek,pd_adapter";
@@ -3816,3 +3875,8 @@ defined(CONFIG_MTK_CAM_SECURITY_SUPPORT)
 #ifdef CONFIG_MTK_ENABLE_GENIEZONE
 #include "mediatek/trusty.dtsi"
 #endif
+//#ifdef OPLUS_BUG_STABILITY
+#ifdef CONFIG_SIA_PA_ALGO
+#include "mediatek/20761-sia81xx.dtsi"
+#endif
+//#endif

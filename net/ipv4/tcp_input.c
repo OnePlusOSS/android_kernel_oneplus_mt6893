@@ -78,6 +78,9 @@
 #include <linux/errqueue.h>
 
 #include <perf_tracker_internal.h>
+//#ifdef OPLUS_FEATURE_NWPOWER
+#include <net/oplus_nwpower.h>
+//#endif /* OPLUS_FEATURE_NWPOWER */
 
 int sysctl_tcp_fack __read_mostly;
 int sysctl_tcp_max_reordering __read_mostly = 300;
@@ -4731,6 +4734,11 @@ queue_and_out:
 
 	if (!after(TCP_SKB_CB(skb)->end_seq, tp->rcv_nxt)) {
 		/* A retransmit, 2nd most common case.  Force an immediate ack. */
+
+		//#ifdef OPLUS_FEATURE_NWPOWER
+		oplus_match_tcp_input_retrans(sk);
+		//#endif /* OPLUS_FEATURE_NWPOWER */
+
 		NET_INC_STATS(sock_net(sk), LINUX_MIB_DELAYEDACKLOST);
 		tcp_dsack_set(sk, TCP_SKB_CB(skb)->seq, TCP_SKB_CB(skb)->end_seq);
 

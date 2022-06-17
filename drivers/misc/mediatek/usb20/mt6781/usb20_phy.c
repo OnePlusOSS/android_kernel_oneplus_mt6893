@@ -107,6 +107,7 @@ void usb_phy_switch_to_usb(void)
 #define SHFT_RG_USB20_TERM_VREF_SEL 8
 #define OFFSET_RG_USB20_PHY_REV6 0x18
 #define SHFT_RG_USB20_PHY_REV6 30
+
 void usb_phy_tuning(void)
 {
 	static bool inited;
@@ -122,13 +123,33 @@ void usb_phy_tuning(void)
 		of_node = of_find_compatible_node(NULL,
 			NULL, "mediatek,phy_tuning");
 		if (of_node) {
-			/* value won't be updated if property not being found */
+#ifdef OPLUS_FEATURE_CHG_BASIC
+			if (!mtk_musb->is_host) {
+				/* value won't be updated if property not being found */
+				of_property_read_u32(of_node,
+					"u2_vrt_ref", (u32 *) &u2_vrt_ref);
+				of_property_read_u32(of_node,
+					"u2_term_ref", (u32 *) &u2_term_ref);
+				of_property_read_u32(of_node,
+					"u2_enhance", (u32 *) &u2_enhance);
+			} else {
+				of_property_read_u32(of_node,
+					"host_u2_vrt_ref", (u32 *) &u2_vrt_ref);
+				of_property_read_u32(of_node,
+					"host_u2_term_ref", (u32 *) &u2_term_ref);
+				of_property_read_u32(of_node,
+					"host_u2_enhance", (u32 *) &u2_enhance);
+			}
+#else
+
 			of_property_read_u32(of_node,
 				"u2_vrt_ref", (u32 *) &u2_vrt_ref);
 			of_property_read_u32(of_node,
 				"u2_term_ref", (u32 *) &u2_term_ref);
 			of_property_read_u32(of_node,
 				"u2_enhance", (u32 *) &u2_enhance);
+#endif /* OPLUS_FEATURE_CHG_BASIC */
+
 		}
 		inited = true;
 	}

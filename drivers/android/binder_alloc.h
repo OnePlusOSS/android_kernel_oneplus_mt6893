@@ -24,6 +24,12 @@
 #include <linux/list_lru.h>
 #include <uapi/linux/android/binder.h>
 
+
+//ifdef OPLUS_BUG_STABILITY
+#ifndef SZ_1K
+#define SZ_1K                               0x400
+#endif
+//endif /*OPLUS_BUG_STABILITY*/
 extern struct list_lru binder_alloc_lru;
 struct binder_transaction;
 
@@ -147,6 +153,10 @@ extern void binder_alloc_print_allocated(struct seq_file *m,
 void binder_alloc_print_pages(struct seq_file *m,
 			      struct binder_alloc *alloc);
 
+//ifdef OPLUS_BUG_STABILITY
+size_t binder_alloc_buffer_size_locked(struct binder_alloc *alloc,
+				       struct binder_buffer *buffer);
+//endif /*OPLUS_BUG_STABILITY*/
 /**
  * binder_alloc_get_free_async_space() - get free space available for async
  * @alloc:	binder_alloc for this proc

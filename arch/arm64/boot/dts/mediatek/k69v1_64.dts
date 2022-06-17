@@ -79,7 +79,7 @@
 	};
 	led6:led@6 {
 		compatible = "mediatek,lcd-backlight";
-		led_mode = <5>;
+		led_mode = <4>;
 		data = <1>;
 		pwm_config = <0 3 0 0 0>;
 	};
@@ -90,7 +90,13 @@
 		vib_vol= <9>;
 	};
 };
-
+&i2c0 {
+      lcm_bias@3e{
+               compatible = "LCD_BIAS_SM5109","LCD_BIAS_OCP2130";
+               reg = <0x3e>;
+               status = "okay";
+       };
+};
 &i2c2 {
 	clock-frequency = <400000>;
 

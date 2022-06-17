@@ -30,6 +30,7 @@
 #include <tspmic_settings.h>
 #include <linux/uidgid.h>
 #include <linux/slab.h>
+#include <soc/oplus/system/oplus_project.h>
 
 /*=============================================================
  *Local variable definition
@@ -266,8 +267,10 @@ struct thermal_cooling_device *cdev, unsigned long state)
 		/* To trigger data abort to reset the system
 		 * for thermal protection.
 		 */
-		BUG();
-
+		if (get_eng_version() != HIGH_TEMP_AGING)
+			BUG();
+		else
+			mtktspmic_info("%s should reset but bypass\n", __func__);
 	}
 	return 0;
 }

@@ -524,6 +524,9 @@ void mtk_venc_dvfs_begin(struct temp_job **job_list)
 			else
 				idx = 0;
 		}
+        #ifdef OPLUS_FEATURE_CAMERA_COMMON
+        idx = 0;
+        #endif/*OPLUS_FEATURE_CAMERA_COMMON*/
 	} else {
 		idx = 0;
 	}

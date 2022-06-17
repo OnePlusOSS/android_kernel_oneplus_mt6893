@@ -42,6 +42,20 @@ page_owner=on loop.max_part=7";
 		kaslr-seed = <0 0>;
 	};
 
+	//#ifdef OPLUS_FEATURE_THERMAL_HORAE
+	shell_front {
+		compatible = "oplus,shell-temp";
+	};
+
+	shell_frame {
+		compatible = "oplus,shell-temp";
+	};
+
+	shell_back {
+		compatible = "oplus,shell-temp";
+	};
+	//#endif /* OPLUS_FEATURE_THERMAL_HORAE */
+
 	cpus {
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -2858,6 +2872,12 @@ page_owner=on loop.max_part=7";
 		mediatek,pwrap-regmap = <&pwrap>;
 	};
 
+//#ifdef OPLUS_ARCH_EXTENDS
+	audio_extend: audio_extend {
+		compatible = "oplus,asoc-audio";
+	};
+//#endif
+
 	sound: sound {
 		compatible = "mediatek,mt6785-mt6359-sound";
 		mediatek,audio-codec = <&mt6359_snd>;
@@ -4191,21 +4211,20 @@ page_owner=on loop.max_part=7";
 		compatible = "mediatek,imgsensor";
 	};
 
+	camera_af_hw_node: camera_af_hw_node {
+		compatible = "mediatek,camera_af_lens";
+	};
+
 	flashlight_core: flashlight_core {
 		compatible = "mediatek,flashlight_core";
 	};
 
 	flashlights_mt6360: flashlights_mt6360 {
 		compatible = "mediatek,flashlights_mt6360";
-		decouple = <0>;
+		decouple = <1>;
 		channel@1 {
 			type = <0>;
 			ct = <0>;
-			part = <0>;
-		};
-		channel@2 {
-			type = <0>;
-			ct = <1>;
 			part = <0>;
 		};
 	};
@@ -4404,9 +4423,35 @@ page_owner=on loop.max_part=7";
 		reg = <0 0x80210000 0 0x1000>;
 	};
 
-	goodix_fp: fingerprint {
-		compatible = "mediatek,goodix-fp";
+//#ifdef OPLUS_FEATURE_FINGERPRINT
+	goodix_fp: goodix_fp {
+		compatible = "goodix,goodix_fp";
+		status = "okay";
 	};
+	jiiov_fp: jiiov_fp {
+		compatible = "jiiov,fingerprint";
+		status = "okay";
+	};
+	fpc_interrupt:fpc_interrupt {
+		status        = "ok";
+		compatible    = "fpc,fpc_irq";
+	};
+	oplus_fp_common:oplus_fp_common {
+		compatible = "oplus,fp_common";
+	};
+	oplus_secure_common:oplus_secure_common {
+		compatible = "oplus,secure_common";
+		oplus,sec_reg_num = <0>;
+		oplus,sec_en_anti_reg = <0>;
+		oplus,sec_override1_reg = <0>;
+		oplus,override1_en_value = <0>;
+	};
+//#endif /* OPLUS_FEATURE_FINGERPRINT */
+
+	swtp: swtp {
+		compatible = "mediatek, swtp-eint";
+	};
+/*#endif*/
 
 	accdet: accdet {
 		compatible = "mediatek,pmic-accdet";
@@ -4623,10 +4668,15 @@ page_owner=on loop.max_part=7";
 		reg = <0 0x14013000 0 0x1000>;
 	};
 
-	dsi0@14014000 {
+    dsi0: dsi0@14014000 {
 		compatible = "mediatek,dsi0";
 		reg = <0 0x14014000 0 0x1000>;
 		interrupts = <GIC_SPI 260 IRQ_TYPE_LEVEL_LOW>;
+	};
+	dispsys_config: dispsys_config@14116000 {
+		compatible = "mediatek,dispsys_config",
+		"syscon",
+		"mediatek,mt6885-mmsys";
 	};
 
 	dpi0@14015000 {
@@ -5235,6 +5285,12 @@ page_owner=on loop.max_part=7";
 		reg = <0 0x38000000 0 0x1000>;
 	};
 
+	//#ifdef OPLUS_FEATURE_BRINGUP
+	irq_nfc: irq_nfc {
+		compatible = "mediatek,irq_nfc-eint";
+	};
+	//#endif /* OPLUS_FEATURE_NFC_BRINGUP */
+
 	mt_charger: mt_charger {
 		compatible = "mediatek,mt-charger";
 	};
@@ -5414,7 +5470,9 @@ page_owner=on loop.max_part=7";
 	};
 
 	mrdump_ext_rst: mrdump_ext_rst {
-		compatible = "mediatek, mrdump_ext_rst-eint";
+		//#ifdef OPLUS_BUG_STABILITY /*disable long press enter dump*/
+		//compatible = "mediatek, mrdump_ext_rst-eint";
+		//#endif /*OPLUS_BUG_STABILITY*/
 		mode = "IRQ";
 		status = "okay";
 	};
@@ -5454,6 +5512,7 @@ page_owner=on loop.max_part=7";
 		status = "okay";
 	};
 };
+
 
 &pio {
 	aud_clk_mosi_off: aud_clk_mosi_off {
@@ -5627,12 +5686,12 @@ page_owner=on loop.max_part=7";
 	};
 	aud_gpio_i2s0_off: aud_gpio_i2s0_off {
 		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO70__FUNC_GPIO70>;
+			pinmux = <PINMUX_GPIO33__FUNC_GPIO33>;
 		};
 	};
 	aud_gpio_i2s0_on: aud_gpio_i2s0_on {
 		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO70__FUNC_I2S0_DI>;
+			pinmux = <PINMUX_GPIO33__FUNC_I2S0_DI>;
 		};
 	};
 	aud_gpio_i2s1_off: aud_gpio_i2s1_off {
@@ -5645,16 +5704,16 @@ page_owner=on loop.max_part=7";
 	};
 	aud_gpio_i2s3_off: aud_gpio_i2s3_off {
 		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO67__FUNC_GPIO67>,
-				 <PINMUX_GPIO68__FUNC_GPIO68>,
-				 <PINMUX_GPIO71__FUNC_GPIO71>;
+			pinmux = <PINMUX_GPIO31__FUNC_GPIO31>,
+				 <PINMUX_GPIO32__FUNC_GPIO32>,
+				 <PINMUX_GPIO34__FUNC_GPIO34>;
 		};
 	};
 	aud_gpio_i2s3_on: aud_gpio_i2s3_on {
 		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO67__FUNC_I2S3_LRCK>,
-				 <PINMUX_GPIO68__FUNC_I2S3_DO>,
-				 <PINMUX_GPIO71__FUNC_I2S3_BCK>;
+			pinmux = <PINMUX_GPIO31__FUNC_I2S3_BCK>,
+				 <PINMUX_GPIO32__FUNC_I2S3_LRCK>,
+				 <PINMUX_GPIO34__FUNC_I2S3_DO>;
 		};
 	};
 	aud_gpio_i2s5_off: aud_gpio_i2s5_off {
@@ -5670,3 +5729,4 @@ page_owner=on loop.max_part=7";
 #ifdef CONFIG_MTK_ENABLE_GENIEZONE
 #include "mediatek/trusty.dtsi"
 #endif
+#include "mediatek/camera_ldo.dtsi"

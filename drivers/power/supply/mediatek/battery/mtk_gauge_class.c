@@ -509,6 +509,44 @@ int gauge_dev_get_nag_c_dltv(
 	return ret;
 }
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+int gauge_dev_get_nag_c_dltv_thr(
+	struct gauge_device *gauge_dev, int *nafg_c_dltv_thr)
+{
+	int ret = -ENOTSUPP;
+
+	if (gauge_dev == NULL)
+		return ret;
+
+	gauge_lock(gauge_dev);
+	if (gauge_dev != NULL && gauge_dev->ops != NULL &&
+		gauge_dev->ops->gauge_get_nag_c_dltv_thr)
+		ret = gauge_dev->ops->gauge_get_nag_c_dltv_thr(
+		gauge_dev, nafg_c_dltv_thr);
+	gauge_unlock(gauge_dev);
+
+	return ret;
+}
+
+int gauge_dev_get_nag_c_dltv_thr_reg(
+	struct gauge_device *gauge_dev, int *nafg_c_dltv_thr_reg)
+{
+	int ret = -ENOTSUPP;
+
+	if (gauge_dev == NULL)
+		return ret;
+
+	gauge_lock(gauge_dev);
+	if (gauge_dev != NULL && gauge_dev->ops != NULL &&
+		gauge_dev->ops->gauge_get_nag_c_dltv_thr_reg)
+		ret = gauge_dev->ops->gauge_get_nag_c_dltv_thr_reg(
+		gauge_dev, nafg_c_dltv_thr_reg);
+	gauge_unlock(gauge_dev);
+
+	return ret;
+}
+#endif
+
 int gauge_dev_enable_zcv_interrupt(
 	struct gauge_device *gauge_dev, int en)
 {

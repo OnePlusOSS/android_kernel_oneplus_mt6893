@@ -39,6 +39,11 @@
 void page_writeback_init(void);
 
 int do_swap_page(struct vm_fault *vmf);
+extern bool wakeup_shrink_slabd(gfp_t gfp_mask, int nid,
+				 struct mem_cgroup *memcg,
+				 unsigned long nr_scanned,
+				 unsigned long nr_eligible,
+				 struct reclaim_state *reclaim_state);
 
 #ifdef CONFIG_SPECULATIVE_PAGE_FAULT
 extern struct vm_area_struct *get_vma(struct mm_struct *mm,

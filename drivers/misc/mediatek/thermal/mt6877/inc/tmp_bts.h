@@ -57,6 +57,18 @@
 #define BTSNRPA_RAP_ADC_CHANNEL		AUX_IN2_NTC
 
 
+#ifdef CONFIG_MTK_FLED_NTC_MOSS
+#define AUX_IN4_NTC (4)
+
+#define FLASHLIGHT_RAP_ADC_CHANNEL			AUX_IN4_NTC
+#define FLASHLIGHT_RAP_NTC_TABLE			7
+#define FLASHLIGHT_RAP_PULL_UP_VOLTAGE		1800
+#define FLASHLIGHT_RAP_PULL_UP_R			100000
+#define FLASHLIGHT_TAP_OVER_CRITICAL_LOW	4397119
+#endif
+
+
+
 
 extern int IMM_GetOneChannelValue(int dwChannel, int data[4], int *rawdata);
 extern int IMM_IsAdcInitReady(void);

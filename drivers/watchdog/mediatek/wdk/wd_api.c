@@ -24,6 +24,9 @@
 #ifdef CONFIG_MTK_SECURITY_SW_SUPPORT
 #include <sec_hal.h>
 #endif
+#ifdef OPLUS_BUG_STABILITY
+extern int is_kernel_panic;
+#endif
 
 static int wd_cpu_hot_plug_on_notify(int cpu);
 static int wd_cpu_hot_plug_off_notify(int cpu);
@@ -688,9 +691,34 @@ void arch_reset(char mode, const char *cmd)
 		reboot = WD_SW_RESET_BYPASS_PWR_KEY;
 	} else if (cmd && !strcmp(cmd, "kpoc")) {
 		rtc_mark_kpoc();
+#ifdef OPLUS_BUG_STABILITY
+	}else if (cmd && !strcmp(cmd, "silence")) {
+		oplus_rtc_mark_silence();
+		reboot = 1;
+	}else if (cmd && !strcmp(cmd, "sau")) {
+		oplus_rtc_mark_sau();
+	}else if (cmd && !strcmp(cmd, "meta")) {
+		oplus_rtc_mark_meta();
+	} else if (cmd && !strcmp(cmd, "ftm")) {
+		oplus_rtc_mark_factory();
+	} else if (cmd && !strcmp(cmd, "safe")) {
+		oplus_rtc_mark_safe();
+	} else if (cmd && !strcmp(cmd, "edl")) {
+		oplus_rtc_mark_edl();
+#ifdef OPLUS_FEATURE_AGINGTEST
+	} else if (cmd && (!strcmp(cmd, "sblmemtest") || !strcmp(cmd, "usermemaging"))) {
+		oplus_rtc_mark_agingtest();
+#endif /*OPLUS_FEATURE_AGINGTEST */
+#endif
 	} else {
 		reboot = WD_SW_RESET_BYPASS_PWR_KEY;
 	}
+#ifdef OPLUS_BUG_STABILITY
+	if(is_kernel_panic)
+	{
+		oplus_rtc_mark_reboot_kernel();
+	}
+#endif
 
 	if (cmd && !strcmp(cmd, "ddr-reserve"))
 		reboot |= WD_SW_RESET_KEEP_DDR_RESERVE;

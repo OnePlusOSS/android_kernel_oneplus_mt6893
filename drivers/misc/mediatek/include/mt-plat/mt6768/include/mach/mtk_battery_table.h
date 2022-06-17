@@ -32,6 +32,9 @@
 
 /* multiple battery profile compile options */
 /*#define MTK_GET_BATTERY_ID_BY_AUXADC*/
+#ifdef OPLUS_FEATURE_CHG_BASIC
+#define MTK_GET_BATTERY_ID_BY_AUXADC
+#endif /*OPLUS_FEATURE_CHG_BASIC*/
 
 
 /* if ACTIVE_TABLE == 0 && MULTI_BATTERY == 0
@@ -84,8 +87,13 @@ int g_Q_MAX_SYS_VOLTAGE[TOTAL_BATTERY_NUMBER] = { 3400, 3400, 3400, 3400};
 
 /* 0~0.5V for battery 0, 0.5~1V for battery 1*/
 /* 1~1.5V for battery 2, -1 for the last one (battery 3) */
+#ifndef OPLUS_FEATURE_CHG_BASIC
 int g_battery_id_voltage[TOTAL_BATTERY_NUMBER] = {
 	500000, 1000000, 1500000, -1};
+#else /*OPLUS_FEATURE_CHG_BASIC*/
+int g_battery_id_voltage[TOTAL_BATTERY_NUMBER] = {
+	800000, 1000000, 1500000, -1};
+#endif /*OPLUS_FEATURE_CHG_BASIC*/
 
 int g_FG_PSEUDO1[MAX_TABLE][TOTAL_BATTERY_NUMBER] = {
 	/*bat1,   bat2,   bat3,    bat4*/
@@ -101,19 +109,21 @@ int g_FG_PSEUDO1[MAX_TABLE][TOTAL_BATTERY_NUMBER] = {
 	{ 13, 14, 15, 16} /*T9*/
 };
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
 int g_FG_PSEUDO100[MAX_TABLE][TOTAL_BATTERY_NUMBER] = {
 	/*bat1,   bat2,   bat3,    bat4*/
-	{ 100, 100, 100, 100},/*T0*/
-	{ 100, 100, 100, 100},/*T1*/
-	{ 100, 100, 100, 100},/*T2*/
-	{ 100, 100, 100, 100},/*T3*/
-	{ 100, 100, 100, 100},/*T4*/
-	{ 100, 100, 100, 100},/*T5*/
-	{ 100, 100, 100, 100},/*T6*/
-	{ 100, 100, 100, 100},/*T7*/
-	{ 100, 100, 100, 100},/*T8*/
-	{ 100, 100, 100, 100} /*T9*/
+	{ 97, 97, 97, 97},/*T0*/
+	{ 99, 99, 99, 99},/*T1*/
+	{ 94, 94, 94, 94},/*T2*/
+	{ 90, 90, 90, 90},/*T3*/
+	{ 90, 90, 90, 90},/*T4*/
+	{ 97, 97, 97, 97},/*T5*/
+	{ 97, 97, 97, 97},/*T6*/
+	{ 97, 97, 97, 97},/*T7*/
+	{ 97, 97, 97, 97},/*T8*/
+	{ 97, 97, 97, 97} /*T9*/
 };
+#endif /*OPLUS_FEATURE_CHG_BASIC*/
 
 /* shutdown_hl_zcv */
 int g_SHUTDOWN_HL_ZCV[MAX_TABLE][TOTAL_BATTERY_NUMBER] = {
@@ -200,7 +210,11 @@ int g_temperature[MAX_TABLE] = {
 #define BAT_NTC_47 0
 
 #if (BAT_NTC_10 == 1)
+#ifndef OPLUS_FEATURE_CHG_BASIC
 #define RBAT_PULL_UP_R             24000
+#else /*OPLUS_FEATURE_CHG_BASIC*/
+#define RBAT_PULL_UP_R             16000
+#endif /*OPLUS_FEATURE_CHG_BASIC*/
 #endif
 
 #if (BAT_NTC_47 == 1)
@@ -212,6 +226,7 @@ int g_temperature[MAX_TABLE] = {
 #define BIF_NTC_R 16000
 
 #if (BAT_NTC_10 == 1)
+#ifndef OPLUS_FEATURE_CHG_BASIC
 struct FUELGAUGE_TEMPERATURE Fg_Temperature_Table[21] = {
 		{-40, 195652},
 		{-35, 148171},
@@ -235,6 +250,37 @@ struct FUELGAUGE_TEMPERATURE Fg_Temperature_Table[21] = {
 		{55, 3535},
 		{60, 3014}
 };
+#else /*OPLUS_FEATURE_CHG_BASIC*/
+struct FUELGAUGE_TEMPERATURE Fg_Temperature_Table[27] = {
+		{-40, 195652},
+		{-35, 148171},
+		{-30, 113347},
+		{-25, 87559},
+		{-20, 68237},
+		{-15, 53650},
+		{-10, 42506},
+		{-5, 33892},
+		{0, 27219},
+		{5, 22021},
+		{10, 17926},
+		{15, 14674},
+		{20, 12081},
+		{25, 10000},
+		{30, 8315},
+		{35, 6948},
+		{40, 5834},
+		{45, 4917},
+		{50, 4161},
+		{55, 3535},
+		{60, 3014},
+		{65, 2586},
+		{70, 2227},
+		{75, 1924},
+		{80, 1668},
+		{85, 1452},
+		{90, 1268}
+};
+#endif /*OPLUS_FEATURE_CHG_BASIC*/
 #endif
 
 #if (BAT_NTC_47 == 1)

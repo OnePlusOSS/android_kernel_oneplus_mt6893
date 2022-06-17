@@ -80,6 +80,14 @@
 #include "mt-plat/mtk_chip.h"
 #endif
 
+#ifdef OPLUS_BUG_STABILITY
+/*
+Ling.Guo@PSW.MultiMedia.Display.LCD.Machine, 2019/06/27,
+add for aod remove aal backlight set.
+*/
+extern bool oplus_display_aod_support;
+#endif /* OPLUS_BUG_STABILITY */
+
 #if defined(CONFIG_MACH_ELBRUS) || defined(CONFIG_MACH_MT6757) || \
 	defined(CONFIG_MACH_KIBOPLUS) || defined(CONFIG_MACH_MT6799) || \
 	defined(CONFIG_MACH_MT6763) || defined(CONFIG_MACH_MT6758) || \
@@ -287,7 +295,9 @@ static int g_aal_dre_en_cmd_id;
 static int g_aal_ess_en_cmd_id;
 #endif
 
+#ifndef OPLUS_BUG_STABILITY
 static int prev_backlight;
+#endif /* OPLUS_BUG_STABILITY */
 
 #define aal_min(a, b)			(((a) < (b)) ? (a) : (b))
 
@@ -1430,7 +1440,12 @@ static void disp_aal_notify_backlight_log(int bl_1024)
 void disp_aal_notify_backlight_changed(int bl_1024)
 {
 	unsigned long flags;
+	#ifndef OPLUS_FEATURE_MULTIBITS_BL
+	/*
+	 * modify for multibits backlight.
+	 */
 	int max_backlight;
+	#endif /* OPLUS_FEATURE_MULTIBITS_BL */
 	unsigned int service_flags;
 
 	/* pr_debug("disp_aal_notify_backlight_changed: %d/1023", bl_1024); */
@@ -1438,9 +1453,14 @@ void disp_aal_notify_backlight_changed(int bl_1024)
 
 	disp_aal_exit_idle(__func__, 1);
 
+	#ifndef OPLUS_FEATURE_MULTIBITS_BL
+	/*
+	 * modify for multibits backlight.
+	 */
 	max_backlight = disp_pwm_get_max_backlight(DISP_PWM0);
 	if (bl_1024 > max_backlight)
 		bl_1024 = max_backlight;
+	#endif /* OPLUS_FEATURE_MULTIBITS_BL */
 
 	atomic_set(&g_aal_backlight_notified, bl_1024);
 
@@ -1470,6 +1490,10 @@ void disp_aal_notify_backlight_changed(int bl_1024)
 	g_aal_hist.serviceFlags |= service_flags;
 	spin_unlock_irqrestore(&g_aal_hist_lock, flags);
 
+	#ifndef OPLUS_BUG_STABILITY
+	/*
+	* modify for support aod state.
+	*/
 	if (atomic_read(&g_aal_is_init_regs_valid) == 1) {
 		spin_lock_irqsave(&g_aal_irq_en_lock, flags);
 		atomic_set(&g_aal_force_enable_irq, 1);
@@ -1478,6 +1502,20 @@ void disp_aal_notify_backlight_changed(int bl_1024)
 		/* Backlight latency should be as smaller as possible */
 		disp_aal_trigger_refresh(AAL_REFRESH_17MS);
 	}
+	#else /* OPLUS_BUG_STABILITY */
+	if (oplus_display_aod_support) {
+		backlight_brightness_set_with_lock(bl_1024);
+	} else {
+		if (atomic_read(&g_aal_is_init_regs_valid) == 1) {
+			spin_lock_irqsave(&g_aal_irq_en_lock, flags);
+			atomic_set(&g_aal_force_enable_irq, 1);
+			disp_aal_set_interrupt(1);
+			spin_unlock_irqrestore(&g_aal_irq_en_lock, flags);
+			/* Backlight latency should be as smaller as possible */
+			disp_aal_trigger_refresh(AAL_REFRESH_17MS);
+		}
+	}
+	#endif /* OPLUS_BUG_STABILITY */
 }
 
 
@@ -1722,6 +1760,7 @@ int disp_aal_set_param(struct DISP_AAL_PARAM __user *param,
 	if (copy_from_user(&g_aal_param, param,
 	sizeof(struct DISP_AAL_PARAM)) == 0) {
 		backlight_value = g_aal_param.FinalBacklight;
+        pr_err("backlight_value = %d \n", backlight_value);
 		/* set cabc gain zero when detect backlight */
 		/* setting equal to zero */
 		if (backlight_value == 0)
@@ -1734,8 +1773,12 @@ int disp_aal_set_param(struct DISP_AAL_PARAM __user *param,
 	if (atomic_read(&g_aal_backlight_notified) == 0)
 		backlight_value = 0;
 
+	#ifndef OPLUS_BUG_STABILITY
 	if ((ret == 0) && ((prev_backlight != backlight_value)
 		|| (backlight_value == 0)))
+	#else /* OPLUS_BUG_STABILITY */
+	if (ret == 0)
+	#endif /* OPLUS_BUG_STABILITY */
 		ret |= disp_pwm_set_backlight_cmdq(DISP_PWM0,
 			backlight_value, cmdq);
 
@@ -1745,13 +1788,23 @@ int disp_aal_set_param(struct DISP_AAL_PARAM __user *param,
 	AAL_DBG("(latency = %d): ret = %d",
 		g_aal_param.refreshLatency, ret);
 
+	#ifndef OPLUS_BUG_STABILITY
+	/*
+	* modify for support aod state.
+	*/
 	if ((prev_backlight != backlight_value) || (backlight_value == 0))
 		backlight_brightness_set(backlight_value);
+	#else /* OPLUS_BUG_STABILITY */
+	if (!oplus_display_aod_support)
+		backlight_brightness_set(backlight_value);
+	#endif /* OPLUS_BUG_STABILITY */
 
 	disp_aal_flip_sram(cmdq, __func__);
 	disp_aal_trigger_refresh(g_aal_param.refreshLatency);
-
+	#ifndef OPLUS_BUG_STABILITY
+	backlight_brightness_set(backlight_value);
 	prev_backlight = backlight_value;
+	#endif /* OPLUS_BUG_STABILITY */
 
 	return ret;
 }

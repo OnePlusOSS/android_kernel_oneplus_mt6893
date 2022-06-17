@@ -1650,7 +1650,7 @@ static void default_options(struct f2fs_sb_info *sbi)
 	sbi->sb->s_flags |= MS_LAZYTIME;
 	clear_opt(sbi, DISABLE_CHECKPOINT);
 	F2FS_OPTION(sbi).unusable_cap = 0;
-	set_opt(sbi, FLUSH_MERGE);
+	/* set_opt(sbi, FLUSH_MERGE); */
 	set_opt(sbi, DISCARD);
 	if (f2fs_sb_has_blkzoned(sbi))
 		F2FS_OPTION(sbi).fs_mode = FS_MODE_LFS;
@@ -2694,6 +2694,11 @@ static inline bool sanity_check_area_boundary(struct f2fs_sb_info *sbi,
 		} else {
 			err = __f2fs_commit_super(bh, NULL);
 			res = err ? "failed" : "done";
+#ifdef CONFIG_F2FS_BD_STAT
+			bd_lock(sbi);
+			bd_inc_array_val(sbi, hotcold_count, HC_META_SB, 1);
+			bd_unlock(sbi);
+#endif
 		}
 		f2fs_info(sbi, "Fix alignment : %s, start(%u) end(%u) block(%u)",
 			  res, main_blkaddr,
@@ -3234,6 +3239,11 @@ int f2fs_commit_super(struct f2fs_sb_info *sbi, bool recover)
 	if (!bh)
 		return -EIO;
 	err = __f2fs_commit_super(bh, F2FS_RAW_SUPER(sbi));
+#ifdef CONFIG_F2FS_BD_STAT
+	bd_lock(sbi);
+	bd_inc_array_val(sbi, hotcold_count, HC_META_SB, 1);
+	bd_unlock(sbi);
+#endif
 	brelse(bh);
 
 	/* if we are in recovery path, skip writing valid superblock */
@@ -3245,6 +3255,11 @@ int f2fs_commit_super(struct f2fs_sb_info *sbi, bool recover)
 	if (!bh)
 		return -EIO;
 	err = __f2fs_commit_super(bh, F2FS_RAW_SUPER(sbi));
+#ifdef CONFIG_F2FS_BD_STAT
+	bd_lock(sbi);
+	bd_inc_array_val(sbi, hotcold_count, HC_META_SB, 1);
+	bd_unlock(sbi);
+#endif
 	brelse(bh);
 	return err;
 }
@@ -3417,6 +3432,15 @@ try_onemore:
 	sbi = kzalloc(sizeof(struct f2fs_sb_info), GFP_KERNEL);
 	if (!sbi)
 		return -ENOMEM;
+#ifdef CONFIG_F2FS_BD_STAT
+	sbi->bd_info = kzalloc(sizeof(struct f2fs_bigdata_info), GFP_KERNEL);
+	if (!sbi->bd_info) {
+		err = -ENOMEM;
+		goto free_sbi;
+	}
+	sbi->bd_info->ssr_last_jiffies = jiffies;
+	bd_lock_init(sbi);
+#endif
 
 	sbi->sb = sb;
 
@@ -3521,6 +3545,10 @@ try_onemore:
 	/* disallow all the data/node/meta page writes */
 	set_sbi_flag(sbi, SBI_POR_DOING);
 	spin_lock_init(&sbi->stat_lock);
+
+	sbi->dc_opt_enable = true;
+	sbi->dpolicy_expect = DPOLICY_BG;
+	sbi->fsync_protect = false;
 
 	/* init iostat info */
 	spin_lock_init(&sbi->iostat_lock);
@@ -3797,6 +3825,7 @@ reset_checkpoint:
 	f2fs_update_time(sbi, CP_TIME);
 	f2fs_update_time(sbi, REQ_TIME);
 	clear_sbi_flag(sbi, SBI_CP_DISABLED_QUICK);
+
 	return 0;
 
 sync_free_meta:

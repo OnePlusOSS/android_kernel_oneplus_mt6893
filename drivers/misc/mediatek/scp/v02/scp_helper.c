@@ -1911,6 +1911,40 @@ static struct syscore_ops scp_ipi_dbg_syscore_ops = {
 	.resume = scp_ipi_syscore_dbg_resume,
 };
 
+#ifdef OPLUS_FEATURE_SENSOR
+/* user-space event notify */
+static int scp_user_event_notify(struct notifier_block *nb,
+				  unsigned long event, void *ptr)
+{
+	struct device *dev = scp_device.this_device;
+	int ret = 0;
+
+	if (!dev)
+		return NOTIFY_DONE;
+
+	switch (event) {
+	case SCP_EVENT_STOP:
+		ret = kobject_uevent(&dev->kobj, KOBJ_OFFLINE);
+		break;
+	case SCP_EVENT_READY:
+		ret = kobject_uevent(&dev->kobj, KOBJ_ONLINE);
+		break;
+	default:
+		pr_info("%s, ignore event %lu", __func__, event);
+		break;
+	}
+
+	if (ret)
+		pr_info("%s, uevent(%lu) fail, ret %d", __func__, event, ret);
+
+	return NOTIFY_OK;
+}
+
+struct notifier_block scp_uevent_notifier = {
+	.notifier_call = scp_user_event_notify,
+};
+#endif /*OPLUS_FEATURE_SENSOR*/
+
 /*
  * driver initialization entry point
  */
@@ -2051,6 +2085,10 @@ static int __init scp_init(void)
 	if (scp_dvfs_flag != 1)
 		scp_vcore_request(CLK_OPP0);
 #endif
+
+#ifdef OPLUS_FEATURE_SENSOR
+        scp_A_register_notify(&scp_uevent_notifier);
+#endif /*OPLUS_FEATURE_SENSOR*/
 
 	return ret;
 err:

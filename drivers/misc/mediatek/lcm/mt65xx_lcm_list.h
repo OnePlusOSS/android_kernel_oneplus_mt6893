@@ -16,6 +16,14 @@
 
 #include <lcm_drv.h>
 
+#ifdef OPLUS_BUG_STABILITY
+extern struct LCM_DRIVER nt36672c_fhdp_dsi_vdo_tianma_zal1852_lcm_drv; // Add for sala
+extern struct LCM_DRIVER nt36672c_fhdp_dsi_vdo_jdi_zal1852_lcm_drv; // Add for Sala
+extern struct LCM_DRIVER nt36672c_fhdp_dsi_vdo_boe_zal1852_lcm_drv; // Add for sala
+#endif //OPLUS_BUG_STABILITY
+extern struct LCM_DRIVER oplus20730_samsung_ams643xy04_1080p_dsi_vdo_lcm_drv_1; // add for Nash-C
+extern struct LCM_DRIVER oplus20730_samsung_ams643xy04_1080p_dsi_vdo_lcm_drv_2; // add for Nash-C second panel
+extern struct LCM_DRIVER oplus20730_samsung_ams643xy04_1080p_dsi_vdo_lcm_drv_3;
 extern struct LCM_DRIVER otm1282a_hd720_dsi_vdo_60hz_lcm_drv;
 extern struct LCM_DRIVER otm1282a_hd720_dsi_vdo_lcm_drv;
 extern struct LCM_DRIVER nt35595_fhd_dsi_cmd_truly_8163_lcm_drv;
@@ -353,7 +361,9 @@ extern struct LCM_DRIVER nt36672c_fhdp_dsi_vdo_90hz_shenchao_6382_lcm_drv;
 extern struct LCM_DRIVER nt36672c_fhdp_dsi_vdo_120hz_shenchao_6382_lcm_drv;
 extern struct LCM_DRIVER r66451_fhdp_dsi_cmd_tianma_lcm_drv;
 extern struct LCM_DRIVER hx83102p_wxga_vdo_incell_boe_lcm_drv;
-
+extern struct LCM_DRIVER ilt9882n_truly_even_hdp_dsi_vdo_lcm_drv;
+extern struct LCM_DRIVER ilt7807s_hlt_even_hdp_dsi_vdo_lcm_drv;
+extern struct LCM_DRIVER nt36525b_hlt_even_boe_hdp_dsi_vdo_lcm_drv;
 #ifdef BUILD_LK
 extern void mdelay(unsigned long msec);
 #endif

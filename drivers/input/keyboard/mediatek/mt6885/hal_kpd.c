@@ -14,6 +14,7 @@
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
+#include <linux/of_device.h>
 #ifdef CONFIG_MTK_PMIC_NEW_ARCH
 #include <mt-plat/upmu_common.h>
 #endif
@@ -54,9 +55,23 @@ void kpd_get_keymap_state(u16 state[])
 /********************************************************************/
 void long_press_reboot_function_setting(void)
 {
+	struct device_node *np = NULL;
+	int ret = 0;
+	unsigned int long_press_switch = 1;
+	np = of_find_node_by_name(NULL, "long_press_contorl");
+	if(!np){
+		kpd_info("get long press contorl node failed\n");
+	} else {
+	ret = of_property_read_u32(np,"long_press_switch",&long_press_switch);
+	if(ret) {
+		kpd_info("get long_press_switch failed\n");
+	}
+	}
+
 #ifdef CONFIG_MTK_PMIC_NEW_ARCH /*for pmic not ready*/
 	/* unlock PMIC protect key */
 	pmic_set_register_value(PMIC_RG_CPS_W_KEY, 0x4729);
+	if (long_press_switch != 0) {
 	if (kpd_enable_lprst && get_boot_mode() == NORMAL_BOOT) {
 		kpd_info("Normal Boot long press reboot selection\n");
 
@@ -97,6 +112,10 @@ void long_press_reboot_function_setting(void)
 			pmic_set_register_value(PMIC_RG_PWRKEY_RST_EN, 0x00);
 #endif
 
+	}
+	} else {
+		kpd_info("disable normal or other mode LPRST\n");
+		pmic_set_register_value(PMIC_RG_PWRKEY_RST_EN, 0x00);
 	}
 	/* lock PMIC protect key */
 	pmic_set_register_value(PMIC_RG_CPS_W_KEY, 0);

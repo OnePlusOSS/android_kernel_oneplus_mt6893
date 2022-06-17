@@ -96,7 +96,11 @@ static int is_db_ok(struct mtu3_ep *mep)
 	int tmp;
 	int ret = 1;
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	for (tmp = 0; tmp < c->next_interface_id; tmp++) {
+#else
 	for (tmp = 0; tmp < MAX_CONFIG_INTERFACES; tmp++) {
+#endif
 		struct usb_function *f = c->interface[tmp];
 		struct usb_descriptor_header **descriptors;
 
@@ -347,12 +351,20 @@ struct usb_request *mtu3_alloc_request(struct usb_ep *ep, gfp_t gfp_flags)
 void mtu3_free_request(struct usb_ep *ep, struct usb_request *req)
 {
 	struct mtu3_ep *mep = to_mtu3_ep(ep);
-	struct mtu3 *mtu = mep->mtu;
+	struct mtu3_request *mreq = to_mtu3_request(req);
+        struct mtu3_request *r;
+        struct mtu3 *mtu = mep->mtu;
 	unsigned long flags;
 
 	spin_lock_irqsave(&mtu->lock, flags);
-	kfree(to_mtu3_request(req));
-	spin_unlock_irqrestore(&mtu->lock, flags);
+	list_for_each_entry(r, &mep->req_list, list) {
+                if (r == mreq) {
+                        list_del(&mreq->list);
+                break;
+                }
+        }
+        kfree(mreq);
+        spin_unlock_irqrestore(&mtu->lock, flags);
 }
 
 static int mtu3_gadget_queue(struct usb_ep *ep,

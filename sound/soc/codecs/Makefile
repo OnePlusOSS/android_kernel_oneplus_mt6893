@@ -490,7 +490,11 @@ obj-$(CONFIG_SND_SOC_WM9713)	+= snd-soc-wm9713.o
 obj-$(CONFIG_SND_SOC_WM_ADSP)	+= snd-soc-wm-adsp.o
 obj-$(CONFIG_SND_SOC_WM_HUBS)	+= snd-soc-wm-hubs.o
 obj-$(CONFIG_SND_SOC_ZX_AUD96P22) += snd-soc-zx-aud96p22.o
-obj-$(CONFIG_SND_SOC_TFA9874)	+= tfa98xx/
+#obj-$(CONFIG_SND_SOC_TFA9874)	+= tfa98xx/
+
+#ifdef OPLUS_ARCH_EXTENDS
+obj-y += audio/
+#endif /* OPLUS_ARCH_EXTENDS */
 
 # Amp
 obj-$(CONFIG_SND_SOC_DIO2125)	+= snd-soc-dio2125.o
@@ -501,7 +505,6 @@ obj-$(CONFIG_SND_SOC_RT5509)	+= snd-soc-rt5509.o
 obj-$(CONFIG_SND_SOC_RT5512)	+= snd-soc-rt5512.o
 obj-$(CONFIG_SND_SOC_MT6660)	+= snd-soc-mt6660.o
 obj-$(CONFIG_SND_SOC_SMARTPAINFO)	+= snd-soc-smartpa-info.o
-obj-$(CONFIG_SND_SOC_AW87339)	+= aw87339/
 obj-$(CONFIG_SND_SOC_AS33970)	+= as33970/
 obj-$(CONFIG_SND_SOC_CS35L41)	+= cs35l41/
 

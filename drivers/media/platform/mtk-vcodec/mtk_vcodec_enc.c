@@ -2589,10 +2589,6 @@ static void mtk_venc_worker(struct work_struct *work)
 
 	v4l2_m2m_job_finish(ctx->dev->m2m_dev_enc, ctx->m2m_ctx);
 
-	mtk_v4l2_debug(1, "<=== src_buf[%d] dst_buf[%d] venc_if_encode ret=%d Size=%u===>",
-			src_buf->index, dst_buf->index, ret,
-			enc_result.bs_size);
-
 	mutex_unlock(&ctx->worker_lock);
 }
 

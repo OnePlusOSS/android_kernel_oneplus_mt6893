@@ -41,7 +41,19 @@
 			page_owner=on loop.max_part=7";
 			kaslr-seed = <0 0>;
 	};
+	//#ifdef OPLUS_FEATURE_THERMAL_HORAE
+	shell_front {
+		compatible = "oplus,shell-temp";
+	};
 
+	shell_frame {
+		compatible = "oplus,shell-temp";
+	};
+
+	shell_back {
+		compatible = "oplus,shell-temp";
+	};
+	//#endif /* OPLUS_FEATURE_THERMAL_HORAE */
 	cpus {
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -969,6 +981,10 @@
 		compatible = "mediatek,radio_md_cfg";
 	};
 
+	swtp: swtp {
+		compatible = "mediatek, swtp-eint";
+	};
+
 	ddrphy@10015000 {
 		compatible = "mediatek,ddrphy";
 		reg = <0 0x10015000 0 0x1000>;
@@ -1384,9 +1400,15 @@
 		reg = <0 0x1023e000 0 0x1000>;
 	};
 
-	goodix_fp: fingerprint {
-		compatible = "mediatek,goodix-fp";
+//#ifdef OPLUS_FEATURE_SECURITY_COMMON
+	oplus_secure_common:oplus_secure_common {
+		compatible = "oplus,secure_common";
+		oplus,sec_reg_num = <0>;
+		oplus,sec_en_anti_reg = <0>;
+		oplus,sec_override1_reg = <0>;
+		oplus,override1_en_value = <0>;
 	};
+//#endif  OPLUS_FEATURE_SECURITY_COMMON
 
 	accdet: accdet {
 		compatible = "mediatek,pmic-accdet";
@@ -2646,6 +2668,12 @@
 			<1>; /*MTK_DRM_OPT_SF_PF*/
 	};
 
+//#ifdef OPLUS_FEATURE_NFC_BRINGUP
+	irq_nfc: irq_nfc {
+		compatible = "mediatek,irq_nfc-eint";
+	};
+//#endif /* OPLUS_FEATURE_NFC_BRINGUP */
+
 	disp_mutex0: disp_mutex@14001000 {
 		compatible = "mediatek,disp_mutex0",
 					"mediatek,mt6781-disp-mutex";
@@ -3083,7 +3111,18 @@
 			pwm-names = "lcd-backlight";
 		};
 	};
-
+/* #ifdef OPLUS_BUG_COMPATIBILITY */
+	i2c_leds {
+		compatible = "mediatek,i2c-leds";
+		backlight {
+			label = "lcd-backlight";
+			max-brightness = <2047>;
+			led-bits = <8>;
+			trans-bits = <11>;
+			default-state = "on";
+		};
+	};
+/* #endif */
 	ion: iommu {
 		compatible = "mediatek,ion";
 		iommus = <&iommu0 M4U_PORT_L0_DISP_FAKE0>;
@@ -4449,6 +4488,19 @@
 		compatible = "goodix,touch", "mediatek,touch";
 	};
 
+	oplus_fp_common:oplus_fp_common {
+		compatible = "oplus,fp_common";
+	};
+
+	goodix_fp: goodix_fp {
+		compatible = "goodix,goodix_fp";
+	};
+
+	silead_fp: silead_fp {
+		status = "ok";
+		compatible = "sil,silead_fp-pins";
+	};
+
 	smart_pa: smart_pa {
 	};
 
@@ -4795,7 +4847,16 @@
 #include "mediatek/mt6370_pd.dtsi"
 #include "mediatek/mt6781-clkitg.dtsi"
 #include "mediatek/rt5133_for_6781.dtsi"
+//#ifdef ODM_HQ_EDIT
+#include "mediatek/sia8109-sia8152.dtsi"
+#include "mediatek/aw87319.dtsi"
+//#endif
 #ifdef CONFIG_MTK_ENABLE_GENIEZONE
 #include "mediatek/trusty.dtsi"
 #endif
+
+&mt6370_spd_ldo {
+    /* change name by yourself */
+    regulator-name = "dvdd";
+};
 

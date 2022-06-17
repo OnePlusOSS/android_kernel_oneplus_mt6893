@@ -353,6 +353,12 @@ int primary_display_get_corner_pattern_height(void);
 void *primary_display_get_corner_pattern_top_va(void);
 void *primary_display_get_corner_pattern_bottom_va(void);
 #endif
+
+#ifdef OPLUS_BUG_STABILITY
+int _ioctl_get_lcm_module_info(unsigned long arg);
+int primary_display_shutdown(void);
+#endif
+
 int primary_display_get_pages(void);
 int primary_display_set_overlay_layer(struct primary_disp_input_config *input);
 int primary_display_is_alive(void);

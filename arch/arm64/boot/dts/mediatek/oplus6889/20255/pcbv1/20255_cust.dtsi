@@ -1,0 +1,20 @@
+/*#ifdef VENDOE_EDIT*/
+&i2c9 {
+        fan53870@35 {
+                compatible = "fan53870";
+                reg = <0x35>;
+                ldo1_min_vol = <800000>;  /*uV*/
+                ldo1_max_vol = <1504000>;
+                ldo1_step_vol = <8000>;
+        };
+        wl2868c@2f {
+                compatible = "wl2868c-i2c";
+                reg = <0x2f>;
+                id_reg = <0x00>;
+                id_val = <0x82>;
+                vin1_vol = <800000>;
+                vin2_vol = <1504000>;
+                en-gpios = <&pio 29 1>;
+        };
+};
+/*#endif*/
