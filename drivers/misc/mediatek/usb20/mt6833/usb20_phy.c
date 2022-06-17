@@ -107,10 +107,20 @@ void usb_phy_switch_to_usb(void)
 #define SHFT_RG_USB20_TERM_VREF_SEL 8
 #define OFFSET_RG_USB20_PHY_REV6 0x18
 #define SHFT_RG_USB20_PHY_REV6 30
+#ifdef OPLUS_FEATURE_CHG_BASIC
+void usb_phy_tuning(struct musb *musb)
+#else
 void usb_phy_tuning(void)
+#endif
 {
 	static bool inited;
 	static s32 u2_vrt_ref, u2_term_ref, u2_enhance;
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	static s32 u2_vrt_ref_dt, u2_term_ref_dt, u2_enhance_dt;
+	static s32 host_u2_vrt_ref_dt, host_u2_term_ref_dt, host_u2_enhance_dt;
+	s32 val;
+#endif
+
 	struct device_node *of_node;
 
 	if (!inited) {
@@ -118,21 +128,66 @@ void usb_phy_tuning(void)
 		u2_vrt_ref = 5;
 		u2_term_ref = 5;
 		u2_enhance = 1;
+#ifdef OPLUS_FEATURE_CHG_BASIC
+		u2_vrt_ref_dt = 5;
+		u2_term_ref_dt = 5;
+		u2_enhance_dt = 1;
+
+		host_u2_vrt_ref_dt = 5;
+		host_u2_term_ref_dt = 5;
+		host_u2_enhance_dt = 1;
+#endif
 
 		of_node = of_find_compatible_node(NULL,
 			NULL, "mediatek,phy_tuning");
 		if (of_node) {
 			/* value won't be updated if property not being found */
+#ifdef OPLUS_FEATURE_CHG_BASIC
+		of_property_read_u32(of_node,
+			"u2_vrt_ref", (u32 *) &u2_vrt_ref_dt);
+		of_property_read_u32(of_node,
+			"u2_term_ref", (u32 *) &u2_term_ref_dt);
+		of_property_read_u32(of_node,
+			"u2_enhance", (u32 *) &u2_enhance_dt);
+
+		if (of_property_read_u32(of_node,
+			"host_u2_vrt_ref", (u32 *) &val) >= 0)
+			host_u2_vrt_ref_dt = val;
+		else
+			host_u2_vrt_ref_dt = u2_vrt_ref_dt;
+		if (of_property_read_u32(of_node,
+			"host_u2_term_ref", (u32 *) &val) >= 0)
+			host_u2_term_ref_dt = val;
+		else
+			host_u2_term_ref_dt = u2_term_ref_dt;
+		if (of_property_read_u32(of_node,
+			"host_u2_enhance", (u32 *) &val) >= 0)
+			host_u2_enhance_dt = val;
+		else
+			host_u2_enhance_dt = u2_enhance_dt;
+#else
 			of_property_read_u32(of_node,
 				"u2_vrt_ref", (u32 *) &u2_vrt_ref);
 			of_property_read_u32(of_node,
 				"u2_term_ref", (u32 *) &u2_term_ref);
 			of_property_read_u32(of_node,
 				"u2_enhance", (u32 *) &u2_enhance);
+#endif
 		}
 		inited = true;
 	}
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	if(musb->is_host) {
+		u2_vrt_ref = host_u2_vrt_ref_dt;
+		u2_term_ref = host_u2_term_ref_dt;
+		u2_enhance = host_u2_enhance_dt;
+	} else {
+		u2_vrt_ref = u2_vrt_ref_dt;
+		u2_term_ref = u2_term_ref_dt;
+		u2_enhance = u2_enhance_dt;
+	}
+#endif
 	if (u2_vrt_ref != -1) {
 		if (u2_vrt_ref <= VAL_MAX_WIDTH_3) {
 			USBPHY_CLR32(OFFSET_RG_USB20_VRT_VREF_SEL,
@@ -643,7 +698,11 @@ void usb_phy_savecurrent(void)
 }
 
 /* M17_USB_PWR Sequence 20160603.xls */
+#ifdef OPLUS_FEATURE_CHG_BASIC
+void usb_phy_recover(struct musb *musb)
+#else
 void usb_phy_recover(void)
+#endif
 {
 	unsigned int efuse_val = 0;
 
@@ -755,8 +814,11 @@ void usb_phy_recover(void)
 	USBPHY_SET32(0x18, (0x1<<28));
 	USBPHY_CLR32(0x18, (0xf<<0));
 	USBPHY_SET32(0x18, (0x5<<0));
-
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	usb_phy_tuning(musb);
+#else
 	usb_phy_tuning();
+#endif
 
 	DBG(0, "usb recovery success\n");
 }

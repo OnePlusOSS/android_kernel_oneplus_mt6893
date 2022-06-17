@@ -21,7 +21,9 @@
 #include <linux/pinctrl/pinctrl.h>
 #include "imgsensor_hw.h"
 #include "imgsensor_common.h"
-
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+#include <soc/oplus/system/oplus_project.h>
+#endif
 enum GPIO_CTRL_STATE_CAM {
 	/* Main */
 	GPIO_CTRL_STATE_PDN_H,
@@ -64,6 +66,11 @@ struct GPIO {
 	struct pinctrl       *ppinctrl_switch;
 	struct pinctrl_state *ppinctrl_state_switch[
 		GPIO_CTRL_STATE_MAX_NUM_SWITCH];
+#endif
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	#ifdef SENSOR_PLATFORM_4G_20682
+	struct pinctrl_state *pinctrl_state_ldo_enable;
+	#endif
 #endif
 	struct mutex         *pgpio_mutex;
 };

@@ -14,14 +14,20 @@
 #include "mt6781-afe-gpio.h"
 #include "../../codecs/mt6358.h"
 #include "../common/mtk-sp-spk-amp.h"
-
+//#ifdef ODM_HQ_EDIT
+#include "../sia81xx_space/sia81xx_aux_dev_if.h"
+//#endif
 /*
  * if need additional control for the ext spk amp that is connected
  * after Lineout Buffer / HP Buffer on the codec, put the control in
  * mt6781_mt6366_spk_amp_event()
  */
 #define EXT_SPK_AMP_W_NAME "Ext_Speaker_Amp"
-
+//#ifdef ODM_HQ_EDIT
+extern unsigned char aw87319_audio_speaker(void);
+extern unsigned char aw87319_audio_receiver(void);
+extern unsigned char aw87319_audio_off(void);
+//#endif
 static const char *const mt6781_spk_type_str[] = {MTK_SPK_NOT_SMARTPA_STR,
 						  MTK_SPK_RICHTEK_RT5509_STR,
 						  MTK_SPK_MEDIATEK_MT6660_STR};
@@ -80,9 +86,15 @@ static int mt6781_mt6366_spk_amp_event(struct snd_soc_dapm_widget *w,
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
 		/* spk amp on control */
+		//#ifdef ODM_HQ_EDIT
+		aw87319_audio_speaker();
+		//#endif /* ODM_HQ_EDIT */
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
 		/* spk amp off control */
+		//#ifdef ODM_HQ_EDIT
+		aw87319_audio_off();
+		//#endif /* ODM_HQ_EDIT */
 		break;
 	default:
 		break;
@@ -1109,6 +1121,9 @@ static int mt6781_mt6366_dev_probe(struct platform_device *pdev)
 
 	dev_info(&pdev->dev, "%s(), devm_snd_soc_register_card\n", __func__);
 
+         //#ifdef ODM_HQ_EDIT
+        soc_aux_init_only_sia81xx(pdev, card);
+        //#endif
 	ret = devm_snd_soc_register_card(&pdev->dev, card);
 	if (ret)
 		dev_err(&pdev->dev, "%s snd_soc_register_card fail %d\n",

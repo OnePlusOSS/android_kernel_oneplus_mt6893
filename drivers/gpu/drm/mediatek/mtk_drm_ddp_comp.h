@@ -249,6 +249,15 @@ enum mtk_ddp_io_cmd {
 	DSI_LFR_STATUS_CHECK,
 	WDMA_WRITE_DST_ADDR0,
 	WDMA_READ_DST_SIZE,
+	DSI_READ,
+	LCM_HBM,
+	LCM_CABC,
+	DC_BACKLIGHT,
+	LCM_SEED,
+	PANEL_SN_SET,
+	DC_POST_EXIT,
+	DISP_OFF,
+	//#endif
 };
 
 struct golden_setting_context {

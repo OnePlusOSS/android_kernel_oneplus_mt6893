@@ -1,0 +1,39 @@
+&audio_extend {
+	//for aw speaker
+	oplus,speaker-vendor = "awinic_digital";
+	oplus,speaker-i2s-id = <3>;
+	oplus,speaker-codec-name = "aw882xx_smartpa";
+	oplus,speaker-codec-dai-name = "aw882xx-aif";
+};
+
+&sound {
+	/* this dtsi config for product's special config, AudioHal read ctl 'OPLUS_AUDIO_EXTERN_CONFIG' get the values*
+	 * 1st value --> PA type: 0:NXP Pa, 1:Awinic Pa, 2:Sia Pa, 3:Awinic aw882xx*/
+	audio_extern_config = <3>;
+};
+
+&aud_gpio_i2s0_off {
+       pins_cmd_dat {
+               pinmux = <PINMUX_GPIO33__FUNC_GPIO33>;
+       };
+};
+&aud_gpio_i2s0_on {
+       pins_cmd_dat {
+               pinmux = <PINMUX_GPIO33__FUNC_I2S0_DI>;
+        };
+};
+
+&aud_gpio_i2s3_off {
+       pins_cmd_dat {
+               pinmux = <PINMUX_GPIO31__FUNC_GPIO31>,
+                         <PINMUX_GPIO32__FUNC_GPIO32>,
+                         <PINMUX_GPIO34__FUNC_GPIO34>;
+                 };
+};
+&aud_gpio_i2s3_on {
+        pins_cmd_dat {
+               pinmux = <PINMUX_GPIO31__FUNC_I2S3_BCK>,
+                        <PINMUX_GPIO32__FUNC_I2S3_LRCK>,
+                        <PINMUX_GPIO34__FUNC_I2S3_DO>;
+               };
+};

@@ -26,6 +26,11 @@
 #include "mtk-dsp-platform-driver.h"
 #include "mtk-base-afe.h"
 
+#ifdef CONFIG_OPLUS_FEATURE_MM_FEEDBACK
+#include <soc/oplus/system/oplus_mm_kevent_fb.h>
+#define OPLUS_AUDIO_EVENTID_MTK_UNDERRUN_ERR  10043
+#define OPLUS_MTK_UNDERRUN_FEEDBACK_CNT   (20)
+#endif /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
 static DEFINE_MUTEX(adsp_wakelock_lock);
 
 #define IPIMSG_SHARE_MEM (1024)
@@ -981,6 +986,9 @@ static bool mtk_dsp_dl_consume_check_exception(struct mtk_base_dsp *dsp,
 		pr_info("%s adsp reset id = %d\n", __func__, id);
 		RingBuf_Reset(&dsp->dsp_mem[id].ring_buf);
 		dsp->dsp_mem[id].adsp_xrun_flag = true;
+#ifdef CONFIG_OPLUS_FEATURE_MM_FEEDBACK
+		dsp->dsp_mem[id].underflow_cnt++;
+#endif /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
 		snd_pcm_period_elapsed(dsp->dsp_mem[id].substream);
 		return true;
 	}
@@ -989,6 +997,9 @@ static bool mtk_dsp_dl_consume_check_exception(struct mtk_base_dsp *dsp,
 	if (ipi_msg && ipi_msg->param2 == ADSP_DL_CONSUME_UNDERFLOW) {
 		pr_info("%s adsp underflowed id = %d\n", __func__, id);
 		dsp->dsp_mem[id].adsp_xrun_flag = true;
+#ifdef CONFIG_OPLUS_FEATURE_MM_FEEDBACK
+		dsp->dsp_mem[id].underflow_cnt++;
+#endif /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
 		snd_pcm_period_elapsed(dsp->dsp_mem[id].substream);
 		return true;
 	}
@@ -1199,6 +1210,27 @@ static int mtk_dsp_pcm_close(struct snd_pcm_substream *substream)
 	int dsp_feature_id = get_featureid_by_dsp_daiid(id);
 
 	pr_info("%s(), task_id: %d\n", __func__, id);
+
+#ifdef CONFIG_OPLUS_FEATURE_MM_FEEDBACK
+	if (dsp->dsp_mem[id].underflow_cnt > OPLUS_MTK_UNDERRUN_FEEDBACK_CNT) {
+		if (substream->pcm && substream->runtime) {
+			mm_fb_audio_kevent_named(OPLUS_AUDIO_EVENTID_MTK_UNDERRUN_ERR, \
+					MM_FB_KEY_RATELIMIT_5MIN, "payload@@MTK adsp underflow,task_scene=%d,underrun=%d,pcm=%d,sample_rate=%d", \
+					get_dspscene_by_dspdaiid(id), \
+					dsp->dsp_mem[id].underflow_cnt, \
+					substream->pcm->device, \
+					substream->runtime->rate);
+		} else {
+			mm_fb_audio_kevent_named(OPLUS_AUDIO_EVENTID_MTK_UNDERRUN_ERR, \
+					MM_FB_KEY_RATELIMIT_5MIN, "payload@@MTK adsp underflow,task_scene=%d,underrun=%d", \
+					get_dspscene_by_dspdaiid(id), \
+					dsp->dsp_mem[id].underflow_cnt);
+		}
+	}
+	pr_info("%s(), task_scene = %d, underflow_cnt = %d\n", __func__,
+			get_dspscene_by_dspdaiid(id), dsp->dsp_mem[id].underflow_cnt);
+	dsp->dsp_mem[id].underflow_cnt = 0;
+#endif /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
 
 	/* send to task with close information */
 	ret = mtk_scp_ipi_send(get_dspscene_by_dspdaiid(id), AUDIO_IPI_MSG_ONLY,

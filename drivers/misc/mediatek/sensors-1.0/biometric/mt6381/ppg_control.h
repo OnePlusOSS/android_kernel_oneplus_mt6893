@@ -18,7 +18,6 @@
  * @brief   Automatic PPG configuration control
  * @author  Mediatek
  * @version 1.0.1.1
- * @date    2016.04.17
  */
 
 /**

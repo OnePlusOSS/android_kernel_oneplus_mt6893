@@ -226,6 +226,10 @@
 #define MIPITX_CK_SW_LPTX_PRE_OE	(0x0348UL)
 #define MIPITX_CKC_SW_LPTX_PRE_OE	(0x0368UL)
 
+#ifdef OPLUS_BUG_STABILITY
+unsigned int oplus_panel_index;
+#endif	/* OPLUS_BUG_STABILITY */
+
 enum MIPITX_PAD_VALUE {
 	PAD_D2P_T0A = 0,
 	PAD_D2N_T0B,
@@ -259,6 +263,10 @@ struct mtk_mipi_tx {
 	struct clk_hw pll_hw;
 	struct clk *pll;
 };
+
+#ifdef OPLUS_BUG_STABILITY
+extern unsigned int oplus_get_ssc_config_data(void);
+#endif
 
 static inline struct mtk_mipi_tx *mtk_mipi_tx_from_clk_hw(struct clk_hw *hw)
 {
@@ -858,6 +866,10 @@ static int mtk_mipi_tx_pll_prepare_mt6885(struct clk_hw *hw)
 	unsigned int txdiv, txdiv0, txdiv1, tmp;
 	u32 rate;
 
+	#ifdef OPLUS_BUG_STABILITY
+	/*u32 reg_val = 0;*/
+	#endif	/* OPLUS_BUG_STABILITY */
+
 	DDPDBG("%s+\n", __func__);
 
 	/* if mipitx is on, skip it... */
@@ -934,6 +946,21 @@ static int mtk_mipi_tx_pll_prepare_mt6885(struct clk_hw *hw)
 
 	/* TODO: should write bit8 to set SW_ANA_CK_EN here */
 	mtk_mipi_tx_set_bits(mipi_tx, MIPITX_SW_CTRL_CON4, 1);
+
+	#ifdef OPLUS_BUG_STABILITY
+	/*2112701 is "oplus21127_samsung_ams643ag01_1080p_dsi_cmd,lcm"*/
+	if (oplus_panel_index == 2112701) {
+		writel(0x01b10003, mipi_tx->regs + MIPITX_PLL_CON2);
+		/*example,mipi clock down n% ,(( n x mipi clock x 4 x 262144 + 281644 ) / 563329)*/
+		/*301M dowm 0.5%*/
+		writel(0x01180118, mipi_tx->regs + MIPITX_PLL_CON3);
+
+		/*reg_val = readl(mipi_tx->regs + MIPITX_PLL_CON2);
+		printk("299M down 0.1%- %s - open ssc CON2 reg_val=0x%x \n",__func__,reg_val);
+		reg_val = readl(mipi_tx->regs + MIPITX_PLL_CON3);
+		printk("%s - open ssc CON3 reg_val=0x%x \n",__func__,reg_val);*/
+	}
+	#endif	/* OPLUS_BUG_STABILITY */
 
 	DDPDBG("%s-\n", __func__);
 
@@ -1296,6 +1323,9 @@ static int mtk_mipi_tx_pll_prepare_mt6877(struct clk_hw *hw)
 	struct mtk_mipi_tx *mipi_tx = mtk_mipi_tx_from_clk_hw(hw);
 	unsigned int txdiv, txdiv0, txdiv1, tmp;
 	u32 rate;
+	#ifdef OPLUS_BUG_STABILITY
+	unsigned int ssc_config_data;
+	#endif
 
 	DDPDBG("%s+\n", __func__);
 
@@ -1373,6 +1403,16 @@ static int mtk_mipi_tx_pll_prepare_mt6877(struct clk_hw *hw)
 
 	/* TODO: should write bit8 to set SW_ANA_CK_EN here */
 	mtk_mipi_tx_set_bits(mipi_tx, MIPITX_SW_CTRL_CON4, 1);
+
+	#ifdef OPLUS_BUG_STABILITY
+	ssc_config_data = oplus_get_ssc_config_data();
+	if (ssc_config_data != 0) {
+		writel(0x01b10003, mipi_tx->regs + MIPITX_PLL_CON2);
+		/* ssc config */
+		writel(ssc_config_data, mipi_tx->regs + MIPITX_PLL_CON3);
+		DDPINFO("%s ssc_config_data:%x\n", __func__, ssc_config_data);
+	}
+	#endif
 
 	DDPDBG("%s-\n", __func__);
 #endif

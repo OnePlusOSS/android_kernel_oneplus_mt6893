@@ -51,6 +51,12 @@ int disp_lcm_esd_check(struct disp_lcm_handle *plcm);
 int disp_lcm_esd_recover(struct disp_lcm_handle *plcm);
 int disp_lcm_suspend(struct disp_lcm_handle *plcm);
 int disp_lcm_resume(struct disp_lcm_handle *plcm);
+#ifdef OPLUS_BUG_STABILITY
+int primary_disp_lcm_resume_power(struct disp_lcm_handle *plcm);
+int disp_lcm_shutdown(struct disp_lcm_handle *plcm);
+int disp_lcm_oplus_set_lcm_cabc_cmd(struct disp_lcm_handle *plcm, void *handle, unsigned int level);
+int disp_lcm_get_cabc(struct disp_lcm_handle *plcm, int *status);
+#endif
 int disp_lcm_is_support_adjust_fps(struct disp_lcm_handle *plcm);
 int disp_lcm_adjust_fps(void *cmdq, struct disp_lcm_handle *plcm, int fps);
 int disp_lcm_set_backlight(struct disp_lcm_handle *plcm,

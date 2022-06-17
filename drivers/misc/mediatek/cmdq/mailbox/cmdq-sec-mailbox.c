@@ -16,6 +16,10 @@
 #include "cmdq-sec-tl-api.h"
 #include "cmdq-util.h"
 
+#ifdef OPLUS_BUG_STABILITY
+#include <soc/oplus/system/oplus_mm_kevent_fb.h>
+#endif
+
 #ifdef CMDQ_SECURE_MTEE_SUPPORT
 #include "cmdq_sec_mtee.h"
 #endif
@@ -1762,7 +1766,11 @@ static int __init cmdq_sec_init(void)
 	return err;
 }
 
+//#ifdef OPLUS_BUG_STABILITY
 #if defined(CMDQ_GP_SUPPORT) || defined(CMDQ_SECURE_MTEE_SUPPORT)
+//#else
+//#ifdef CMDQ_GP_SUPPORT
+//#endif /* OPLUS_BUG_STABILITY */
 static s32 cmdq_sec_late_init_wsm(void *data)
 {
 	struct cmdq_sec *cmdq;
@@ -1796,6 +1804,9 @@ static s32 cmdq_sec_late_init_wsm(void *data)
 		err = cmdq_sec_session_init(cmdq->context);
 		mutex_unlock(&cmdq->exec_lock);
 		if (err) {
+			#ifdef OPLUS_BUG_STABILITY
+			mm_fb_display_kevent("DisplayDriverID@@509$$", MM_FB_KEY_RATELIMIT_1H, "cmdq sec session init failed:%d", err);
+			#endif
 			err = -CMDQ_ERR_SEC_CTX_SETUP;
 			cmdq_err("session init failed:%d", err);
 			continue;

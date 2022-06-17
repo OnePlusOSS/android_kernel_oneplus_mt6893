@@ -19,3 +19,8 @@ config MTK_ION
 	  It set in xxxx_defconfig.mk
 	  default is on.
 
+config OPLUS_ION_BOOSTPOOL
+	bool "Support ION Boost pool"
+	default n
+	help
+	  This driver supports ION boost pool.

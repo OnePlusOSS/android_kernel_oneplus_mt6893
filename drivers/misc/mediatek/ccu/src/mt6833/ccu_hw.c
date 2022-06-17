@@ -1248,7 +1248,14 @@ int ccu_load_segments(const struct firmware *fw, enum CCU_BIN_TYPE type)
 		switch (type) {
 		case CCU_DP_BIN:
 		{
+
+
+
+			#ifndef OPLUS_FEATURE_CAMERA_COMMON
+			if (da < CCU_CORE_DMEM_BASE && da > CCU_CACHE_BASE)
+			#else /*OPLUS_FEATURE_CAMERA_COMMON*/
 			if (da < CCU_CORE_DMEM_BASE && da >= CCU_CACHE_BASE)
+			#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 				continue;
 			break;
 		}

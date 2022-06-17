@@ -30,6 +30,11 @@
 /* such as DPI0, DSI0/1 */
 /* static struct disp_lcm_handle _disp_lcm_driver[MAX_LCM_NUMBER]; */
 
+#ifdef OPLUS_BUG_STABILITY
+extern bool __attribute((weak)) oplus_flag_lcd_off;
+extern bool __attribute((weak)) oplus_display_twelvebits_support;
+#endif
+
 #ifdef CONFIG_MTK_HIGH_FRAME_RATE
 /* support dfps num 2 60/90 */
 #define DFPS_LEVEL 2
@@ -1032,6 +1037,20 @@ void load_lcm_resources_from_DT(struct LCM_DRIVER *lcm_drv)
 }
 #endif
 
+#ifdef OPLUS_BUG_STABILITY
+int tp_gesture = 0;
+EXPORT_SYMBOL(tp_gesture);
+char Lcm_name1[256];
+static char nt36525b_panel_xxx_mark;
+static inline char getLcmPanel_ID(void){
+	DISPCHECK("lcm nt36525b_panel kernel is %d\n",nt36525b_panel_xxx_mark);
+	return nt36525b_panel_xxx_mark;
+}
+
+static inline void setLcmPanel_ID(char value){
+		nt36525b_panel_xxx_mark = value;
+}
+#endif
 struct disp_lcm_handle *disp_lcm_probe(char *plcm_name,
 	enum LCM_INTERFACE_ID lcm_id, int is_lcm_inited)
 {
@@ -1046,10 +1065,77 @@ struct disp_lcm_handle *disp_lcm_probe(char *plcm_name,
 	struct LCM_DRIVER *lcm_drv = NULL;
 	struct LCM_PARAMS *lcm_param = NULL;
 	struct disp_lcm_handle *plcm = NULL;
-
+#ifdef OPLUS_BUG_STABILITY
+	char *temp = NULL;
+	char *tddic_temp = NULL;
+	char *lcm_panel_temp = NULL;
+#endif /*OPLUS_BUG_STABILITY*/
 	DISPFUNC();
 	DISPCHECK("plcm_name=%s is_lcm_inited %d\n", plcm_name, is_lcm_inited);
-
+#ifdef OPLUS_BUG_STABILITY
+	if(is_lcm_inited ==1){
+		strncpy(Lcm_name1,plcm_name,strlen(plcm_name)+1);
+//		strncpy(Lcm_name2,plcm_name,strlen(plcm_name)+1);
+	}
+	pr_err(" lcm name IS %s\n",Lcm_name1);
+	tddic_temp = strstr(plcm_name ,"ilt9881h");
+	if (tddic_temp != NULL){
+		temp = tddic_temp + strlen("ilt9881h");
+		if (!strncmp(temp ,"_truly_hdp_dsi_vdo_lcm_drv", strlen("_truly_hdp_dsi_vdo_lcm_drv"))){
+			lcm_panel_temp = "TRULY_ILI";
+		} else if (!strncmp(temp ,"_txd_hdp_dsi_vdo_lcm_drv", strlen("_txd_hdp_dsi_vdo_lcm_drv"))){
+			lcm_panel_temp = "TXD_ILI";
+		} else {
+			lcm_panel_temp = "TEMP_DEFAULT_ILI";
+		}
+		tddic_temp = "ili9881h";
+		setLcmPanel_ID(0);
+	} else {
+			tddic_temp = strstr(plcm_name ,"hx83112a");
+			if (tddic_temp != NULL){
+				temp = tddic_temp + strlen("hx83112a");
+				if (!strncmp(temp ,"_lead_hdp_dsi_vdo_lcm_drv" ,strlen("_lead_hdp_dsi_vdo_lcm_drv"))){
+					lcm_panel_temp = "LEAD_HX";
+				} else {
+					lcm_panel_temp = "NULL_HX";
+				}
+				tddic_temp = "hx83112a";
+			} else {
+			 	tddic_temp = strstr(plcm_name ,"ili9881tfh");
+				if (tddic_temp != NULL){
+						temp = tddic_temp + strlen("ili9881tfh");
+						if (!strncmp(temp ,"_txd_hdp_dsi_vdo_lcm_drv" ,strlen("_txd_hdp_dsi_vdo_lcm_drv"))){
+							lcm_panel_temp = "TXD_ILI_TF";
+						} else if (!strncmp(temp ,"_lide_hdp_dsi_vdo_lcm_drv" ,strlen("_lide_hdp_dsi_vdo_lcm_drv"))){
+							lcm_panel_temp = "LIDE_ILI_TF";
+						}
+						tddic_temp = "ili9881tfh";
+						setLcmPanel_ID(0);
+				} else {
+					tddic_temp = strstr(plcm_name ,"nt36525b");
+					if (tddic_temp != NULL){
+						temp = tddic_temp + strlen("nt36525b");
+						if (!strncmp(temp ,"_hlt_hdp_dsi_vdo_lcm_drv" ,strlen("_hlt_hdp_dsi_vdo_lcm_drv"))){
+							lcm_panel_temp = "HELITAI_NT";
+						} else {
+							lcm_panel_temp = "ELSE_NT";
+						}
+						tddic_temp = "nt36525b";
+						setLcmPanel_ID(1);
+					}else if (strstr(plcm_name ,"Simulator")){
+						lcm_panel_temp = "Simulator";
+						tddic_temp = "virtual";
+						setLcmPanel_ID(0);
+					} else {
+						lcm_panel_temp = "NOT_FOUND";
+						tddic_temp = "NOT_FOUND";
+					}
+				}
+			}
+	}
+	pr_err(" lcm tddic_temp=%s,lcm_panel_temp=%s\n",tddic_temp,lcm_panel_temp);
+	//devinfo_info_set("lcd" ,tddic_temp ,lcm_panel_temp);
+#endif
 #if defined(MTK_LCM_DEVICE_TREE_SUPPORT)
 	if (check_lcm_node_from_DT() == 0) {
 		lcm_drv = &lcm_common_drv;
@@ -1408,6 +1494,22 @@ int disp_lcm_esd_recover(struct disp_lcm_handle *plcm)
 	return -1;
 }
 
+#ifdef OPLUS_BUG_STABILITY
+int disp_lcm_shutdown(struct disp_lcm_handle *plcm)
+{   struct LCM_DRIVER *lcm_drv = NULL;
+    DISPFUNC();
+    if (_is_lcm_inited(plcm)) {
+        lcm_drv = plcm->drv;
+        if (lcm_drv->shutdown_power) {
+            lcm_drv->shutdown_power();
+        }
+        return 0;
+    }
+    DISPERR("lcm_drv is null\n");
+    return -1;
+}
+#endif
+
 int disp_lcm_suspend(struct disp_lcm_handle *plcm)
 {
 	struct LCM_DRIVER *lcm_drv = NULL;
@@ -1424,14 +1526,29 @@ int disp_lcm_suspend(struct disp_lcm_handle *plcm)
 
 		if (lcm_drv->suspend_power)
 			lcm_drv->suspend_power();
-
-
+#ifdef OPLUS_BUG_STABILITY
+		oplus_flag_lcd_off = true;
+#endif
 		return 0;
 	}
 	DISPERR("lcm_drv is null\n");
 
 	return -1;
 }
+
+#ifdef OPLUS_BUG_STABILITY
+int primary_disp_lcm_resume_power(struct disp_lcm_handle *plcm)
+{
+	struct LCM_DRIVER *lcm_drv = NULL;
+	DISPFUNC();
+	if (getLcmPanel_ID()) {
+		lcm_drv = plcm->drv;
+		if (lcm_drv->resume_power)
+			lcm_drv->resume_power();
+	}
+	return 0;
+}
+#endif /* OPLUS_BUG_STABILITY */
 
 int disp_lcm_resume(struct disp_lcm_handle *plcm)
 {
@@ -1440,10 +1557,13 @@ int disp_lcm_resume(struct disp_lcm_handle *plcm)
 	DISPFUNC();
 	if (_is_lcm_inited(plcm)) {
 		lcm_drv = plcm->drv;
-
+		#ifdef OPLUS_BUG_STABILITY
+		if ( (!getLcmPanel_ID()) && (lcm_drv->resume_power))
+			lcm_drv->resume_power();
+		#else
 		if (lcm_drv->resume_power)
 			lcm_drv->resume_power();
-
+		#endif /* OPLUS_BUG_STABILITY */
 
 		if (lcm_drv->resume) {
 			lcm_drv->resume();
@@ -1451,6 +1571,9 @@ int disp_lcm_resume(struct disp_lcm_handle *plcm)
 			DISPERR("FATAL ERROR, lcm_drv->resume is null\n");
 			return -1;
 		}
+#ifdef OPLUS_BUG_STABILITY
+		oplus_flag_lcd_off = false;
+#endif
 
 		return 0;
 	}
@@ -1509,19 +1632,43 @@ int disp_lcm_adjust_fps(void *cmdq, struct disp_lcm_handle *plcm, int fps)
 	return -1;
 }
 
+#ifdef OPLUS_BUG_STABILITY
+unsigned int g_lcd_backlight = 0;
+#endif
 int disp_lcm_set_backlight(struct disp_lcm_handle *plcm,
 	void *handle, int level)
 {
 	struct LCM_DRIVER *lcm_drv = NULL;
+#ifdef OPLUS_BUG_STABILITY
+	struct LCM_PARAMS *lcm_params = NULL;
+#endif /* OPLUS_BUG_STABILITY */
 
 	DISPFUNC();
 	if (!_is_lcm_inited(plcm)) {
 		DISPERR("lcm_drv is null\n");
 		return -1;
 	}
+#ifndef OPLUS_BUG_STABILITY
+	if((level<=12)&&(level!=0)){
+		level = 13;
+	}
+#else
+	lcm_params = plcm->params;
+	if(level == 0) {
+		level = 0;
+	} else if (level < lcm_params->brightness_min) {
+		level = lcm_params->brightness_min;
+	} else if (level > lcm_params->brightness_max) {
+		level = lcm_params->brightness_max;
+	}
+#endif
 
 	lcm_drv = plcm->drv;
 	if (lcm_drv->set_backlight_cmdq) {
+#ifdef OPLUS_BUG_STABILITY
+		g_lcd_backlight = level;
+#endif
+
 		lcm_drv->set_backlight_cmdq(handle, level);
 	} else {
 		DISPERR("FATAL ERROR, lcm_drv->set_backlight is null\n");
@@ -1730,6 +1877,50 @@ int disp_lcm_set_lcm_cmd(struct disp_lcm_handle *plcm, void *cmdq_handle,
 	DISPERR("lcm_drv is null\n");
 	return -1;
 }
+
+#ifdef OPLUS_BUG_STABILITY
+int disp_lcm_oplus_set_lcm_cabc_cmd(struct disp_lcm_handle *plcm, void *handle, unsigned int level)
+{
+	struct LCM_DRIVER *lcm_drv = NULL;
+
+	DISPFUNC();
+	if (_is_lcm_inited(plcm)) {
+		lcm_drv = plcm->drv;
+		if (lcm_drv->set_cabc_mode_cmdq) {
+			lcm_drv->set_cabc_mode_cmdq(handle, level);
+		} else {
+			DISPERR("FATAL ERROR, lcm_drv->oplus_set_cabc_mode_cmdq is null\n");
+			return -1;
+		}
+
+		return 0;
+	}
+
+	DISPERR("lcm_drv is null\n");
+	return -1;
+}
+
+int disp_lcm_get_cabc(struct disp_lcm_handle *plcm, int *status)
+{
+		struct LCM_DRIVER *lcm_drv = NULL;
+
+		DISPFUNC();
+		if (!_is_lcm_inited(plcm)) {
+			DISPERR("lcm_drv is null\n");
+			return -1;
+		}
+
+		lcm_drv = plcm->drv;
+		if (lcm_drv->get_cabc_status) {
+			lcm_drv->get_cabc_status(status);
+		} else {
+			DISPERR("FATAL ERROR, lcm_drv->get_cabc_status is null\n");
+			return -1;
+		}
+
+		return 0;
+}
+#endif
 
 int disp_lcm_is_partial_support(struct disp_lcm_handle *plcm)
 {

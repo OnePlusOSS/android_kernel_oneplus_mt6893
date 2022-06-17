@@ -35,7 +35,10 @@ enum mt65xx_led_mode {
 	MT65XX_LED_MODE_GPIO,
 	MT65XX_LED_MODE_PMIC,
 	MT65XX_LED_MODE_CUST_LCM,
-	MT65XX_LED_MODE_CUST_BLS_PWM
+/* #ifdef OPLUS_BUG_COMPATIBILITY */
+	MT65XX_LED_MODE_CUST_BLS_PWM,
+	MT65XX_LED_MODE_CUST_PMIC_I2C
+/* #endif */
 };
 
 /******************************************************************************
@@ -49,7 +52,12 @@ typedef int (*cust_set_brightness) (int level);
 /* 10bit backlight level */
 #define LED_INCREASE_LED_LEVEL_MTKPATCH
 #ifdef LED_INCREASE_LED_LEVEL_MTKPATCH
+#ifdef OPLUS_FEATURE_MULTIBITS_BL
+#define MT_LED_INTERNAL_LEVEL_BIT_CNT 11
+#define MT_LED_INTERNAL_LEVEL_BIT_CNT_SALA 12
+#else /* OPLUS_FEATURE_MULTIBITS_BL */
 #define MT_LED_INTERNAL_LEVEL_BIT_CNT 10
+#endif /* OPLUS_FEATURE_MULTIBITS_BL */
 #endif
 
 /******************************************************************************

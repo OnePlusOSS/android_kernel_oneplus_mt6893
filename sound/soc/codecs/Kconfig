@@ -225,6 +225,8 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_RT5512 if I2C
 	select SND_SOC_MT6660 if I2C
 	select SND_SOC_TFA9874 if I2C
+	select SND_SOC_CODEC_AW88264 if I2C
+	select SND_SOC_CODEC_AW882XX if I2C
         help
           Normally ASoC codec drivers are only built if a machine driver which
           uses them is also built since they are only usable with a machine
@@ -1200,6 +1202,14 @@ config SND_SOC_AW87339
 	  PMIC device which has no speaker protection
 	  function.
 
+#ifdef OPLUS_BUG_COMPATIBILITY
+config SND_SOC_CODEC_AW882XX
+	tristate "SoC Audio for awinic aw882xxseries"
+	depends on I2C
+	help
+	  This option enables support for aw882xxseries Smart PA.
+#endif /* OPLUS_BUG_COMPATIBILITY */
+
 config SND_SOC_LM4857
 	tristate
 
@@ -1268,6 +1278,21 @@ config SND_SOC_RT5512
 	  amplifier which contain speaker protection,
 	  multi-band DRC, equalizer function. It would
 	  be set to yes if device with RT5512 on it.
+
+#ifdef OPLUS_ARCH_EXTENDS
+source "sound/soc/codecs/audio/Kconfig"
+#endif /* OPLUS_ARCH_EXTENDS */
+
+#ifdef OPLUS_BUG_COMPATIBILITY
+config SND_SOC_CODEC_AW88264
+	tristate "AW AW88264 speaker amplifier"
+	depends on I2C
+	help
+	  Config of AW88264. It is a Smart power
+	  amplifier which contain speaker protection,
+	  multi-band DRC, equalizer function. It would
+	  be set to yes if device with AW88264 on it.
+#endif /* OPLUS_BUG_COMPATIBILITY */
 
 config SND_SOC_SMARTPAINFO
 	tristate "smartpa info"

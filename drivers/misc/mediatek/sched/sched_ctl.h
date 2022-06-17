@@ -23,7 +23,8 @@ enum {
 #define SCHED_PREFER_NONE   0
 #define SCHED_PREFER_BIG    1
 #define SCHED_PREFER_LITTLE 2
-#define SCHED_PREFER_END    3
+#define SCHED_PREFER_MEDIUM 3
+#define SCHED_PREFER_END    4
 
 extern void set_user_space_global_cpuset
 		(struct cpumask *global_cpus, int cgroup_id);

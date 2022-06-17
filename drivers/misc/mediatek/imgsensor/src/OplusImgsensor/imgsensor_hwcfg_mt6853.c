@@ -1,0 +1,4345 @@
+/*
+ * Copyright (C) 2017 MediaTek Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ */
+#ifndef __IMGSENSOR_HWCFG_20181_CTRL_H__
+#define __IMGSENSOR_HWCFG_20181_CTRL_H__
+#include "imgsensor_hwcfg_custom.h"
+
+struct IMGSENSOR_SENSOR_LIST *oplus_gimgsensor_sensor_list = NULL;
+struct IMGSENSOR_HW_CFG *oplus_imgsensor_custom_config = NULL;
+struct IMGSENSOR_HW_POWER_SEQ *oplus_sensor_power_sequence = NULL;
+struct IMGSENSOR_HW_POWER_SEQ *oplus_platform_power_sequence = NULL;
+struct CAMERA_DEVICE_INFO gImgEepromInfo;
+
+struct IMGSENSOR_SENSOR_LIST
+    gimgsensor_sensor_list_20181[MAX_NUM_OF_SUPPORT_SENSOR] = {
+#if defined(OV64B_MIPI_RAW)
+{OV64B_SENSOR_ID, SENSOR_DRVNAME_OV64B_MIPI_RAW, OV64B_MIPI_RAW_SensorInit},
+#endif
+
+#if defined(IMX615_MIPI_RAW)
+{IMX615_SENSOR_ID, SENSOR_DRVNAME_IMX615_MIPI_RAW, IMX615_MIPI_RAW_SensorInit},
+#endif
+
+#if defined(IMX355_MIPI_RAW)
+{IMX355_SENSOR_ID, SENSOR_DRVNAME_IMX355_MIPI_RAW, IMX355_MIPI_RAW_SensorInit},
+#endif
+#if defined(OV02B10_MIPI_RAW)
+{OV02B10_SENSOR_ID, SENSOR_DRVNAME_OV02B10_MIPI_RAW, OV02B10_MIPI_RAW_SensorInit},
+#endif
+
+    /*  ADD sensor driver before this line */
+    {0, {0}, NULL}, /* end of list */
+};
+
+struct IMGSENSOR_SENSOR_LIST
+    gimgsensor_sensor_list_20151[MAX_NUM_OF_SUPPORT_SENSOR] = {
+#if defined(OV48B_MIPI_RAW)
+{OV48B_SENSOR_ID, SENSOR_DRVNAME_OV48B_MIPI_RAW, OV48B_MIPI_RAW_SensorInit},
+#endif
+#if defined(S5KGM1ST_MIPI_RAW)
+{S5KGM1ST_SENSOR_ID, SENSOR_DRVNAME_S5KGM1ST_MIPI_RAW, S5KGM1ST_MIPI_RAW_SensorInit},
+#endif
+#if defined(IMX471_MIPI_RAW)
+{IMX471_SENSOR_ID, SENSOR_DRVNAME_IMX471_MIPI_RAW, IMX471_MIPI_RAW_SensorInit},
+#endif
+#if defined(HI846_MIPI_RAW)
+{HI846_SENSOR_ID, SENSOR_DRVNAME_HI846_MIPI_RAW, HI846_MIPI_RAW_SensorInit},
+#endif
+#if defined(GC02K0_MIPI_RAW)
+{GC02K0_SENSOR_ID, SENSOR_DRVNAME_GC02K0_MIPI_RAW, GC02K0_MIPI_RAW_SensorInit},
+#endif
+#if defined(OV02B10_MIPI_RAW)
+{OV02B10_SENSOR_ID, SENSOR_DRVNAME_OV02B10_MIPI_RAW, OV02B10_MIPI_RAW_SensorInit},
+#endif
+#if defined(OV02A1B_MIPI_MONO)
+{OV02A1B_SENSOR_ID, SENSOR_DRVNAME_OV02A1B_MIPI_MONO, OV02A1B_MIPI_MONO_SensorInit},
+#endif
+#if defined(OV02B1B_MIPI_MONO)
+{OV02B1B_SENSOR_ID1, SENSOR_DRVNAME_OV02B1B_MIPI_MONO, OV02B1B_MIPI_MONO_SensorInit},
+#endif
+
+    /*  ADD sensor driver before this line */
+    {0, {0}, NULL}, /* end of list */
+};
+
+struct IMGSENSOR_SENSOR_LIST gimgsensor_sensor_list_20630[MAX_NUM_OF_SUPPORT_SENSOR] = {
+#if defined(S5KGW3_MIPI_RAW_ATHENSB)
+{S5KGW3_SENSOR_ID_20631, SENSOR_DRVNAME_S5KGW3_MIPI_RAW_ATHENSB, S5KGW3_MIPI_RAW_SensorInit},
+#endif
+#if defined(OV32A1Q_MIPI_RAW_ATHENSB)
+{OV32A1Q_SENSOR_ID_20631, SENSOR_DRVNAME_OV32A1Q_MIPI_RAW_ATHENSB, ATHENSB_OV32A1Q_MIPI_RAW_SensorInit},
+#endif
+#if defined(HI846_MIPI_RAW_ATHENSB)
+{HI846_SENSOR_ID_20631, SENSOR_DRVNAME_HI846_MIPI_RAW_ATHENSB, ATHENSB_HI846_MIPI_RAW_SensorInit},
+#endif
+#if defined(GC02K_MIPI_RAW_ATHENSB)
+{GC02K_SENSOR_ID_20631, SENSOR_DRVNAME_GC02K_MIPI_RAW_ATHENSB, ATHENSB_GC02K_MIPI_RAW_SensorInit},
+#endif
+#if defined(GC02M1B_MIPI_RAW_ATHENSB)
+{GC02M1B_SENSOR_ID_20631, SENSOR_DRVNAME_GC02M1B_MIPI_RAW_ATHENSB, ATHENSB_GC02M1B_MIPI_RAW_SensorInit},
+#endif
+    /*  ADD sensor driver before this line */
+    {0, {0}, NULL}, /* end of list */
+
+};
+
+struct IMGSENSOR_SENSOR_LIST gimgsensor_sensor_list_20633[MAX_NUM_OF_SUPPORT_SENSOR] = {
+#if defined(S5KGM1ST_MIPI_RAW_ATHENSC)
+    {S5KGM1ST_SENSOR_ID_20633c, SENSOR_DRVNAME_S5KGM1ST_MIPI_RAW_ATHENSC, ATHENSC_S5KGM1ST_MIPI_RAW_SensorInit},
+#endif
+#if defined(IMX471_MIPI_RAW_ATHENSC)
+    {IMX471_SENSOR_ID_20633c, SENSOR_DRVNAME_IMX471_MIPI_RAW_ATHENSC, ATHENSC_IMX471_MIPI_RAW_SensorInit},
+#endif
+#if defined(HI846_MIPI_RAW_ATHENSC)
+    {HI846_SENSOR_ID_20633c, SENSOR_DRVNAME_HI846_MIPI_RAW_ATHENSC, ATHENSC_HI846_MIPI_RAW_SensorInit},
+#endif
+#if defined(GC02K_MIPI_RAW_ATHENSB)
+    {GC02K_SENSOR_ID_20631, SENSOR_DRVNAME_GC02K_MIPI_RAW_ATHENSB, ATHENSB_GC02K_MIPI_RAW_SensorInit},
+#endif
+#if defined(GC02M1B_MIPI_RAW_ATHENSB)
+    {GC02M1B_SENSOR_ID_20631, SENSOR_DRVNAME_GC02M1B_MIPI_RAW_ATHENSB, ATHENSB_GC02M1B_MIPI_RAW_SensorInit},
+#endif
+    /*  ADD sensor driver before this line */
+    {0, {0}, NULL}, /* end of list */
+};
+
+struct IMGSENSOR_SENSOR_LIST
+    gimgsensor_sensor_list_20391[MAX_NUM_OF_SUPPORT_SENSOR] = {
+#if defined(OV64B_MIPI_RAW)
+{OV64B_SENSOR_ID, SENSOR_DRVNAME_OV64B_MIPI_RAW, OV64B_MIPI_RAW_SensorInit},
+#endif
+#if defined(OV48B_MIPI_RAW)
+{OV48B_SENSOR_ID, SENSOR_DRVNAME_OV48B_MIPI_RAW, OV48B_MIPI_RAW_SensorInit},
+#endif
+#if defined(OV32A_MIPI_RAW)
+{OV32A_SENSOR_ID, SENSOR_DRVNAME_OV32A_MIPI_RAW, OV32A_MIPI_RAW_SensorInit},
+#endif
+#if defined(HI846_MIPI_RAW)
+{HI846_SENSOR_ID, SENSOR_DRVNAME_HI846_MIPI_RAW, HI846_MIPI_RAW_SensorInit},
+#endif
+#if defined(OV02B10_MIPI_RAW)
+{OV02B10_SENSOR_ID, SENSOR_DRVNAME_OV02B10_MIPI_RAW, OV02B10_MIPI_RAW_SensorInit},
+#endif
+
+    /*  ADD sensor driver before this line */
+    {0, {0}, NULL}, /* end of list */
+};
+
+struct IMGSENSOR_SENSOR_LIST
+    gimgsensor_sensor_list_20001[MAX_NUM_OF_SUPPORT_SENSOR] = {
+#if defined(OV16A10_MIPI_RAW)
+{OV16A10_SENSOR_ID, SENSOR_DRVNAME_OV16A10_MIPI_RAW, OV16A10_MIPI_RAW_SensorInit},
+#endif
+#if defined(S5K4H7_MIPI_RAW)
+{S5K4H7_SENSOR_ID, SENSOR_DRVNAME_S5K4H7_MIPI_RAW, S5K4H7_MIPI_RAW_SensorInit},
+#endif
+#if defined(HI846_MIPI_RAW)
+{HI846_SENSOR_ID, SENSOR_DRVNAME_HI846_MIPI_RAW, HI846_MIPI_RAW_SensorInit},
+#endif
+#if defined(GC02M1B_MIPI_MONO)
+{GC02M1B_SENSOR_ID, SENSOR_DRVNAME_GC02M1B_MIPI_MONO, GC02M1B_MIPI_MONO_SensorInit},
+#endif
+
+    /*  ADD sensor driver before this line */
+    {0, {0}, NULL}, /* end of list */
+};
+
+struct IMGSENSOR_SENSOR_LIST
+    gimgsensor_sensor_list_moss[MAX_NUM_OF_SUPPORT_SENSOR] = {
+	#if defined(IMX766_MOSSMIPI_RAW)
+	{IMX766_SENSOR_ID_MOSS, SENSOR_DRVNAME_IMX766_MOSSMIPI_RAW, IMX766_MIPI_RAW_MOSS_SensorInit},
+	#endif
+	#if defined(IMX471_MOSSMIPI_RAW)
+	{IMX471_SENSOR_ID_MOSS, SENSOR_DRVNAME_IMX471_MOSSMIPI_RAW, IMX471_MIPI_RAW_MOSS_SensorInit},
+	#endif
+	#if defined(IMX355_MOSSMIPI_RAW)
+	{IMX355_SENSOR_ID_MOSS, SENSOR_DRVNAME_IMX355_MOSSMIPI_RAW, IMX355_MIPI_RAW_MOSS_SensorInit},
+	#endif
+	#if defined(GC02M1_MOSSMIPI_RAW)
+	{GC02M1_SENSOR_ID_MOSS, SENSOR_DRVNAME_GC02M1_MOSSMIPI_RAW, GC02M1_MIPI_RAW_MOSS_SensorInit},
+	#endif
+    /*  ADD sensor driver before this line */
+    {0, {0}, NULL}, /* end of list */
+};
+
+struct IMGSENSOR_SENSOR_LIST
+    gimgsensor_sensor_list_mossa[MAX_NUM_OF_SUPPORT_SENSOR] = {
+	#if defined(S5KGM1ST_MOSSAMIPI_RAW)
+	{S5KGM1ST_SENSOR_ID_MOSSA, SENSOR_DRVNAME_S5KGM1ST_MOSSAMIPI_RAW, S5KGM1ST_MIPI_RAW_MOSSA_SensorInit},
+	#endif
+	#if defined(IMX471_MOSSMIPI_RAW)
+	{IMX471_SENSOR_ID_MOSS, SENSOR_DRVNAME_IMX471_MOSSMIPI_RAW, IMX471_MIPI_RAW_MOSS_SensorInit},
+	#endif
+	#if defined(IMX355_MOSSMIPI_RAW)
+	{IMX355_SENSOR_ID_MOSS, SENSOR_DRVNAME_IMX355_MOSSMIPI_RAW, IMX355_MIPI_RAW_MOSS_SensorInit},
+	#endif
+	#if defined(GC02M1_MOSSAMIPI_RAW)
+	{GC02M1_SENSOR_ID_MOSSA, SENSOR_DRVNAME_GC02M1_MOSSAMIPI_RAW, GC02M1_MIPI_RAW_MOSSA_SensorInit},
+	#endif
+    /*  ADD sensor driver before this line */
+    {0, {0}, NULL}, /* end of list */
+};
+
+struct IMGSENSOR_SENSOR_LIST
+    gimgsensor_sensor_list_20075[MAX_NUM_OF_SUPPORT_SENSOR] = {
+#if defined(OV48B_CHIVASMIPI_RAW)
+{OV48B_SENSOR_ID_CHIVAS, SENSOR_DRVNAME_OV48B_CHIVASMIPI_RAW, OV48B_MIPI_RAW_CHIVAS_SensorInit},
+#endif
+#if defined(OV32A_CHIVASMIPI_RAW)
+{OV32A_SENSOR_ID_CHIVAS, SENSOR_DRVNAME_OV32A_CHIVASMIPI_RAW, OV32A_MIPI_RAW_CHIVAS_SensorInit},
+#endif
+#if defined(HI846_CHIVASMIPI_RAW)
+{HI846_SENSOR_ID_CHIVAS, SENSOR_DRVNAME_HI846_CHIVASMIPI_RAW, HI846_MIPI_RAW_CHIVAS_SensorInit},
+#endif
+#if defined(GC02K0_CHIVASMIPI_RAW)
+{GC02K0_SENSOR_ID_CHIVAS, SENSOR_DRVNAME_GC02K0_CHIVASMIPI_RAW, GC02K0_MIPI_RAW_CHIVAS_SensorInit},
+#endif
+    /*  ADD sensor driver before this line */
+    {0, {0}, NULL}, /* end of list */
+};
+
+struct IMGSENSOR_SENSOR_LIST
+    gimgsensor_sensor_list_21081[MAX_NUM_OF_SUPPORT_SENSOR] = {
+#if defined(IMX581_MIPI_RAW)
+{IMX581_SENSOR_ID, SENSOR_DRVNAME_IMX581_MIPI_RAW, IMX581_MIPI_RAW_SensorInit},
+#endif
+#if defined(IMX471_MIPI_RAW)
+{IMX471_SENSOR_ID, SENSOR_DRVNAME_IMX471_MIPI_RAW, IMX471_MIPI_RAW_SensorInit},
+#endif
+#if defined(GC02M1B_MIPI_MONO)
+{GC02M1B_SENSOR_ID, SENSOR_DRVNAME_GC02M1B_MIPI_MONO, GC02M1B_MIPI_MONO_SensorInit},
+#endif
+#if defined(GC02M1_MIPI_RAW)
+{GC02M1_SENSOR_ID_DUFU, SENSOR_DRVNAME_GC02M1_MIPI_RAW, GC02M1_MIPI_RAW_SensorInit},
+#endif
+
+    /*  ADD sensor driver before this line */
+    {0, {0}, NULL}, /* end of list */
+};
+
+struct IMGSENSOR_SENSOR_LIST
+    gimgsensor_sensor_list_20015[MAX_NUM_OF_SUPPORT_SENSOR] = {
+#if defined(OV13B10_MIPI_RAW_CARR)
+	{CARR_OV13B10_SENSOR_ID, SENSOR_DRVNAME_OV13B10_MIPI_RAW_CARR, CARR_OV13B10_MIPI_RAW_SensorInit},
+#endif
+#if defined(S5K3L6_MIPI_RAW_CARR)
+	{CARR_S5K3L6_SENSOR_ID, SENSOR_DRVNAME_S5K3L6_MIPI_RAW_CARR, CARR_S5K3L6_MIPI_RAW_SensorInit},
+#endif
+#if defined(IMX355_MIPI_RAW_CARR)
+	{CARR_IMX355_SENSOR_ID, SENSOR_DRVNAME_IMX355_MIPI_RAW_CARR, CARR_IMX355_MIPI_RAW_SensorInit},
+#endif
+#if defined(GC02M1B_MIPI_MONO_CARR)
+	{CARR_GC02M1B_SENSOR_ID, SENSOR_DRVNAME_GC02M1B_MIPI_MONO_CARR, CARR_GC02M1B_MIPI_MONO_SensorInit},
+#endif
+#if defined(OV02B10_MIPI_RAW_CARR)
+	{CARR_OV02B10_SENSOR_ID, SENSOR_DRVNAME_OV02B10_MIPI_RAW_CARR, CARR_OV02B10_MIPI_RAW_SensorInit},
+#endif
+#if defined(GC02M1_MIPI_RAW_CARR)
+	{CARR_GC02M1_SENSOR_ID, SENSOR_DRVNAME_GC02M1_MIPI_RAW_CARR, CARR_GC02M1_MIPI_RAW_SensorInit},
+#endif
+    /* ADD sensor driver before this line */
+    {0, {0}, NULL}, /* end of list */
+};
+
+struct IMGSENSOR_SENSOR_LIST
+    gimgsensor_sensor_list_21037[MAX_NUM_OF_SUPPORT_SENSOR] = {
+#if defined(OV13B10_MIPI_RAW_CARR)
+	{CARR_OV13B10_SENSOR_ID, SENSOR_DRVNAME_OV13B10_MIPI_RAW_CARR, CARR_OV13B10_MIPI_RAW_SensorInit},
+#endif
+#if defined(IMX355_MIPI_RAW_CARR)
+	{CARR_IMX355_SENSOR_ID, SENSOR_DRVNAME_IMX355_MIPI_RAW_CARR, CARR_IMX355_MIPI_RAW_SensorInit},
+#endif
+#if defined(GC02M1B_MIPI_MONO_CARR)
+	{CARR_GC02M1B_SENSOR_ID, SENSOR_DRVNAME_GC02M1B_MIPI_MONO_CARR, CARR_GC02M1B_MIPI_MONO_SensorInit},
+#endif
+    /* ADD sensor driver before this line */
+    {0, {0}, NULL}, /* end of list */
+};
+
+struct IMGSENSOR_SENSOR_LIST
+    gimgsensor_sensor_list_21041[MAX_NUM_OF_SUPPORT_SENSOR] = {
+#if defined(S5KGM1ST_MIPI_RAW_ODINA)
+	{S5KGM1ST_SENSOR_ID_ODINA, SENSOR_DRVNAME_S5KGM1ST_MIPI_RAW_ODINA, S5KGM1ST_MIPI_RAW_ODINA_SensorInit},
+#endif
+#if defined(IMX355_MIPI_RAW_ODINA)
+	{IMX355_SENSOR_ID_ODINA, SENSOR_DRVNAME_IMX355_MIPI_RAW_ODINA, IMX355_MIPI_RAW_ODINA_SensorInit},
+#endif
+#if defined(GC02M1B_MIPI_MONO_ODINA)
+	{GC02M1B_SENSOR_ID_ODINA, SENSOR_DRVNAME_GC02M1B_MIPI_MONO_ODINA, GC02M1B_MIPI_MONO_ODINA_SensorInit},
+#endif
+#if defined(OV02B10_MIPI_RAW_ODINA)
+	{OV02B10_SENSOR_ID_ODINA, SENSOR_DRVNAME_OV02B10_MIPI_RAW_ODINA, OV02B10_MIPI_RAW_ODINA_SensorInit},
+#endif
+    /* ADD sensor driver before this line */
+    {0, {0}, NULL}, /* end of list */
+};
+
+struct IMGSENSOR_SENSOR_LIST
+    gimgsensor_sensor_list_216A0[MAX_NUM_OF_SUPPORT_SENSOR] = {
+#if defined(S5KGM1ST_MIPI_RAW_APOLLOF)
+	{S5KGM1ST_SENSOR_ID_APOLLOF, SENSOR_DRVNAME_S5KGM1ST_MIPI_RAW_APOLLOF, S5KGM1ST_MIPI_RAW_APOLLOF_SensorInit},
+#endif
+#if defined(S5K3P9SP_MIPI_RAW_APOLLOF)
+	{S5K3P9SP_SENSOR_ID_APOLLOF, SENSOR_DRVNAME_S5K3P9SP_MIPI_RAW_APOLLOF, S5K3P9SP_MIPI_RAW_APOLLOF_SensorInit},
+#endif
+#if defined(OV02B10_MIPI_RAW_APOLLOF)
+	{OV02B10_SENSOR_ID_APOLLOF, SENSOR_DRVNAME_OV02B10_MIPI_RAW_APOLLOF, OV02B10_MIPI_RAW_APOLLOF_SensorInit},
+#endif
+#if defined(OV02B1B_MIPI_MONO_APOLLOF)
+	{OV02B1B_SENSOR_ID_APOLLOF, SENSOR_DRVNAME_OV02B1B_MIPI_MONO_APOLLOF, OV02B1B_MIPI_MONO_APOLLOF_SensorInit},
+#endif
+#if defined(OV64B_MIPI_RAW_APOLLOF)
+	{OV64B_SENSOR_ID_APOLLOF, SENSOR_DRVNAME_OV64B_MIPI_RAW_APOLLOF, OV64B_MIPI_RAW_APOLLOF_SensorInit},
+#endif
+	 /* ADD sensor driver before this line */
+    {0, {0}, NULL}, /* end of list */
+};
+struct IMGSENSOR_SENSOR_LIST
+    gimgsensor_sensor_list_alicert[MAX_NUM_OF_SUPPORT_SENSOR] = {
+#if defined(S5K3L6_MIPI_RAW_ALICERT)
+    {S5K3L6_SENSOR_ID_ALICERT, SENSOR_DRVNAME_S5K3L6_MIPI_RAW_ALICERT, S5K3L6_MIPI_RAW_ALICERT_SensorInit},
+#endif
+#if defined(IMX355_MIPI_RAW_ALICERT)
+    {IMX355_SENSOR_ID_ALICERT, SENSOR_DRVNAME_IMX355_MIPI_RAW_ALICERT, IMX355_MIPI_RAW_ALICERT_SensorInit},
+#endif
+#if defined(GC02M1B_MIPI_MONO_ALICERT)
+    {GC02M1B_SENSOR_ID_ALICERT, SENSOR_DRVNAME_GC02M1B_MIPI_MONO_ALICERT, GC02M1B_MIPI_MONO_ALICERT_SensorInit},
+#endif
+#if defined(S5KGM1ST_MIPI_RAW_ALICER)
+    {S5KGM1ST_SENSOR_ID_ALICER, SENSOR_DRVNAME_S5KGM1ST_MIPI_RAW_ALICER, S5KGM1ST_MIPI_RAW_ALICER_SensorInit},
+#endif
+    /* ADD sensor driver before this line */
+    {0, {0}, NULL}, /* end of list */
+};
+
+struct IMGSENSOR_SENSOR_LIST
+    gimgsensor_sensor_list_aliceq[MAX_NUM_OF_SUPPORT_SENSOR] = {
+#if defined(S5K3L6_MIPI_RAW_ALICERT)
+    {S5K3L6_SENSOR_ID_ALICERT, SENSOR_DRVNAME_S5K3L6_MIPI_RAW_ALICERT, S5K3L6_MIPI_RAW_ALICERT_SensorInit},
+#endif
+#if defined(IMX355_MIPI_RAW_ALICER)
+    {IMX355_SENSOR_ID_ALICER, SENSOR_DRVNAME_IMX355_MIPI_RAW_ALICER, IMX355_MIPI_RAW_ALICER_SensorInit},
+#endif
+#if defined(GC02M1B_MIPI_MONO_ALICERT)
+    {GC02M1B_SENSOR_ID_ALICERT, SENSOR_DRVNAME_GC02M1B_MIPI_MONO_ALICERT, GC02M1B_MIPI_MONO_ALICERT_SensorInit},
+#endif
+#if defined(S5KGM1ST_MIPI_RAW_ALICER)
+    {S5KGM1ST_SENSOR_ID_ALICER, SENSOR_DRVNAME_S5KGM1ST_MIPI_RAW_ALICER, S5KGM1ST_MIPI_RAW_ALICER_SensorInit},
+#endif
+    /* ADD sensor driver before this line */
+    {0, {0}, NULL}, /* end of list */
+};
+
+struct IMGSENSOR_SENSOR_LIST
+    gimgsensor_sensor_list_alicer[MAX_NUM_OF_SUPPORT_SENSOR] = {
+#if defined(S5KJN103_MIPI_RAW_ALICER)
+    {S5KJN103_SENSOR_ID_ALICER, SENSOR_DRVNAME_S5KJN103_MIPI_RAW_ALICER, S5KJN103_MIPI_RAW_ALICER_SensorInit},
+#endif
+#if defined(IMX355_MIPI_RAW_ALICER)
+    {IMX355_SENSOR_ID_ALICER, SENSOR_DRVNAME_IMX355_MIPI_RAW_ALICER, IMX355_MIPI_RAW_ALICER_SensorInit},
+#endif
+#if defined(GC02M1B_MIPI_MONO_ALICER)
+    {GC02M1B_SENSOR_ID_ALICER, SENSOR_DRVNAME_GC02M1B_MIPI_MONO_ALICER, GC02M1B_MIPI_MONO_ALICER_SensorInit},
+#endif
+#if defined(S5KGM1ST_MIPI_RAW_ALICER)
+    {S5KGM1ST_SENSOR_ID_ALICER, SENSOR_DRVNAME_S5KGM1ST_MIPI_RAW_ALICER, S5KGM1ST_MIPI_RAW_ALICER_SensorInit},
+#endif
+    /* ADD sensor driver before this line */
+    {0, {0}, NULL}, /* end of list */
+};
+
+
+struct IMGSENSOR_SENSOR_LIST gimgsensor_sensor_list_20611[MAX_NUM_OF_SUPPORT_SENSOR] = {
+#if defined(S5KGM1ST_MIPI_RAW_20611)
+    {S5KGM1ST_SENSOR_ID_20611, SENSOR_DRVNAME_S5KGM1ST_MIPI_RAW_20611, S5KGM1ST_MAIN_MIPI_RAW_20611_SensorInit},
+#endif
+//#if defined(OV16A10_MIPI_RAW_20611)
+//    {OV16A10_SENSOR_ID_20611, SENSOR_DRVNAME_OV16A10_MIPI_RAW_20611, OV16A10_MAIN_MIPI_RAW_20611_SensorInit},
+//#endif
+#if defined(S5K3P9SP_MIPI_RAW_20611)
+	{S5K3P9SP_SENSOR_ID_20611, SENSOR_DRVNAME_S5K3P9SP_MIPI_RAW_20611, S5K3P9SP_MIPI_RAW_20611_SensorInit},
+#endif
+#if defined(HI846_MIPI_RAW_20611)
+	{HI846_SENSOR_ID_20611, SENSOR_DRVNAME_HI846_MIPI_RAW_20611, HI846_MIPI_RAW_20611_SensorInit},
+#endif
+#if defined(GC02K_MIPI_RAW_20611)
+	{GC02K_SENSOR_ID_20611, SENSOR_DRVNAME_GC02K_MIPI_RAW_20611, GC02K_MIPI_RAW_20611_SensorInit},
+#endif
+#if defined(OV02B1B_MIPI_RAW_20611)
+	{OV02B1B_SENSOR_ID_20611, SENSOR_DRVNAME_OV02B1B_MIPI_RAW_20611, OV02B1B_MIPI_RAW_20611_SensorInit},
+#endif
+    /*  ADD sensor driver before this line */
+    {0, {0}, NULL}, /* end of list */
+};
+struct IMGSENSOR_SENSOR_LIST gimgsensor_sensor_list_athensd[MAX_NUM_OF_SUPPORT_SENSOR] = {
+#if defined(S5KGW3_MIPI_RAW_ATHENSD)
+    {ATHENSD_S5KGW3_SENSOR_ID, SENSOR_DRVNAME_S5KGW3_MIPI_RAW_ATHENSD, S5KGW3_MIPI_RAW_ATHENSD_SensorInit},
+#endif
+#if defined(S5KGW3P1_MIPI_RAW_ATHENSD)
+    {ATHENSD_S5KGW3P1_SENSOR_ID, SENSOR_DRVNAME_S5KGW3P1_MIPI_RAW_ATHENSD, S5KGW3P1_MIPI_RAW_ATHENSD_SensorInit},
+#endif
+#if defined(IMX471_MIPI_RAW_ATHENSD)
+    {ATHENSD_IMX471_SENSOR_ID, SENSOR_DRVNAME_IMX471_MIPI_RAW_ATHENSD, IMX471_MIPI_RAW_ATHENSD_SensorInit},
+#endif
+#if defined(HI846_MIPI_RAW_ATHENSD)
+    {ATHENSD_HI846_SENSOR_ID, SENSOR_DRVNAME_HI846_MIPI_RAW_ATHENSD, HI846_MIPI_RAW_ATHENSD_SensorInit},
+#endif
+#if defined(GC02K_MIPI_RAW_ATHENSD)
+    {ATHENSD_GC02K_SENSOR_ID, SENSOR_DRVNAME_GC02K_MIPI_RAW_ATHENSD, GC02K_MIPI_RAW_ATHENSD_SensorInit},
+#endif
+    /*  ADD sensor driver before this line */
+    {0, {0}, NULL}, /* end of list */
+};
+struct IMGSENSOR_HW_CFG imgsensor_custom_config_athensd[] = {
+	{
+		IMGSENSOR_SENSOR_IDX_MAIN,
+		IMGSENSOR_I2C_DEV_0,
+		{
+			{IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+			{IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+			//{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+			//{IMGSENSOR_HW_DVDD_SEL, IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_AFVDD, IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+		},
+	},
+	{
+		IMGSENSOR_SENSOR_IDX_SUB,
+		IMGSENSOR_I2C_DEV_1,
+		{
+			{IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+			{IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+			//{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_NONE, IMGSENSOR_HW_ID_NONE},
+		},
+	},
+	{
+		IMGSENSOR_SENSOR_IDX_MAIN2,
+		IMGSENSOR_I2C_DEV_2,
+		{
+			{IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+			{IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+			//{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_NONE, IMGSENSOR_HW_ID_NONE},
+		},
+	},
+	{
+		IMGSENSOR_SENSOR_IDX_SUB2,
+		IMGSENSOR_I2C_DEV_3,
+		{
+			{IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+			{IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+			//{IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+			//{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_NONE, IMGSENSOR_HW_ID_NONE},
+		},
+	},
+	{IMGSENSOR_SENSOR_IDX_NONE}
+};
+struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence_athensd[] = {
+#if defined(S5KGW3_MIPI_RAW_ATHENSD)
+	{
+		SENSOR_DRVNAME_S5KGW3_MIPI_RAW_ATHENSD,
+		{
+			{RST, Vol_Low, 1},
+			{DOVDD, Vol_1800, 1},
+			{DVDD, Vol_1100, 1},
+			//{DVDDSEL, Vol_Low, 0},// low to output 1.05v,high to output 1.1v, datasheet request 1.05v
+			{AVDD, Vol_2800, 1},
+			{AF_VDD, Vol_2800, 0},
+			{RST, Vol_High, 2},
+			{SensorMCLK, Vol_High, 5},
+		},
+	},
+#endif
+#if defined(S5KGW3P1_MIPI_RAW_ATHENSD)
+	{
+		SENSOR_DRVNAME_S5KGW3P1_MIPI_RAW_ATHENSD,
+		{
+			{RST, Vol_Low, 1},
+			{DOVDD, Vol_1800, 1},
+			{DVDD, Vol_1100, 1},
+			//{DVDDSEL, Vol_Low, 0},// low to output 1.05v,high to output 1.1v, datasheet request 1.05v
+			{AVDD, Vol_2800, 1},
+			{AF_VDD, Vol_2800, 0},
+			{RST, Vol_High, 2},
+			{SensorMCLK, Vol_High, 5},
+		},
+	},
+#endif
+#if defined(IMX471_MIPI_RAW_ATHENSD)
+	{
+		SENSOR_DRVNAME_IMX471_MIPI_RAW_ATHENSD,
+		{
+			{RST, Vol_Low, 1},
+			{AVDD, Vol_2800, 0},
+			{DVDD, Vol_1100, 0},
+			{DOVDD, Vol_1800, 1},
+			{SensorMCLK, Vol_High, 1},
+			{RST, Vol_High, 2},
+		},
+	},
+#endif
+#if defined(HI846_MIPI_RAW_ATHENSD)
+		{
+			SENSOR_DRVNAME_HI846_MIPI_RAW_ATHENSD,
+			{
+				{RST, Vol_Low, 1},
+				{AVDD, Vol_2800, 0},
+				{DVDD, Vol_1200, 0},
+				{DOVDD, Vol_1800, 1},
+				{SensorMCLK, Vol_High, 1},
+				{RST, Vol_High, 2},
+			},
+		},
+#endif
+#if defined(GC02K_MIPI_RAW_ATHENSD)
+	{
+		SENSOR_DRVNAME_GC02K_MIPI_RAW_ATHENSD,
+		{
+			{RST, Vol_Low, 1},
+			//{DVDD, Vol_1200, 0},
+			{DOVDD, Vol_1800, 1},
+			{AVDD, Vol_2800, 1},
+			{SensorMCLK, Vol_High, 1},
+			{RST, Vol_High, 2}
+		},
+	},
+#endif
+	/* add new sensor before this line */
+	{NULL,},
+};
+struct IMGSENSOR_HW_POWER_SEQ platform_power_sequence_athensd[] ={
+	{
+		PLATFORM_POWER_SEQ_NAME,
+		{
+			{
+				IMGSENSOR_HW_PIN_MIPI_SWITCH_SEL,
+				IMGSENSOR_HW_PIN_STATE_LEVEL_0,
+				0,
+				IMGSENSOR_HW_PIN_STATE_LEVEL_0,
+				0
+			},
+		},
+		IMGSENSOR_SENSOR_IDX_SUB,
+	},
+	{
+		PLATFORM_POWER_SEQ_NAME,
+		{
+			{
+				IMGSENSOR_HW_PIN_MIPI_SWITCH_SEL,
+				IMGSENSOR_HW_PIN_STATE_LEVEL_HIGH,
+				0,
+				IMGSENSOR_HW_PIN_STATE_LEVEL_0,
+				0
+			},
+		},
+		IMGSENSOR_SENSOR_IDX_MAIN2,
+	},
+};
+struct CAMERA_DEVICE_INFO gImgEepromInfo_athensd = {
+    .i4SensorNum = 4,
+    .pCamModuleInfo = {
+        {ATHENSD_S5KGW3_SENSOR_ID,      0xA0, {0x00, 0x06}, 0xB0, 1, {0x92,0xFF,0xFF,0x94}, "Cam_r0", "s5kgw3_mipi_raw_athensd"},
+        {ATHENSD_S5KGW3P1_SENSOR_ID,    0xA0, {0x00, 0x06}, 0xB0, 1, {0x92,0xFF,0xFF,0x94}, "Cam_r0", "s5kgw3p1_mipi_raw_athensd"},
+        {ATHENSD_IMX471_SENSOR_ID,      0xA8, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_f",  "imx471_mipi_raw_athensd"},
+        {ATHENSD_HI846_SENSOR_ID,       0xA2, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r1", "hi846_mipi_raw_athensd"},
+        {ATHENSD_GC02K_SENSOR_ID,       0xA4, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r3", "gc02k_mipi_raw_athensd"},
+    },
+    .i4MWDataIdx = IMGSENSOR_SENSOR_IDX_MAIN2,
+    .i4MTDataIdx = 0xFF,
+    .i4FrontDataIdx = 0xFF,
+    .i4NormDataLen = 40,
+    .i4MWDataLen = 3102,
+    .i4MWStereoAddr = {S5KGW3_STEREO_START_ADDR_ATHENSD, HI846_STEREO_START_ADDR_ATHENSD},
+    .i4MTStereoAddr = {0xFFFF, 0xFFFF},
+    .i4FrontStereoAddr = {0xFFFF, 0xFFFF},
+};
+
+struct IMGSENSOR_HW_CFG imgsensor_custom_config_20181[] = {
+    {
+        IMGSENSOR_SENSOR_IDX_MAIN,
+        IMGSENSOR_I2C_DEV_0,
+        {
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+        },
+    },
+    {
+        IMGSENSOR_SENSOR_IDX_SUB,
+        IMGSENSOR_I2C_DEV_1,
+        {
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_NONE, IMGSENSOR_HW_ID_NONE},
+        },
+    },
+    {
+        IMGSENSOR_SENSOR_IDX_MAIN2,
+        IMGSENSOR_I2C_DEV_2,
+        {
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+        },
+    },
+    {
+        IMGSENSOR_SENSOR_IDX_SUB2,
+        IMGSENSOR_I2C_DEV_3,
+        {
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+        },
+    },
+    {
+        IMGSENSOR_SENSOR_IDX_MAIN3,
+        IMGSENSOR_I2C_DEV_4,
+        {
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+        },
+    },
+
+    {IMGSENSOR_SENSOR_IDX_NONE}
+};
+
+struct IMGSENSOR_HW_CFG imgsensor_custom_config_20151[] = {
+    {
+            IMGSENSOR_SENSOR_IDX_MAIN,
+            IMGSENSOR_I2C_DEV_0,
+            {
+                    {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+                    {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+            },
+    },
+    {
+            IMGSENSOR_SENSOR_IDX_SUB,
+            IMGSENSOR_I2C_DEV_1,
+            {
+                    {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+                    {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_NONE, IMGSENSOR_HW_ID_NONE},
+            },
+    },
+    {
+            IMGSENSOR_SENSOR_IDX_MAIN2,
+            IMGSENSOR_I2C_DEV_2,
+            {
+                    {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+                    {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+            },
+    },
+    {
+            IMGSENSOR_SENSOR_IDX_SUB2,
+            IMGSENSOR_I2C_DEV_3,
+            {
+                    {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+                    {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_MIPI_SWITCH_EN, IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+            },
+    },
+    {
+            IMGSENSOR_SENSOR_IDX_MAIN3,
+            IMGSENSOR_I2C_DEV_4,
+            {
+                    {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+                    {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_MIPI_SWITCH_EN, IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+            },
+    },
+    {IMGSENSOR_SENSOR_IDX_NONE}
+};
+
+struct IMGSENSOR_HW_CFG imgsensor_custom_config_20630[] = {
+    {
+            IMGSENSOR_SENSOR_IDX_MAIN,
+            IMGSENSOR_I2C_DEV_0,
+            {
+                    {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+                    {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+                    //{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+                    #ifdef OPLUS_FEATURE_CAMERA_COMMON
+                    //{IMGSENSOR_HW_PIN_MIPI_SWITCH_SEL, IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_AFVDD, IMGSENSOR_HW_ID_REGULATOR},
+                    #endif
+                    {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+            },
+    },
+    {
+            IMGSENSOR_SENSOR_IDX_SUB,
+            IMGSENSOR_I2C_DEV_1,
+            {
+                    {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+                    {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_MIPI_SWITCH_SEL, IMGSENSOR_HW_ID_GPIO},
+                    //{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_NONE, IMGSENSOR_HW_ID_NONE},
+            },
+    },
+    {
+            IMGSENSOR_SENSOR_IDX_MAIN2,
+            IMGSENSOR_I2C_DEV_2,
+            {
+                    {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+                    {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_MIPI_SWITCH_SEL, IMGSENSOR_HW_ID_GPIO},
+                    //{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_NONE, IMGSENSOR_HW_ID_NONE},
+            },
+    },
+    {
+            IMGSENSOR_SENSOR_IDX_SUB2,
+            IMGSENSOR_I2C_DEV_3,
+            {
+                    {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+                    {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+                    //{IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+                    //{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_NONE, IMGSENSOR_HW_ID_NONE},
+            },
+    },
+    {
+            IMGSENSOR_SENSOR_IDX_MAIN3,
+            IMGSENSOR_I2C_DEV_4,
+            {
+                    {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+                    {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+                    //{IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+                    //{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_NONE, IMGSENSOR_HW_ID_NONE},
+            },
+    },
+
+    {IMGSENSOR_SENSOR_IDX_NONE}
+};
+
+struct IMGSENSOR_HW_CFG imgsensor_custom_config_20633[] = {
+    {
+            IMGSENSOR_SENSOR_IDX_MAIN,
+            IMGSENSOR_I2C_DEV_0,
+            {
+                    {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+                    {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+                    //{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+                    #ifdef OPLUS_FEATURE_CAMERA_COMMON
+                    //{IMGSENSOR_HW_PIN_MIPI_SWITCH_SEL, IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_AFVDD, IMGSENSOR_HW_ID_REGULATOR},
+                    #endif
+                    {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+            },
+    },
+    {
+            IMGSENSOR_SENSOR_IDX_SUB,
+            IMGSENSOR_I2C_DEV_1,
+            {
+                    {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+                    {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_MIPI_SWITCH_SEL, IMGSENSOR_HW_ID_GPIO},
+                    //{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_NONE, IMGSENSOR_HW_ID_NONE},
+            },
+    },
+    {
+            IMGSENSOR_SENSOR_IDX_MAIN2,
+            IMGSENSOR_I2C_DEV_2,
+            {
+                    {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+                    {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_MIPI_SWITCH_SEL, IMGSENSOR_HW_ID_GPIO},
+                    //{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_NONE, IMGSENSOR_HW_ID_NONE},
+            },
+    },
+    {
+            IMGSENSOR_SENSOR_IDX_SUB2,
+            IMGSENSOR_I2C_DEV_3,
+            {
+                    {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+                    {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+                    //{IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+                    //{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_NONE, IMGSENSOR_HW_ID_NONE},
+            },
+    },
+    {
+            IMGSENSOR_SENSOR_IDX_MAIN3,
+            IMGSENSOR_I2C_DEV_4,
+            {
+                    {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+                    {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+                    //{IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+                    //{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_NONE, IMGSENSOR_HW_ID_NONE},
+            },
+    },
+
+    {IMGSENSOR_SENSOR_IDX_NONE}
+};
+
+struct IMGSENSOR_HW_CFG imgsensor_custom_config_20001[] = {
+    {
+            IMGSENSOR_SENSOR_IDX_MAIN,
+            IMGSENSOR_I2C_DEV_0,
+            {
+                    {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+                    {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+            },
+    },
+    {
+            IMGSENSOR_SENSOR_IDX_SUB,
+            IMGSENSOR_I2C_DEV_1,
+            {
+                    {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+                    {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_NONE, IMGSENSOR_HW_ID_NONE},
+            },
+    },
+    {
+            IMGSENSOR_SENSOR_IDX_MAIN2,
+            IMGSENSOR_I2C_DEV_2,
+            {
+                    {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+                    {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+            },
+    },
+    {
+            IMGSENSOR_SENSOR_IDX_SUB2,
+            IMGSENSOR_I2C_DEV_3,
+            {
+                    {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+                    {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+            },
+    },
+    {IMGSENSOR_SENSOR_IDX_NONE}
+};
+
+struct IMGSENSOR_HW_CFG imgsensor_custom_config_20391[] = {
+    {
+            IMGSENSOR_SENSOR_IDX_MAIN,
+            IMGSENSOR_I2C_DEV_0,
+            {
+                    {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+                    {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+            },
+    },
+    {
+            IMGSENSOR_SENSOR_IDX_SUB,
+            IMGSENSOR_I2C_DEV_1,
+            {
+                    {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+                    {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_NONE, IMGSENSOR_HW_ID_NONE},
+            },
+    },
+    {
+            IMGSENSOR_SENSOR_IDX_MAIN2,
+            IMGSENSOR_I2C_DEV_2,
+            {
+                    {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+                    {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+            },
+    },
+    {
+            IMGSENSOR_SENSOR_IDX_SUB2,
+            IMGSENSOR_I2C_DEV_3,
+            {
+                    {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+                    {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_MIPI_SWITCH_EN, IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+            },
+    },
+    {
+            IMGSENSOR_SENSOR_IDX_MAIN3,
+            IMGSENSOR_I2C_DEV_4,
+            {
+                    {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+                    {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_MIPI_SWITCH_EN, IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+            },
+    },
+    {IMGSENSOR_SENSOR_IDX_NONE}
+};
+
+struct IMGSENSOR_HW_CFG imgsensor_custom_config_moss[] = {
+    {
+        IMGSENSOR_SENSOR_IDX_MAIN,
+        IMGSENSOR_I2C_DEV_0,
+        {
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AFVDD, IMGSENSOR_HW_ID_REGULATOR},
+            //{IMGSENSOR_HW_PIN_VOIS,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_DVDD_1,  IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_AVDD_1,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_VOIS,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+        },
+    },
+    {
+        IMGSENSOR_SENSOR_IDX_SUB,
+        IMGSENSOR_I2C_DEV_1,
+        {
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_DVDD_1,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+        },
+    },
+    {
+        IMGSENSOR_SENSOR_IDX_MAIN2,
+        IMGSENSOR_I2C_DEV_2,
+        {
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_DVDD_1,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+        },
+    },
+    {
+        IMGSENSOR_SENSOR_IDX_SUB2,
+        IMGSENSOR_I2C_DEV_3,
+        {
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+        },
+    },
+    {
+        IMGSENSOR_SENSOR_IDX_MAIN3,
+        IMGSENSOR_I2C_DEV_4,
+        {
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+        },
+    },
+
+    {IMGSENSOR_SENSOR_IDX_NONE}
+};
+
+struct IMGSENSOR_HW_CFG imgsensor_custom_config_mossa[] = {
+    {
+        IMGSENSOR_SENSOR_IDX_MAIN,
+        IMGSENSOR_I2C_DEV_0,
+        {
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AFVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_DVDD_1,  IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_AVDD_1,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+        },
+    },
+    {
+        IMGSENSOR_SENSOR_IDX_SUB,
+        IMGSENSOR_I2C_DEV_1,
+        {
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_DVDD_1,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+        },
+    },
+    {
+        IMGSENSOR_SENSOR_IDX_MAIN2,
+        IMGSENSOR_I2C_DEV_2,
+        {
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_DVDD_1,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+        },
+    },
+    {
+        IMGSENSOR_SENSOR_IDX_SUB2,
+        IMGSENSOR_I2C_DEV_3,
+        {
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+        },
+    },
+    {
+        IMGSENSOR_SENSOR_IDX_MAIN3,
+        IMGSENSOR_I2C_DEV_4,
+        {
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+        },
+    },
+
+    {IMGSENSOR_SENSOR_IDX_NONE}
+};
+
+struct IMGSENSOR_HW_CFG imgsensor_custom_config_20075[] = {
+    {
+            IMGSENSOR_SENSOR_IDX_MAIN,
+            IMGSENSOR_I2C_DEV_0,
+            {
+                    {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+                    {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+            },
+    },
+    {
+            IMGSENSOR_SENSOR_IDX_SUB,
+            IMGSENSOR_I2C_DEV_1,
+            {
+                    {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+                    {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_NONE, IMGSENSOR_HW_ID_NONE},
+            },
+    },
+    {
+            IMGSENSOR_SENSOR_IDX_MAIN2,
+            IMGSENSOR_I2C_DEV_2,
+            {
+                    {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+                    {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+            },
+    },
+    {
+            IMGSENSOR_SENSOR_IDX_SUB2,
+            IMGSENSOR_I2C_DEV_3,
+            {
+                    {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+                    {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+                    {IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+                    {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+            },
+    },
+    {IMGSENSOR_SENSOR_IDX_NONE}
+};
+
+struct IMGSENSOR_HW_CFG imgsensor_custom_config_21081[] = {
+    {
+        IMGSENSOR_SENSOR_IDX_MAIN,
+        IMGSENSOR_I2C_DEV_0,
+        {
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_AVDD1,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_AFVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+        },
+    },
+    {
+        IMGSENSOR_SENSOR_IDX_SUB,
+        IMGSENSOR_I2C_DEV_1,
+        {
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_NONE, IMGSENSOR_HW_ID_NONE},
+        },
+    },
+    {
+        IMGSENSOR_SENSOR_IDX_MAIN2,
+        IMGSENSOR_I2C_DEV_2,
+        {
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+        },
+    },
+    {
+        IMGSENSOR_SENSOR_IDX_SUB2,
+        IMGSENSOR_I2C_DEV_3,
+        {
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+        },
+    },
+    {
+        IMGSENSOR_SENSOR_IDX_MAIN3,
+        IMGSENSOR_I2C_DEV_4,
+        {
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+        },
+    },
+
+    {IMGSENSOR_SENSOR_IDX_NONE}
+};
+
+
+struct IMGSENSOR_HW_CFG imgsensor_custom_config_216A0[] = {
+    {
+        IMGSENSOR_SENSOR_IDX_MAIN,
+        IMGSENSOR_I2C_DEV_0,
+        {
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_AFVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+        },
+    },
+    {
+        IMGSENSOR_SENSOR_IDX_SUB,
+        IMGSENSOR_I2C_DEV_1,
+        {
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_NONE, IMGSENSOR_HW_ID_NONE},
+        },
+    },
+    {
+        IMGSENSOR_SENSOR_IDX_MAIN2,
+        IMGSENSOR_I2C_DEV_2,
+        {
+
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+        },
+    },
+    {
+        IMGSENSOR_SENSOR_IDX_SUB2,
+        IMGSENSOR_I2C_DEV_3,
+        {
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+        },
+    },
+    {IMGSENSOR_SENSOR_IDX_NONE}
+};
+
+struct IMGSENSOR_HW_CFG imgsensor_custom_config_alicert[] = {
+    {
+        IMGSENSOR_SENSOR_IDX_MAIN,
+        IMGSENSOR_I2C_DEV_0,
+        {
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_AFVDD,   IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+        },
+    },
+    {
+        IMGSENSOR_SENSOR_IDX_SUB,
+        IMGSENSOR_I2C_DEV_1,
+        {
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_NONE, IMGSENSOR_HW_ID_NONE},
+        },
+    },
+    {
+        IMGSENSOR_SENSOR_IDX_MAIN2,
+        IMGSENSOR_I2C_DEV_2,
+        {
+
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+        },
+    },
+    {IMGSENSOR_SENSOR_IDX_NONE}
+};
+
+struct IMGSENSOR_HW_CFG imgsensor_custom_config_aliceq[] = {
+    {
+        IMGSENSOR_SENSOR_IDX_MAIN,
+        IMGSENSOR_I2C_DEV_0,
+        {
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_AFVDD,   IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+        },
+    },
+    {
+        IMGSENSOR_SENSOR_IDX_SUB,
+        IMGSENSOR_I2C_DEV_1,
+        {
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_NONE, IMGSENSOR_HW_ID_NONE},
+        },
+    },
+    {
+        IMGSENSOR_SENSOR_IDX_MAIN2,
+        IMGSENSOR_I2C_DEV_2,
+        {
+
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+        },
+    },
+    {IMGSENSOR_SENSOR_IDX_NONE}
+};
+
+struct IMGSENSOR_HW_CFG imgsensor_custom_config_alicer[] = {
+    {
+        IMGSENSOR_SENSOR_IDX_MAIN,
+        IMGSENSOR_I2C_DEV_0,
+        {
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_AFVDD,   IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+        },
+    },
+    {
+        IMGSENSOR_SENSOR_IDX_SUB,
+        IMGSENSOR_I2C_DEV_1,
+        {
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_NONE, IMGSENSOR_HW_ID_NONE},
+        },
+    },
+    {
+        IMGSENSOR_SENSOR_IDX_MAIN2,
+        IMGSENSOR_I2C_DEV_2,
+        {
+
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+        },
+    },
+    {IMGSENSOR_SENSOR_IDX_NONE}
+};
+
+struct IMGSENSOR_HW_CFG imgsensor_custom_config_20611[] = {
+    {
+        IMGSENSOR_SENSOR_IDX_MAIN,
+        IMGSENSOR_I2C_DEV_0,
+        {
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+            //{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_MIPI_SWITCH_SEL, IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_AFVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+        },
+    },
+    {
+        IMGSENSOR_SENSOR_IDX_SUB,
+        IMGSENSOR_I2C_DEV_1,
+        {
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+            //{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_NONE, IMGSENSOR_HW_ID_NONE},
+        },
+    },
+    {
+        IMGSENSOR_SENSOR_IDX_MAIN2,
+        IMGSENSOR_I2C_DEV_2,
+        {
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+            //{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_NONE, IMGSENSOR_HW_ID_NONE},
+        },
+    },
+    {
+        IMGSENSOR_SENSOR_IDX_SUB2,
+        IMGSENSOR_I2C_DEV_3,
+        {
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+            //{IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+            //{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_NONE, IMGSENSOR_HW_ID_NONE},
+        },
+    },
+    {
+        IMGSENSOR_SENSOR_IDX_MAIN3,
+        IMGSENSOR_I2C_DEV_4,
+        {
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+            //{IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+            //{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_NONE, IMGSENSOR_HW_ID_NONE},
+        },
+    },
+
+    {IMGSENSOR_SENSOR_IDX_NONE}
+
+};
+
+struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence_20181[] = {
+#if defined(OV64B_MIPI_RAW)
+    {
+        SENSOR_DRVNAME_OV64B_MIPI_RAW,
+        {
+            {RST, Vol_Low, 1},
+            {SensorMCLK, Vol_High, 1},
+            {AVDD, Vol_2800, 2},
+            {DOVDD, Vol_1800, 1},
+            {DVDD, Vol_1100, 5},
+            {RST, Vol_High, 5},
+        },
+    },
+#endif
+#if defined(IMX615_MIPI_RAW)
+    {
+        SENSOR_DRVNAME_IMX615_MIPI_RAW,
+        {
+            {RST, Vol_Low, 1},
+            {AVDD, Vol_2900, 0},
+            {DVDD, Vol_1100, 0},
+            {DOVDD, Vol_1800, 1},
+            {SensorMCLK, Vol_High, 1},
+            {RST, Vol_High, 2},
+        },
+    },
+#endif
+#if defined(IMX355_MIPI_RAW)
+    {
+        SENSOR_DRVNAME_IMX355_MIPI_RAW,
+        {
+            {RST, Vol_Low, 1},
+            {AVDD, Vol_2800, 0},
+            {DVDD, Vol_1200, 0},
+            {DOVDD, Vol_1800, 1},
+            {SensorMCLK, Vol_High, 1},
+            {RST, Vol_High, 2},
+        },
+    },
+#endif
+#if defined(OV02B10_MIPI_RAW)
+    {
+        SENSOR_DRVNAME_OV02B10_MIPI_RAW,
+        {
+            {RST, Vol_Low, 1},
+            {DOVDD, Vol_1800, 1},
+            {AVDD, Vol_2800, 0, Vol_Low, 8},
+            {SensorMCLK, Vol_High, 5},
+            {RST, Vol_High, 10}
+        },
+    },
+#endif
+    /* add new sensor before this line */
+    {NULL,},
+};
+
+
+struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence_20151[] = {
+#if defined(OV48B_MIPI_RAW)
+    {
+        SENSOR_DRVNAME_OV48B_MIPI_RAW,
+        {
+            {RST, Vol_Low, 1},
+            {DOVDD, Vol_1800, 0},
+            {AVDD, Vol_2800, 0},
+            {DVDD, Vol_1200, 5},
+            // {AFVDD, Vol_2800, 2},
+            {SensorMCLK, Vol_High, 0},
+            {RST, Vol_High, 5},
+        },
+    },
+#endif
+#if defined(S5KGM1ST_MIPI_RAW)
+    {
+        SENSOR_DRVNAME_S5KGM1ST_MIPI_RAW,
+        {
+            {RST, Vol_Low, 1},
+            {AVDD, Vol_2800, 0},
+            {DOVDD, Vol_1800, 0},
+            {DVDD, Vol_1100, 1},
+            {RST, Vol_High, 1},
+            {SensorMCLK, Vol_High, 2},
+        },
+    },
+#endif
+#if defined(HI846_MIPI_RAW)
+    {
+        SENSOR_DRVNAME_HI846_MIPI_RAW,
+        {
+            {RST, Vol_Low, 1},
+            {AVDD, Vol_2800, 0},
+            {DVDD, Vol_1200, 0},
+            {DOVDD, Vol_1800, 1},
+            {SensorMCLK, Vol_High, 1},
+            {RST, Vol_High, 2}
+        },
+    },
+#endif
+#if defined(IMX471_MIPI_RAW)
+    {
+        SENSOR_DRVNAME_IMX471_MIPI_RAW,
+        {
+            {RST, Vol_Low, 1},
+            {AVDD, Vol_2800, 0},
+            {DVDD, Vol_1100, 0},
+            {DOVDD, Vol_1800, 1},
+            {SensorMCLK, Vol_High, 1},
+            {RST, Vol_High, 2},
+        },
+    },
+#endif
+#if defined(GC02K0_MIPI_RAW)
+    {
+        SENSOR_DRVNAME_GC02K0_MIPI_RAW,
+        {
+            {RST, Vol_Low, 1},
+            {DOVDD, Vol_1800, 5},
+            {AVDD, Vol_2800, 5},
+            {SensorMCLK, Vol_High, 1},
+            {RST, Vol_High, 1},
+        },
+    },
+#endif
+#if defined(OV02B10_MIPI_RAW)
+    {
+        SENSOR_DRVNAME_OV02B10_MIPI_RAW,
+        {
+            {IMGSENSOR_HW_PIN_MIPI_SWITCH_EN, Vol_Low, 10},
+            {RST, Vol_Low, 1},
+            {DOVDD, Vol_1800, 5},
+            {AVDD, Vol_2800, 10},
+            {SensorMCLK, Vol_High, 1},
+            {RST, Vol_High, 2},
+        },
+    },
+#endif
+#if defined(OV02A1B_MIPI_MONO)
+    {
+        SENSOR_DRVNAME_OV02A1B_MIPI_MONO,
+        {
+            {IMGSENSOR_HW_PIN_MIPI_SWITCH_EN, Vol_High, 10},
+            {RST, Vol_High, 1, Vol_Low, 1},
+            {DOVDD, Vol_1800, 0},
+            {AVDD, Vol_2800, 0},
+            {RST, Vol_Low, 9, Vol_High, 9},
+            {SensorMCLK, Vol_High, 5},
+        },
+    },
+#endif
+#if defined(OV02B1B_MIPI_MONO)
+    {
+        SENSOR_DRVNAME_OV02B1B_MIPI_MONO,
+        {
+            {IMGSENSOR_HW_PIN_MIPI_SWITCH_EN, Vol_High, 10},
+            {RST, Vol_Low, 1},
+            {DOVDD, Vol_1800, 0},
+            {AVDD, Vol_2800, 10},
+            {SensorMCLK, Vol_High, 5},
+            {RST, Vol_High, 5},
+        },
+    },
+#endif
+
+    /* add new sensor before this line */
+    {NULL,},
+};
+
+struct IMGSENSOR_HW_POWER_SEQ platform_power_sequence_20630[] ={
+    {
+        PLATFORM_POWER_SEQ_NAME,
+        {
+            {
+                IMGSENSOR_HW_PIN_MIPI_SWITCH_SEL,
+                IMGSENSOR_HW_PIN_STATE_LEVEL_HIGH,
+                0,
+                IMGSENSOR_HW_PIN_STATE_LEVEL_0,
+                0
+            },
+        },
+        IMGSENSOR_SENSOR_IDX_SUB,
+    },
+    {
+        PLATFORM_POWER_SEQ_NAME,
+        {
+            {
+                IMGSENSOR_HW_PIN_MIPI_SWITCH_SEL,
+                IMGSENSOR_HW_PIN_STATE_LEVEL_0,
+                0,
+                IMGSENSOR_HW_PIN_STATE_LEVEL_0,
+                0
+            },
+        },
+        IMGSENSOR_SENSOR_IDX_MAIN2,
+    },
+};
+
+struct IMGSENSOR_HW_POWER_SEQ platform_power_sequence_20633[] ={
+    {
+        PLATFORM_POWER_SEQ_NAME,
+        {
+            {
+                IMGSENSOR_HW_PIN_MIPI_SWITCH_SEL,
+                IMGSENSOR_HW_PIN_STATE_LEVEL_HIGH,
+                0,
+                IMGSENSOR_HW_PIN_STATE_LEVEL_0,
+                0
+            },
+        },
+        IMGSENSOR_SENSOR_IDX_SUB,
+    },
+    {
+        PLATFORM_POWER_SEQ_NAME,
+        {
+            {
+                IMGSENSOR_HW_PIN_MIPI_SWITCH_SEL,
+                IMGSENSOR_HW_PIN_STATE_LEVEL_0,
+                0,
+                IMGSENSOR_HW_PIN_STATE_LEVEL_0,
+                0
+            },
+        },
+        IMGSENSOR_SENSOR_IDX_MAIN2,
+    },
+};
+
+struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence_20630[] = {
+#if defined(S5KGW3_MIPI_RAW_ATHENSB)
+        {
+            SENSOR_DRVNAME_S5KGW3_MIPI_RAW_ATHENSB,
+            {
+                {RST, Vol_Low, 1},
+                {DOVDD, Vol_1800, 1},
+                {DVDD, Vol_1100, 1},
+                {AVDD, Vol_2800, 1},
+                {AF_VDD, Vol_2800, 0},
+                {RST, Vol_High, 2},
+                {SensorMCLK, Vol_High, 5},
+            },
+        },
+#endif
+#if defined(OV32A1Q_MIPI_RAW_ATHENSB)
+        {
+            SENSOR_DRVNAME_OV32A1Q_MIPI_RAW_ATHENSB,
+            {
+                {RST, Vol_Low, 1},
+                {AVDD, Vol_2800, 0},
+                {DVDD, Vol_1100, 0},
+                {DOVDD, Vol_1800, 1},
+                {MIPISEL, Vol_High, 3},
+                {SensorMCLK, Vol_High, 1},
+                {RST, Vol_High, 2},
+            },
+        },
+#endif
+#if defined(HI846_MIPI_RAW_ATHENSB)
+        {
+            SENSOR_DRVNAME_HI846_MIPI_RAW_ATHENSB,
+            {
+                {RST, Vol_Low, 1},
+                {AVDD, Vol_2800, 0},
+                {DVDD, Vol_1200, 0},
+                {DOVDD, Vol_1800, 1},
+                {MIPISEL, Vol_Low, 3},
+                {SensorMCLK, Vol_High, 1},
+                {RST, Vol_High, 2},
+            },
+        },
+#endif
+#if defined(GC02K_MIPI_RAW_ATHENSB)
+        {
+            SENSOR_DRVNAME_GC02K_MIPI_RAW_ATHENSB,
+            {
+                {RST, Vol_Low, 1},
+                //{DVDD, Vol_1200, 0},
+                {DOVDD, Vol_1800, 1},
+                {AVDD, Vol_2800, 1},
+                {SensorMCLK, Vol_High, 1},
+                {RST, Vol_High, 2}
+            },
+        },
+#endif
+#if defined(GC02M1B_MIPI_RAW_ATHENSB)
+        {
+            SENSOR_DRVNAME_GC02M1B_MIPI_RAW_ATHENSB,
+            {
+                {RST, Vol_Low, 1},
+                //{DVDD, Vol_1200, 0},
+                {DOVDD, Vol_1800, 1},
+                {AVDD, Vol_2800, 0},
+                {SensorMCLK, Vol_High, 1},
+                {RST, Vol_High, 2}
+            },
+        },
+#endif
+
+    /* add new sensor before this line */
+    {NULL,},
+};
+
+struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence_20633[] = {
+#if defined(S5KGM1ST_MIPI_RAW_ATHENSC)
+        {
+            SENSOR_DRVNAME_S5KGM1ST_MIPI_RAW_ATHENSC,
+            {
+                {RST, Vol_Low, 1},
+                {AVDD, Vol_2800, 0},
+                {DVDD, Vol_1500, 0},
+                {DOVDD, Vol_1800, 1},
+                {AF_VDD, Vol_2800, 0},
+                {RST, Vol_High, 1},
+                {SensorMCLK, Vol_High, 1},
+
+            },
+        },
+#endif
+#if defined(IMX471_MIPI_RAW_ATHENSC)
+        {
+            SENSOR_DRVNAME_IMX471_MIPI_RAW_ATHENSC,
+            {
+                {RST, Vol_Low, 1},
+                {AVDD, Vol_2800, 0},
+                {DVDD, Vol_1100, 0},
+                {DOVDD, Vol_1800, 1},
+                {MIPISEL, Vol_High, 3},
+                {SensorMCLK, Vol_High, 1},
+                {RST, Vol_High, 2},
+            },
+        },
+#endif
+#if defined(HI846_MIPI_RAW_ATHENSC)
+        {
+            SENSOR_DRVNAME_HI846_MIPI_RAW_ATHENSC,
+            {
+                {RST, Vol_Low, 1},
+                {AVDD, Vol_2800, 0},
+                {DVDD, Vol_1200, 0},
+                {DOVDD, Vol_1800, 1},
+                {MIPISEL, Vol_Low, 3},
+                {SensorMCLK, Vol_High, 1},
+                {RST, Vol_High, 2},
+            },
+        },
+#endif
+
+#if defined(GC02K_MIPI_RAW_ATHENSB)
+    {
+        SENSOR_DRVNAME_GC02K_MIPI_RAW_ATHENSB,
+        {
+            {RST, Vol_Low, 1},
+            //{DVDD, Vol_1200, 0},
+            {DOVDD, Vol_1800, 1},
+            {AVDD, Vol_2800, 1},
+            {SensorMCLK, Vol_High, 1},
+            {RST, Vol_High, 2}
+        },
+    },
+#endif
+#if defined(GC02M1B_MIPI_RAW_ATHENSB)
+    {
+        SENSOR_DRVNAME_GC02M1B_MIPI_RAW_ATHENSB,
+        {
+            {RST, Vol_Low, 1},
+            //{DVDD, Vol_1200, 0},
+            {DOVDD, Vol_1800, 1},
+            {AVDD, Vol_2800, 0},
+            {SensorMCLK, Vol_High, 1},
+            {RST, Vol_High, 2}
+        },
+    },
+#endif
+
+
+    /* add new sensor before this line */
+    {NULL,},
+};
+
+struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence_20001[] = {
+#if defined(OV16A10_MIPI_RAW)
+	{
+		SENSOR_DRVNAME_OV16A10_MIPI_RAW,
+		{
+			{RST, Vol_Low, 1},
+			{AVDD, Vol_2800, 0},
+			{DVDD, Vol_1200, 0},
+			{DOVDD, Vol_1800, 1},
+			{SensorMCLK, Vol_High, 1},
+			{RST, Vol_High, 5},
+		},
+	},
+#endif
+#if defined(S5K4H7_MIPI_RAW)
+	{
+		SENSOR_DRVNAME_S5K4H7_MIPI_RAW,
+		{
+			{SensorMCLK, Vol_High, 1},
+			{RST, Vol_Low, 1},
+			{DOVDD, Vol_1800, 1},
+			{AVDD, Vol_2800, 1},
+			{DVDD, Vol_1100, 1},
+			{RST, Vol_High, 5},
+		},
+	},
+#endif
+#if defined(HI846_MIPI_RAW)
+    {
+        SENSOR_DRVNAME_HI846_MIPI_RAW,
+        {
+            {RST, Vol_Low, 1},
+            {AVDD, Vol_2800, 0},
+            {DVDD, Vol_1200, 0},
+            {DOVDD, Vol_1800, 1},
+            {SensorMCLK, Vol_High, 1},
+            {RST, Vol_High, 2}
+        },
+    },
+#endif
+#if defined(GC02M1B_MIPI_MONO)
+		{
+			SENSOR_DRVNAME_GC02M1B_MIPI_MONO,
+			{
+				{RST, Vol_Low, 1},
+				{DOVDD, Vol_1800, 0},
+				{AVDD, Vol_2800, 0},
+				{SensorMCLK, Vol_High, 1},
+				{RST, Vol_High, 2}
+			},
+		},
+#endif
+
+    /* add new sensor before this line */
+    {NULL,},
+};
+
+struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence_20391[] = {
+#if defined(OV64B_MIPI_RAW)
+    {
+        SENSOR_DRVNAME_OV64B_MIPI_RAW,
+        {
+            {RST, Vol_Low, 1},
+            {SensorMCLK, Vol_High, 1},
+            {AVDD, Vol_2800, 2},
+            {DOVDD, Vol_1800, 1},
+            {DVDD, Vol_1100, 5},
+            {RST, Vol_High, 5},
+        },
+    },
+#endif
+#if defined(OV48B_MIPI_RAW)
+    {
+        SENSOR_DRVNAME_OV48B_MIPI_RAW,
+        {
+            {RST, Vol_Low, 1},
+            {DOVDD, Vol_1800, 0},
+            {AVDD, Vol_2800, 0},
+            {DVDD, Vol_1200, 5},
+            // {AFVDD, Vol_2800, 2},
+            {SensorMCLK, Vol_High, 0},
+            {RST, Vol_High, 5},
+        },
+    },
+#endif
+#if defined(OV32A_MIPI_RAW)
+    {
+        SENSOR_DRVNAME_OV32A_MIPI_RAW,
+        {
+            {RST, Vol_Low, 1},
+            {SensorMCLK, Vol_High, 5},
+            {AVDD, Vol_2800, 1},
+            {DOVDD, Vol_1800, 1},
+            {DVDD, Vol_1100, 1},
+            {RST, Vol_High, 5}
+        },
+    },
+#endif
+#if defined(HI846_MIPI_RAW)
+    {
+        SENSOR_DRVNAME_HI846_MIPI_RAW,
+        {
+            {RST, Vol_Low, 1},
+            {AVDD, Vol_2800, 0},
+            {DVDD, Vol_1200, 0},
+            {DOVDD, Vol_1800, 1},
+            {SensorMCLK, Vol_High, 1},
+            {RST, Vol_High, 2}
+        },
+    },
+#endif
+#if defined(OV02B10_MIPI_RAW)
+    {
+        SENSOR_DRVNAME_OV02B10_MIPI_RAW,
+        {
+            {RST, Vol_Low, 1},
+            {DOVDD, Vol_1800, 5},
+            {AVDD, Vol_2800, 10},
+            {RST, Vol_High, 2},
+            {SensorMCLK, Vol_High, 1},
+        },
+    },
+#endif
+
+    /* add new sensor before this line */
+    {NULL,},
+};
+
+struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence_moss[] = {
+#if defined(IMX766_MOSSMIPI_RAW)
+		{
+			SENSOR_DRVNAME_IMX766_MOSSMIPI_RAW,
+			{
+				{RST, Vol_Low, 1},
+				{AFVDD, Vol_2800, 1},
+				//{VOIS , Vol_High, 2},
+				{AVDD_1, Vol_High, 1},
+				{AVDD, Vol_High, 1},
+				{DVDD, Vol_High, 1},
+				{DVDD_1, Vol_1200, 1},
+				{DOVDD, Vol_1800, 1},
+				{SensorMCLK, Vol_High, 2},
+				{RST, Vol_High, 1},
+			},
+		},
+#endif
+#if defined(IMX471_MOSSMIPI_RAW)
+		{
+			SENSOR_DRVNAME_IMX471_MOSSMIPI_RAW,
+			{
+				{DVDD_1, Vol_High, 1},//1.05V
+				{RST, Vol_Low, 1},
+				{AVDD, Vol_High, 1},
+				{DVDD, Vol_High, 1},
+				{DOVDD, Vol_1800, 1},
+				{SensorMCLK, Vol_High, 1},
+				{RST, Vol_High, 2}
+			},
+		},
+#endif
+#if defined(IMX355_MOSSMIPI_RAW)
+		{
+			SENSOR_DRVNAME_IMX355_MOSSMIPI_RAW,
+			{
+				{AVDD, Vol_Low, 1},
+				{DVDD_1, Vol_High, 1},//1.2V
+				{RST, Vol_Low, 1},
+				{AVDD, Vol_High, 1},
+				{DVDD, Vol_High, 1},
+				{DOVDD, Vol_1800, 1},
+				{SensorMCLK, Vol_High, 1},
+				{RST, Vol_High, 2}
+			},
+		},
+#endif
+#if defined(GC02M1_MOSSMIPI_RAW)
+    {
+			SENSOR_DRVNAME_GC02M1_MOSSMIPI_RAW,
+			{
+				{RST, Vol_Low, 1},
+				{DOVDD, Vol_1800, 1},
+				{AVDD, Vol_High, 5},
+				{SensorMCLK, Vol_High, 1},
+				{RST, Vol_High, 2}
+			},
+    },
+#endif
+    /* add new sensor before this line */
+    {NULL,},
+};
+
+struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence_mossa[] = {
+#if defined(S5KGM1ST_MOSSAMIPI_RAW)
+    {
+        SENSOR_DRVNAME_S5KGM1ST_MOSSAMIPI_RAW,
+        {
+				{RST, Vol_Low, 1},
+				{AFVDD, Vol_2800, 1},
+				{AVDD, Vol_High, 1},
+				{DVDD_1, Vol_1200, 1},
+				{DVDD, Vol_High, 1},
+				{DOVDD, Vol_1800, 1},
+				{SensorMCLK, Vol_High, 2},
+				{RST, Vol_High, 1},
+        },
+    },
+#endif
+#if defined(IMX471_MOSSMIPI_RAW)
+		{
+			SENSOR_DRVNAME_IMX471_MOSSMIPI_RAW,
+			{
+				{DVDD_1, Vol_High, 1},//1.05V
+				{RST, Vol_Low, 1},
+				{AVDD, Vol_High, 1},
+				{DVDD, Vol_High, 1},
+				{DOVDD, Vol_1800, 1},
+				{SensorMCLK, Vol_High, 1},
+				{RST, Vol_High, 2}
+			},
+		},
+#endif
+#if defined(IMX355_MOSSMIPI_RAW)
+		{
+			SENSOR_DRVNAME_IMX355_MOSSMIPI_RAW,
+			{
+				{AVDD, Vol_Low, 1},
+				{DVDD_1, Vol_High, 1},//1.2V
+				{RST, Vol_Low, 1},
+				{AVDD, Vol_High, 1},
+				{DVDD, Vol_High, 1},
+				{DOVDD, Vol_1800, 1},
+				{SensorMCLK, Vol_High, 1},
+				{RST, Vol_High, 2}
+			},
+		},
+#endif
+#if defined(GC02M1_MOSSAMIPI_RAW)
+    {
+			SENSOR_DRVNAME_GC02M1_MOSSAMIPI_RAW,
+			{
+				{RST, Vol_Low, 1},
+				{DOVDD, Vol_1800, 1},
+				{AVDD, Vol_High, 5},
+				{SensorMCLK, Vol_High, 1},
+				{RST, Vol_High, 2}
+			},
+    },
+#endif
+    /* add new sensor before this line */
+    {NULL,},
+};
+
+struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence_20075[] = {
+#if defined(OV48B_CHIVASMIPI_RAW)
+    {
+        SENSOR_DRVNAME_OV48B_CHIVASMIPI_RAW,
+        {
+            {RST, Vol_Low, 1},
+            {SensorMCLK, Vol_High, 0},
+            {DOVDD, Vol_1800, 0},
+            {AVDD, Vol_2800, 0},
+            {DVDD, Vol_1200, 5},
+            // {AFVDD, Vol_2800, 2},
+            {RST, Vol_High, 5},
+        },
+    },
+#endif
+#if defined(OV32A_CHIVASMIPI_RAW)
+    {
+        SENSOR_DRVNAME_OV32A_CHIVASMIPI_RAW,
+        {
+            {RST, Vol_Low, 1},
+            {SensorMCLK, Vol_High, 5},
+            {AVDD, Vol_2800, 1},
+            {DOVDD, Vol_1800, 1},
+            {DVDD, Vol_1100, 1},
+            {RST, Vol_High, 5}
+        },
+    },
+#endif
+#if defined(HI846_CHIVASMIPI_RAW)
+    {
+        SENSOR_DRVNAME_HI846_CHIVASMIPI_RAW,
+        {
+            {RST, Vol_Low, 1},
+            {AVDD, Vol_2800, 0},
+            {DVDD, Vol_1200, 0},
+            {DOVDD, Vol_1800, 1},
+            {SensorMCLK, Vol_High, 1},
+            {RST, Vol_High, 2}
+        },
+    },
+#endif
+#if defined(GC02K0_CHIVASMIPI_RAW)
+    {
+        SENSOR_DRVNAME_GC02K0_CHIVASMIPI_RAW,
+        {
+            {RST, Vol_Low, 1},
+            {DOVDD, Vol_1800, 5},
+            {AVDD, Vol_2800, 5},
+            {SensorMCLK, Vol_High, 1},
+            {RST, Vol_High, 1},
+        },
+    },
+#endif
+
+    /* add new sensor before this line */
+    {NULL,},
+};
+
+struct IMGSENSOR_SENSOR_LIST
+    gimgsensor_sensor_list_21101[MAX_NUM_OF_SUPPORT_SENSOR] = {
+#if defined(S5KJN103_MIPI_RAW)
+    {S5KJN103_SENSOR_ID, SENSOR_DRVNAME_S5KJN103_MIPI_RAW, S5KJN103_MIPI_RAW_SensorInit},
+#endif
+#if defined(S5KGM1ST_MIPI_RAW)
+    {S5KGM1ST_SENSOR_ID, SENSOR_DRVNAME_S5KGM1ST_MIPI_RAW, S5KGM1ST_MIPI_RAW_SensorInit},
+#endif
+#if defined(S5K3L6_MIPI_RAW)
+    {S5K3L6_SENSOR_ID, SENSOR_DRVNAME_S5K3L6_MIPI_RAW, S5K3L6_MIPI_RAW_SensorInit},
+#endif
+#if defined(S5K3P9SP_MIPI_RAW)
+     {S5K3P9SP_SENSOR_ID, SENSOR_DRVNAME_S5K3P9SP_MIPI_RAW, S5K3P9SP_MIPI_RAW_SensorInit},
+ #endif
+#if defined(IMX355_MIPI_RAW)
+    {IMX355_SENSOR_ID, SENSOR_DRVNAME_IMX355_MIPI_RAW, IMX355_MIPI_RAW_SensorInit},
+#endif
+#if defined(GC02M1B_MIPI_MONO)
+    {GC02M1B_SENSOR_ID, SENSOR_DRVNAME_GC02M1B_MIPI_MONO, GC02M1B_MIPI_MONO_SensorInit},
+#endif
+    /* ADD sensor driver before this line */
+    {0, {0}, NULL}, /* end of list */
+};
+
+struct IMGSENSOR_HW_CFG imgsensor_custom_config_21101[] = {
+    {
+        IMGSENSOR_SENSOR_IDX_MAIN,
+        IMGSENSOR_I2C_DEV_0,
+        {
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_AFVDD,   IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+        },
+    },
+    {
+        IMGSENSOR_SENSOR_IDX_SUB,
+        IMGSENSOR_I2C_DEV_1,
+        {
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_NONE, IMGSENSOR_HW_ID_NONE},
+        },
+    },
+    {
+        IMGSENSOR_SENSOR_IDX_MAIN2,
+        IMGSENSOR_I2C_DEV_2,
+        {
+
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+        },
+    },
+    {IMGSENSOR_SENSOR_IDX_NONE}
+};
+
+struct IMGSENSOR_HW_CFG imgsensor_custom_config_20015[] = {
+	{
+		IMGSENSOR_SENSOR_IDX_MAIN,
+		IMGSENSOR_I2C_DEV_0,
+		{
+			{IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+			{IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+		},
+	},
+	{
+		IMGSENSOR_SENSOR_IDX_SUB,
+		IMGSENSOR_I2C_DEV_1,
+		{
+			{IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+			{IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_NONE, IMGSENSOR_HW_ID_NONE},
+		},
+	},
+	{
+		IMGSENSOR_SENSOR_IDX_MAIN2,
+		IMGSENSOR_I2C_DEV_2,
+		{
+
+			{IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+			{IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+		},
+	},
+	{
+		IMGSENSOR_SENSOR_IDX_SUB2,
+		IMGSENSOR_I2C_DEV_3,
+		{
+			{IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+			{IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+		},
+	},
+    {IMGSENSOR_SENSOR_IDX_NONE}
+};
+
+struct IMGSENSOR_HW_CFG imgsensor_custom_config_21041[] = {
+	{
+		IMGSENSOR_SENSOR_IDX_MAIN,
+		IMGSENSOR_I2C_DEV_0,
+		{
+			{IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+			{IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_AFVDD, IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+		},
+	},
+	{
+		IMGSENSOR_SENSOR_IDX_SUB,
+		IMGSENSOR_I2C_DEV_1,
+		{
+			{IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+			{IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_NONE, IMGSENSOR_HW_ID_NONE},
+		},
+	},
+	{
+		IMGSENSOR_SENSOR_IDX_MAIN2,
+		IMGSENSOR_I2C_DEV_2,
+		{
+
+			{IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+			{IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+		},
+	},
+	{
+		IMGSENSOR_SENSOR_IDX_SUB2,
+		IMGSENSOR_I2C_DEV_3,
+		{
+			{IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+			{IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+		},
+	},
+    {IMGSENSOR_SENSOR_IDX_NONE}
+};
+
+struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence_21101[] = {
+#if defined(S5KJN103_MIPI_RAW)
+    {
+        SENSOR_DRVNAME_S5KJN103_MIPI_RAW,
+        {
+            {RST, Vol_Low, 0},
+            {AF_VDD, Vol_2800, 5},
+            {DVDD, Vol_1100, 2},
+            {AVDD, Vol_2800, 0, 0, 2},
+            {DOVDD, Vol_1800, 1},
+            {RST, Vol_High, 2},
+            {SensorMCLK, Vol_High, 10},
+        },
+    },
+#endif
+#if defined(S5KGM1ST_MIPI_RAW)
+    {
+        SENSOR_DRVNAME_S5KGM1ST_MIPI_RAW,
+        {
+            {RST, Vol_Low, 1},
+            {AVDD, Vol_2800, 0},
+            {DVDD, Vol_1100, 0},
+            {DOVDD, Vol_1800, 1},
+            {RST, Vol_High, 2},
+            {AF_VDD, Vol_2800, 0},
+            {SensorMCLK, Vol_High, 1},
+        },
+    },
+#endif
+#if defined(S5K3L6_MIPI_RAW)
+    {
+        SENSOR_DRVNAME_S5K3L6_MIPI_RAW,
+        {
+            {RST, Vol_Low, 1},
+            {AVDD, Vol_2800, 0},
+            {DVDD, Vol_1100, 0},
+            {DOVDD, Vol_1800, 1},
+            {RST, Vol_High, 2},
+            {AF_VDD, Vol_2800, 0},
+            {SensorMCLK, Vol_High, 1},
+        },
+    },
+#endif
+#if defined(S5K3P9SP_MIPI_RAW)
+        {
+          SENSOR_DRVNAME_S5K3P9SP_MIPI_RAW,
+          {
+            {SensorMCLK, Vol_High, 0},
+            {RST, Vol_Low, 1},
+            {DVDD, Vol_1100, 1},
+            {AVDD, Vol_2800, 1},
+            {DOVDD, Vol_1800, 0},
+            {RST, Vol_High, 2},
+          },
+        },
+#endif
+#if defined(IMX355_MIPI_RAW)
+    {
+        SENSOR_DRVNAME_IMX355_MIPI_RAW,
+        {
+            {RST, Vol_Low, 1},
+            {DOVDD, Vol_1800, 1},
+            {DVDD, Vol_1200, 1},
+            {AVDD, Vol_2800, 0},
+            {SensorMCLK, Vol_High, 1},
+            {RST, Vol_High, 2}
+        },
+    },
+#endif
+#if defined(GC02M1B_MIPI_MONO)
+    {
+        SENSOR_DRVNAME_GC02M1B_MIPI_MONO,
+        {
+            {RST, Vol_Low, 1},
+            {DOVDD, Vol_1800, 1},
+            {AVDD, Vol_2800, 0},
+            {RST, Vol_High, 2},
+            {SensorMCLK, Vol_High, 1, 0, 1},
+        },
+    },
+#endif
+    /* add new sensor before this line */
+    {NULL,},
+};
+
+
+struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence_21081[] = {
+#if defined(IMX581_MIPI_RAW)
+    {
+		SENSOR_DRVNAME_IMX581_MIPI_RAW,
+		{
+			{RST, Vol_Low, 1},
+			{DOVDD, Vol_1800, 1},
+			{AVDD, Vol_2900, 0},
+			{AVDD1, Vol_1800, 0},
+			{DVDD, Vol_1100, 1},
+			{AF_VDD, Vol_2800, 1},
+			{SensorMCLK, Vol_High, 1},
+			{RST, Vol_High, 3}
+		},
+	},
+#endif
+#if defined(IMX471_MIPI_RAW)
+    {
+        SENSOR_DRVNAME_IMX471_MIPI_RAW,
+        {
+            {RST, Vol_Low, 1},
+            {AVDD, Vol_2800, 0},
+            {DVDD, Vol_1100, 0},
+            {DOVDD, Vol_1800, 1},
+            {SensorMCLK, Vol_High, 1},
+            {RST, Vol_High, 2},
+        },
+    },
+#endif
+#if defined(GC02M1B_MIPI_MONO)
+    {
+        SENSOR_DRVNAME_GC02M1B_MIPI_MONO,
+        {
+            {RST, Vol_Low, 1},
+            {DOVDD, Vol_1800, 1},
+            {AVDD, Vol_2800, 1},
+            {SensorMCLK, Vol_High, 1},
+            {RST, Vol_High, 2}
+        },
+    },
+#endif
+#if defined(GC02M1_MIPI_RAW)
+    {
+        SENSOR_DRVNAME_GC02M1_MIPI_RAW,
+        {
+			{RST, Vol_Low, 1},
+			{DOVDD, Vol_1800, 1},
+			{AVDD, Vol_2800, 1},
+			{SensorMCLK, Vol_High, 1},
+			{RST, Vol_High, 2}
+        },
+    },
+#endif
+    /* add new sensor before this line */
+    {NULL,},
+};
+
+struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence_20015[] = {
+#if defined(OV13B10_MIPI_RAW_CARR)
+	{
+		SENSOR_DRVNAME_OV13B10_MIPI_RAW_CARR,
+		{
+			{RST, Vol_Low, 1},
+			{AVDD, Vol_2800, 0},
+			{DVDD, Vol_1200, 0},
+			{DOVDD, Vol_1800, 1},
+			{RST, Vol_High, 5},
+			{SensorMCLK, Vol_High, 1},
+		},
+	},
+#endif
+#if defined(S5K3L6_MIPI_RAW_CARR)
+	{
+		SENSOR_DRVNAME_S5K3L6_MIPI_RAW_CARR,
+		{
+			{RST, Vol_Low, 0},
+			{DOVDD, Vol_1800, 1},
+			{AVDD, Vol_2800, 1},
+			{DVDD, Vol_1100, 1},
+			{RST, Vol_High, 6},
+			{SensorMCLK, Vol_High, 5},
+		},
+	},
+#endif
+#if defined(IMX355_MIPI_RAW_CARR)
+	{
+		SENSOR_DRVNAME_IMX355_MIPI_RAW_CARR,
+		{
+			{RST, Vol_Low, 1},
+			{DOVDD, Vol_1800, 1},
+			{DVDD, Vol_1200, 1},
+			{AVDD, Vol_2800, 2},
+			{SensorMCLK, Vol_High, 1},
+			{RST, Vol_High, 2}
+		},
+	},
+#endif
+#if defined(GC02M1B_MIPI_MONO_CARR)
+	{
+		SENSOR_DRVNAME_GC02M1B_MIPI_MONO_CARR,
+		{
+			{RST, Vol_Low, 1},
+			{DOVDD, Vol_1800, 1},
+			{AVDD, Vol_2800, 0},
+			{SensorMCLK, Vol_High, 1},
+			{RST, Vol_High, 2}
+		},
+	},
+#endif
+#if defined(OV02B10_MIPI_RAW_CARR)
+	{
+		SENSOR_DRVNAME_OV02B10_MIPI_RAW_CARR,
+		{
+			{RST, Vol_Low, 1},
+			{DOVDD, Vol_1800, 1},
+			{SensorMCLK, Vol_High, 0},
+			{AVDD, Vol_2800, 9},
+			{RST, Vol_High, 1}
+		},
+	},
+#endif
+#if defined(GC02M1_MIPI_RAW_CARR)
+	{
+		SENSOR_DRVNAME_GC02M1_MIPI_RAW_CARR,
+		{
+			{RST, Vol_Low, 1},
+			{DOVDD, Vol_1800, 1},
+			{AVDD, Vol_2800, 0},
+			{SensorMCLK, Vol_High, 1},
+			{RST, Vol_High, 2}
+		},
+	},
+#endif
+    /* add new sensor before this line */
+    {NULL,},
+};
+
+struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence_216A0[] = {
+#if defined(S5KGM1ST_MIPI_RAW_APOLLOF)
+    {
+        SENSOR_DRVNAME_S5KGM1ST_MIPI_RAW_APOLLOF,
+        {
+            {RST, Vol_Low, 1},
+            {AVDD, Vol_2800, 0},
+            {DVDD, Vol_1100, 0},
+            {DOVDD, Vol_1800, 1},
+            {RST, Vol_High, 2},
+            {AF_VDD, Vol_2800, 0},
+            {SensorMCLK, Vol_High, 1},
+            // 	{MIPISEL, Vol_High, 3},
+            // #endif
+        },
+    },
+#endif
+
+#if defined(S5K3P9SP_MIPI_RAW_APOLLOF)
+        {
+            SENSOR_DRVNAME_S5K3P9SP_MIPI_RAW_APOLLOF,
+            {
+                {RST, Vol_Low, 1},
+                {AVDD, Vol_2800, 0},
+                {DVDD, Vol_1100, 0},
+                {DOVDD, Vol_1800, 1},
+                {SensorMCLK, Vol_High, 1},
+                {RST, Vol_High, 2},
+            },
+        },
+#endif
+
+#if defined(OV02B10_MIPI_RAW_APOLLOF)
+    {
+        SENSOR_DRVNAME_OV02B10_MIPI_RAW_APOLLOF,
+        {
+            {RST, Vol_Low, 1},
+            {DOVDD, Vol_1800, 1},
+            {AVDD, Vol_2800, 5},
+            {SensorMCLK, Vol_High, 0},
+            {RST, Vol_High, 10}
+        },
+    },
+#endif
+
+#if defined(OV02B1B_MIPI_MONO_APOLLOF)
+    {
+        SENSOR_DRVNAME_OV02B1B_MIPI_MONO_APOLLOF,
+        {
+            {RST, Vol_Low, 1},
+            //{DVDD, Vol_1200, 0},
+            {DOVDD, Vol_1800, 1},
+            {AVDD, Vol_2800, 5},
+            {RST, Vol_High, 4},
+              {SensorMCLK, Vol_High, 1}
+        },
+    },
+#endif
+
+#if defined(OV64B_MIPI_RAW_APOLLOF)
+    {
+        SENSOR_DRVNAME_OV64B_MIPI_RAW_APOLLOF,
+        {
+            {RST, Vol_Low, 1},
+            {SensorMCLK, Vol_High, 1},
+            {AVDD, Vol_2800, 2},
+            {DOVDD, Vol_1800, 1},
+            {DVDD, Vol_1100, 5},
+            {RST, Vol_High, 5},
+            {AF_VDD, Vol_2800, 0},
+        },
+    },
+#endif
+
+    /* add new sensor before this line */
+    {NULL,},
+};
+
+struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence_21041[] = {
+#if defined(S5KGM1ST_MIPI_RAW_ODINA)
+	{
+		SENSOR_DRVNAME_S5KGM1ST_MIPI_RAW_ODINA,
+		{
+			{RST, Vol_Low, 1},
+			{AVDD, Vol_2800, 0},
+			{DVDD, Vol_1100, 0},
+			{DOVDD, Vol_1800, 1},
+			{RST, Vol_High, 2},
+			{AF_VDD, Vol_2800, 0},
+			{SensorMCLK, Vol_High, 1},
+			// 	{MIPISEL, Vol_High, 3},
+			// #endif
+		},
+	},
+#endif
+#if defined(IMX355_MIPI_RAW_ODINA)
+	{
+		SENSOR_DRVNAME_IMX355_MIPI_RAW_ODINA,
+		{
+			{RST, Vol_Low, 1},
+			{DOVDD, Vol_1800, 1},
+			{DVDD, Vol_1200, 1},
+			{AVDD, Vol_2800, 0},
+			{SensorMCLK, Vol_High, 1},
+			{RST, Vol_High, 2}
+		},
+	},
+#endif
+#if defined(GC02M1B_MIPI_MONO_ODINA)
+	{
+		SENSOR_DRVNAME_GC02M1B_MIPI_MONO_ODINA,
+		{
+			{RST, Vol_Low, 1},
+			{DOVDD, Vol_1800, 1},
+			{AVDD, Vol_2800, 0},
+			{SensorMCLK, Vol_High, 1},
+			{RST, Vol_High, 2}
+		},
+	},
+#endif
+
+#if defined(OV02B10_MIPI_RAW_ODINA)
+	{
+		SENSOR_DRVNAME_OV02B10_MIPI_RAW_ODINA,
+		{
+			{RST, Vol_Low, 1},
+			{DOVDD, Vol_1800, 1},
+			{AVDD, Vol_2800, 5},
+			{SensorMCLK, Vol_High, 0},
+			{RST, Vol_High, 10}
+		},
+	},
+#endif
+	/* add new sensor before this line */
+	{NULL,},
+};
+struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence_alicert[] = {
+#if defined(S5K3L6_MIPI_RAW_ALICERT)
+    {
+        SENSOR_DRVNAME_S5K3L6_MIPI_RAW_ALICERT,
+        {
+            {RST, Vol_Low, 1},
+            {AVDD, Vol_2800, 0},
+            {DVDD, Vol_1100, 0},
+            {DOVDD, Vol_1800, 1},
+            {SensorMCLK, Vol_High, 1},
+            {RST, Vol_High, 2},
+            {AF_VDD, Vol_2800, 0},
+        },
+    },
+#endif
+#if defined(IMX355_MIPI_RAW_ALICERT)
+    {
+        SENSOR_DRVNAME_IMX355_MIPI_RAW_ALICERT,
+        {
+            {RST, Vol_Low, 1},
+            {DOVDD, Vol_1800, 1},
+            {DVDD, Vol_1200, 1},
+            {AVDD, Vol_2800, 0},
+            {SensorMCLK, Vol_High, 1},
+            {RST, Vol_High, 2}
+        },
+    },
+#endif
+#if defined(GC02M1B_MIPI_MONO_ALICERT)
+    {
+        SENSOR_DRVNAME_GC02M1B_MIPI_MONO_ALICERT,
+        {
+            {RST, Vol_Low, 1},
+            {DOVDD, Vol_1800, 1},
+            {AVDD, Vol_2800, 0},
+            {RST, Vol_High, 2},
+            {SensorMCLK, Vol_High, 1, 0, 1},
+        },
+    },
+#endif
+#if defined(S5KGM1ST_MIPI_RAW_ALICER)
+    {
+        SENSOR_DRVNAME_S5KGM1ST_MIPI_RAW_ALICER,
+        {
+            {RST, Vol_Low, 1},
+            {AVDD, Vol_2800, 0},
+            {DVDD, Vol_1100, 0},
+            {DOVDD, Vol_1800, 1},
+            {RST, Vol_High, 2},
+            {AF_VDD, Vol_2800, 0},
+            {SensorMCLK, Vol_High, 1},
+        },
+    },
+#endif
+    /* add new sensor before this line */
+    {NULL,},
+};
+
+struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence_aliceq[] = {
+#if defined(S5K3L6_MIPI_RAW_ALICERT)
+    {
+        SENSOR_DRVNAME_S5K3L6_MIPI_RAW_ALICERT,
+        {
+            {RST, Vol_Low, 1},
+            {AVDD, Vol_2800, 0},
+            {DVDD, Vol_1100, 0},
+            {DOVDD, Vol_1800, 1},
+            {SensorMCLK, Vol_High, 1},
+            {RST, Vol_High, 2},
+            {AF_VDD, Vol_2800, 0},
+        },
+    },
+#endif
+#if defined(IMX355_MIPI_RAW_ALICER)
+    {
+        SENSOR_DRVNAME_IMX355_MIPI_RAW_ALICER,
+        {
+            {RST, Vol_Low, 1},
+            {DOVDD, Vol_1800, 1},
+            {DVDD, Vol_1200, 1},
+            {AVDD, Vol_2800, 0},
+            {SensorMCLK, Vol_High, 1},
+            {RST, Vol_High, 2}
+        },
+    },
+#endif
+#if defined(GC02M1B_MIPI_MONO_ALICERT)
+    {
+        SENSOR_DRVNAME_GC02M1B_MIPI_MONO_ALICERT,
+        {
+            {RST, Vol_Low, 1},
+            {DOVDD, Vol_1800, 1},
+            {AVDD, Vol_2800, 0},
+            {RST, Vol_High, 2},
+            {SensorMCLK, Vol_High, 1, 0, 1},
+        },
+    },
+#endif
+#if defined(S5KGM1ST_MIPI_RAW_ALICER)
+    {
+        SENSOR_DRVNAME_S5KGM1ST_MIPI_RAW_ALICER,
+        {
+            {RST, Vol_Low, 1},
+            {AVDD, Vol_2800, 0},
+            {DVDD, Vol_1100, 0},
+            {DOVDD, Vol_1800, 1},
+            {RST, Vol_High, 2},
+            {AF_VDD, Vol_2800, 0},
+            {SensorMCLK, Vol_High, 1},
+        },
+    },
+#endif
+    /* add new sensor before this line */
+    {NULL,},
+};
+
+struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence_alicer[] = {
+#if defined(S5KJN103_MIPI_RAW_ALICER)
+    {
+        SENSOR_DRVNAME_S5KJN103_MIPI_RAW_ALICER,
+        {
+            {RST, Vol_Low, 1},
+            {AF_VDD, Vol_2800, 8},
+            {AVDD, Vol_2800, 0},
+            {DVDD, Vol_1100, 0},
+            {DOVDD, Vol_1800, 1},
+            {RST, Vol_High, 2},
+            {AF_VDD, Vol_2800, 0},
+            {SensorMCLK, Vol_High, 10},
+        },
+    },
+#endif
+#if defined(IMX355_MIPI_RAW_ALICER)
+    {
+        SENSOR_DRVNAME_IMX355_MIPI_RAW_ALICER,
+        {
+            {RST, Vol_Low, 1},
+            {DOVDD, Vol_1800, 1},
+            {DVDD, Vol_1200, 1},
+            {AVDD, Vol_2800, 0},
+            {SensorMCLK, Vol_High, 1},
+            {RST, Vol_High, 2}
+        },
+    },
+#endif
+#if defined(GC02M1B_MIPI_MONO_ALICER)
+    {
+        SENSOR_DRVNAME_GC02M1B_MIPI_MONO_ALICER,
+        {
+            {RST, Vol_Low, 1},
+            {DOVDD, Vol_1800, 1},
+            {AVDD, Vol_2800, 0},
+            {RST, Vol_High, 2},
+            {SensorMCLK, Vol_High, 1, 0, 1},
+        },
+    },
+#endif
+#if defined(S5KGM1ST_MIPI_RAW_ALICER)
+    {
+        SENSOR_DRVNAME_S5KGM1ST_MIPI_RAW_ALICER,
+        {
+            {RST, Vol_Low, 1},
+            {AVDD, Vol_2800, 0},
+            {DVDD, Vol_1100, 0},
+            {DOVDD, Vol_1800, 1},
+            {RST, Vol_High, 2},
+            {AF_VDD, Vol_2800, 0},
+            {SensorMCLK, Vol_High, 1},
+        },
+    },
+#endif
+    /* add new sensor before this line */
+    {NULL,},
+};
+
+struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence_20611[] = {
+#if defined(S5KGM1ST_MIPI_RAW_20611)
+		{
+			SENSOR_DRVNAME_S5KGM1ST_MIPI_RAW_20611,
+			{
+				{RST, Vol_Low, 1},
+				{AVDD, Vol_2800, 0},
+				{DVDD, Vol_1200, 0},
+				{DOVDD, Vol_1800, 1},
+				{MIPISEL,Vol_High,3},
+				{AF_VDD, Vol_2800, 0},
+				{RST, Vol_High, 2},
+				{SensorMCLK, Vol_High, 1},
+			},
+		},
+#endif
+//#if defined(OV16A10_MIPI_RAW_20611)
+//		{
+//			SENSOR_DRVNAME_OV16A10_MIPI_RAW_20611,
+//			{
+//				{RST, Vol_Low, 1},
+//				{AVDD, Vol_2800, 0},
+//				{DVDD, Vol_1500, 0},
+//				{DOVDD, Vol_1800, 1},
+//				{MIPISEL, Vol_High, 3},
+//				{SensorMCLK, Vol_High, 1},
+//				{RST, Vol_High, 2},
+//			},
+//		},
+//#endif
+#if defined(S5K3P9SP_MIPI_RAW_20611)
+	{
+		SENSOR_DRVNAME_S5K3P9SP_MIPI_RAW_20611,
+		{
+			{RST, Vol_Low, 1},
+			{AVDD, Vol_2800, 0},
+			{DVDD, Vol_1100, 0},
+			{DOVDD, Vol_1800, 1},
+			{SensorMCLK, Vol_High, 1},
+			{RST, Vol_High, 2},
+		},
+	},
+#endif
+#if defined(HI846_MIPI_RAW_20611)
+		{
+			SENSOR_DRVNAME_HI846_MIPI_RAW_20611,
+			{
+				{RST, Vol_Low, 1},
+				{AVDD, Vol_2800, 0},
+				{DVDD, Vol_1200, 0},
+				{DOVDD, Vol_1800, 1},
+				{SensorMCLK, Vol_High, 1},
+				{RST, Vol_High, 2},
+			},
+		},
+#endif
+#if defined(GC02K_MIPI_RAW_20611)
+	{
+		SENSOR_DRVNAME_GC02K_MIPI_RAW_20611,
+		{
+			{RST, Vol_Low, 1},
+			//{DVDD, Vol_1200, 0},
+			{DOVDD, Vol_1800, 1},
+			{AVDD, Vol_2800, 0},
+			{SensorMCLK, Vol_High, 1},
+			{RST, Vol_High, 2}
+		},
+	},
+#endif
+#if defined(OV02B1B_MIPI_RAW_20611)
+	{
+		SENSOR_DRVNAME_OV02B1B_MIPI_RAW_20611,
+		{
+			{RST, Vol_Low, 1},
+			//{DVDD, Vol_1200, 0},
+			{DOVDD, Vol_1800, 1},
+			{AVDD, Vol_2800, 5},
+			{RST, Vol_High, 4},
+  			{SensorMCLK, Vol_High, 1}
+		},
+	},
+#endif
+	/* add new sensor before this line */
+	{NULL,},
+};
+
+struct IMGSENSOR_HW_POWER_SEQ platform_power_sequence_20611[] ={
+	{
+		PLATFORM_POWER_SEQ_NAME,
+		{
+			{
+				IMGSENSOR_HW_PIN_MIPI_SWITCH_SEL,
+				IMGSENSOR_HW_PIN_STATE_LEVEL_0,
+				0,
+				IMGSENSOR_HW_PIN_STATE_LEVEL_0,
+				0
+			},
+		},
+		IMGSENSOR_SENSOR_IDX_SUB,
+	},
+	{
+		PLATFORM_POWER_SEQ_NAME,
+		{
+			{
+				IMGSENSOR_HW_PIN_MIPI_SWITCH_SEL,
+				IMGSENSOR_HW_PIN_STATE_LEVEL_HIGH,
+				0,
+				IMGSENSOR_HW_PIN_STATE_LEVEL_0,
+				0
+			},
+		},
+		IMGSENSOR_SENSOR_IDX_MAIN2,
+	},
+};
+
+struct CAMERA_DEVICE_INFO gImgEepromInfo_20181= {
+    .i4SensorNum = 4,
+    .pCamModuleInfo = {
+        {OV64B_SENSOR_ID,   0xA0, {0x00, 0x06}, 0xB0, 1, {0x92,0xFF,0xFF,0x94}, "Cam_r0", "ov64b2q"},
+        {IMX615_SENSOR_ID,  0xA8, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_f",  "imx615"},
+        {IMX355_SENSOR_ID,  0xA2, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r1", "imx355"},
+        {OV02B10_SENSOR_ID, 0xA4, {0x00, 0x05}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r2", "ov02b10"},
+    },
+    .i4MWDataIdx = IMGSENSOR_SENSOR_IDX_MAIN2,
+    .i4MTDataIdx = 0xFF,
+    .i4FrontDataIdx = 0xFF,
+    .i4NormDataLen = 40,
+    .i4MWDataLen = 3230,
+    .i4MWStereoAddr = {OV64B_STEREO_START_ADDR, IMX355_STEREO_START_ADDR},
+    .i4MTStereoAddr = {0xFFFF, 0xFFFF},
+    .i4FrontStereoAddr = {0xFFFF, 0xFFFF},
+};
+
+struct CAMERA_DEVICE_INFO gImgEepromInfo_20151= {
+    .i4SensorNum = 5,
+    .pCamModuleInfo = {
+        {OV48B_SENSOR_ID,  0xA0, {0x00, 0x06}, 0xB0, 1, {0x92,0x96,0x98,0x94}, "Cam_r0", "ov48b"},
+        {IMX471_SENSOR_ID,  0xA8, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_f", "imx471"},
+        {HI846_SENSOR_ID,  0xA2, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r1", "hi846"},
+        {OV02B10_SENSOR_ID,  0xA4, {0x00, 0x06}, 0xE0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r2", "ov02b10"},
+        {OV02A1B_SENSOR_ID,  0xFF, {0xFF, 0xFF}, 0xFF, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r3", "ov02a1b"},
+    },
+    .i4MWDataIdx = IMGSENSOR_SENSOR_IDX_MAIN2,
+    .i4MTDataIdx = 0xFF,
+    .i4FrontDataIdx = 0xFF,
+    .i4NormDataLen = 40,
+    .i4MWDataLen = 3102,
+    .i4MWStereoAddr = {OV48B_STEREO_START_ADDR, HI846_STEREO_START_ADDR },
+    .i4MTStereoAddr = {0xFFFF, 0xFFFF},
+    .i4FrontStereoAddr = {0xFFFF, 0xFFFF},
+};
+
+struct CAMERA_DEVICE_INFO gImgEepromInfo_20001= {
+    .i4SensorNum = 4,
+    .pCamModuleInfo = {
+        {OV16A10_SENSOR_ID,  0xA0, {0x00, 0x06}, 0xB0, 1, {0x92,0x96,0x98,0x94}, "Cam_r0", "ov16a10"},  //weixiugai
+        {S5K4H7_SENSOR_ID,  0x20, {0x00, 0x06}, 0x24, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_f",  "5sk4h7"},  //weixiugai
+        {HI846_SENSOR_ID,  0xA2, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r1", "hi846"},
+        {GC02M1B_SENSOR_ID, 0xA2, {0xFF, 0xFF}, 0x0C, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r2", "gc02m1b"},
+    },
+    .i4MWDataIdx = IMGSENSOR_SENSOR_IDX_MAIN2,
+    .i4MTDataIdx = 0xFF,
+    .i4FrontDataIdx = 0xFF,
+    .i4NormDataLen = 40,
+    .i4MWDataLen = 3102,
+    .i4MWStereoAddr = {OV16A10_STEREO_START_ADDR, HI846_STEREO_START_ADDR_20001},
+    .i4MTStereoAddr = {0xFFFF, 0xFFFF},
+    .i4FrontStereoAddr = {0xFFFF, 0xFFFF},
+};
+
+struct CAMERA_DEVICE_INFO gImgEepromInfo_20391= {
+    .i4SensorNum = 4,
+    .pCamModuleInfo = {
+        {OV64B_SENSOR_ID,  0xA0, {0x00, 0x06}, 0xB0, 1, {0x92,0x96,0x98,0x94}, "Cam_r0", "ov64b2q"},
+        {OV32A_SENSOR_ID,  0xA8, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_f", "ov32a1q"},
+        {HI846_SENSOR_ID,  0xA2, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r1", "hi846"},
+        {OV02B10_SENSOR_ID,  0xA4, {0x00, 0x06}, 0xE0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r2", "ov02b10"},
+    },
+    .i4MWDataIdx = IMGSENSOR_SENSOR_IDX_MAIN2,
+    .i4MTDataIdx = 0xFF,
+    .i4FrontDataIdx = 0xFF,
+    .i4NormDataLen = 40,
+    .i4MWDataLen = 3102,
+    .i4MWStereoAddr = {OV64B_STEREO_START_ADDR, HI846_STEREO_START_ADDR},
+    .i4MTStereoAddr = {0xFFFF, 0xFFFF},
+    .i4FrontStereoAddr = {0xFFFF, 0xFFFF},
+};
+
+struct CAMERA_DEVICE_INFO gImgEepromInfo_20075= {
+    .i4SensorNum = 4,
+    .pCamModuleInfo = {
+        {OV48B_SENSOR_ID_CHIVAS,  0xA0, {0x00, 0x06}, 0xB0, 1, {0x92,0x96,0x98,0x94}, "Cam_r0", "ov48b2q"},
+        {OV32A_SENSOR_ID_CHIVAS,  0xA8, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_f",  "ov32a1q"},
+        {HI846_SENSOR_ID_CHIVAS,  0xA2, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r1", "hi846"},
+        {GC02K0_SENSOR_ID_CHIVAS, 0xA4, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r2", "gc02k0"},
+    },
+    .i4MWDataIdx = IMGSENSOR_SENSOR_IDX_MAIN2,
+    .i4MTDataIdx = 0xFF,
+    .i4FrontDataIdx = 0xFF,
+    .i4NormDataLen = 40,
+    .i4MWDataLen = 3102,
+    .i4MWStereoAddr = {OV48B_STEREO_START_ADDR, HI846_STEREO_START_ADDR_19131},
+    .i4MTStereoAddr = {0xFFFF, 0xFFFF},
+    .i4FrontStereoAddr = {0xFFFF, 0xFFFF},
+};
+
+struct CAMERA_DEVICE_INFO gImgEepromInfo_20630 = {
+    .i4SensorNum = 5,
+    .pCamModuleInfo = {
+        {S5KGW3_SENSOR_ID_20631,              0xA0, {0x00, 0x06}, 0xB0, 1, {0x92,0xFF,0xFF,0x94}, "Cam_r0", "s5kgw3_20630"},
+        {OV32A1Q_SENSOR_ID_20631,     0xA8, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_f",  "athensb_ov32a1q_20630"},
+        {HI846_SENSOR_ID_20631,       0xA2, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r1", "athensb_hi846_20630"},
+        {GC02M1B_SENSOR_ID_20631,     0xFF, {0xFF, 0xFF}, 0xFF, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r2", "athensb_gc02m1b_20630"},
+        {GC02K_SENSOR_ID_20631,       0xA4, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r3", "athensb_gc02k_20630"},
+    },
+    .i4MWDataIdx = IMGSENSOR_SENSOR_IDX_MAIN2,
+    .i4MTDataIdx = 0xFF,
+    .i4FrontDataIdx = 0xFF,
+    .i4NormDataLen = 40,
+    .i4MWDataLen = 3102,
+    .i4MWStereoAddr = {S5KGW3_STEREO_START_ADDR_20630, HI846_STEREO_START_ADDR_20630},
+    .i4MTStereoAddr = {0xFFFF, 0xFFFF},
+    .i4FrontStereoAddr = {0xFFFF, 0xFFFF},
+};
+
+struct CAMERA_DEVICE_INFO gImgEepromInfo_20633 = {
+    .i4SensorNum = 5,
+    .pCamModuleInfo = {
+        {S5KGM1ST_SENSOR_ID_20633c,    0xA0, {0x00, 0x06}, 0xB0, 1, {0x92,0xFF,0xFF,0x94}, "Cam_r0", "athensc_s5kgm1st_20630"},
+        {IMX471_SENSOR_ID_20633c,      0xA8, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_f",  "athensc_imx471_20630"},
+        {HI846_SENSOR_ID_20633c,       0xA2, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r1", "athensc_hi846_20630"},
+        {GC02M1B_SENSOR_ID_20631,     0xFF, {0xFF, 0xFF}, 0xFF, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r2", "athensb_gc02m1b_20630"},
+        {GC02K_SENSOR_ID_20631,       0xA4, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r3", "athensb_gc02k_20630"},
+    },
+    .i4MWDataIdx = IMGSENSOR_SENSOR_IDX_MAIN2,
+    .i4MTDataIdx = 0xFF,
+    .i4FrontDataIdx = 0xFF,
+    .i4NormDataLen = 40,
+    .i4MWDataLen = 3102,
+    .i4MWStereoAddr = {S5KGM1ST_STEREO_START_ADDR_20633, HI846_STEREO_START_ADDR_20633},
+    .i4MTStereoAddr = {0xFFFF, 0xFFFF},
+    .i4FrontStereoAddr = {0xFFFF, 0xFFFF},
+};
+
+struct CAMERA_DEVICE_INFO gImgEepromInfo_21101 = {
+    .i4SensorNum = 3,
+    .pCamModuleInfo = {
+        {S5KGM1ST_SENSOR_ID,  0xA0, {0x00, 0x06}, 0xB0, 1, {0x92,0xFF,0xFF,0x94}, "Cam_r0", "s5kgm1st"},
+        {IMX355_SENSOR_ID,  0xA8, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_f",  "imx355"},
+        {GC02M1B_SENSOR_ID,  0xFF, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r1", "gc02m1b"},
+    },
+    .i4MWDataIdx = 0xFF,
+    .i4MTDataIdx = 0xFF,
+    .i4FrontDataIdx = 0xFF,
+    .i4NormDataLen = 40,
+    .i4MWDataLen = 3102,
+    .i4MWStereoAddr = {0xFFFF, 0xFFFF},
+    .i4MTStereoAddr = {0xFFFF, 0xFFFF},
+    .i4FrontStereoAddr = {0xFFFF, 0xFFFF},
+};
+
+struct CAMERA_DEVICE_INFO gImgEepromInfo_21102 = {
+    .i4SensorNum = 3,
+    .pCamModuleInfo = {
+        {S5K3L6_SENSOR_ID,  0xA0, {0x00, 0x06}, 0xB0, 1, {0x92,0xFF,0xFF,0x94}, "Cam_r0", "s5k3l6"},
+        {IMX355_SENSOR_ID,  0xA8, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_f",  "imx355"},
+        {GC02M1B_SENSOR_ID,  0xFF, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r1", "gc02m1b"},
+    },
+    .i4MWDataIdx = 0xFF,
+    .i4MTDataIdx = 0xFF,
+    .i4FrontDataIdx = 0xFF,
+    .i4NormDataLen = 40,
+    .i4MWDataLen = 3102,
+    .i4MWStereoAddr = {0xFFFF, 0xFFFF},
+    .i4MTStereoAddr = {0xFFFF, 0xFFFF},
+    .i4FrontStereoAddr = {0xFFFF, 0xFFFF},
+};
+
+struct CAMERA_DEVICE_INFO gImgEepromInfo_21831 = {
+    .i4SensorNum = 3,
+    .pCamModuleInfo = {
+        {S5KGM1ST_SENSOR_ID,  0xA0, {0x00, 0x06}, 0xB0, 1, {0x92,0xFF,0xFF,0x94}, "Cam_r0", "s5kgm1st"},
+        {S5K3P9SP_SENSOR_ID,  0xA8, {0x00, 0x06}, 0xE0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_f",  "s5k3p9sp"},
+        {GC02M1B_SENSOR_ID,  0xFF, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r1", "gc02m1b"},
+    },
+    .i4MWDataIdx = 0xFF,
+    .i4MTDataIdx = 0xFF,
+    .i4FrontDataIdx = 0xFF,
+    .i4NormDataLen = 40,
+    .i4MWDataLen = 3102,
+    .i4MWStereoAddr = {0xFFFF, 0xFFFF},
+    .i4MTStereoAddr = {0xFFFF, 0xFFFF},
+    .i4FrontStereoAddr = {0xFFFF, 0xFFFF},
+};
+
+struct CAMERA_DEVICE_INFO gImgEepromInfo_21081= {
+    .i4SensorNum = 4,
+    .pCamModuleInfo = {
+        {IMX581_SENSOR_ID,      0xA0, {0x00, 0x06}, 0xB0, 1, {0x92,0xFF,0xFF,0x94}, "Cam_r0", "imx581"},
+        {IMX471_SENSOR_ID,      0xA8, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_f",  "imx471"},
+        //{GC02M1B_SENSOR_ID,     0xA2, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r1", "gc02m1b"},
+        //{GC02M1_SENSOR_ID_DUFU, 0xA4, {0x00, 0x05}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r2", "gc02m"},
+    },
+    .i4MWDataIdx = IMGSENSOR_SENSOR_IDX_MAIN2,
+    .i4MTDataIdx = 0xFF,
+    .i4FrontDataIdx = 0xFF,
+    .i4NormDataLen = 40,
+    .i4MWDataLen = 3230,
+    .i4MWStereoAddr = {OV64B_STEREO_START_ADDR, IMX355_STEREO_START_ADDR},
+    .i4MTStereoAddr = {0xFFFF, 0xFFFF},
+    .i4FrontStereoAddr = {0xFFFF, 0xFFFF},
+    .i4DistortionAddr = IMX355_DISTORTIONPARAMS_START_ADDR,
+};
+
+struct CAMERA_DEVICE_INFO gImgEepromInfo_20015 = {
+    .i4SensorNum = 4,
+    .pCamModuleInfo = {
+        {OV48B_SENSOR_ID,  0xA0, {0x00, 0x06}, 0xB0, 1, {0x92,0xFF,0xFF,0x94}, "Cam_r0", "ov48b2q"},
+        {OV32A_SENSOR_ID,  0xA8, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_f",  "ov32a1q"},
+        {HI846_SENSOR_ID,  0xA2, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r1", "hi846"},
+        {GC02K0_SENSOR_ID, 0xA4, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r2", "gc02k0"},
+    },
+    .i4MWDataIdx = IMGSENSOR_SENSOR_IDX_MAIN2,
+    .i4MTDataIdx = 0xFF,
+    .i4FrontDataIdx = 0xFF,
+    .i4NormDataLen = 40,
+    .i4MWDataLen = 3102,
+    .i4MWStereoAddr = {OV48B_STEREO_START_ADDR, HI846_STEREO_START_ADDR },
+    .i4MTStereoAddr = {0xFFFF, 0xFFFF},
+    .i4FrontStereoAddr = {0xFFFF, 0xFFFF},
+};
+
+struct CAMERA_DEVICE_INFO gImgEepromInfo_21041 = {
+    .i4SensorNum = 4,
+    .pCamModuleInfo = {
+        {OV48B_SENSOR_ID,  0xA0, {0x00, 0x06}, 0xB0, 1, {0x92,0xFF,0xFF,0x94}, "Cam_r0", "ov48b2q"},
+        {OV32A_SENSOR_ID,  0xA8, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_f",  "ov32a1q"},
+        {HI846_SENSOR_ID,  0xA2, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r1", "hi846"},
+        {GC02K0_SENSOR_ID, 0xA4, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r2", "gc02k0"},
+    },
+    .i4MWDataIdx = IMGSENSOR_SENSOR_IDX_MAIN2,
+    .i4MTDataIdx = 0xFF,
+    .i4FrontDataIdx = 0xFF,
+    .i4NormDataLen = 40,
+    .i4MWDataLen = 3102,
+    .i4MWStereoAddr = {OV48B_STEREO_START_ADDR, HI846_STEREO_START_ADDR },
+    .i4MWStereoAddr = {0xFFFF, 0xFFFF},
+    .i4MTStereoAddr = {0xFFFF, 0xFFFF},
+    .i4FrontStereoAddr = {0xFFFF, 0xFFFF},
+};
+
+struct CAMERA_DEVICE_INFO gImgEepromInfo_alicert = {
+    .i4SensorNum = 3,
+    .pCamModuleInfo = {
+        {S5K3L6_SENSOR_ID_ALICERT,  0xA0, {0x00, 0x06}, 0xB0, 1, {0x92,0xFF,0xFF,0x94}, "Cam_r0", "s5k3l6"},
+        {IMX355_SENSOR_ID_ALICERT,  0xA8, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_f",  "imx355"},
+        {GC02M1B_SENSOR_ID_ALICERT,  0xFF, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r1", "gc02m1b"},
+    },
+    .i4MWDataIdx = 0xFF,
+    .i4MTDataIdx = 0xFF,
+    .i4FrontDataIdx = 0xFF,
+    .i4NormDataLen = 40,
+    .i4MWDataLen = 3102,
+    .i4MTStereoAddr = {0xFFFF, 0xFFFF},
+    .i4FrontStereoAddr = {0xFFFF, 0xFFFF},
+};
+
+struct CAMERA_DEVICE_INFO gImgEepromInfo_aliceq = {
+    .i4SensorNum = 3,
+    .pCamModuleInfo = {
+        {S5K3L6_SENSOR_ID_ALICERT,  0xA0, {0x00, 0x06}, 0xB0, 1, {0x92,0xFF,0xFF,0x94}, "Cam_r0", "s5k3l6"},
+        {IMX355_SENSOR_ID_ALICER,  0xA8, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_f",  "imx355"},
+        {GC02M1B_SENSOR_ID_ALICERT,  0xFF, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r1", "gc02m1b"},
+    },
+    .i4MWDataIdx = 0xFF,
+    .i4MTDataIdx = 0xFF,
+    .i4FrontDataIdx = 0xFF,
+    .i4NormDataLen = 40,
+    .i4MWDataLen = 3102,
+    .i4MTStereoAddr = {0xFFFF, 0xFFFF},
+    .i4FrontStereoAddr = {0xFFFF, 0xFFFF},
+};
+
+struct CAMERA_DEVICE_INFO gImgEepromInfo_alicer = {
+    .i4SensorNum = 3,
+    .pCamModuleInfo = {
+        {S5KGM1ST_SENSOR_ID_ALICER,  0xA0, {0x00, 0x06}, 0xB0, 1, {0x92,0xFF,0xFF,0x94}, "Cam_r0", "s5kgm1st"},
+        {IMX355_SENSOR_ID_ALICER,  0xA8, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_f",  "imx355"},
+        {GC02M1B_SENSOR_ID_ALICER,  0xFF, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r1", "gc02m1b"},
+    },
+    .i4MWDataIdx = 0xFF,
+    .i4MTDataIdx = 0xFF,
+    .i4FrontDataIdx = 0xFF,
+    .i4NormDataLen = 40,
+    .i4MWDataLen = 3102,
+    .i4MWStereoAddr = {0xFFFF, 0xFFFF},
+    .i4MTStereoAddr = {0xFFFF, 0xFFFF},
+    .i4FrontStereoAddr = {0xFFFF, 0xFFFF},
+};
+
+struct CAMERA_DEVICE_INFO gImgEepromInfo_20611 = {
+    .i4SensorNum = 5,
+    .pCamModuleInfo = {
+        {S5KGM1ST_SENSOR_ID_20611,    0xA0, {0x00, 0x06}, 0xB0, 1, {0x92,0xFF,0xFF,0x94}, "Cam_r0", "s5kgm1st_mipi_raw_20611"},
+        {S5K3P9SP_SENSOR_ID_20611,      0xA8, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_f",  "s5k3p9sp_mipi_raw_20611"},
+        {HI846_SENSOR_ID_20611,       0xA2, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r1", "hi846_mipi_raw_20611"},
+        {GC02K_SENSOR_ID_20611,     0xFF, {0xFF, 0xFF}, 0xFF, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r2", "gc02k_mipi_raw_20611"},
+        {OV02B1B_SENSOR_ID_20611,       0xA4, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r3", "ov02b1b_mipi_raw_20611"},
+    },
+    .i4MWDataIdx = IMGSENSOR_SENSOR_IDX_MAIN2,
+    .i4MTDataIdx = 0xFF,
+    .i4FrontDataIdx = 0xFF,
+    .i4NormDataLen = 40,
+    .i4MWDataLen = 3102,
+    .i4MWStereoAddr = {S5KGM1ST_STEREO_START_ADDR_20611, HI846_STEREO_START_ADDR_20611},
+    .i4MTStereoAddr = {0xFFFF, 0xFFFF},
+    .i4FrontStereoAddr = {0xFFFF, 0xFFFF},
+};
+
+struct IMGSENSOR_SENSOR_LIST
+ gimgsensor_sensor_list_20041[MAX_NUM_OF_SUPPORT_SENSOR] = {
+#if defined(OV16A10_MIPI_RAW)
+    {OV16A10_SENSOR_ID, SENSOR_DRVNAME_OV16A10_MIPI_RAW, OV16A10_MIPI_RAW_SensorInit},
+#endif
+#if defined(S5K4H7_MIPI_RAW)
+    {S5K4H7_SENSOR_ID, SENSOR_DRVNAME_S5K4H7_MIPI_RAW, S5K4H7_MIPI_RAW_SensorInit},
+#endif
+#if defined(GC02M1B_MIPI_MONO1)
+    {GC02M1B_SENSOR_ID1, SENSOR_DRVNAME_GC02M1B_MIPI_MONO1, GC02M1B_MIPI_MONO1_SensorInit},
+#endif
+#if defined(GC02K0_MIPI_RAW)
+    {GC02K0_SENSOR_ID, SENSOR_DRVNAME_GC02K0_MIPI_RAW, GC02K0_MIPI_RAW_SensorInit},
+#endif
+#if defined(IMX355_MIPI_RAW_LAFITE)
+    {IMX355_SENSOR_ID_LAFITE, SENSOR_DRVNAME_IMX355_MIPI_RAW_LAFITE, IMX355_MIPI_RAW_LAFITE_SensorInit},
+#endif
+    /*  ADD sensor driver before this line */
+    {0, {0}, NULL}, /* end of list */
+};
+
+
+struct IMGSENSOR_HW_CFG imgsensor_custom_config_20041[] = {
+	{
+		IMGSENSOR_SENSOR_IDX_MAIN,
+		IMGSENSOR_I2C_DEV_0,
+		{
+			{IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+			{IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+		},
+	},
+	{
+		IMGSENSOR_SENSOR_IDX_SUB,
+		IMGSENSOR_I2C_DEV_1,
+		{
+			{IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+			{IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_NONE, IMGSENSOR_HW_ID_NONE},
+		},
+	},
+	{
+		IMGSENSOR_SENSOR_IDX_MAIN2,
+		IMGSENSOR_I2C_DEV_2,
+		{
+
+			{IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+			{IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+		},
+	},
+	{
+		IMGSENSOR_SENSOR_IDX_SUB2,
+		IMGSENSOR_I2C_DEV_3,
+		{
+			{IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+			{IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+		},
+	},
+	{
+		IMGSENSOR_SENSOR_IDX_MAIN3,
+		IMGSENSOR_I2C_DEV_1,
+		{
+			{IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+			{IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+#ifdef MIPI_SWITCH
+			{IMGSENSOR_HW_PIN_MIPI_SWITCH_EN, IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_MIPI_SWITCH_SEL,
+				IMGSENSOR_HW_ID_GPIO},
+#endif
+			{IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+		},
+	},
+	{
+		IMGSENSOR_SENSOR_IDX_SUB3,
+		IMGSENSOR_I2C_DEV_5,
+		{
+			{IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+			{IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_PDN,	 IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_RST,	 IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+		},
+	},
+	{
+		IMGSENSOR_SENSOR_IDX_MAIN4,
+		IMGSENSOR_I2C_DEV_6,
+		{
+			{IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+			{IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_PDN,	 IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_RST,	 IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+		},
+	},
+	{
+		IMGSENSOR_SENSOR_IDX_SUB4,
+		IMGSENSOR_I2C_DEV_7,
+		{
+			{IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+			{IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_PDN,	 IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_RST,	 IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+		},
+	},
+	{
+		IMGSENSOR_SENSOR_IDX_MAIN5,
+		IMGSENSOR_I2C_DEV_7,
+		{
+			{IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+			{IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+		},
+	},
+	{
+		IMGSENSOR_SENSOR_IDX_SUB5,
+		IMGSENSOR_I2C_DEV_7,
+		{
+			{IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+			{IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_PDN,	 IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_RST,	 IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+		},
+	},
+	{
+		IMGSENSOR_SENSOR_IDX_MAIN6,
+		IMGSENSOR_I2C_DEV_7,
+		{
+			{IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+			{IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+		},
+	},
+	{
+		IMGSENSOR_SENSOR_IDX_SUB6,
+		IMGSENSOR_I2C_DEV_7,
+		{
+			{IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+			{IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_PDN,	 IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_RST,	 IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+		},
+	},
+
+    {IMGSENSOR_SENSOR_IDX_NONE}
+};
+
+struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence_20041[] = {
+#if defined(OV16A10_MIPI_RAW)
+	{
+		SENSOR_DRVNAME_OV16A10_MIPI_RAW,
+		{
+			{RST, Vol_Low, 1},
+			{AVDD, Vol_2800, 0},
+			{DVDD, Vol_1200, 0},
+			{DOVDD, Vol_1800, 1},
+			{SensorMCLK, Vol_High, 1},
+			{RST, Vol_High, 5},
+		},
+	},
+#endif
+#if defined(S5K4H7_MIPI_RAW)
+	{
+		SENSOR_DRVNAME_S5K4H7_MIPI_RAW,
+		{
+			{SensorMCLK, Vol_High, 1},
+			{RST, Vol_Low, 1},
+			{DOVDD, Vol_1800, 1},
+			{AVDD, Vol_2800, 1},
+			{DVDD, Vol_1100, 1},
+			{RST, Vol_High, 5},
+		},
+	},
+#endif
+#if defined(GC02M1B_MIPI_MONO1)
+	{
+		SENSOR_DRVNAME_GC02M1B_MIPI_MONO1,
+		{
+			{RST, Vol_Low, 1},
+			{DOVDD, Vol_1800, 0},
+			{AVDD, Vol_2800, 0},
+			{SensorMCLK, Vol_High, 1},
+			{RST, Vol_High, 2}
+		},
+	},
+#endif
+#if defined(GC02K0_MIPI_RAW)
+	{
+		SENSOR_DRVNAME_GC02K0_MIPI_RAW,
+		{
+			{RST, Vol_Low, 1},
+			{DOVDD, Vol_1800, 5},
+			{AVDD, Vol_2800, 5},
+			{SensorMCLK, Vol_High, 1},
+			{RST, Vol_High, 1},
+		},
+	},
+#endif
+#if defined(IMX355_MIPI_RAW_LAFITE)
+	{
+		SENSOR_DRVNAME_IMX355_MIPI_RAW_LAFITE,
+		{
+			{RST, Vol_Low, 1},
+			{AVDD, Vol_2800, 0},
+			{DOVDD, Vol_1800, 0},
+			{DVDD, Vol_1200, 1},
+			{SensorMCLK, Vol_High, 1},
+			{RST, Vol_High, 2}
+		},
+	},
+#endif
+    /* add new sensor before this line */
+    {NULL,},
+};
+
+struct CAMERA_DEVICE_INFO gImgEepromInfo_20041= {
+    .i4SensorNum = 4,
+    .pCamModuleInfo = {
+        {OV16A10_SENSOR_ID, 0xA0, {0x00, 0x06}, 0xB0, 1, {0x92,0x96,0x98,0x94}, "Cam_r0", "ov16a10"},  //weixiugai
+        {S5K4H7_SENSOR_ID, 0x20, {0x00, 0x06}, 0x24, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_f",  "5sk4h7"},  //weixiugai
+        {GC02M1B_SENSOR_ID1, 0xA2, {0xFF, 0xFF}, 0x0C, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r1", "gc02m1b"},
+        {GC02K0_SENSOR_ID, 0xA4, {0xFF, 0xFF}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r2", "gc02k0"},
+        {IMX355_SENSOR_ID, 0xA8, {0xFF, 0xFF}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_f", "imx355"},
+    },
+    .i4MWDataIdx = IMGSENSOR_SENSOR_IDX_MAIN2,
+    .i4MTDataIdx = 0xFF,
+    .i4FrontDataIdx = 0xFF,
+    .i4NormDataLen = 40,
+    .i4MWDataLen = 3102,
+    .i4MWStereoAddr = {OV16A10_STEREO_START_ADDR, GC02M1B_STEREO_START_ADDR},
+    .i4MTStereoAddr = {0xFFFF, 0xFFFF},
+    .i4FrontStereoAddr = {0xFFFF, 0xFFFF},
+};
+
+struct CAMERA_DEVICE_INFO gImgEepromInfo_216A0 = {
+    .i4SensorNum = 4,
+    .pCamModuleInfo = {
+        {OV48B_SENSOR_ID,  0xA0, {0x00, 0x06}, 0xB0, 1, {0x92,0xFF,0xFF,0x94}, "Cam_r0", "ov48b2q"},
+        {OV32A_SENSOR_ID,  0xA8, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_f",  "ov32a1q"},
+        {HI846_SENSOR_ID,  0xA2, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r1", "hi846"},
+        {GC02K0_SENSOR_ID, 0xA4, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r2", "gc02k0"},
+    },
+    .i4MWDataIdx = IMGSENSOR_SENSOR_IDX_MAIN2,
+    .i4MTDataIdx = 0xFF,
+    .i4FrontDataIdx = 0xFF,
+    .i4NormDataLen = 40,
+    .i4MWDataLen = 3102,
+    .i4MWStereoAddr = {OV48B_STEREO_START_ADDR, HI846_STEREO_START_ADDR },
+    .i4MTStereoAddr = {0xFFFF, 0xFFFF},
+    .i4FrontStereoAddr = {0xFFFF, 0xFFFF},
+};
+
+struct IMGSENSOR_SENSOR_LIST
+    gimgsensor_sensor_list_20609[MAX_NUM_OF_SUPPORT_SENSOR] = {
+#if defined(S5KGM1ST_MIPI_RAW_APOLLOB)
+	{S5KGM1ST_SENSOR_ID_APOLLOB, SENSOR_DRVNAME_S5KGM1ST_MIPI_RAW_APOLLOB, S5KGM1ST_MIPI_RAW_APOLLOB_SensorInit},
+#endif
+#if defined(IMX355_MIPI_RAW_APOLLOB)
+	{IMX355_SENSOR_ID_APOLLOB, SENSOR_DRVNAME_IMX355_MIPI_RAW_APOLLOB, IMX355_MIPI_RAW_APOLLOB_SensorInit},
+#endif
+#if defined(GC02M1B_MIPI_MONO_APOLLOB)
+	{GC02M1B_SENSOR_ID_APOLLOB, SENSOR_DRVNAME_GC02M1B_MIPI_MONO_APOLLOB, GC02M1B_MIPI_MONO_APOLLOB_SensorInit},
+#endif
+#if defined(OV02B10_MIPI_RAW_APOLLOB)
+	{OV02B10_SENSOR_ID_APOLLOB, SENSOR_DRVNAME_OV02B10_MIPI_RAW_APOLLOB, OV02B10_MIPI_RAW_APOLLOB_SensorInit},
+#endif
+#if defined(S5K3P9SP_MIPI_RAW_APOLLOB)
+	{S5K3P9SP_SENSOR_ID_APOLLOB, SENSOR_DRVNAME_S5K3P9SP_MIPI_RAW_APOLLOB, S5K3P9SP_MIPI_RAW_APOLLOB_SensorInit},
+#endif
+#if defined(OV13B10_MIPI_RAW_APOLLOB)
+	{OV13B10_SENSOR_ID_APOLLOB, SENSOR_DRVNAME_OV13B10_MIPI_RAW_APOLLOB, OV13B10_MIPI_RAW_APOLLOB_SensorInit},
+#endif
+    /* ADD sensor driver before this line */
+    {0, {0}, NULL}, /* end of list */
+};
+
+struct IMGSENSOR_HW_CFG imgsensor_custom_config_20609[] = {
+    {
+		IMGSENSOR_SENSOR_IDX_MAIN,
+		IMGSENSOR_I2C_DEV_0,
+		{
+			{IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+			{IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_AFVDD, IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+		},
+	},
+	{
+		IMGSENSOR_SENSOR_IDX_SUB,
+		IMGSENSOR_I2C_DEV_1,
+		{
+			{IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+			{IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_NONE, IMGSENSOR_HW_ID_NONE},
+		},
+	},
+	{
+		IMGSENSOR_SENSOR_IDX_MAIN2,
+		IMGSENSOR_I2C_DEV_2,
+		{
+
+			{IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+			{IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+		},
+	},
+	{
+		IMGSENSOR_SENSOR_IDX_SUB2,
+		IMGSENSOR_I2C_DEV_3,
+		{
+			{IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+			{IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+		},
+	},
+    {IMGSENSOR_SENSOR_IDX_NONE}
+};
+
+struct IMGSENSOR_HW_CFG imgsensor_custom_config_20796[] = {
+	{
+		IMGSENSOR_SENSOR_IDX_MAIN,
+		IMGSENSOR_I2C_DEV_0,
+		{
+			{IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+			{IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_AFVDD, IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+		},
+	},
+	{
+		IMGSENSOR_SENSOR_IDX_SUB,
+		IMGSENSOR_I2C_DEV_1,
+		{
+			{IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+			{IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_NONE, IMGSENSOR_HW_ID_NONE},
+		},
+	},
+	{
+		IMGSENSOR_SENSOR_IDX_MAIN2,
+		IMGSENSOR_I2C_DEV_2,
+		{
+
+			{IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+			{IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+		},
+	},
+	{
+		IMGSENSOR_SENSOR_IDX_SUB2,
+		IMGSENSOR_I2C_DEV_3,
+		{
+			{IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+			{IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+		},
+	},
+    {IMGSENSOR_SENSOR_IDX_NONE}
+};
+struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence_20609[] = {
+#if defined(S5KGM1ST_MIPI_RAW_APOLLOB)
+	{
+		SENSOR_DRVNAME_S5KGM1ST_MIPI_RAW_APOLLOB,
+		{
+			{RST, Vol_Low, 1},
+			{AVDD, Vol_2800, 0},
+			{DVDD, Vol_1100, 0},
+			{DOVDD, Vol_1800, 1},
+			{RST, Vol_High, 2},
+			{AF_VDD, Vol_2800, 0},
+			{SensorMCLK, Vol_High, 1},
+			// 	{MIPISEL, Vol_High, 3},
+			// #endif
+		},
+	},
+#endif
+#if defined(IMX355_MIPI_RAW_APOLLOB)
+	{
+		SENSOR_DRVNAME_IMX355_MIPI_RAW_APOLLOB,
+		{
+			{RST, Vol_Low, 1},
+			{DOVDD, Vol_1800, 1},
+			{DVDD, Vol_1200, 1},
+			{AVDD, Vol_2800, 0},
+			{SensorMCLK, Vol_High, 1},
+			{RST, Vol_High, 2}
+		},
+	},
+#endif
+#if defined(GC02M1B_MIPI_MONO_APOLLOB)
+	{
+		SENSOR_DRVNAME_GC02M1B_MIPI_MONO_APOLLOB,
+		{
+			{RST, Vol_Low, 1},
+			{DOVDD, Vol_1800, 1},
+			{AVDD, Vol_2800, 0},
+			{SensorMCLK, Vol_High, 1},
+			{RST, Vol_High, 2}
+		},
+	},
+#endif
+
+#if defined(OV02B10_MIPI_RAW_APOLLOB)
+	{
+		SENSOR_DRVNAME_OV02B10_MIPI_RAW_APOLLOB,
+		{
+			{RST, Vol_Low, 1},
+			{DOVDD, Vol_1800, 1},
+			{AVDD, Vol_2800, 5},
+			{SensorMCLK, Vol_High, 0},
+			{RST, Vol_High, 10}
+		},
+	},
+#endif
+
+#if defined(OV13B10_MIPI_RAW_APOLLOB)
+		{
+			SENSOR_DRVNAME_OV13B10_MIPI_RAW_APOLLOB,
+			{
+				{RST, Vol_Low, 1},
+				{AVDD, Vol_2800, 0},
+				{DVDD, Vol_1200, 0},
+				{DOVDD, Vol_1800, 1},
+				{RST, Vol_High, 5},
+				{SensorMCLK, Vol_High, 1},
+			},
+		},
+#endif
+
+#if defined(S5K3P9SP_MIPI_RAW_APOLLOB)
+		{
+			SENSOR_DRVNAME_S5K3P9SP_MIPI_RAW_APOLLOB,
+			{
+				{RST, Vol_Low, 1},
+				{AVDD, Vol_2800, 0},
+				{DVDD, Vol_1100, 0},
+				{DOVDD, Vol_1800, 1},
+				{SensorMCLK, Vol_High, 1},
+				{RST, Vol_High, 2},
+			},
+		},
+#endif
+    /* add new sensor before this line */
+    {NULL,},
+};
+
+struct CAMERA_DEVICE_INFO gImgEepromInfo_20609 = {
+    .i4SensorNum = 4,
+    .pCamModuleInfo = {
+        {OV48B_SENSOR_ID,  0xA0, {0x00, 0x06}, 0xB0, 1, {0x92,0xFF,0xFF,0x94}, "Cam_r0", "ov48b2q"},
+        {OV32A_SENSOR_ID,  0xA8, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_f",  "ov32a1q"},
+        {HI846_SENSOR_ID,  0xA2, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r1", "hi846"},
+        {GC02K0_SENSOR_ID, 0xA4, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r2", "gc02k0"},
+    },
+    .i4MWDataIdx = IMGSENSOR_SENSOR_IDX_MAIN2,
+    .i4MTDataIdx = 0xFF,
+    .i4FrontDataIdx = 0xFF,
+    .i4NormDataLen = 40,
+    .i4MWDataLen = 3102,
+    .i4MWStereoAddr = {OV48B_STEREO_START_ADDR, HI846_STEREO_START_ADDR },
+    .i4MTStereoAddr = {0xFFFF, 0xFFFF},
+    .i4FrontStereoAddr = {0xFFFF, 0xFFFF},
+};
+
+struct IMGSENSOR_SENSOR_LIST
+    gimgsensor_sensor_list_212A1[MAX_NUM_OF_SUPPORT_SENSOR] = {
+#if defined(OV64B_MIPI_RAW212A1)
+{OV64B_SENSOR_ID_212A1, SENSOR_DRVNAME_OV64B_MIPI_RAW212A1, OV64B_MIPI_RAW_212A1_SensorInit},
+#endif
+#if defined(IMX615_MIPI_RAW212A1)
+{IMX615_SENSOR_ID_212A1, SENSOR_DRVNAME_IMX615_MIPI_RAW212A1, IMX615_MIPI_RAW_212A1_SensorInit},
+#endif
+#if defined(IMX355_MIPI_RAW212A1)
+{IMX355_SENSOR_ID_212A1, SENSOR_DRVNAME_IMX355_MIPI_RAW212A1, IMX355_MIPI_RAW_212A1_SensorInit},
+#endif
+#if defined(GC02M1_MIPI_RAW212A1)
+{GC02M1_SENSOR_ID_212A1, SENSOR_DRVNAME_GC02M1_MIPI_RAW212A1, GC02M1_MIPI_RAW_212A1_SensorInit},
+#endif
+
+    /*  ADD sensor driver before this line */
+    {0, {0}, NULL}, /* end of list */
+};
+
+struct IMGSENSOR_HW_CFG imgsensor_custom_config_212A1[] = {
+    {
+        IMGSENSOR_SENSOR_IDX_MAIN,
+        IMGSENSOR_I2C_DEV_0,
+        {
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+        },
+    },
+    {
+        IMGSENSOR_SENSOR_IDX_SUB,
+        IMGSENSOR_I2C_DEV_1,
+        {
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_NONE, IMGSENSOR_HW_ID_NONE},
+        },
+    },
+    {
+        IMGSENSOR_SENSOR_IDX_MAIN2,
+        IMGSENSOR_I2C_DEV_2,
+        {
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+        },
+    },
+    {
+        IMGSENSOR_SENSOR_IDX_SUB2,
+        IMGSENSOR_I2C_DEV_3,
+        {
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+        },
+    },
+    {
+        IMGSENSOR_SENSOR_IDX_MAIN3,
+        IMGSENSOR_I2C_DEV_4,
+        {
+            {IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+            {IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+            {IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+            {IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+        },
+    },
+
+    {IMGSENSOR_SENSOR_IDX_NONE}
+};
+
+struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence_212A1[] = {
+#if defined(OV64B_MIPI_RAW212A1)
+    {
+        SENSOR_DRVNAME_OV64B_MIPI_RAW212A1,
+        {
+            {RST, Vol_Low, 1},
+            {SensorMCLK, Vol_High, 1},
+            {AVDD, Vol_2800, 2},
+            {DOVDD, Vol_1800, 1},
+            {DVDD, Vol_1100, 5},
+            {RST, Vol_High, 5},
+        },
+    },
+#endif
+#if defined(IMX615_MIPI_RAW212A1)
+    {
+        SENSOR_DRVNAME_IMX615_MIPI_RAW212A1,
+        {
+            {RST, Vol_Low, 1},
+            {AVDD, Vol_2900, 0},
+            {DVDD, Vol_1100, 0},
+            {DOVDD, Vol_1800, 1},
+            {SensorMCLK, Vol_High, 1},
+            {RST, Vol_High, 2},
+        },
+    },
+#endif
+#if defined(IMX355_MIPI_RAW212A1)
+    {
+        SENSOR_DRVNAME_IMX355_MIPI_RAW212A1,
+        {
+            {RST, Vol_Low, 1},
+            {AVDD, Vol_2800, 0},
+            {DVDD, Vol_1200, 0},
+            {DOVDD, Vol_1800, 1},
+            {SensorMCLK, Vol_High, 1},
+            {RST, Vol_High, 2},
+        },
+    },
+#endif
+#if defined(GC02M1_MIPI_RAW212A1)
+    {
+        SENSOR_DRVNAME_GC02M1_MIPI_RAW212A1,
+        {
+			{RST, Vol_Low, 1},
+			{DOVDD, Vol_1800, 1},
+			{AVDD, Vol_2800, 1},
+			{SensorMCLK, Vol_High, 1},
+			{RST, Vol_High, 2}
+        },
+    },
+#endif
+    /* add new sensor before this line */
+    {NULL,},
+};
+
+struct CAMERA_DEVICE_INFO gImgEepromInfo_212A1= {
+    .i4SensorNum = 4,
+    .pCamModuleInfo = {
+        {OV64B_SENSOR_ID_212A1,   0xA0, {0x00, 0x06}, 0xB0, 1, {0x92,0xFF,0xFF,0x94}, "Cam_r0", "ov64b2q"},
+        {IMX615_SENSOR_ID_212A1,  0xA8, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_f",  "imx615"},
+        {IMX355_SENSOR_ID_212A1,     0xA2, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r1", "imx355"},
+        {GC02M1_SENSOR_ID_212A1, 0xA4, {0x00, 0x05}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r2", "gc02m1"},
+    },
+    .i4MWDataIdx = IMGSENSOR_SENSOR_IDX_MAIN2,
+    .i4MTDataIdx = 0xFF,
+    .i4FrontDataIdx = 0xFF,
+    .i4NormDataLen = 40,
+    .i4MWDataLen = 3230,
+    .i4MWStereoAddr = {OV64B_STEREO_START_ADDR, IMX355_STEREO_START_ADDR},
+    .i4MTStereoAddr = {0xFFFF, 0xFFFF},
+    .i4FrontStereoAddr = {0xFFFF, 0xFFFF},
+    .i4DistortionAddr = IMX355_DISTORTIONPARAMS_START_ADDR,
+};
+
+struct IMGSENSOR_SENSOR_LIST
+    gimgsensor_sensor_list_210A0[MAX_NUM_OF_SUPPORT_SENSOR] = {
+#if defined(OV02B10_MIPI_RAW_APOLLOW)
+	{OV02B10_SENSOR_ID_APOLLOW, SENSOR_DRVNAME_OV02B10_MIPI_RAW_APOLLOW, OV02B10_MIPI_RAW_APOLLOW_SensorInit},
+#endif
+#if defined(OV02B1B_MIPI_MONO_APOLLOW)
+	{OV02B1B_SENSOR_ID_APOLLOW, SENSOR_DRVNAME_OV02B1B_MIPI_MONO_APOLLOW, OV02B1B_MIPI_MONO_APOLLOW_SensorInit},
+#endif
+#if defined(OV64B_MIPI_RAW_APOLLOW)
+	{OV64B_SENSOR_ID_APOLLOW, SENSOR_DRVNAME_OV64B_MIPI_RAW_APOLLOW, OV64B_MIPI_RAW_APOLLOW_SensorInit},
+#endif
+#if defined(S5K3P9SP_MIPI_RAW_APOLLOW)
+	{S5K3P9SP_SENSOR_ID_APOLLOW, SENSOR_DRVNAME_S5K3P9SP_MIPI_RAW_APOLLOW, S5K3P9SP_MIPI_RAW_APOLLOW_SensorInit},
+#endif
+
+    /* ADD sensor driver before this line */
+    {0, {0}, NULL}, /* end of list */
+};
+
+struct IMGSENSOR_HW_CFG imgsensor_custom_config_210A0[] = {
+	{
+		IMGSENSOR_SENSOR_IDX_MAIN,
+		IMGSENSOR_I2C_DEV_0,
+		{
+			{IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+			{IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_AFVDD, IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+		},
+	},
+	{
+		IMGSENSOR_SENSOR_IDX_SUB,
+		IMGSENSOR_I2C_DEV_1,
+		{
+			{IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+			{IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_NONE, IMGSENSOR_HW_ID_NONE},
+		},
+	},
+	{
+		IMGSENSOR_SENSOR_IDX_MAIN2,
+		IMGSENSOR_I2C_DEV_2,
+		{
+
+			{IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+			{IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+		},
+	},
+	{
+		IMGSENSOR_SENSOR_IDX_SUB2,
+		IMGSENSOR_I2C_DEV_3,
+		{
+			{IMGSENSOR_HW_PIN_MCLK,  IMGSENSOR_HW_ID_MCLK},
+			{IMGSENSOR_HW_PIN_AVDD,  IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_DOVDD, IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_DVDD,  IMGSENSOR_HW_ID_REGULATOR},
+			{IMGSENSOR_HW_PIN_PDN,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_RST,   IMGSENSOR_HW_ID_GPIO},
+			{IMGSENSOR_HW_PIN_NONE,  IMGSENSOR_HW_ID_NONE},
+		},
+	},
+    {IMGSENSOR_SENSOR_IDX_NONE}
+};
+
+struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence_210A0[] = {
+#if defined(OV02B10_MIPI_RAW_APOLLOW)
+	{
+		SENSOR_DRVNAME_OV02B10_MIPI_RAW_APOLLOW,
+		{
+			{RST, Vol_Low, 1},
+			{DOVDD, Vol_1800, 1},
+			{AVDD, Vol_2800, 5},
+			{SensorMCLK, Vol_High, 0},
+			{RST, Vol_High, 10},
+		},
+	},
+#endif
+
+#if defined(OV02B1B_MIPI_MONO_APOLLOW)
+	{
+		SENSOR_DRVNAME_OV02B1B_MIPI_MONO_APOLLOW,
+		{
+			{RST, Vol_Low, 1},
+			//{DVDD, Vol_1200, 0},
+			{DOVDD, Vol_1800, 1},
+			{AVDD, Vol_2800, 5},
+			{SensorMCLK, Vol_High, 0},
+			{RST, Vol_High, 10},
+		},
+	},
+#endif
+
+#if defined(OV64B_MIPI_RAW_APOLLOW)
+	{
+		SENSOR_DRVNAME_OV64B_MIPI_RAW_APOLLOW,
+		{
+			{RST, Vol_Low, 1},
+			{SensorMCLK, Vol_High, 1},
+			{AVDD, Vol_2800, 2},
+			{DOVDD, Vol_1800, 1},
+			{DVDD, Vol_1100, 5},
+			{RST, Vol_High, 5},
+			{AF_VDD, Vol_2800, 0},
+		},
+	},
+#endif
+
+#if defined(S5K3P9SP_MIPI_RAW_APOLLOW)
+		{
+			SENSOR_DRVNAME_S5K3P9SP_MIPI_RAW_APOLLOW,
+			{
+				{RST, Vol_Low, 1},
+				{AVDD, Vol_2800, 0},
+				{DVDD, Vol_1100, 0},
+				{DOVDD, Vol_1800, 1},
+				{SensorMCLK, Vol_High, 1},
+				{RST, Vol_High, 2},
+			},
+		},
+#endif
+
+    /* add new sensor before this line */
+    {NULL,},
+};
+
+struct CAMERA_DEVICE_INFO gImgEepromInfo_210A0 = {
+    .i4SensorNum = 4,
+    .pCamModuleInfo = {
+        {OV48B_SENSOR_ID,  0xA0, {0x00, 0x06}, 0xB0, 1, {0x92,0xFF,0xFF,0x94}, "Cam_r0", "ov48b2q"},
+        {OV32A_SENSOR_ID,  0xA8, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_f",  "ov32a1q"},
+        {HI846_SENSOR_ID,  0xA2, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r1", "hi846"},
+        {GC02K0_SENSOR_ID, 0xA4, {0x00, 0x06}, 0xB0, 0, {0xFF,0xFF,0xFF,0xFF}, "Cam_r2", "gc02k0"},
+    },
+    .i4MWDataIdx = IMGSENSOR_SENSOR_IDX_MAIN2,
+    .i4MTDataIdx = 0xFF,
+    .i4FrontDataIdx = 0xFF,
+    .i4NormDataLen = 40,
+    .i4MWDataLen = 3102,
+    .i4MWStereoAddr = {OV48B_STEREO_START_ADDR, HI846_STEREO_START_ADDR },
+    .i4MTStereoAddr = {0xFFFF, 0xFFFF},
+    .i4FrontStereoAddr = {0xFFFF, 0xFFFF},
+};
+
+#endif
+void oplus_imgsensor_hwcfg()
+{
+    if (is_project(20181) || is_project(20355)) {
+         oplus_gimgsensor_sensor_list = gimgsensor_sensor_list_20181;
+         oplus_imgsensor_custom_config = imgsensor_custom_config_20181;
+         oplus_sensor_power_sequence = sensor_power_sequence_20181;
+         gImgEepromInfo = gImgEepromInfo_20181;
+    } else if (is_project(20631)) {
+         oplus_gimgsensor_sensor_list = gimgsensor_sensor_list_20630;
+         oplus_imgsensor_custom_config = imgsensor_custom_config_20630;
+         oplus_sensor_power_sequence = sensor_power_sequence_20630;
+         oplus_platform_power_sequence = platform_power_sequence_20630;
+         gImgEepromInfo = gImgEepromInfo_20630;
+    } else if (is_project(20633)) {
+         oplus_gimgsensor_sensor_list = gimgsensor_sensor_list_20633;
+         oplus_imgsensor_custom_config = imgsensor_custom_config_20633;
+         oplus_sensor_power_sequence = sensor_power_sequence_20633;
+         oplus_platform_power_sequence = platform_power_sequence_20633;
+         gImgEepromInfo = gImgEepromInfo_20633;
+    } else if (is_project(20391) || is_project(20392)) {
+         oplus_gimgsensor_sensor_list = gimgsensor_sensor_list_20391;
+         oplus_imgsensor_custom_config = imgsensor_custom_config_20391;
+         oplus_sensor_power_sequence = sensor_power_sequence_20391;
+         gImgEepromInfo = gImgEepromInfo_20391;
+    } else if (is_project(20609) || is_project(0x2060B) || is_project(0x2060A)) {
+         oplus_gimgsensor_sensor_list = gimgsensor_sensor_list_20609;
+         oplus_imgsensor_custom_config = imgsensor_custom_config_20609;
+         oplus_sensor_power_sequence = sensor_power_sequence_20609;
+         gImgEepromInfo = gImgEepromInfo_20609;
+    } else if (is_project(0x206FF) || is_project(20796) || is_project(0x2070C) || is_project(20795)) {
+         oplus_gimgsensor_sensor_list = gimgsensor_sensor_list_20609;
+         oplus_imgsensor_custom_config = imgsensor_custom_config_20796;
+         oplus_sensor_power_sequence = sensor_power_sequence_20609;
+         gImgEepromInfo = gImgEepromInfo_20609;
+    }  else if (is_project(20151) || is_project(20301) || is_project(20302)) {
+         oplus_gimgsensor_sensor_list = gimgsensor_sensor_list_20151;
+         oplus_imgsensor_custom_config = imgsensor_custom_config_20151;
+         oplus_sensor_power_sequence = sensor_power_sequence_20151;
+         gImgEepromInfo = gImgEepromInfo_20151;
+    } else if (is_project(20001) || is_project(20002) || is_project(20003) || is_project(20200)) {
+         oplus_gimgsensor_sensor_list = gimgsensor_sensor_list_20001;
+         oplus_imgsensor_custom_config = imgsensor_custom_config_20001;
+         oplus_sensor_power_sequence = sensor_power_sequence_20001;
+         gImgEepromInfo = gImgEepromInfo_20001;
+    } else if (is_project(0x2169E) || is_project(0x2169F) || is_project(0x216C9) || is_project(0x216CA)) {
+         oplus_gimgsensor_sensor_list = gimgsensor_sensor_list_moss;
+         oplus_imgsensor_custom_config = imgsensor_custom_config_moss;
+         oplus_sensor_power_sequence = sensor_power_sequence_moss;
+         //gImgEepromInfo = gImgEepromInfo_moss;
+    }  else if (is_project(21711) || is_project(21712)) {
+         oplus_gimgsensor_sensor_list = gimgsensor_sensor_list_mossa;
+         oplus_imgsensor_custom_config = imgsensor_custom_config_mossa;
+         oplus_sensor_power_sequence = sensor_power_sequence_mossa;
+         //gImgEepromInfo = gImgEepromInfo_mossa;
+    }  else if (is_project(20075) || is_project(20076)) {
+         oplus_gimgsensor_sensor_list = gimgsensor_sensor_list_20075;
+         oplus_imgsensor_custom_config = imgsensor_custom_config_20075;
+         oplus_sensor_power_sequence = sensor_power_sequence_20075;
+         gImgEepromInfo = gImgEepromInfo_20075;
+    } else if (is_project(21101) || is_project(21102) || is_project(21235) || is_project(21236) || is_project(21831)) {
+         oplus_gimgsensor_sensor_list = gimgsensor_sensor_list_21101;
+         oplus_imgsensor_custom_config = imgsensor_custom_config_21101;
+         oplus_sensor_power_sequence = sensor_power_sequence_21101;
+         if (is_project(21102)) {
+            gImgEepromInfo = gImgEepromInfo_21102;
+         } else if (is_project(21831)) {
+            gImgEepromInfo = gImgEepromInfo_21831;
+         } else {
+            gImgEepromInfo = gImgEepromInfo_21101;
+         }
+    } else if (is_project(0x2163B) || is_project(0x2163C)) {
+         oplus_gimgsensor_sensor_list = gimgsensor_sensor_list_alicert;
+         oplus_imgsensor_custom_config = imgsensor_custom_config_alicert;
+         oplus_sensor_power_sequence = sensor_power_sequence_alicert;
+         gImgEepromInfo = gImgEepromInfo_alicert;
+    } else if (is_project(0x2163D)) {
+         oplus_gimgsensor_sensor_list = gimgsensor_sensor_list_aliceq;
+         oplus_imgsensor_custom_config = imgsensor_custom_config_aliceq;
+         oplus_sensor_power_sequence = sensor_power_sequence_aliceq;
+         gImgEepromInfo = gImgEepromInfo_aliceq;
+    } else if (is_project(21639) || is_project(0x216CD) || is_project(0x216CE)) {
+         oplus_gimgsensor_sensor_list = gimgsensor_sensor_list_alicer;
+         oplus_imgsensor_custom_config = imgsensor_custom_config_alicer;
+         oplus_sensor_power_sequence = sensor_power_sequence_alicer;
+         gImgEepromInfo = gImgEepromInfo_alicer;
+    } else if (is_project(21081)) {
+         oplus_gimgsensor_sensor_list = gimgsensor_sensor_list_21081;
+         oplus_imgsensor_custom_config = imgsensor_custom_config_21081;
+         oplus_sensor_power_sequence = sensor_power_sequence_21081;
+         gImgEepromInfo = gImgEepromInfo_21081;
+    } else if (is_project(20015) || is_project(20016) || is_project(20108) || is_project(20109) || is_project(20307)) {
+         oplus_gimgsensor_sensor_list = gimgsensor_sensor_list_20015;
+         oplus_imgsensor_custom_config = imgsensor_custom_config_20015;
+         oplus_sensor_power_sequence = sensor_power_sequence_20015;
+         gImgEepromInfo = gImgEepromInfo_20015;
+    } else if (is_project(21037)) {
+         oplus_gimgsensor_sensor_list = gimgsensor_sensor_list_21037;
+         oplus_imgsensor_custom_config = imgsensor_custom_config_20015;
+         oplus_sensor_power_sequence = sensor_power_sequence_20015;
+         gImgEepromInfo = gImgEepromInfo_20015;
+    } else if (is_project(21041) || is_project(21042)) {
+         oplus_gimgsensor_sensor_list = gimgsensor_sensor_list_21041;
+         oplus_imgsensor_custom_config = imgsensor_custom_config_21041;
+         oplus_sensor_power_sequence = sensor_power_sequence_21041;
+         gImgEepromInfo = gImgEepromInfo_21041;
+    } else if (is_project(0x216A0)){
+         oplus_gimgsensor_sensor_list = gimgsensor_sensor_list_216A0;
+         oplus_imgsensor_custom_config = imgsensor_custom_config_216A0;
+         oplus_sensor_power_sequence = sensor_power_sequence_216A0;
+         gImgEepromInfo = gImgEepromInfo_216A0;
+    } else if (is_project(20095) || is_project(20610) || is_project(20611) || is_project(20613) || is_project(20680) || is_project(20686)) {
+         oplus_gimgsensor_sensor_list = gimgsensor_sensor_list_20611;
+         oplus_imgsensor_custom_config = imgsensor_custom_config_20611;
+         oplus_sensor_power_sequence = sensor_power_sequence_20611;
+         oplus_platform_power_sequence = platform_power_sequence_20611;
+         gImgEepromInfo = gImgEepromInfo_20611;
+    } else if (is_project(20041) || is_project(20042) || is_project(20043)) {
+         oplus_gimgsensor_sensor_list = gimgsensor_sensor_list_20041;
+         oplus_imgsensor_custom_config = imgsensor_custom_config_20041;
+         oplus_sensor_power_sequence = sensor_power_sequence_20041;
+         gImgEepromInfo = gImgEepromInfo_20041;
+     } else if (is_project(20639) || is_project(20638) || is_project(0x206B7)) {
+         oplus_gimgsensor_sensor_list = gimgsensor_sensor_list_athensd;
+         oplus_imgsensor_custom_config = imgsensor_custom_config_athensd;
+         oplus_sensor_power_sequence = sensor_power_sequence_athensd;
+         oplus_platform_power_sequence = platform_power_sequence_athensd;
+         gImgEepromInfo = gImgEepromInfo_athensd;
+     } else if (is_project(0x212A1)) {
+         oplus_gimgsensor_sensor_list = gimgsensor_sensor_list_212A1;
+         oplus_imgsensor_custom_config = imgsensor_custom_config_212A1;
+         oplus_sensor_power_sequence = sensor_power_sequence_212A1;
+         gImgEepromInfo = gImgEepromInfo_212A1;
+     } else if (is_project(0x210A0)) {
+         oplus_gimgsensor_sensor_list = gimgsensor_sensor_list_210A0;
+         oplus_imgsensor_custom_config = imgsensor_custom_config_210A0;
+         oplus_sensor_power_sequence = sensor_power_sequence_210A0;
+         gImgEepromInfo = gImgEepromInfo_210A0;
+    } else {
+         oplus_gimgsensor_sensor_list = gimgsensor_sensor_list_20181;
+         oplus_imgsensor_custom_config = imgsensor_custom_config_20181;
+         oplus_sensor_power_sequence = sensor_power_sequence_20181;
+         gImgEepromInfo = gImgEepromInfo_20181;
+    }
+}
+

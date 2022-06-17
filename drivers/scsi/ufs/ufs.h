@@ -218,6 +218,17 @@ enum ufs_desc_def_size {
 	QUERY_DESC_HEALTH_MAX_SIZE		= 0x25, /* MTK PATCH */
 };
 
+/* Health descriptor parameters offsets in bytes*/
+enum health_desc_param {
+       HEALTH_DESC_PARAM_LEN                   = 0x0,
+       HEALTH_DESC_PARAM_TYPE                  = 0x1,
+       HEALTH_DESC_PARAM_EOL_INFO              = 0x2,
+       HEALTH_DESC_PARAM_LIFE_TIME_EST_A       = 0x3,
+       HEALTH_DESC_PARAM_LIFE_TIME_EST_B       = 0x4,
+       //HEALTH_DESC_PARAM_VENDOR_PROPINFO	   = 0x5,
+};
+//#endif
+
 /* MTK PATCH: Read Geometry Descriptor for RPMB initialization */
 enum geometry_desc_param_offset {
 	GEOMETRY_DESC_LEN		= 0x0,

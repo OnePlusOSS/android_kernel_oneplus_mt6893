@@ -338,8 +338,11 @@ static void mt_usb_enable(struct musb *musb)
 	#endif
 
 	flags = musb_readl(musb->mregs, USB_L1INTM);
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	usb_phy_recover(musb);
+#else
 	usb_phy_recover();
-
+#endif
 	/* update musb->power & mtk_usb_power in the same time */
 	musb->power = true;
 	mtk_usb_power = true;

@@ -48,6 +48,9 @@ struct mtk_base_dsp_mem {
 	unsigned int dsp_feature_counter;
 	int adsp_xrun_flag;
 	spinlock_t ringbuf_lock;
+#ifdef CONFIG_OPLUS_FEATURE_MM_FEEDBACK
+	int underflow_cnt;
+#endif /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
 };
 
 struct audio_core_flag {

@@ -26,12 +26,32 @@ struct device;
  * LED Core
  */
 
+#ifndef OPLUS_FEATURE_MULTIBITS_BL
 enum led_brightness {
 	LED_OFF		= 0,
 	LED_ON		= 1,
 	LED_HALF	= 127,
 	LED_FULL	= 255,
 };
+#else /* OPLUS_FEATURE_MULTIBITS_BL */
+enum led_brightness {
+	LED_OFF		= 0,
+	LED_ON		= 1,
+#if defined(CONFIG_DRM_PANEL_BOE_BOE_ILI7807S_VDO) || \
+	defined(CONFIG_DRM_PANEL_BOE_ILI7807S_60HZ_VDO) || \
+	defined(CONFIG_DRM_PANEL_TM_NT36672C_60HZ_VDO)
+	LED_HALF	= 1024,
+	LED_FULL	= 1728,
+#else
+	LED_HALF	= 2047,
+	LED_FULL	= 4095,
+#endif
+};
+extern int get_half_backlight_level(void);
+extern int get_full_backlight_level(void);
+#define LED_HALF  (get_half_backlight_level())
+#define LED_FULL  (get_full_backlight_level())
+#endif /* OPLUS_FEATURE_MULTIBITS_BL */
 
 struct led_classdev {
 	const char		*name;

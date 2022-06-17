@@ -82,7 +82,11 @@ enum usb_state_enum {
 /* USB phy and clock */
 extern bool usb_pre_clock(bool enable);
 extern void usb_phy_poweron(void);
+#if defined(OPLUS_FEATURE_CHG_BASIC) && defined(CONFIG_MACH_MT6833)
+extern void usb_phy_recover(struct musb *musb);
+#else
 extern void usb_phy_recover(void);
+#endif
 extern void usb_phy_savecurrent(void);
 extern void usb_phy_context_restore(void);
 extern void usb_phy_context_save(void);

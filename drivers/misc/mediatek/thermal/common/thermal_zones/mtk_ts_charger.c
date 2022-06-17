@@ -26,6 +26,7 @@
 #include "mach/mtk_thermal.h"
 #include <linux/uidgid.h>
 #include <linux/slab.h>
+#include <soc/oplus/system/oplus_project.h>
 #if (CONFIG_MTK_GAUGE_VERSION == 30)
 #include <mt-plat/mtk_charger.h>
 #else
@@ -154,7 +155,12 @@ static int mtktscharger_get_hw_temp(void)
 		charger_idx, &tmin, &tmax);
 
 	if (ret >= 0) {
-		t = tmax * 1000;
+		if (pthermal_consumer->support_ntc_01c_precision) {
+			t = tmax * 100;
+		} else {
+/*OPLUS_FEATURE_CHG_BASIC*/
+			t = tmax * 1000;
+		}
 		prev_temp = t;
 	} else if (ret == -ENODEV) {
 	} else {
@@ -383,7 +389,10 @@ struct thermal_cooling_device *cdev, unsigned long state)
 		/* To trigger data abort to reset the system
 		 * for thermal protection.
 		 */
-		BUG();
+		if (get_eng_version() != HIGH_TEMP_AGING)
+			BUG();
+		else
+			pr_info("%s should reset but bypass\n", __func__);
 	}
 
 	return 0;

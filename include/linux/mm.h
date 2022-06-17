@@ -1311,6 +1311,7 @@ void shmem_set_file(struct vm_area_struct *vma, struct file *file);
 extern bool can_do_mlock(void);
 extern int user_shm_lock(size_t, struct user_struct *);
 extern void user_shm_unlock(size_t, struct user_struct *);
+extern void show_task_mem(void);
 
 /*
  * Parameter block passed down to zap_pte_range in exceptional cases.
@@ -2434,7 +2435,11 @@ int __must_check write_one_page(struct page *page);
 void task_dirty_inc(struct task_struct *tsk);
 
 /* readahead.c */
+#ifndef OPLUS_FEATURE_CHG_BASIC
 #define VM_MAX_READAHEAD	128	/* kbytes */
+#else
+#define VM_MAX_READAHEAD	512	/* kbytes */
+#endif
 #define VM_MIN_READAHEAD	16	/* kbytes (includes current page) */
 
 int force_page_cache_readahead(struct address_space *mapping, struct file *filp,

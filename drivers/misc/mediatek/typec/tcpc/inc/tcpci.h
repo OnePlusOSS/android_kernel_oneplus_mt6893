@@ -156,6 +156,11 @@ int tcpci_sink_vbus(struct tcpc_device *tcpc, uint8_t type, int mv, int ma);
 int tcpci_disable_vbus_control(struct tcpc_device *tcpc);
 int tcpci_notify_attachwait_state(struct tcpc_device *tcpc, bool as_sink);
 int tcpci_enable_auto_discharge(struct tcpc_device *tcpc, bool en);
+
+#ifdef OPLUS_FEATURE_CHG_BASIC
+int tcpci_enable_bleed_discharge(struct tcpc_device *tcpc, bool en);
+#endif /* OPLUS_FEATURE_CHG_BASIC */
+
 int tcpci_enable_force_discharge(struct tcpc_device *tcpc, bool en, int mv);
 
 #ifdef CONFIG_USB_POWER_DELIVERY

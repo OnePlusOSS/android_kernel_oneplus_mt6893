@@ -405,15 +405,29 @@ reg_done:
 
 #define VAL_MAX_WIDTH_2	0x3
 #define VAL_MAX_WIDTH_3	0x7
+
+#if defined(OPLUS_FEATURE_CHG_BASIC) && defined(CONFIG_MACH_MT6853)
+extern unsigned int usb_mode;
+#endif
 static void usb_phy_tuning(struct mtk_phy_instance *instance)
 {
 	s32 u2_vrt_ref, u2_term_ref, u2_enhance;
+#if defined(OPLUS_FEATURE_CHG_BASIC) && defined(CONFIG_MACH_MT6853)
+	s32 host_u2_vrt_ref, host_u2_term_ref, host_u2_enhance;
+#endif
 	struct device_node *of_node;
 
 	if (!instance->phy_tuning.inited) {
-		instance->phy_tuning.u2_vrt_ref = 6;
+		instance->phy_tuning.u2_vrt_ref = 7;
 		instance->phy_tuning.u2_term_ref = 6;
-		instance->phy_tuning.u2_enhance = 1;
+		instance->phy_tuning.u2_enhance = 2;
+
+#if defined(OPLUS_FEATURE_CHG_BASIC) && defined(CONFIG_MACH_MT6853)
+		instance->phy_tuning.host_u2_vrt_ref = 7;
+		instance->phy_tuning.host_u2_term_ref = 6;
+		instance->phy_tuning.host_u2_enhance = 2;
+#endif
+
 		of_node = of_find_compatible_node(NULL, NULL,
 			instance->phycfg->tuning_node_name);
 		if (of_node) {
@@ -424,12 +438,37 @@ static void usb_phy_tuning(struct mtk_phy_instance *instance)
 				(u32 *) &instance->phy_tuning.u2_term_ref);
 			of_property_read_u32(of_node, "u2_enhance",
 				(u32 *) &instance->phy_tuning.u2_enhance);
+
+#if defined(OPLUS_FEATURE_CHG_BASIC) && defined(CONFIG_MACH_MT6853)
+			of_property_read_u32(of_node, "host_u2_vrt_ref",
+				(u32 *) &instance->phy_tuning.host_u2_vrt_ref);
+			of_property_read_u32(of_node, "host_u2_term_ref",
+				(u32 *) &instance->phy_tuning.host_u2_term_ref);
+			of_property_read_u32(of_node, "host_u2_enhance",
+				(u32 *) &instance->phy_tuning.host_u2_enhance);
+#endif
+
 		}
 		instance->phy_tuning.inited = true;
 	}
+
+#if defined(OPLUS_FEATURE_CHG_BASIC) && defined(CONFIG_MACH_MT6853)
+	if (usb_mode == 0) {           //host
+		u3phywrite32(U3D_USBPHYACR6, RG_USB20_DISCTH_OFST,RG_USB20_DISCTH, 0xD);
+		u3phywrite32(U3D_USBPHYACR1, RG_USB20_INTR_CAL_OFST,RG_USB20_INTR_CAL, 0X1E);
+		u2_vrt_ref = instance->phy_tuning.host_u2_vrt_ref;
+		u2_term_ref = instance->phy_tuning.host_u2_term_ref;
+		u2_enhance = instance->phy_tuning.host_u2_enhance;
+	} else {                        //device
+		u2_vrt_ref = instance->phy_tuning.u2_vrt_ref;
+		u2_term_ref = instance->phy_tuning.u2_term_ref;
+		u2_enhance = instance->phy_tuning.u2_enhance;
+	}
+#else
 	u2_vrt_ref = instance->phy_tuning.u2_vrt_ref;
 	u2_term_ref = instance->phy_tuning.u2_term_ref;
 	u2_enhance = instance->phy_tuning.u2_enhance;
+#endif
 
 	if (u2_vrt_ref != -1) {
 		if (u2_vrt_ref <= VAL_MAX_WIDTH_3) {

@@ -377,7 +377,7 @@ void mark_page_accessed(struct page *page)
 {
 	page = compound_head(page);
 	if (!PageActive(page) && !PageUnevictable(page) &&
-			PageReferenced(page)) {
+			(PageReferenced(page) || page_mapcount(page) > 10)) {
 
 		/*
 		 * If the page is on the LRU, queue it for activation via
@@ -1021,4 +1021,7 @@ void __init swap_setup(void)
 	 * Right now other parts of the system means that we
 	 * _really_ don't want to cluster much more
 	 */
+#if defined(OPLUS_FEATURE_ZRAM_OPT) && defined(CONFIG_OPLUS_ZRAM_OPT)
+	page_cluster = 0;
+#endif /*OPLUS_FEATURE_ZRAM_OPT*/
 }

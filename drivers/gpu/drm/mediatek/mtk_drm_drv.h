@@ -48,6 +48,13 @@
 /* Delay present fence would cause config merge */
 #endif
 
+//#ifdef OPLUS_FEATURE_ONSCREENFINGERPRINT
+/*
+* add for fingerprint notify frigger
+*/
+#define MTK_ONSCREENFINGERPRINT_EVENT 20
+//#endif /*VENDOR_EDIT*/
+
 #if defined(CONFIG_MACH_MT6877) || defined(CONFIG_MACH_MT6781)
 /*
  * MTK_DRM_DELAY_PRESENT_FENCE can not be defined,

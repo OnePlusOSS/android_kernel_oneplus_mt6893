@@ -226,7 +226,7 @@ page_owner=on loop.max_part=7";
 		};
 	};
 
-	disp_leds {
+	disp_leds: disp_leds {
 		compatible = "mediatek,disp-leds";
 
 		backlight {
@@ -252,6 +252,20 @@ page_owner=on loop.max_part=7";
 			pwm-names = "lcd-backlight";
 		};
 	};
+
+// #ifdef OPLUS_FEATURE_POWER_THERMAL
+	shell_front {
+		compatible = "oplus,shell-temp";
+	};
+
+	shell_frame {
+		compatible = "oplus,shell-temp";
+	};
+
+	shell_back {
+		compatible = "oplus,shell-temp";
+	};
+// #endif /* OPLUS_FEATURE_POWER_THERMAL */
 
 	mtk_lpm: mtk_lpm {
 		compatible = "mediatek,mtk-lpm";
@@ -2653,6 +2667,9 @@ page_owner=on loop.max_part=7";
 		compatible = "mediatek,audio", "syscon";
 		reg = <0 0x11210000 0 0x2000>;
 		#clock-cells = <1>;
+		//#ifdef OPLUS_BUG_COMPATIBILITY
+		mediatek,btcvsd_snd = <&btcvsd_snd>;
+		//#endif /* OPLUS_BUG_COMPATIBILITY */
 	};
 
 	afe: mt6873-afe-pcm@11210000 {
@@ -2851,7 +2868,23 @@ page_owner=on loop.max_part=7";
 		pinctrl-34 = <&aud_dat_miso_ch34_off>;
 		pinctrl-35 = <&aud_dat_miso_ch34_on>;
 	};
+//#ifdef OPLUS_BUG_COMPATIBILITY
+	sia81xx_L: sia81xx@L {
+		compatible = "si,sia81xx";
+		si,sia81xx_type = "sia8108";
+		si,sia81xx_disable_pin = <1>;
 
+		/* the same value share a same task
+		 * valid value range : 0 ~ 7 */
+		timer_task_hdl = <0>;
+
+		channel_num = <0>;
+		owi_mode = <10>;
+		en_x_filter = <1>;
+		en_dynamic_updata_vdd = <0>;
+		dynamic_updata_vdd_port = <0x2>;
+        };
+//endif
 	mt6359_snd: mt6359_snd {
 		compatible = "mediatek,mt6359-sound";
 		mediatek,pwrap-regmap = <&pwrap>;
@@ -2864,6 +2897,11 @@ page_owner=on loop.max_part=7";
 		mediatek,snd_audio_dsp = <&snd_audio_dsp>;
 		mtk_spk_i2s_out = <3>;
 		mtk_spk_i2s_in = <0>;
+//#ifdef OPLUS_BUG_COMPATIBILITY
+		si,sia81xx-max-num = <1>;
+		si,sia81xx-aux-devs = <&sia81xx_L>;
+		si,sia81xx-aux-devs-prefix = "SpkrLeft";
+//#endif
 		/* mtk_spk_i2s_mck = <3>; */
 		mediatek,speaker-codec {
 			sound-dai = <&speaker_amp>;
@@ -5796,6 +5834,13 @@ page_owner=on loop.max_part=7";
 		clock-names = "parent-clk", "sel-clk", "spi-clk";
 	      };
 
+//#ifdef OPLUS_FEATURE_SWTP
+	swtp: swtp {
+	};
+	swtp_1: swtp_1 {
+	};
+//#endif  /*OPLUS_FEATURE_SWTP*/
+
 	i2c_common: i2c_common {
 		compatible = "mediatek,i2c_common";
 		dma_support = /bits/ 8 <3>;
@@ -6041,9 +6086,29 @@ page_owner=on loop.max_part=7";
 		mediatek,fifo_only;
 	};
 
-	goodix_fp: fingerprint {
-		compatible = "mediatek,goodix-fp";
+//#ifdef OPLUS_FEATURE_SECURITY_COMMON
+	oplus_secure_common:oplus_secure_common {
+		compatible = "oplus,secure_common";
+		oplus,sec_reg_num = <0>;
+		oplus,sec_en_anti_reg = <0>;
+		oplus,sec_override1_reg = <0>;
+		oplus,override1_en_value = <0>;
 	};
+//#endif  OPLUS_FEATURE_SECURITY_COMMON
+
+//#ifdef OPLUS_FEATURE_FINGERPRINT
+	oplus_fp_common:oplus_fp_common { //Slave driver and CS ID
+		compatible = "oplus,fp_common"; //Manufacture, and Model
+	};
+
+	goodix_fp: goodix_fp {
+		compatible = "goodix,goodix_fp";
+	};
+	fpc_interrupt:fpc_interrupt {
+		status        = "ok";
+		compatible    = "fpc,fpc_irq";
+	};
+//#endif //OPLUS_FEATURE_FINGERPRINT
 
 	accdet: accdet {
 		compatible = "mediatek,pmic-accdet";
@@ -6266,6 +6331,17 @@ page_owner=on loop.max_part=7";
 		ibus_err = <14>;
 		vsys_watt = <5000000>;
 	};
+	phy_tuning: phy_tuning {
+                compatible = "mediatek,phy_tuning";
+                u2_vrt_ref = <7>;
+                u2_term_ref = <7>;
+                u2_enhance = <2>;
+
+                host_u2_vrt_ref = <6>;
+                host_u2_term_ref = <6>;
+                host_u2_enhance = <1>;
+
+        };
 
 	pd_adapter: pd_adapter {
 		compatible = "mediatek,pd_adapter";
@@ -6506,7 +6582,9 @@ page_owner=on loop.max_part=7";
 		compatible = "mediatek,speaker_amp";
 		#sound-dai-cells = <0>;
 		reg = <0x34>;
-		status = "okay";
+		//#ifdef OPLUS_BUG_COMPATIBILITY
+		status = "disabled";
+		//#endif /* OPLUS_BUG_COMPATIBILITY */
 	};
 };
 

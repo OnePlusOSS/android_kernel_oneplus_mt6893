@@ -67,8 +67,11 @@
 
 	cd_level = /bits/ 8 <MSDC_CD_LOW>;
 	cd-gpios = <&pio 23 0>;
-
-	status = "okay";
+//#ifdef OPLUS_ARCH_EXTENDS
+	status = "disabled";
+//#else
+//	status = "okay";
+//#endif
 
 #ifndef CONFIG_FPGA_EARLY_PORTING
 	vmmc-supply = <&mt_pmic_vmch_ldo_reg>;

@@ -19,6 +19,9 @@
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
 #include <linux/soc/mediatek/mtk-cmdq.h>
+#ifdef OPLUS_BUG_STABILITY
+#include <soc/oplus/system/oplus_mm_kevent_fb.h>
+#endif
 
 #include "mtk_drm_drv.h"
 #include "mtk_drm_crtc.h"
@@ -794,7 +797,7 @@ static void mtk_ovl_config(struct mtk_ddp_comp *comp,
 
 	if (comp->mtk_crtc->is_dual_pipe) {
 		width = cfg->w / 2;
-		DDPMSG("\n");
+		DDPDBG("\n");
 	} else
 		width = cfg->w;
 
@@ -3774,6 +3777,9 @@ static int mtk_disp_ovl_probe(struct platform_device *pdev)
 		DDPAEE("%s:%d, failed to request irq:%d ret:%d comp_id:%d\n",
 				__func__, __LINE__,
 				irq, ret, comp_id);
+		#ifdef OPLUS_BUG_STABILITY
+		mm_fb_display_kevent("DisplayDriverID@@501$$", MM_FB_KEY_RATELIMIT_1H, "ovl_probe error irq:%d ret:%d comp_id:%d", irq, ret, comp_id);
+		#endif
 		return ret;
 	}
 

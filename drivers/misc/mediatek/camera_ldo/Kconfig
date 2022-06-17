@@ -1,0 +1,8 @@
+
+config CAMERA_LDO
+	bool CONFIG_CAMERA_LDO
+	default n
+	help
+	  CAMERA LDO driver
+
+

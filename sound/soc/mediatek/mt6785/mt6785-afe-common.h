@@ -227,6 +227,9 @@ int mt6785_add_misc_control(struct snd_soc_platform *platform);
 
 int mt6785_set_local_afe(struct mtk_base_afe *afe);
 
+#ifdef OPLUS_BUG_STABILITY
+int mt6785_machine_driver_set_g_afe(struct mtk_base_afe *afe);
+#endif /* OPLUS_BUG_STABILITY */
 unsigned int mt6785_general_rate_transform(struct device *dev,
 					   unsigned int rate);
 unsigned int mt6785_rate_transform(struct device *dev,

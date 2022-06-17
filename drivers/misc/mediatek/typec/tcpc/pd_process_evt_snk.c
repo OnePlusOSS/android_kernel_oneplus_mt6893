@@ -228,6 +228,7 @@ static inline bool pd_process_ext_msg(
 {
 	switch (pd_event->msg) {
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
 #ifdef CONFIG_USB_PD_REV30_SRC_CAP_EXT_REMOTE
 	case PD_EXT_SOURCE_CAP_EXT:
 		if (PE_MAKE_STATE_TRANSIT_SINGLE(
@@ -235,6 +236,7 @@ static inline bool pd_process_ext_msg(
 			return true;
 		break;
 #endif	/* CONFIG_USB_PD_REV30_SRC_CAP_EXT_REMOTE */
+#endif
 
 #ifdef CONFIG_USB_PD_REV30_STATUS_LOCAL
 	case PD_EXT_STATUS:

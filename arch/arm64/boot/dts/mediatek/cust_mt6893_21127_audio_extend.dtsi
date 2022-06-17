@@ -1,0 +1,8 @@
+&audio_extend {
+	//for aw speaker
+	oplus,speaker-vendor = "awinic_digital";
+	oplus,speaker-i2s-id = <3>;
+	oplus,speaker-i2s-id-in = <0>;
+	oplus,speaker-codec-name = "aw882xx_smartpa.6-0034";
+	oplus,speaker-codec-dai-name = "aw882xx-aif-6-34";
+};

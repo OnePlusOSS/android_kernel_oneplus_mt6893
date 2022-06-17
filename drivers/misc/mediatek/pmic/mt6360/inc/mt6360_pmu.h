@@ -94,6 +94,9 @@ struct mt6360_pmu_irq_desc {
 #define MT6360_PMU_CHG_CTRL16			(0x20)
 #define MT6360_PMU_CHG_AICC_RESULT		(0x21)
 #define MT6360_PMU_DEVICE_TYPE			(0x22)
+#if defined(CONFIG_OPLUS_HVDCP_SUPPORT) || defined(CONFIG_OPLUS_CHARGER_MTK6785)
+#define HVDCP_DEVICE_TYPE			(0x23)
+#endif
 #define MT6360_PMU_DCP_CONTROL			(0x24)
 #define MT6360_PMU_USB_STATUS1			(0x27)
 #define MT6360_PMU_DPDM_CTRL			(0x28)

@@ -59,6 +59,8 @@
 #include <mt-plat/aee.h>
 #endif
 
+#include <soc/oplus/device_info.h>
+
 #define CREATE_TRACE_POINTS
 #include <trace/events/ufs.h>
 
@@ -189,6 +191,11 @@ struct ufs_pm_lvl_states ufs_pm_lvl_states[] = {
 
 /* MTK PATCH: For reference of ufs_pm_lvl_states array size from outside */
 const int ufs_pm_lvl_states_size = ARRAY_SIZE(ufs_pm_lvl_states);
+
+int ufsplus_tw_status = 0;
+EXPORT_SYMBOL(ufsplus_tw_status);
+int ufsplus_hpb_status = 0;
+EXPORT_SYMBOL(ufsplus_hpb_status);
 
 static inline enum ufs_dev_pwr_mode
 ufs_get_pm_lvl_to_dev_pwr_mode(enum ufs_pm_level lvl)
@@ -4256,9 +4263,9 @@ int ufshcd_dme_get_attr(struct ufs_hba *hba, u32 attr_sel,
 		/* for peer attributes we retry upon failure */
 		ret = ufshcd_send_uic_cmd(hba, &uic_cmd);
 		if (ret)
-			dev_dbg(hba->dev, "%s: attr-id 0x%x error code %d\n",
+			dev_err(hba->dev, "%s: attr-id 0x%x error code %d\n",
 				get, UIC_GET_ATTR_ID(attr_sel), ret);
-	} while (ret && peer && --retries);
+	} while (ret && --retries);
 
 	if (ret)
 		dev_err(hba->dev, "%s: attr-id 0x%x failed %d retries\n",
@@ -7732,6 +7739,10 @@ static int ufshcd_scsi_add_wlus(struct ufs_hba *hba)
 	struct scsi_device *sdev_rpmb;
 	struct scsi_device *sdev_boot;
 
+	static char temp_version[5] = {0};
+	static char vendor[9] = {0};
+	static char model[17] = {0};
+
 	hba->sdev_ufs_device = __scsi_add_device(hba->host, 0, 0,
 		ufshcd_upiu_wlun_to_scsi_wlun(UFS_UPIU_UFS_DEVICE_WLUN), NULL);
 	if (IS_ERR(hba->sdev_ufs_device)) {
@@ -7744,6 +7755,13 @@ static int ufshcd_scsi_add_wlus(struct ufs_hba *hba)
 	ufs_mtk_runtime_pm_init(hba->sdev_ufs_device);
 
 	scsi_device_put(hba->sdev_ufs_device);
+
+	strncpy(temp_version, hba->sdev_ufs_device->rev, 4);
+	strncpy(vendor, hba->sdev_ufs_device->vendor, 8);
+	strncpy(model, hba->sdev_ufs_device->model, 16);
+	register_device_proc("ufs_version", temp_version, vendor);
+	register_device_proc("ufs", model, vendor);
+	register_device_proc_for_ufsplus("ufsplus_status", &ufsplus_hpb_status,&ufsplus_tw_status);
 
 	sdev_boot = __scsi_add_device(hba->host, 0, 0,
 		ufshcd_upiu_wlun_to_scsi_wlun(UFS_UPIU_BOOT_WLUN), NULL);
@@ -9250,14 +9268,6 @@ static int ufshcd_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 		}
 	}
 
-#if defined(CONFIG_UFSFEATURE) && defined(CONFIG_UFSTW)
-	if (ufstw_need_flush(&hba->ufsf)) {
-		ret = -EAGAIN;
-		pm_runtime_mark_last_busy(hba->dev);
-		goto enable_gating;
-	}
-#endif
-
 	/* MTK PATCH */
 	ret = ufshcd_check_hibern8_exit(hba);
 	if (ret)
@@ -9900,6 +9910,7 @@ void ufshcd_remove(struct ufs_hba *hba)
 #if defined(CONFIG_UFSFEATURE)
 	ufsf_hpb_release(&hba->ufsf);
 	ufsf_tw_release(&hba->ufsf);
+	remove_ufsplus_ctrl_proc();
 #endif
 #if defined(CONFIG_SCSI_SKHPB)
 	if (hba->card && hba->card->wmanufacturerid == UFS_VENDOR_SKHYNIX)
@@ -9989,6 +10000,101 @@ out_error:
 	return err;
 }
 EXPORT_SYMBOL(ufshcd_alloc_host);
+
+#include <asm/unaligned.h>
+static ssize_t ufs_sysfs_read_desc_param(struct ufs_hba *hba,
+				  enum desc_idn desc_id,
+				  u8 desc_index,
+				  u8 param_offset,
+				  u8 *sysfs_buf,
+				  u8 param_size)
+{
+	u8 desc_buf[8] = {0};
+	int ret;
+
+	if (param_size > 8)
+		return -EINVAL;
+
+	ret = ufshcd_read_desc_param(hba, desc_id, desc_index,
+				param_offset, desc_buf, param_size);
+	if (ret)
+		return -EINVAL;
+	switch (param_size) {
+	case 1:
+		ret = sprintf(sysfs_buf, "0x%02X\n", *desc_buf);
+		break;
+	case 2:
+		ret = sprintf(sysfs_buf, "0x%04X\n",
+			get_unaligned_be16(desc_buf));
+		break;
+	case 4:
+		ret = sprintf(sysfs_buf, "0x%08X\n",
+			get_unaligned_be32(desc_buf));
+		break;
+	case 8:
+		ret = sprintf(sysfs_buf, "0x%016llX\n",
+			get_unaligned_be64(desc_buf));
+		break;
+	}
+
+	return ret;
+}
+
+#define UFS_DESC_PARAM(_name, _puname, _duname, _size)			\
+	static ssize_t _name##_show(struct device *dev, 			\
+		struct device_attribute *attr, char *buf)			\
+	{									\
+		struct ufs_hba *hba = dev_get_drvdata(dev); 		\
+		return ufs_sysfs_read_desc_param(hba, QUERY_DESC_IDN_##_duname, \
+			0, _duname##_DESC_PARAM##_puname, buf, _size);		\
+	}									\
+	static DEVICE_ATTR_RO(_name)
+
+#define UFS_HEALTH_DESC_PARAM(_name, _uname, _size)			\
+	UFS_DESC_PARAM(_name, _uname, HEALTH, _size)
+
+UFS_HEALTH_DESC_PARAM(len, _LEN, 1);
+UFS_HEALTH_DESC_PARAM(eol_info, _EOL_INFO, 1);
+UFS_HEALTH_DESC_PARAM(life_time_estimation_a, _LIFE_TIME_EST_A, 1);
+UFS_HEALTH_DESC_PARAM(life_time_estimation_b, _LIFE_TIME_EST_B, 1);
+
+static struct attribute *ufs_sysfs_health_descriptor[] = {
+	&dev_attr_len.attr,
+	&dev_attr_eol_info.attr,
+	&dev_attr_life_time_estimation_a.attr,
+	&dev_attr_life_time_estimation_b.attr,
+	NULL,
+};
+
+static const struct attribute_group ufs_sysfs_health_descriptor_group = {
+	.name = "health_descriptor",
+	.attrs = ufs_sysfs_health_descriptor,
+};
+
+#define UFS_POWER_DESC_PARAM(_name, _uname, _index)			\
+static ssize_t _name##_index##_show(struct device *dev,			\
+	struct device_attribute *attr, char *buf)			\
+{									\
+	struct ufs_hba *hba = dev_get_drvdata(dev);			\
+	return ufs_sysfs_read_desc_param(hba, QUERY_DESC_IDN_POWER, 0,	\
+		PWR_DESC##_uname##_0 + _index * 2, buf, 2);		\
+}									\
+static DEVICE_ATTR_RO(_name##_index)
+
+static const struct attribute_group *ufs_sysfs_groups[] = {
+	&ufs_sysfs_health_descriptor_group,
+	NULL,
+};
+
+void ufs_sysfs_add_nodes(struct device *dev)
+{
+	int ret;
+
+	ret = sysfs_create_groups(&dev->kobj, ufs_sysfs_groups);
+	if (ret)
+		dev_err(dev,"%s: sysfs groups creation failed (err = %d)\n", __func__, ret);
+}
+//#endif
 
 /**
  * ufshcd_init - Driver initialization routine
@@ -10197,6 +10303,8 @@ int ufshcd_init(struct ufs_hba *hba, void __iomem *mmio_base, unsigned int irq)
 #endif
 	async_schedule(ufshcd_async_scan, hba);
 	ufshcd_add_sysfs_nodes(hba);
+	ufs_sysfs_add_nodes(hba->dev);
+//#endif
 
 	/*
 	 * MTK PATCH:

@@ -1,0 +1,8 @@
+config OPLUS_MISC_HEALTHONFO
+      bool "oplus misc healthinfo device"
+      default n
+      help
+        Say Y here if you oplus misc healthinfo connected
+        to your system.
+
+	  If unsure, say N.

@@ -48,7 +48,6 @@
 #include "imx766mipiraw_Sensor.h"
 #include "imx766_eeprom.h"
 
-#undef VENDOR_EDIT
 
 #define USE_BURST_MODE 1
 

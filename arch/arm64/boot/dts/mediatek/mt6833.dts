@@ -47,6 +47,18 @@ page_owner=on loop.max_part=7";
 		kaslr-seed = <0 0>;
 	};
 
+	shell_front {
+			compatible = "oplus,shell-temp";
+	};
+
+	shell_frame {
+			compatible = "oplus,shell-temp";
+	};
+
+	shell_back {
+			compatible = "oplus,shell-temp";
+	};
+
 	cpus {
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -238,7 +250,7 @@ page_owner=on loop.max_part=7";
 		ccorr0 = &disp_ccorr0;
 	};
 
-	disp_leds {
+	disp_leds: disp_leds {
 		compatible = "mediatek,disp-leds";
 
 		backlight {
@@ -1497,8 +1509,23 @@ page_owner=on loop.max_part=7";
 		interrupts = <GIC_SPI 194 IRQ_TYPE_LEVEL_HIGH>;
 	};
 
+	//#ifdef OPLUS_FEATURE_FINGERPRINT
+	oplus_fp_common:oplus_fp_common { //Slave driver and CS ID
+		compatible = "oplus,fp_common"; //Manufacture, and Model
+	};
+
 	goodix_fp: fingerprint {
 		compatible = "mediatek,goodix-fp";
+	};
+
+	jiiov_fp: jiiov_fp {
+		compatible = "jiiov,fingerprint";
+		status = "okay";
+	};
+
+	fpc_interrupt:fpc_interrupt {
+		status        = "ok";
+		compatible    = "fpc,fpc_irq";
 	};
 
 	accdet: accdet {
@@ -2622,6 +2649,9 @@ page_owner=on loop.max_part=7";
 		reg = <0 0x11210000 0 0x2000>;
 		pwr-regmap = <&sleep>;
 		#clock-cells = <1>;
+                /*#ifdef OLUS_ARCH_EXTENDS*/
+		mediatek,btcvsd_snd = <&btcvsd_snd>;
+                /*#endif OLUS_ARCH_EXTENDS*/
 	};
 
 	afe: mt6833-afe-pcm@11210000 {
@@ -2787,6 +2817,14 @@ page_owner=on loop.max_part=7";
 		 mediatek,pwrap-regmap = <&pwrap>;
 	};
 
+	sia81xx_L:sia81xx_L {
+
+	};
+
+	sia81xx_R:sia81xx_R {
+
+	};
+
 	sound: sound {
 		compatible = "mediatek,mt6833-mt6359-sound";
 		mediatek,audio-codec = <&mt6359_snd>;
@@ -2916,7 +2954,7 @@ page_owner=on loop.max_part=7";
 			"PWR";
 	};
 
-	gpufreq {
+	gpufreq: gpufreq {
 		compatible = "mediatek,gpufreq";
 		clocks =
 			<&topckgen CLK_TOP_MFG_PLL_SEL>,
@@ -2940,6 +2978,11 @@ page_owner=on loop.max_part=7";
 		_vgpu-supply = <&mt_pmic_vproc1_buck_reg>;
 		_vsram_gpu-supply = <&mt_pmic_vsram_md_ldo_reg>;
 #endif
+	};
+	
+	ged: ged {
+		compatible = "mediatek,ged";
+		gpufreq-supply = <&gpufreq>;
 	};
 
 	dfd_controller@13e00000 {
@@ -5161,6 +5204,10 @@ page_owner=on loop.max_part=7";
 		reg = <0 0x1f00e000 0 0x1000>;
 	};
 
+	irq_nfc: irq_nfc {
+		compatible = "mediatek,irq_nfc-eint";
+	};
+
 	gps: gps@18c00000 {
 		compatible = "mediatek,gps";
 	};
@@ -5169,6 +5216,36 @@ page_owner=on loop.max_part=7";
 		compatible = "simple-bus";
 		/* reserved for overlay by odm */
 	};
+
+//#ifdef OPLUS_FEATURE_SECURITY_COMMON
+	oplus_secure_common:oplus_secure_common {
+		compatible = "oplus,secure_common";
+		oplus,sec_reg_num = <0>;
+		oplus,sec_en_anti_reg = <0>;
+		oplus,sec_override1_reg = <0>;
+		oplus,override1_en_value = <0>;
+	};
+//#endif  OPLUS_FEATURE_SECURITY_COMMON
+
+//#ifdef OPLUS_FEATURE_FINGERPRINT
+	oplus_fp_common:oplus_fp_common { //Slave driver and CS ID
+		compatible = "oplus,fp_common"; //Manufacture, and Model
+	};
+
+	goodix_fp: fingerprint {
+		compatible = "goodix,goodix_fp";
+	};
+
+	fpc_interrupt:fpc_interrupt {
+		status        = "ok";
+		compatible    = "fpc,fpc_irq";
+	};
+
+	silead_fp: silead_fp {
+		status        = "ok";
+		compatible = "sil,silead_fp-pins";
+	};
+//#endif /* OPLUS_FEATURE_FINGERPRINT */
 
 	memory_ssmr_features: memory-ssmr-features {
 		compatible = "mediatek,memory-ssmr-features";
@@ -5726,6 +5803,15 @@ page_owner=on loop.max_part=7";
 		vsys_watt = <5000000>;
 	};
 
+/*#ifdef OPLUS_FEATURE_CHG_BASIC*/
+	phy_tuning: phy_tuning {
+		compatible = "mediatek,phy_tuning";
+		u2_vrt_ref = <6>;
+		u2_term_ref = <6>;
+		u2_enhance = <2>;
+    };
+/*#endif OPLUS_FEATURE_CHG_BASIC*/
+
 	pd_adapter: pd_adapter {
 		compatible = "mediatek,pd_adapter";
 		adapter_name = "pd_adapter";
@@ -5991,6 +6077,12 @@ page_owner=on loop.max_part=7";
 	};
 	aud_gpio_i2s5_on: aud_gpio_i2s5_on {
 	};
+	//#ifdef OPLUS_VENDOR_SWTP
+        swtp: swtp {
+        };
+        swtp_1: swtp_1 {
+        };
+        //#endif  /*OPLUS_VENDOR_SWTP*/
 };
 
 #include "mediatek/mt6315_s3.dtsi"
@@ -5998,3 +6090,5 @@ page_owner=on loop.max_part=7";
 #include "mediatek/trusty.dtsi"
 #endif
 #include "mediatek/mt6360_pd.dtsi"
+
+

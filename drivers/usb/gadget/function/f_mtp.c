@@ -45,6 +45,8 @@
 //#include "aee.h"
 #endif
 
+#include <linux/of.h>
+
 #define MTP_BULK_BUFFER_SIZE       16384
 #define INTR_BUFFER_SIZE           28
 #define MAX_INST_NAME_LEN          40
@@ -2386,12 +2388,27 @@ static void mtp_free(struct usb_function *f)
 	/*NO-OP: no function specific resource allocation in mtp_alloc*/
 }
 
+static void get_mtp_interface(int *InterfaceClass, int *InterfaceSubClass, int *InterfaceProtocol)
+{
+	static struct device_node *of_node;
+
+	of_node = of_find_compatible_node(NULL, NULL, "mediatek,mtp_interface");
+	if (!of_node){
+		pr_err("don't found mtp_interface node");
+		return;
+	}
+	of_property_read_u32(of_node, "InterfaceClass", (u32 *) InterfaceClass);
+	of_property_read_u32(of_node,"InterfaceSubClass", (u32 *) InterfaceSubClass);
+	of_property_read_u32(of_node,"InterfaceProtocol", (u32 *) InterfaceProtocol);
+}
+
 struct usb_function *function_alloc_mtp_ptp(struct usb_function_instance *fi,
 					bool mtp_config)
 {
 	struct mtp_instance *fi_mtp = to_fi_mtp(fi);
 	struct mtp_dev *dev;
-
+	int InterfaceClass=1, InterfaceSubClass=1, InterfaceProtocol=1;
+	get_mtp_interface(&InterfaceClass,&InterfaceSubClass,&InterfaceProtocol);
 	/*
 	 * PTP piggybacks on MTP function so make sure we have
 	 * created MTP function before we associate this PTP
@@ -2406,6 +2423,14 @@ struct usb_function *function_alloc_mtp_ptp(struct usb_function_instance *fi,
 	dev->function.name = DRIVER_NAME;
 	dev->function.strings = mtp_strings;
 	if (mtp_config) {
+		if(InterfaceClass !=1)
+			mtp_interface_desc.bInterfaceClass = InterfaceClass;
+		if(InterfaceSubClass !=1)
+			mtp_interface_desc.bInterfaceSubClass = InterfaceSubClass;
+		if(InterfaceProtocol !=1)
+			mtp_interface_desc.bInterfaceProtocol = InterfaceProtocol;
+		pr_err("mtp InterfaceClass=%d,InterfaceSubClass=%d,InterfaceProtocol=%d\n",mtp_interface_desc.bInterfaceClass,
+			mtp_interface_desc.bInterfaceSubClass,mtp_interface_desc.bInterfaceProtocol);
 		dev->function.fs_descriptors = fs_mtp_descs;
 		dev->function.hs_descriptors = hs_mtp_descs;
 		dev->function.ss_descriptors = ss_mtp_descs;

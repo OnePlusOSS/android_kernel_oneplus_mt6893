@@ -39,3 +39,6 @@ obj-$(CONFIG_BLK_SED_OPAL)	+= sed-opal.o
 obj-$(CONFIG_BLK_INLINE_ENCRYPTION)	+= keyslot-manager.o bio-crypt-ctx.o \
 					   blk-crypto.o
 obj-$(CONFIG_BLK_INLINE_ENCRYPTION_FALLBACK)	+= blk-crypto-fallback.o
+#ifdef OPLUS_FEATURE_FG_IO_OPT
+obj-$(CONFIG_OPLUS_FG_IO_OPT)	+= foreground_io_opt/
+#endif /*OPLUS_FEATURE_FG_IO_OPT*/

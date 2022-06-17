@@ -733,7 +733,11 @@ EXPORT_SYMBOL(mtk_emimpu_init_region);
  */
 int mtk_emimpu_free_region(struct emimpu_region_t *rg_info)
 {
-	if (!rg_info) {
+//#ifndef OPLUS_BUG_STABILITY
+//	if (!rg_info) {
+//#else
+	if (!rg_info || !rg_info->apc) {
+//#endif /*OPLUS_BUG_STABILITY*/
 		pr_info("%s: %p is NULL", __func__, __builtin_return_address(0));
 		return -EINVAL;
 	}

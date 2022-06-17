@@ -1,0 +1,8 @@
+config FAN53870_LDO
+	bool "FAN53870 PMIC I2C Driver"
+	default y
+	---help---
+	  Say Y here to support the FAN53870 PMIC chip.
+	  This driver controls FAN53870 PMIC chip and the voltage
+	  regulators found in Qualcomm Technologies Inc. FAN53870
+	  PMIC.

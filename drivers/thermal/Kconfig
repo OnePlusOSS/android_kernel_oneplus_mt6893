@@ -15,6 +15,13 @@ menuconfig THERMAL
 
 if THERMAL
 
+config MTK_FLED_NTC_MOSS
+	bool "Thermal switch for query FLED_NTC temp"
+	depends on THERMAL
+	default n
+	help
+	  Add for moss flashlight ntc.
+
 config THERMAL_EMERGENCY_POWEROFF_DELAY_MS
 	int "Emergency poweroff delay in milli-seconds"
 	depends on THERMAL
@@ -209,6 +216,12 @@ config THERMAL_EMULATION
 	  WARNING: Be careful while enabling this option on production systems,
 	  because userland can easily disable the thermal policy by simply
 	  flooding this sysfs node with low temperature values.
+
+config HORAE_THERMAL_SHELL
+	bool "Horae shell temp driver"
+	default y
+	help
+	  Provide three thermal zones(front, frame and back) to get real shell temp.
 
 config HISI_THERMAL
 	tristate "Hisilicon thermal driver"

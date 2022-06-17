@@ -1,0 +1,48 @@
+
+&audio_extend {
+	//for nxp speaker
+	oplus,speaker-vendor = "nxp";
+	oplus,speaker-i2s-id = <3>;
+	oplus,speaker-i2s-id-in = <0>;
+	oplus,speaker-codec-name = "tfa98xx.9-0034","tfa98xx.9-0035";
+	oplus,speaker-codec-dai-name = "tfa98xx-aif-9-34","tfa98xx-aif-9-35";
+};
+
+&i2c9 {
+	status = "okay";
+	clock-frequency = <400000>;
+	tfa98xx_R: tfa98xx@34 {
+		compatible = "nxp,tfa98xx";
+		reg = <0x34>;
+		reset-gpio = <&pio 193 0>;
+		tfa_min_range = <5000>;
+		tfa_max_range = <8000>;
+		status = "okay";
+	};
+
+	tfa98xx_L: tfa98xx@35 {
+		compatible = "nxp,tfa98xx";
+		reg = <0x35>;
+		reset-gpio = <&pio 148 0>;
+		tfa_min_range = <5000>;
+		tfa_max_range = <8000>;
+		status = "okay";
+	};
+};
+
+//#ifdef OPLUS_ARCH_EXTENDS
+&i2c3 {
+	tfa98xx_haptic: tfa98xx_haptic@34 {
+		compatible = "tfa,tfa_haptic";
+		reg = <0x34>;
+		reset-gpio = <&pio 185 0>;
+		i2s-id = <1>;
+		status = "okay";
+	};
+};
+//#endif
+
+&sound {
+	mtk_spk_i2s_in = <9>;
+};
+//#endif /*OPLUS_ARCH_EXTENDS*/

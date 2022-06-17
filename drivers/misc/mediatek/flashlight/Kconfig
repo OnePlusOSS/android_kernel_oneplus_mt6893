@@ -118,6 +118,17 @@ config MTK_FLASHLIGHT_MT6360
 
 	  Say M here if you want to compile this driver as a module.
 
+config MTK_FLASHLIGHT_MOSS
+	tristate "Mediatek flashlight with driver IC (MOSS)"
+	depends on MTK_FLASHLIGHT && RT_FLASHLIGHT
+	help
+	  This is for the flashlight driver IC (MOSS).
+
+	  Say Y here if you want a flashlight driver IC MOSS.
+	  Select this only if your board has this IC.
+
+	  Say M here if you want to compile this driver as a module.
+
 config MTK_FLASHLIGHT_DUMMY
 	tristate "Mediatek flashlight dummy driver"
 	depends on MTK_FLASHLIGHT
@@ -180,3 +191,14 @@ config MTK_FLASHLIGHT_DLPT
 	  the current of battary dynamicly. It will start by request
 	  and notice user by kernel notifier.
 
+config MTK_FLASHLIGHT_EVEN
+	tristate "Mediatek flashlight with driver IC(even vendor)"
+	depends on MTK_FLASHLIGHT
+	default n
+	help
+		This is for the flashlight driver IC(even vendor).
+
+		Say Y here if you want a flashlight driver IC even vendor.
+		Select this only if your board has this IC.
+
+		Say M here if you want to compile this driver as a module.

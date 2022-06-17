@@ -12,6 +12,8 @@
  */
 / {
 	rt1711_typec: rt1711_type_c_port0 {
+		tcpc-dual,supported_modes = <0>; /* 0: dfp/ufp, */
+						 /* 1: dfp, 2: ufp */
 		rt-tcpc,name = "type_c_port0"; /* tcpc_device's name */
 		rt-tcpc,role_def = <5>; /* 0: Unknown, 1: SNK, 2: SRC */
 					/* 3: DRP, 4: Try.SRC, 5: Try.SNK */
@@ -136,7 +138,7 @@
 			2nd_connection = "dfp_d";
 			signal,dp_v13;
 			//signal,dp_gen2;
-			//usbr20_not_used;
+			usbr20_not_used;
 			typec,receptacle;
 			ufp_d {
 				//pin_assignment,mode_a;
@@ -151,7 +153,7 @@
 				pin_assignment,mode_c;
 				pin_assignment,mode_d;
 				pin_assignment,mode_e;
-				//pin_assignment,mode_f;
+				pin_assignment,mode_f;
 			};
 		};
 	};

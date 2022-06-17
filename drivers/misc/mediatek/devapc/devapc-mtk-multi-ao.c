@@ -849,7 +849,7 @@ static void devapc_extra_handler(int slave_type, const char *vio_master,
 	}
 
 	/* Severity level */
-	if (dbg_stat->enable_KE && (ret_cb != DEVAPC_NOT_KE)) {
+	if (dbg_stat->enable_KE && (ret_cb != DEVAPC_NOT_KE) && vio_addr > 0x100000) {
 		pr_info(PFX "Device APC Violation Issue/%s", dispatch_key);
 		BUG_ON(id != INFRA_SUBSYS_CONN);
 

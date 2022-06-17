@@ -235,6 +235,10 @@ ifneq ($(filter $(no-dot-config-targets), $(MAKECMDGOALS)),)
 	endif
 endif
 
+#ifdef OPLUS_ARCH_INJECT
+-include OplusKernelEnvConfig.mk
+#endif /* OPLUS_ARCH_INJECT */
+
 ifeq ($(KBUILD_EXTMOD),)
         ifneq ($(filter config %config,$(MAKECMDGOALS)),)
                 config-targets := 1
@@ -431,6 +435,29 @@ KBUILD_LDFLAGS_MODULE := -T $(srctree)/scripts/module-common.lds
 GCC_PLUGINS_CFLAGS :=
 CLANG_FLAGS :=
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+ifeq ($(OPLUS_HIGH_TEMP_VERSION),true)
+KBUILD_CFLAGS += -DCONFIG_HIGH_TEMP_VERSION
+endif
+#endif /* OPLUS_FEATURE_CHG_BASIC */
+
+#ifdef OPLUS_FEATURE_MEMLEAK_DETECT
+ifeq ($(AGING_DEBUG_MASK),1)
+# enable memleak detect daemon
+OPLUS_MEMLEAK_DETECT := true
+endif
+
+ifeq ($(TARGET_MEMLEAK_DETECT_TEST),0)
+# disable memleak detect daemon
+OPLUS_MEMLEAK_DETECT := false
+else ifeq ($(TARGET_MEMLEAK_DETECT_TEST),1)
+# enable memleak detect daemon
+OPLUS_MEMLEAK_DETECT := true
+endif
+
+export OPLUS_MEMLEAK_DETECT
+#endif
+
 export ARCH SRCARCH CONFIG_SHELL HOSTCC HOSTCFLAGS CROSS_COMPILE AS LD CC
 export CPP AR NM STRIP OBJCOPY OBJDUMP HOSTLDFLAGS HOST_LOADLIBES
 export MAKE AWK GENKSYMS INSTALLKERNEL PERL PYTHON UTS_MACHINE
@@ -505,6 +532,11 @@ endif
 KBUILD_CPPFLAGS += -Qunused-arguments
 endif
 
+KBUILD_CFLAGS +=   -DOPLUS_FEATURE_CHG_BASIC
+KBUILD_CPPFLAGS += -DOPLUS_FEATURE_CHG_BASIC
+CFLAGS_KERNEL +=   -DOPLUS_FEATURE_CHG_BASIC
+CFLAGS_MODULE +=   -DOPLUS_FEATURE_CHG_BASIC
+
 RETPOLINE_CFLAGS_GCC := -mindirect-branch=thunk-extern -mindirect-branch-register
 RETPOLINE_VDSO_CFLAGS_GCC := -mindirect-branch=thunk-inline -mindirect-branch-register
 RETPOLINE_CFLAGS_CLANG := -mretpoline-external-thunk
@@ -570,6 +602,12 @@ endif
 
 export KBUILD_MODULES KBUILD_BUILTIN
 
+-include OplusKernelEnvConfig.mk
+
+KBUILD_CFLAGS += -DOPLUS_FEATURE_SENSOR
+KBUILD_CFLAGS += -DOPLUS_FEATURE_SENSOR_ALGORITHM
+KBUILD_CFLAGS += -DOPLUS_FEATURE_SENSOR_SMEM
+KBUILD_CFLAGS += -DOPLUS_FEATURE_SENSOR_WISELIGHT
 ifeq ($(KBUILD_EXTMOD),)
 # Additional helpers built in scripts/
 # Carefully list dependencies so we do not try to build scripts twice
@@ -1171,6 +1209,12 @@ include/config/kernel.release: include/config/auto.conf FORCE
 	$(call filechk,kernel.release)
 
 
+KBUILD_CFLAGS += -DOPLUS_FEATURE_SENSOR
+KBUILD_CFLAGS += -DOPLUS_FEATURE_SENSOR_ALGORITHM
+KBUILD_CFLAGS += -DOPLUS_FEATURE_SENSOR_SMEM
+KBUILD_CFLAGS += -DOPLUS_FEATURE_SENSOR_WISELIGHT
+
+
 # Things we need to do before we recursively start building the kernel
 # or the modules are listed in "prepare".
 # A multi level approach is used. prepareN is processed before prepareN-1.
@@ -1412,7 +1456,9 @@ modules: $(vmlinux-dirs) $(if $(KBUILD_BUILTIN),vmlinux) modules.builtin
 	$(Q)$(AWK) '!x[$$0]++' $(vmlinux-dirs:%=$(objtree)/%/modules.order) > $(objtree)/modules.order
 	@$(kecho) '  Building modules, stage 2.';
 	$(Q)$(MAKE) -f $(srctree)/scripts/Makefile.modpost
-
+ifeq ($(CONFIG_MODULE_SIG), y)
+	$(Q)$(MAKE) -f $(srctree)/scripts/Makefile.modsign
+endif
 modules.builtin: $(vmlinux-dirs:%=%/modules.builtin)
 	$(Q)$(AWK) '!x[$$0]++' $^ > $(objtree)/modules.builtin
 

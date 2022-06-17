@@ -345,6 +345,9 @@ static int ext4_ioctl_setflags(struct inode *inode,
 	inode->i_ctime = current_time(inode);
 
 	err = ext4_mark_iloc_dirty(handle, inode, &iloc);
+#if defined(CONFIG_EXT4_ASYNC_DISCARD_SUPPORT)
+	ext4_update_time(EXT4_SB(inode->i_sb));
+#endif
 flags_err:
 	ext4_journal_stop(handle);
 	if (err)

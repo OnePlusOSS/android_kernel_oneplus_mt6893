@@ -1951,6 +1951,9 @@ int ufs_mtk_ioctl_query(struct ufs_hba *hba, u8 lun, void __user *buf_user)
 		switch (read_desc) {
 		case QUERY_DESC_IDN_DEVICE:
 		case QUERY_DESC_IDN_STRING:
+#ifdef OPLUS_FEATURE_STORAGE_TOOL
+        case QUERY_DESC_IDN_HEALTH:
+#endif
 			break;
 		default:
 			goto out_einval;

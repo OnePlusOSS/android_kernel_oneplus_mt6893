@@ -42,6 +42,7 @@ else
 ccflags-y  += -I$(srctree)/drivers/misc/mediatek/mcupm/$(PDIR)
 endif
 endif
+obj-$(CONFIG_HORAE_THERMAL_SHELL) += mtk_ts_ntc_cust.o
 
 ifneq (,$(filter $(CONFIG_MTK_PLATFORM), "mt6735"))
 ifeq ($(CONFIG_ARCH_MT6735),y)
@@ -406,7 +407,9 @@ obj-$(CONFIG_THERMAL) += mtk_ts_battery.o
 
 obj-$(CONFIG_THERMAL) += mtk_ts_bts.o
 obj-$(CONFIG_THERMAL) += mtk_ts_btsmdpa.o
-
+ifeq ($(CONFIG_MACH_MT6781),)
+obj-$(CONFIG_THERMAL) += mtk_ts_chg_mos.o
+endif
 obj-$(CONFIG_THERMAL) += mtk_ts_cpu_noBank.o
 obj-$(CONFIG_THERMAL) += mtk_ts_pa.o
 obj-$(CONFIG_THERMAL) += mtk_ts_pa_thput.o
@@ -430,7 +433,9 @@ endif
 ifneq (,$(filter $(CONFIG_MTK_PLATFORM), "mt6885" "mt6893"))
 
 obj-$(CONFIG_THERMAL) += mtk_ts_battery.o
-
+#ifdef OPLUS_FEATURE_CHG_BASIC
+obj-$(CONFIG_THERMAL) += mtk_ts_chg_mos.o
+#endif
 obj-$(CONFIG_THERMAL) += mtk_ts_bts.o
 obj-$(CONFIG_THERMAL) += mtk_ts_btsmdpa.o
 obj-$(CONFIG_THERMAL) += mtk_ts_btsnrpa.o
@@ -441,7 +446,9 @@ obj-$(CONFIG_THERMAL) += mtk_ts_pa_thput.o
 obj-$(CONFIG_THERMAL) += mtk_ts_pmic.o
 obj-$(CONFIG_THERMAL) += mtk_ts_charger.o
 #obj-$(CONFIG_THERMAL) += mtk_ts_charger2.o
-
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+obj-$(CONFIG_THERMAL) += mtk_ts_flashlight.o
+#endif
 
 ifneq ($(CONFIG_MTK_COMBO_WIFI),)
     obj-$(CONFIG_THERMAL) += mtk_ts_wmt.o
@@ -487,7 +494,9 @@ obj-$(CONFIG_THERMAL) += mtk_ts_pa_thput.o
 obj-$(CONFIG_THERMAL) += mtk_ts_pmic.o
 obj-$(CONFIG_THERMAL) += mtk_ts_charger.o
 #obj-$(CONFIG_THERMAL) += mtk_ts_charger2.o
-
+ifeq ($(CONFIG_MTK_FLED_NTC_MOSS),y)
+    obj-$(CONFIG_THERMAL) += mtk_ts_flashlight_moss.o
+endif
 
 ifneq ($(CONFIG_MTK_COMBO_WIFI),)
     obj-$(CONFIG_THERMAL) += mtk_ts_wmt.o

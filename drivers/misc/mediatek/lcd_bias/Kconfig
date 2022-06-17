@@ -1,0 +1,17 @@
+#
+# ODM_HQ_EDIT
+# Kconfig file for lcd bias makefile.
+#
+
+config SET_LCD_BIAS_ODM_HQ
+	bool CONFIG_SET_LCD_BIAS_ODM_HQ
+	default n
+	help
+	  HQ LCD BIAS driver
+
+config EXT_LCD_BIAS_ODM_HQ
+	bool CONFIG_EXT_LCD_BIAS_ODM_HQ
+	default n
+	help
+	  HQ EXT LCD BIAS driver
+

@@ -167,6 +167,8 @@ pr_debug("[Thermal/TZ/BATTERY]" fmt, ##args)
  *    return sys_open(fname, flag, 0);
  *}
  */
+extern bool prj_for_mtk_60w_support(void);
+extern int oplus_battery_get_bat_temperature(void);
 static int get_hw_battery_temp(void)
 {
 /*
@@ -213,6 +215,9 @@ static int get_hw_battery_temp(void)
 	ret = read_tbat_value();
 #endif
 	ret = ret * 10;
+	if (prj_for_mtk_60w_support() == true) {
+		return oplus_battery_get_bat_temperature();
+	}
 #endif
 
 	return ret;
@@ -469,7 +474,9 @@ struct thermal_cooling_device *cdev, unsigned long state)
 		/* To trigger data abort to reset the system
 		 * for thermal protection.
 		 */
+#ifndef OPLUS_FEATURE_CHG_BASIC
 		BUG();
+#endif
 	}
 	return 0;
 }

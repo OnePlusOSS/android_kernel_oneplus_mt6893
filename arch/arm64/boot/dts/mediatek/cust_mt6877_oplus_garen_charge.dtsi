@@ -1,0 +1,18 @@
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+* Copyright (C) 2020-2021 Oplus. All rights reserved.
+*/
+
+//#ifdef OPLUS_FEATURE_CHG_BASIC
+/*
+ * 20181: EVB0~T1
+ * 20355: EVB0~EVB0
+ *
+ * haptic ic: AW8697
+ *
+ * AP_AW: GPIO117
+ * LRA_RST: GPIO118
+ * AW_INT: GPIO3
+ */
+#include "mediatek/cust_mt6877_oplus_garen_charge_common.dtsi"
+//#endif /*OPLUS_FEATURE_CHG_BASIC*/

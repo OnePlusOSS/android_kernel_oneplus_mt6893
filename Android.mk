@@ -22,6 +22,11 @@ KERNEL_MAKE_DEPENDENCIES := $(filter-out %/.git %/.gitignore %/.gitattributes,$(
 $(TARGET_KERNEL_CONFIG): PRIVATE_DIR := $(KERNEL_DIR)
 $(TARGET_KERNEL_CONFIG): $(KERNEL_CONFIG_FILE) $(LOCAL_PATH)/Android.mk
 $(TARGET_KERNEL_CONFIG): $(KERNEL_MAKE_DEPENDENCIES)
+	#ifdef OPLUS_FEATURE_FORCE_SELINUX
+	OBSOLETE_KEEP_ADB_SECURE=$(OBSOLETE_KEEP_ADB_SECURE) \
+	TARGET_MEMLEAK_DETECT_TEST=$(TARGET_MEMLEAK_DETECT_TEST) \
+	$(KERNEL_DIR)/tools/changeConfig.sh $(KERNEL_CONFIG_FILE)
+	#endif OPLUS_FEATURE_FORCE_SELINUX
 	$(hide) mkdir -p $(dir $@)
 	$(PREBUILT_MAKE_PREFIX)$(MAKE) -C $(PRIVATE_DIR) $(KERNEL_MAKE_OPTION) $(KERNEL_DEFCONFIG)
 
@@ -69,10 +74,14 @@ clean-kernel:
 	$(hide) rm -f $(INSTALLED_DTB_OVERLAY_TARGET)
 
 ### DTB build template
-MTK_DTBIMAGE_DTS := $(addsuffix .dts,$(addprefix $(KERNEL_DIR)/arch/$(KERNEL_TARGET_ARCH)/boot/dts/,$(PLATFORM_DTB_NAME)))
+CUSTOMER_DTB_PLATFORM := $(subst $\",,$(shell grep DTB_IMAGE_NAMES $(KERNEL_CONFIG_FILE) | sed 's/.*=//' ))
+MTK_DTBIMAGE_DTS:= $(addsuffix .dts,$(addprefix $(KERNEL_DIR)/arch/$(KERNEL_TARGET_ARCH)/boot/dts/,$(CUSTOMER_DTB_PLATFORM)))
+
 include device/mediatek/build/core/build_dtbimage.mk
 
-MTK_DTBOIMAGE_DTS := $(addsuffix .dts,$(addprefix $(KERNEL_DIR)/arch/$(KERNEL_TARGET_ARCH)/boot/dts/,$(PROJECT_DTB_NAMES)))
+CUSTOMER_DTBO_PROJECT := $(subst $\",,$(shell grep DTB_OVERLAY_IMAGE_NAMES $(KERNEL_CONFIG_FILE) | sed 's/.*=//' ))
+MTK_DTBOIMAGE_DTS := $(addsuffix .dts,$(addprefix $(KERNEL_DIR)/arch/$(KERNEL_TARGET_ARCH)/boot/dts/,$(CUSTOMER_DTBO_PROJECT)))
+
 include device/mediatek/build/core/build_dtboimage.mk
 
 

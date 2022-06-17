@@ -1918,6 +1918,11 @@ void task_check_for_rotation(struct rq *src_rq)
 		if (rq->nr_running > 1)
 			continue;
 
+#if defined (CONFIG_SCHED_WALT) && defined (OPLUS_FEATURE_SCHED_ASSIST)
+		if (sysctl_sched_assist_enabled && (sched_assist_scene(SA_SLIDE) || sched_assist_scene(SA_LAUNCHER_SI) || sched_assist_scene(SA_INPUT) || sched_assist_scene(SA_ANIM))
+		&& (is_heavy_ux_task(rq->curr) || is_sf(rq->curr)))
+			continue;
+#endif /* OPLUS_FEATURE_SCHED_ASSIST */
 		run = wc - rq->curr->last_enqueued_ts;
 
 		if (run < TASK_ROTATION_THRESHOLD_NS)

@@ -26,7 +26,6 @@
 #include <linux/phy/phy.h>
 #include <dt-bindings/phy/phy.h>
 #include <linux/delay.h>
-
 #include "phy-mtk.h"
 
 #ifdef CONFIG_MTK_USB2JTAG_SUPPORT
@@ -429,9 +428,19 @@ static void phy_savecurrent(struct mtk_phy_instance *instance)
 		FORCE_SUSPENDM, 1);
 	udelay(2000);
 	u3phywrite32(U3D_U2PHYDTM0, RG_DPPULLDOWN_OFST,
+#ifndef OPLUS_FEATURE_CHG_BASIC
 		RG_DPPULLDOWN, 1);
+#else
+		RG_DPPULLDOWN, 0);
+#endif
 	u3phywrite32(U3D_U2PHYDTM0, RG_DMPULLDOWN_OFST,
+#ifndef OPLUS_FEATURE_CHG_BASIC
 		RG_DMPULLDOWN, 1);
+#else
+		RG_DMPULLDOWN, 0);
+	/* set internal pull down*/
+	u3phywrite32(U3D_USBPHYACR6, RG_USB20_PHY_REV_OFST, (0x2 << 24), 0x2);
+#endif
 	u3phywrite32(U3D_U2PHYDTM0, RG_XCVRSEL_OFST,
 		RG_XCVRSEL, 0x1);
 	u3phywrite32(U3D_U2PHYDTM0, RG_TERMSEL_OFST,
@@ -474,15 +483,31 @@ reg_done:
 
 #define VAL_MAX_WIDTH_2	0x3
 #define VAL_MAX_WIDTH_3	0x7
+#ifdef OPLUS_FEATURE_CHG_BASIC
+#define VAL_MAX_WIDTH_4	0xf
+extern unsigned int usb_mode;
+#endif
+
 static void usb_phy_tuning(struct mtk_phy_instance *instance)
 {
 	s32 u2_vrt_ref, u2_term_ref, u2_enhance;
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	s32 host_u2_vrt_ref, host_u2_term_ref, host_u2_enhance;
+	s32 u2_discth, host_u2_discth;
+#endif
 	struct device_node *of_node;
 
 	if (!instance->phy_tuning.inited) {
 		instance->phy_tuning.u2_vrt_ref = 6;
 		instance->phy_tuning.u2_term_ref = 6;
 		instance->phy_tuning.u2_enhance = 1;
+#ifdef OPLUS_FEATURE_CHG_BASIC
+		instance->phy_tuning.u2_discth = -1;
+		instance->phy_tuning.host_u2_vrt_ref = 6;
+		instance->phy_tuning.host_u2_term_ref = 6;
+		instance->phy_tuning.host_u2_enhance = 1;
+		instance->phy_tuning.host_u2_discth = -1;
+#endif
 		of_node = of_find_compatible_node(NULL, NULL,
 			instance->phycfg->tuning_node_name);
 		if (of_node) {
@@ -493,12 +518,42 @@ static void usb_phy_tuning(struct mtk_phy_instance *instance)
 				(u32 *) &instance->phy_tuning.u2_term_ref);
 			of_property_read_u32(of_node, "u2_enhance",
 				(u32 *) &instance->phy_tuning.u2_enhance);
+#ifdef OPLUS_FEATURE_CHG_BASIC
+			of_property_read_u32(of_node, "u2_discth",
+				(u32 *) &instance->phy_tuning.u2_discth);
+			of_property_read_u32(of_node, "host_u2_vrt_ref",
+				(u32 *) &instance->phy_tuning.host_u2_vrt_ref);
+			of_property_read_u32(of_node, "host_u2_term_ref",
+				(u32 *) &instance->phy_tuning.host_u2_term_ref);
+			of_property_read_u32(of_node, "host_u2_enhance",
+				(u32 *) &instance->phy_tuning.host_u2_enhance);
+			of_property_read_u32(of_node, "host_u2_discth",
+				(u32 *) &instance->phy_tuning.host_u2_discth);
+#endif
 		}
 		instance->phy_tuning.inited = true;
 	}
+#ifndef OPLUS_FEATURE_CHG_BASIC
 	u2_vrt_ref = instance->phy_tuning.u2_vrt_ref;
 	u2_term_ref = instance->phy_tuning.u2_term_ref;
 	u2_enhance = instance->phy_tuning.u2_enhance;
+#else /*OPLUS_FEATURE_CHG_BASIC*/
+	if (usb_mode == 0){ //host
+		u2_vrt_ref = instance->phy_tuning.host_u2_vrt_ref;
+		u2_term_ref = instance->phy_tuning.host_u2_term_ref;
+		u2_enhance = instance->phy_tuning.host_u2_enhance;
+		u2_discth = instance->phy_tuning.host_u2_discth;
+	} else{             //device
+		u2_vrt_ref = instance->phy_tuning.u2_vrt_ref;
+		u2_term_ref = instance->phy_tuning.u2_term_ref;
+		u2_enhance = instance->phy_tuning.u2_enhance;
+		u2_discth = instance->phy_tuning.u2_discth;
+	}
+	phy_printk(K_ERR, "%s-u2_vrt_ref=0x%x,u2_term_ref=0x%x,u2_enhance=0x%x,u2_discth=0x%x\n",
+			(usb_mode == 0) ? "host" : "device",
+			u2_vrt_ref, u2_term_ref,
+			u2_enhance, u2_discth);
+#endif /*!OPLUS_FEATURE_CHG_BASIC*/
 
 	if (u2_vrt_ref != -1) {
 		if (u2_vrt_ref <= VAL_MAX_WIDTH_3) {
@@ -521,6 +576,15 @@ static void usb_phy_tuning(struct mtk_phy_instance *instance)
 				RG_USB20_PHY_REV_6, u2_enhance);
 		}
 	}
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	if (u2_discth != -1) {
+		if (u2_discth <= VAL_MAX_WIDTH_4) {
+			u3phywrite32(U3D_USBPHYACR6,
+				RG_USB20_DISCTH_OFST,
+				RG_USB20_DISCTH, u2_discth);
+		}
+	}
+#endif
 
 	phy_printk(K_INFO, "%s - SSUSB TX EYE Tuning\n", __func__);
 	u3phywrite32(U3D_PHYD_MIX6, RG_SSUSB_IDRVSEL_OFST,
@@ -572,6 +636,10 @@ static void phy_recover(struct mtk_phy_instance *instance)
 		RG_DPPULLDOWN, 0);
 	u3phywrite32(U3D_U2PHYDTM0, RG_DMPULLDOWN_OFST,
 		RG_DMPULLDOWN, 0);
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	/* clean internal pull down*/
+	u3phywrite32(U3D_USBPHYACR6, RG_USB20_PHY_REV_OFST, (0x2 << 24), 0x0);
+#endif
 	u3phywrite32(U3D_U2PHYDTM0, RG_XCVRSEL_OFST,
 		RG_XCVRSEL, 0);
 	u3phywrite32(U3D_U2PHYDTM0, RG_TERMSEL_OFST,

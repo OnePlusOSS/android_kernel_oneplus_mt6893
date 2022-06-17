@@ -28,6 +28,10 @@ obj-$(CONFIG_MFD_RT5081_PMU)	+= rt5081/
 obj-$(CONFIG_MFD_MT6370_PMU)    += mt6370/
 obj-$(CONFIG_MFD_MT6360_PMU)    += mt6360/
 
+#ifdef VENDOE_EDIT
+obj-y += pmic_ldo_set/
+#endif
+
 ifneq (,$(findstring evb,$(CONFIG_ARCH_MTK_PROJECT)))
 	subdir-ccflags-y += -DMTK_EVB_PLATFORM
 endif

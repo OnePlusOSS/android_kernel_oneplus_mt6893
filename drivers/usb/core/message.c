@@ -566,7 +566,16 @@ void usb_sg_wait(struct usb_sg_request *io)
 	 * So could the submit loop above ... but it's easier to
 	 * solve neither problem than to solve both!
 	 */
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	//modify completion with 55s timeout
+	//for exception usb storage devices
+	if (!wait_for_completion_timeout(&io->complete, HZ*55)) {
+		dev_warn(&io->dev->dev,"%s urb timeout\n", __func__);
+		usb_sg_cancel(io);
+	}
+#else
 	wait_for_completion(&io->complete);
+#endif /*OPLUS_FEATURE_CHG_BASIC*/
 
 	sg_clean(io);
 }

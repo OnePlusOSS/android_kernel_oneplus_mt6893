@@ -1,0 +1,9 @@
+
+&audio_extend {
+	//for nxp speaker
+	oplus,speaker-vendor = "nxp";
+	oplus,speaker-i2s-id = <3>;
+	oplus,speaker-i2s-id-in = <0>;
+	oplus,speaker-codec-name = "tfa98xx.6-0034";
+	oplus,speaker-codec-dai-name = "tfa98xx-aif-6-34";
+};

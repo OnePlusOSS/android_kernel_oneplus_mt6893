@@ -79,4 +79,10 @@ int AudDrv_GPIO_RCVSPK_Select(int bEnable);
 int AudDrv_GPIO_HPDEPOP_Select(int bEnable);
 
 int audio_drv_gpio_aud_clk_pull(bool high);
+
+#ifdef OPLUS_BUG_COMPATIBILITY
+int auddrv_gpio_i2s0_select(int b_enable);
+int auddrv_gpio_i2s1_select(int bEnable);
+#endif /* OPLUS_BUG_COMPATIBILITY */
+
 #endif

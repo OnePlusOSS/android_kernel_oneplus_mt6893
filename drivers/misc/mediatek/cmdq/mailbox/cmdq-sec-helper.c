@@ -328,7 +328,7 @@ int cmdq_sec_pkt_wait_complete(struct cmdq_pkt *pkt)
 
 		cmdq_util_dump_unlock();
 	} while (1);
-
+	pkt->task_alloc = false;
 	cmdq_sec_mbox_disable(client->chan);
 
 #if IS_ENABLED(CONFIG_MMPROFILE)

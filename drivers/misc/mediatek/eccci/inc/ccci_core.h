@@ -294,6 +294,12 @@ extern void mtk_ccci_ccb_info_peek(void);
 #define CCCI_IOC_RILD_POWER_OFF_MD		\
 	_IO(CCCI_IOC_MAGIC,  125)
 
+//#ifdef OPLUS_FEATURE_SWTP
+//Add for caple detect when SIM plug in
+/* RILD  */
+#define CCCI_IOC_SIM_INSERTED_FOR_SWITCH_RF_SAR     \
+    _IO(CCCI_IOC_MAGIC,  126)
+//#endif /* OPLUS_FEATURE_SWTP */
 
 #define CCCI_IPC_MAGIC 'P' /* only for IPC user */
 #define CCCI_IPC_RESET_RECV			_IO(CCCI_IPC_MAGIC, 0)

@@ -21,6 +21,9 @@
 #include "simulator_kernel.h"
 #endif
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+#include <linux/syscalls.h>
+#endif
 
 /* ============================================================ */
 /* typedef */
@@ -70,6 +73,8 @@ extern signed int battery_get_bat_temperature(void);
 extern signed int battery_get_ibus(void);
 extern signed int battery_get_vbus(void);
 extern signed int battery_get_bat_avg_current(void);
+int battery_type_check(void);
+bool is_fuelgauge_apply(void);
 
 
 #endif /* End of _FUEL_GAUGE_GM_30_H */
