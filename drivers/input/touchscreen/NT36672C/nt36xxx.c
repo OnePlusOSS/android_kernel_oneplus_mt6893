@@ -183,20 +183,16 @@ static inline int32_t spi_read_write(struct spi_device *client, uint8_t *buf, si
 		.len = len,
 	};
 
+	memcpy(ts->xbuf, buf, len + DUMMY_BYTES);
+
 	switch (rw) {
 	case NVTREAD:
-		if (len + DUMMY_BYTES > NVT_TRANSFER_LEN + 1)
-			return -EINVAL;
-		memcpy(ts->xbuf, buf, len + DUMMY_BYTES);
 		t.tx_buf = ts->xbuf;
 		t.rx_buf = ts->rbuf;
 		t.len = (len + DUMMY_BYTES);
 		break;
 
 	case NVTWRITE:
-		if (len > NVT_TRANSFER_LEN + 1)
-			return -EINVAL;
-		memcpy(ts->xbuf, buf, len);
 		t.tx_buf = ts->xbuf;
 		break;
 	}
@@ -334,7 +330,7 @@ return:
 *******************************************************/
 void nvt_bld_crc_enable(void)
 {
-	uint8_t buf[4] = { 0 };
+	uint8_t buf[2] = { 0 };
 
 	//---set xdata index to BLD_CRC_EN_ADDR---
 	nvt_set_page(ts->mmap->BLD_CRC_EN_ADDR);
@@ -359,7 +355,7 @@ return:
 *******************************************************/
 void nvt_fw_crc_enable(void)
 {
-	uint8_t buf[4] = { 0 };
+	uint8_t buf[2] = { 0 };
 
 	//---set xdata index to EVENT BUF ADDR---
 	nvt_set_page(ts->mmap->EVENT_BUF_ADDR);
@@ -595,7 +591,7 @@ return:
 *******************************************************/
 int32_t nvt_read_pid(void)
 {
-	uint8_t buf[4] = { 0 };
+	uint8_t buf[3] = { 0 };
 	int32_t ret = 0;
 
 	//---set xdata index to EVENT BUF ADDR---
@@ -1481,6 +1477,7 @@ static int nvt_tp_power_on_reinit(void)
 }
 #endif
 
+
 /*******************************************************
 Description:
 	Novatek touchscreen driver probe function.
@@ -1513,6 +1510,7 @@ static int32_t nvt_ts_probe(struct spi_device *client)
 	void **retval = NULL;
 #endif
 
+
 	NVT_LOG("start\n");
 
 	ts = kmalloc(sizeof(struct nvt_ts_data), GFP_KERNEL);
@@ -1521,7 +1519,7 @@ static int32_t nvt_ts_probe(struct spi_device *client)
 		return -ENOMEM;
 	}
 
-	ts->xbuf = kzalloc((NVT_TRANSFER_LEN + 1), GFP_KERNEL);
+	ts->xbuf = (uint8_t *) kzalloc((NVT_TRANSFER_LEN + 1), GFP_KERNEL);
 	if (ts->xbuf == NULL) {
 		NVT_ERR("kzalloc for xbuf failed!\n");
 		if (ts) {
@@ -1717,6 +1715,8 @@ static int32_t nvt_ts_probe(struct spi_device *client)
 		if (!videolfb_tag)
 			NVT_ERR("Invalid lcm name\n");
 			NVT_LOG("read lcm name : %s\n", videolfb_tag->lcmname);
+
+		#if defined(CONFIG_TOUCH_FW_MP_ONE)
 		if (strcmp("nt36672c_fhdp_dsi_vdo_auo_cphy_90hz_jdi_lcm_drv",
 			videolfb_tag->lcmname) == 0 ||
 			strcmp("nt36672c_fhdp_dsi_vdo_auo_cphy_90hz_jdi_hfp_lcm_drv",
@@ -1734,18 +1734,35 @@ static int32_t nvt_ts_probe(struct spi_device *client)
 			strncpy(novatek_firmware, firmware_name, sizeof(firmware_name));
 		else
 			strncpy(novatek_firmware, firmware_name, sizeof(firmware_name));
+		#else
+		if (strcmp("nt36672c_fhdp_dsi_vdo_90hz_jdi_rt4801_lcm_drv",
+			videolfb_tag->lcmname) == 0 ||
+			strcmp("nt36672c_fhdp_dsi_vdo_cphy_90hz_jdi_rt4801_lcm_drv",
+			videolfb_tag->lcmname) == 0 ||
+			strcmp("nt36672c_fhdp_dsi_vdo_cphy_90hz_jdi_rt4801_hfp_lcm_drv",
+			videolfb_tag->lcmname) == 0)
+			strncpy(novatek_firmware, firmware_name_jdi, sizeof(firmware_name_jdi));
+		else if (strcmp("nt36672c_fhdp_dsi_vdo_cphy_90hz_tianma_rt4801_lcm_drv",
+			videolfb_tag->lcmname) == 0 ||
+			strcmp("nt36672c_fhdp_dsi_vdo_cphy_90hz_tianma_rt4801_hfp_lcm_drv",
+			videolfb_tag->lcmname) == 0)
+			strncpy(novatek_firmware, firmware_name_tm, sizeof(firmware_name_tm));
+		else
+			strncpy(novatek_firmware, firmware_name, sizeof(firmware_name));
+		#endif
+
 		NVT_LOG("nt36672c touch fw name : %s", BOOT_UPDATE_FIRMWARE_NAME);
 	} else
 		NVT_ERR("Can't find node: chose in dts");
-	nvt_fwu_wq = alloc_workqueue("nvt_fwu_wq", WQ_UNBOUND | WQ_MEM_RECLAIM, 1);
-	if (!nvt_fwu_wq) {
-		NVT_ERR("nvt_fwu_wq create workqueue failed\n");
+	nvt_fwu_worker = kthread_create_worker(0, "nvt_fwu_worker");
+	if (!nvt_fwu_worker) {
+		NVT_ERR("nvt_fwu_worker create kthread failed\n");
 		ret = -ENOMEM;
 		goto err_create_nvt_fwu_wq_failed;
 	}
-	INIT_DELAYED_WORK(&ts->nvt_fwu_work, Boot_Update_Firmware);
-	// please make sure boot update start after display reset(RESX) sequence
-	queue_delayed_work(nvt_fwu_wq, &ts->nvt_fwu_work, msecs_to_jiffies(14000));
+	kthread_init_delayed_work(&ts->nvt_fwu_dw, Boot_Update_Firmware);
+	kthread_queue_delayed_work(nvt_fwu_worker, &ts->nvt_fwu_dw, msecs_to_jiffies(14000));
+	NVT_LOG("start kthread_queue_delayed_work nt36672c\n");
 #endif
 
 	NVT_LOG("NVT_TOUCH_ESD_PROTECT is %d\n", NVT_TOUCH_ESD_PROTECT);
@@ -1863,10 +1880,11 @@ err_flash_proc_init_failed:
 err_create_nvt_esd_check_wq_failed:
 #endif
 #if BOOT_UPDATE_FIRMWARE
-	if (nvt_fwu_wq) {
-		cancel_delayed_work_sync(&ts->nvt_fwu_work);
-		destroy_workqueue(nvt_fwu_wq);
-		nvt_fwu_wq = NULL;
+	if (nvt_fwu_worker) {
+		kthread_cancel_delayed_work_sync(&ts->nvt_fwu_dw);
+		kthread_destroy_worker(nvt_fwu_worker);
+		NVT_LOG("kthread_destroy_worker err_create nt36672c\n");
+		nvt_fwu_worker = NULL;
 	}
 err_create_nvt_fwu_wq_failed:
 #endif
@@ -1944,10 +1962,11 @@ static int32_t nvt_ts_remove(struct spi_device *client)
 #endif
 
 #if BOOT_UPDATE_FIRMWARE
-	if (nvt_fwu_wq) {
-		cancel_delayed_work_sync(&ts->nvt_fwu_work);
-		destroy_workqueue(nvt_fwu_wq);
-		nvt_fwu_wq = NULL;
+	if (nvt_fwu_worker) {
+		kthread_cancel_delayed_work_sync(&ts->nvt_fwu_dw);
+		kthread_destroy_worker(nvt_fwu_worker);
+		NVT_LOG("kthread_destroy_worker remove nt36672c\n");
+		nvt_fwu_worker = NULL;
 	}
 #endif
 
@@ -2016,11 +2035,13 @@ static void nvt_ts_shutdown(struct spi_device *client)
 #endif				/* #if NVT_TOUCH_ESD_PROTECT */
 
 #if BOOT_UPDATE_FIRMWARE
-	if (nvt_fwu_wq) {
-		cancel_delayed_work_sync(&ts->nvt_fwu_work);
-		destroy_workqueue(nvt_fwu_wq);
-		nvt_fwu_wq = NULL;
+	if (nvt_fwu_worker) {
+		kthread_cancel_delayed_work_sync(&ts->nvt_fwu_dw);
+		kthread_destroy_worker(nvt_fwu_worker);
+		NVT_LOG("kthread_destroy_worker shutdown nt36672c\n");
+		nvt_fwu_worker = NULL;
 	}
+
 #endif
 
 #if WAKEUP_GESTURE

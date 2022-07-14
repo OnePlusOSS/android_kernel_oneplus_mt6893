@@ -230,6 +230,10 @@ static long ged_dispatch(struct file *pFile,
 			VALIDATE_ARG(QUERY_DVFS_FREQ_PRED);
 			ret = ged_bridge_query_dvfs_freq_pred(pvIn, pvOut);
 			break;
+		case GED_BRIDGE_COMMAND_QUERY_GPU_DVFS_INFO:
+			VALIDATE_ARG(QUERY_GPU_DVFS_INFO);
+			ret = ged_bridge_query_gpu_dvfs_info(pvIn, pvOut);
+			break;
 		case GED_BRIDGE_COMMAND_GE_ALLOC:
 			VALIDATE_ARG(GE_ALLOC);
 			ret = ged_bridge_ge_alloc(pvIn, pvOut);
@@ -356,11 +360,13 @@ static int ged_pdrv_probe(struct platform_device *pdev)
 {
 #ifdef CONFIG_MTK_GPU_OPP_STATS_SUPPORT
 	int ret;
+
 	ret = ged_dvfs_init_opp_cost();
 	if (ret) {
 		GED_LOGE("@%s: failed to probe ged driver (%d)\n",
 		__func__, ret);
 	}
+
 	return ret;
 #else
 	return 0;
@@ -450,7 +456,6 @@ static void ged_exit(void)
 	remove_proc_entry(GED_DRIVER_DEVICE_NAME, NULL);
 
 	platform_driver_unregister(&g_ged_pdrv);
-
 }
 
 static int ged_init(void)

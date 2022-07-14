@@ -1,0 +1,16 @@
+
+
+:
+
+Change-Id: Ie2790187aedb73fc8b3583283c1be34d2b0977ef
+
+# Please enter the commit message for your changes. Lines starting
+# with '#' will be ignored, and an empty message aborts the commit.
+#
+# Date:      Thu Oct 21 21:52:18 2021 +0800
+#
+# Not currently on any branch.
+# Changes to be committed:
+#	modified:   configs/k68v1_64_debug_defconfig
+#	modified:   configs/k68v1_64_defconfig
+#

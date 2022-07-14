@@ -17,6 +17,7 @@
 #include <linux/swap.h>
 #include <linux/falloc.h>
 #include <linux/uio.h>
+#include <mt-plat/mtk_blocktag.h>
 
 static const struct file_operations fuse_direct_io_file_operations;
 
@@ -134,7 +135,7 @@ int fuse_do_open(struct fuse_conn *fc, u64 nodeid, struct file *file,
 		if (!err) {
 			ff->fh = outarg.fh;
 			ff->open_flags = outarg.open_flags;
-
+			fuse_passthrough_setup(fc, ff, &outarg);
 		} else if (err != -ENOSYS || isdir) {
 			fuse_file_free(ff);
 			return err;
@@ -255,6 +256,8 @@ void fuse_release_common(struct file *file, bool isdir)
 	struct fuse_file *ff = file->private_data;
 	struct fuse_req *req = ff->reserved_req;
 	int opcode = isdir ? FUSE_RELEASEDIR : FUSE_RELEASE;
+
+	fuse_passthrough_release(&ff->passthrough);
 
 	fuse_prepare_release(ff, file->f_flags, opcode);
 
@@ -826,6 +829,10 @@ static void fuse_send_readpages(struct fuse_req *req, struct file *file)
 	req->out.page_replace = 1;
 	fuse_read_fill(req, file, pos, count, FUSE_READ);
 	req->misc.read.attr_ver = fuse_get_attr_version(fc);
+
+	mtk_btag_pidlog_set_pid_pages(req->pages, req->num_pages,
+				      PIDLOG_MODE_FS_FUSE, false);
+
 	if (fc->async_read) {
 		req->ff = fuse_file_get(ff);
 		req->end = fuse_readpages_end;
@@ -925,6 +932,7 @@ static ssize_t fuse_file_read_iter(struct kiocb *iocb, struct iov_iter *to)
 {
 	struct inode *inode = iocb->ki_filp->f_mapping->host;
 	struct fuse_conn *fc = get_fuse_conn(inode);
+	struct fuse_file *ff = iocb->ki_filp->private_data;
 
 	/*
 	 * In auto invalidate mode, always update attributes on read.
@@ -938,7 +946,8 @@ static ssize_t fuse_file_read_iter(struct kiocb *iocb, struct iov_iter *to)
 		if (err)
 			return err;
 	}
-
+	if (ff->passthrough.filp)
+		return fuse_passthrough_read_iter(iocb, to);
 	return generic_file_read_iter(iocb, to);
 }
 
@@ -1149,6 +1158,11 @@ static ssize_t fuse_perform_write(struct kiocb *iocb,
 		} else {
 			size_t num_written;
 
+			mtk_btag_pidlog_set_pid_pages(req->pages,
+						      req->num_pages,
+						      PIDLOG_MODE_FS_FUSE,
+						      true);
+
 			num_written = fuse_send_write_pages(req, iocb, inode,
 							    pos, count);
 			err = req->out.h.error;
@@ -1182,6 +1196,10 @@ static ssize_t fuse_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
 	struct inode *inode = mapping->host;
 	ssize_t err;
 	loff_t endbyte = 0;
+	struct fuse_file *ff = file->private_data;
+
+	if (ff->passthrough.filp)
+		return fuse_passthrough_write_iter(iocb, from);
 
 	if (get_fuse_conn(inode)->writeback_cache) {
 		/* Update size (EOF optimization) and mode (SUID clearing) */
@@ -1418,11 +1436,14 @@ static ssize_t __fuse_direct_read(struct fuse_io_priv *io,
 {
 	ssize_t res;
 	struct inode *inode = file_inode(io->iocb->ki_filp);
+	struct fuse_file *ff = io->iocb->ki_filp->private_data;
 
 	if (is_bad_inode(inode))
 		return -EIO;
-
-	res = fuse_direct_io(io, iter, ppos, 0);
+	if (ff->passthrough.filp)
+		res = fuse_passthrough_read_iter(io->iocb, iter);
+	else
+		res = fuse_direct_io(io, iter, ppos, 0);
 
 	fuse_invalidate_attr(inode);
 
@@ -1438,11 +1459,18 @@ static ssize_t fuse_direct_read_iter(struct kiocb *iocb, struct iov_iter *to)
 static ssize_t fuse_direct_write_iter(struct kiocb *iocb, struct iov_iter *from)
 {
 	struct inode *inode = file_inode(iocb->ki_filp);
+	struct fuse_file *ff = iocb->ki_filp->private_data;
 	struct fuse_io_priv io = FUSE_IO_PRIV_SYNC(iocb);
 	ssize_t res;
 
 	if (is_bad_inode(inode))
 		return -EIO;
+
+	if (ff->passthrough.filp) {
+		res = fuse_passthrough_write_iter(iocb, from);
+		fuse_invalidate_attr(inode);
+		return res;
+	}
 
 	/* Don't allow parallel writes to the same file */
 	inode_lock(inode);
@@ -1984,6 +2012,7 @@ static int fuse_write_begin(struct file *file, struct address_space *mapping,
 		goto cleanup;
 success:
 	*pagep = page;
+	mtk_btag_pidlog_set_pid(page, PIDLOG_MODE_FS_FUSE, true);
 	return 0;
 
 cleanup:
@@ -2082,6 +2111,11 @@ static const struct vm_operations_struct fuse_file_vm_ops = {
 
 static int fuse_file_mmap(struct file *file, struct vm_area_struct *vma)
 {
+	struct fuse_file *ff = file->private_data;
+
+	if (ff->passthrough.filp)
+		return fuse_passthrough_mmap(file, vma);
+
 	if ((vma->vm_flags & VM_SHARED) && (vma->vm_flags & VM_MAYWRITE))
 		fuse_link_write_file(file);
 
@@ -2092,6 +2126,11 @@ static int fuse_file_mmap(struct file *file, struct vm_area_struct *vma)
 
 static int fuse_direct_mmap(struct file *file, struct vm_area_struct *vma)
 {
+	struct fuse_file *ff = file->private_data;
+
+	if (ff->passthrough.filp)
+		return fuse_passthrough_mmap(file, vma);
+
 	/* Can't provide the coherency needed for MAP_SHARED */
 	if (vma->vm_flags & VM_MAYSHARE)
 		return -ENODEV;

@@ -21,5 +21,4 @@ extern MUINT32 Get_Camera_Temperature(
 	MUINT32 *temp);
 extern unsigned int Switch_Tg_For_Stagger(unsigned int camtg);
 
-
 #endif

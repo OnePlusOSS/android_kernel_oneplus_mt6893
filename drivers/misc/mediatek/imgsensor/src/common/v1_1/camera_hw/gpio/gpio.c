@@ -12,6 +12,7 @@
  */
 
 #include "gpio.h"
+#include <soc/oplus/system/oplus_project.h>
 
 struct GPIO_PINCTRL gpio_pinctrl_list_cam[
 			GPIO_CTRL_STATE_MAX_NUM_CAM] = {
@@ -26,8 +27,92 @@ struct GPIO_PINCTRL gpio_pinctrl_list_cam[
 	{"ldo_vcamd_0"},
 	{"ldo_vcamio_1"},
 	{"ldo_vcamio_0"},
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	{"ldo_vcama1_1"},
+	{"ldo_vcama1_0"},
+	{"ldo_vcamd1_1"},
+	{"ldo_vcamd1_0"},
+	{"ldo_vcamiso_1"},
+	{"ldo_vcamiso_0"},
+	{"ldo_vcamiso1_1"},
+	{"ldo_vcamiso1_0"},
+#endif
 };
 
+struct GPIO_PINCTRL gpio_pinctrl_list_cam_dufu[
+			GPIO_CTRL_STATE_MAX_NUM_CAM] = {
+	/* Main */
+	{"pnd1"},
+	{"pnd0"},
+	{"rst1"},
+	{"rst0"},
+	{"ldo_vcama_1"},
+	{"ldo_vcama_0"},
+	{"ldo_vcamd_1"},
+	{"ldo_vcamd_0"},
+	{"ldo_vcamio_1"},
+	{"ldo_vcamio_0"},
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	{"ldo_vcamaf_1"},
+	{"ldo_vcamaf_0"},
+	{"ldo_vcama1_1"},
+	{"ldo_vcama1_0"},
+	{"ldo_vcamd1_1"},
+	{"ldo_vcamd1_0"},
+	{"ldo_vcamiso_1"},
+	{"ldo_vcamiso_0"},
+	{"ldo_vcama1_1"},
+	{"ldo_vcama1_0"},
+#endif
+
+};
+
+struct GPIO_PINCTRL gpio_pinctrl_list_cam_moss[
+                        GPIO_CTRL_STATE_MAX_NUM_CAM] = {
+        /* Main */
+        {"pnd1"},
+        {"pnd0"},
+        {"rst1"},
+        {"rst0"},
+        {"ldo_vcama_1"},
+        {"ldo_vcama_0"},
+        {"ldo_vcamd_1"},
+        {"ldo_vcamd_0"},
+        {"ldo_vcamio_1"},
+        {"ldo_vcamio_0"},
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+		{"ldo_vcamaf_1"},
+		{"ldo_vcamaf_0"},
+        {"ldo_vcama1_1"},
+        {"ldo_vcama1_0"},
+        {"ldo_vcamd1_1"},
+        {"ldo_vcamd1_0"},
+        {"ldo_vcamois_1"},
+        {"ldo_vcamois_0"},
+        {"ldo_vcamois1_1"},
+        {"ldo_vcamois1_0"},
+#endif
+
+};
+
+struct GPIO_PINCTRL gpio_pinctrl_list_cam_212a1[
+			GPIO_CTRL_STATE_MAX_NUM_CAM] = {
+	/* Main */
+	{"pnd1"},
+	{"pnd0"},
+	{"rst1"},
+	{"rst0"},
+	{"ldo_vcama_1"},
+	{"ldo_vcama_0"},
+	{"ldo_vcamaf_1"},
+	{"ldo_vcamaf_0"},
+	{"ldo_vcamd_1"},
+	{"ldo_vcamd_0"},
+	{"ldo_vcamio_1"},
+	{"ldo_vcamio_0"},
+	{"ldo_vcama1_1"},
+	{"ldo_vcama1_0"}
+};
 #ifdef MIPI_SWITCH
 struct GPIO_PINCTRL gpio_pinctrl_list_switch[
 			GPIO_CTRL_STATE_MAX_NUM_SWITCH] = {
@@ -35,6 +120,18 @@ struct GPIO_PINCTRL gpio_pinctrl_list_switch[
 	{"cam_mipi_switch_en_0"},
 	{"cam_mipi_switch_sel_1"},
 	{"cam_mipi_switch_sel_0"}
+};
+#endif
+
+extern void gpio_dump_regs(void);
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+struct GPIO_PINCTRL gpio_pinctrl_list_ldo_enable[1] = {
+	{"fan53870_chip_enable"}
+};
+
+struct GPIO_PINCTRL gpio_pinctrl_list_gpio_power[2] = {
+	{"cam0_gpio_power_enable"},
+	{"cam0_gpio_power_disable"}
 };
 #endif
 
@@ -62,15 +159,33 @@ static enum IMGSENSOR_RETURN gpio_init(
 		j < IMGSENSOR_SENSOR_IDX_MAX_NUM;
 		j++) {
 		for (i = 0 ; i < GPIO_CTRL_STATE_MAX_NUM_CAM; i++) {
-			lookup_names =
-			gpio_pinctrl_list_cam[i].ppinctrl_lookup_names;
-
+			if(is_project(0x2169E) || is_project(0x2169F) || is_project(0x216C9) || is_project(0x216CA)
+                          || is_project(21711) || is_project(21712)) {
+				lookup_names =
+				gpio_pinctrl_list_cam_moss[i].ppinctrl_lookup_names;
+			} else if(is_project(21081)) {
+				lookup_names =
+				gpio_pinctrl_list_cam_dufu[i].ppinctrl_lookup_names;
+			} else if(is_project(0x212A1)) {
+				lookup_names =
+				gpio_pinctrl_list_cam_212a1[i].ppinctrl_lookup_names;
+			}
+			else {
+				lookup_names =
+				gpio_pinctrl_list_cam[i].ppinctrl_lookup_names;
+			}
 			if (lookup_names) {
-				snprintf(str_pinctrl_name,
+				ret = snprintf(str_pinctrl_name,
 				sizeof(str_pinctrl_name),
 				"cam%d_%s",
 				j,
 				lookup_names);
+				if (ret < 0)
+					pr_info(
+						"ERROR:%s, snprintf err, %d\n",
+						__func__,
+						ret);
+
 				pgpio->ppinctrl_state_cam[j][i] =
 					pinctrl_lookup_state(
 						pgpio->ppinctrl,
@@ -87,6 +202,42 @@ static enum IMGSENSOR_RETURN gpio_init(
 			}
 		}
 	}
+	#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	if (1) {
+		if (gpio_pinctrl_list_ldo_enable[0].ppinctrl_lookup_names) {
+			pgpio->pinctrl_state_ldo_enable = pinctrl_lookup_state(
+				pgpio->ppinctrl,
+				gpio_pinctrl_list_ldo_enable[0].ppinctrl_lookup_names);
+		}
+		if (pgpio->pinctrl_state_ldo_enable == NULL) {
+			PK_PR_ERR("%s : pinctrl err, %s\n", __func__,
+				gpio_pinctrl_list_ldo_enable[0].ppinctrl_lookup_names);
+			ret = IMGSENSOR_RETURN_ERROR;
+		}
+
+		if (gpio_pinctrl_list_gpio_power[0].ppinctrl_lookup_names) {
+			pgpio->pinctrl_state_gpio_power_enable = pinctrl_lookup_state(
+				pgpio->ppinctrl,
+				gpio_pinctrl_list_gpio_power[0].ppinctrl_lookup_names);
+		}
+		if (pgpio->pinctrl_state_gpio_power_enable == NULL) {
+			PK_PR_ERR("%s : pinctrl err, %s\n", __func__,
+				gpio_pinctrl_list_gpio_power[0].ppinctrl_lookup_names);
+			ret = IMGSENSOR_RETURN_ERROR;
+		}
+
+		if (gpio_pinctrl_list_gpio_power[1].ppinctrl_lookup_names) {
+			pgpio->pinctrl_state_gpio_power_disable = pinctrl_lookup_state(
+				pgpio->ppinctrl,
+				gpio_pinctrl_list_gpio_power[1].ppinctrl_lookup_names);
+		}
+		if (pgpio->pinctrl_state_gpio_power_disable == NULL) {
+			PK_PR_ERR("%s : pinctrl err, %s\n", __func__,
+				gpio_pinctrl_list_gpio_power[1].ppinctrl_lookup_names);
+			ret = IMGSENSOR_RETURN_ERROR;
+		}
+	}
+	#endif
 #ifdef MIPI_SWITCH
 	for (i = 0; i < GPIO_CTRL_STATE_MAX_NUM_SWITCH; i++) {
 		if (gpio_pinctrl_list_switch[i].ppinctrl_lookup_names) {
@@ -123,21 +274,31 @@ static enum IMGSENSOR_RETURN gpio_set(
 	struct GPIO           *pgpio = (struct GPIO *)pinstance;
 	enum   GPIO_STATE      gpio_state;
 
-	/* PK_DBG("%s :debug pinctrl ENABLE, PinIdx %d, Val %d\n",
-	 *	__func__, pin, pin_state);
-	 */
+	PK_DBG("%s :debug pinctrl ENABLE, PinIdx %d, Val %d\n",__func__, pin, pin_state);
 
+	if (is_project(19165)) {
+                if (pin < IMGSENSOR_HW_PIN_PDN ||
+                        pin > IMGSENSOR_HW_PIN_AVDD_1 ||
+                        pin_state < IMGSENSOR_HW_PIN_STATE_LEVEL_0 ||
+                        pin_state > IMGSENSOR_HW_PIN_STATE_LEVEL_HIGH ||
+                        sensor_idx < 0)
+                                return IMGSENSOR_RETURN_ERROR;
+	} else {
 	if (pin < IMGSENSOR_HW_PIN_PDN ||
 #ifdef MIPI_SWITCH
 	    pin > IMGSENSOR_HW_PIN_MIPI_SWITCH_SEL ||
 #else
+		#ifdef OPLUS_FEATURE_CAMERA_COMMON
+		pin > IMGSENSOR_HW_PIN_GPIO_POWER_ENABLE ||
+		#else
 		pin > IMGSENSOR_HW_PIN_DOVDD ||
+		#endif
 #endif
 		pin_state < IMGSENSOR_HW_PIN_STATE_LEVEL_0 ||
 		pin_state > IMGSENSOR_HW_PIN_STATE_LEVEL_HIGH ||
 		sensor_idx < 0)
 		return IMGSENSOR_RETURN_ERROR;
-
+	}
 	gpio_state = (pin_state > IMGSENSOR_HW_PIN_STATE_LEVEL_0)
 		? GPIO_STATE_H : GPIO_STATE_L;
 
@@ -151,9 +312,24 @@ static enum IMGSENSOR_RETURN gpio_set(
 	else
 #endif
 	{
+		#ifdef OPLUS_FEATURE_CAMERA_COMMON
+		if (pin == IMGSENSOR_HW_PIN_FAN53870_ENABLE) {
+			ppinctrl_state = pgpio->pinctrl_state_ldo_enable;
+		} else if(pin == IMGSENSOR_HW_PIN_GPIO_POWER_ENABLE) {
+			if (gpio_state == GPIO_STATE_H)
+				ppinctrl_state = pgpio->pinctrl_state_gpio_power_enable;
+			else
+				ppinctrl_state = pgpio->pinctrl_state_gpio_power_disable;
+		} else {
+			ppinctrl_state =
+				pgpio->ppinctrl_state_cam[sensor_idx][
+				((pin - IMGSENSOR_HW_PIN_PDN) << 1) + gpio_state];
+		}
+		#else
 		ppinctrl_state =
 			pgpio->ppinctrl_state_cam[sensor_idx][
 			((pin - IMGSENSOR_HW_PIN_PDN) << 1) + gpio_state];
+		#endif
 	}
 
 	mutex_lock(pgpio->pgpio_mutex);
@@ -169,12 +345,23 @@ static enum IMGSENSOR_RETURN gpio_set(
 	return IMGSENSOR_RETURN_SUCCESS;
 }
 
+static enum IMGSENSOR_RETURN gpio_dump(void *pintance)
+{
+#ifdef DUMP_GPIO
+	PK_DBG("[sensor_dump][gpio]\n");
+	gpio_dump_regs();
+	PK_DBG("[sensor_dump][gpio] finish\n");
+#endif
+	return IMGSENSOR_RETURN_SUCCESS;
+}
+
 static struct IMGSENSOR_HW_DEVICE device = {
 	.id        = IMGSENSOR_HW_ID_GPIO,
 	.pinstance = (void *)&gpio_instance,
 	.init      = gpio_init,
 	.set       = gpio_set,
-	.release   = gpio_release
+	.release   = gpio_release,
+	.dump      = gpio_dump
 };
 
 enum IMGSENSOR_RETURN imgsensor_hw_gpio_open(

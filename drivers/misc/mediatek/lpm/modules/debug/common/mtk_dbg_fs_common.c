@@ -13,14 +13,21 @@
 
 #include <mtk_dbg_common_v1.h>
 #include <mtk_lpm_module.h>
+#include <mtk_lpm_call.h>
+#include <mtk_lpm_call_type.h>
+
 #include <mtk_resource_constraint_v1.h>
 #include <mtk_idle_sysfs.h>
 #include <mtk_suspend_sysfs.h>
 #include <mtk_spm_sysfs.h>
+#if defined(CONFIG_MACH_MT6833)  || defined(CONFIG_MACH_MT6877) || defined(CONFIG_MACH_MT6781)
+#include <gs/v1/mtk_power_gs.h>
+#else
 #include <mtk_power_gs_api.h>
+#endif
 #include <mt-plat/mtk_ccci_common.h>
 
-#define MTK_DGB_SUSP_NODE	"/sys/kernel/debug/suspend/suspend_state"
+#define MTK_DGB_SUSP_NODE	"/proc/mtk_lpm/suspend/suspend_state"
 
 #undef mtk_dbg_log
 #define mtk_dbg_log(fmt, args...) \
@@ -45,15 +52,29 @@ static struct syscore_ops spm_block_syscore_ops = {
 static unsigned int mtk_suspend_debug_flag;
 static unsigned int power_golden_dump_type = GS_ALL;
 
+
 /* debugfs for debug in syscore callback */
 static int spm_syscore_dbg_suspend(void)
 {
 	if (mtk_suspend_debug_flag & MTK_DUMP_GPIO)
 		mtk_suspend_gpio_dbg();
 #if !defined(CONFIG_FPGA_EARLY_PORTING)
+#if defined(CONFIG_MACH_MT6833) || defined(CONFIG_MACH_MT6877) || defined(CONFIG_MACH_MT6781)
+#ifdef CONFIG_MTK_LPM_GS_DUMP_SUPPORT
+	if (mtk_suspend_debug_flag & MTK_DUMP_LP_GOLDEN) {
+		struct mtk_lpm_callee_simple *callee = NULL;
+		struct mtk_lpm_data val;
+
+		val.d.v_u32 = power_golden_dump_type;
+		if (!mtk_lpm_callee_get(MTK_LPM_CALLEE_PWR_GS, &callee))
+			callee->set(MTK_LPM_PWR_GS_TYPE_SUSPEND, &val);
+	}
+#endif
+#else
 #ifdef CONFIG_MTK_BASE_POWER
 	if (mtk_suspend_debug_flag & MTK_DUMP_LP_GOLDEN)
 		mt_power_gs_dump_suspend(power_golden_dump_type);
+#endif
 #endif
 #endif
 	mtk_suspend_clk_dbg();
@@ -83,7 +104,7 @@ static ssize_t mtk_dbg_suspend_state_read(char *ToUser, size_t sz, void *priv)
 	mtk_dbg_log("golden dump disable/enable:\n");
 	mtk_dbg_log("echo golden_dump 0/1 > %s\n", MTK_DGB_SUSP_NODE);
 	mtk_dbg_log("golden type setting (default)PMIC[0], CG[1], DCM[2]:\n");
-	mtk_dbg_log("echo golden_type 1/3/7 > %s\n", MTK_DGB_SUSP_NODE);
+	mtk_dbg_log("echo golden_type 1/3/7/15 > %s\n", MTK_DGB_SUSP_NODE);
 
 	return p - ToUser;
 }

@@ -238,7 +238,6 @@ static int m4u_client_add_buf(struct m4u_client_t *client,
  * @remark
  * @see
  * @to-do    we need to add multi domain support here.
- * @author K Zhang      @date 2013/11/14
  */
 /************************************************************/
 static struct m4u_buf_info_t *m4u_client_find_buf(
@@ -1360,7 +1359,7 @@ static int __m4u_sec_init(void)
 		goto out;
 	}
 
-	ret = ctx->m4u_msg->rsp;
+	//ret = ctx->m4u_msg->rsp;
 out:
 	for (i = 0; i < SMI_LARB_NR; i++)
 		larb_clock_off(i, 1);
@@ -1602,38 +1601,6 @@ static void m4u_late_resume(void)
 	}
 
 	M4UMSG("%s -\n", __func__);
-}
-
-static struct notifier_block m4u_fb_notifier;
-static int m4u_fb_notifier_callback(struct notifier_block *self,
-	unsigned long event, void *data)
-{
-	struct fb_event *evdata = data;
-	int blank;
-
-	M4UMSG("%s %ld, %d\n", __func__, event, FB_EVENT_BLANK);
-
-	if (event != FB_EVENT_BLANK)
-		return 0;
-
-	blank = *(int *)evdata->data;
-
-	switch (blank) {
-	case FB_BLANK_UNBLANK:
-	case FB_BLANK_NORMAL:
-		m4u_late_resume();
-		break;
-	case FB_BLANK_VSYNC_SUSPEND:
-	case FB_BLANK_HSYNC_SUSPEND:
-		break;
-	case FB_BLANK_POWERDOWN:
-		m4u_early_suspend();
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	return 0;
 }
 
 int m4u_map_nonsec_buf(int port, unsigned int mva, unsigned int size)
@@ -2020,6 +1987,9 @@ static int m4u_remove(struct platform_device *pdev)
 
 static int m4u_suspend(struct platform_device *pdev, pm_message_t mesg)
 {
+#ifdef M4U_TEE_SERVICE_ENABLE
+	m4u_early_suspend();
+#endif
 	m4u_reg_backup();
 	M4UINFO("M4U backup in suspend\n");
 
@@ -2028,6 +1998,9 @@ static int m4u_suspend(struct platform_device *pdev, pm_message_t mesg)
 
 static int m4u_resume(struct platform_device *pdev)
 {
+#ifdef M4U_TEE_SERVICE_ENABLE
+	m4u_late_resume();
+#endif
 	m4u_reg_restore();
 	M4UINFO("M4U restore in resume\n");
 	return 0;
@@ -2171,7 +2144,7 @@ static int __init MTK_M4U_Init(void)
 		return ret;
 	}
 #else
-	gM4uDev->m4u_dev_proc_entry = proc_create("m4u", 0644, NULL, &m4u_fops);
+	gM4uDev->m4u_dev_proc_entry = proc_create("m4u", 0640, NULL, &m4u_fops);
 	if (!(gM4uDev->m4u_dev_proc_entry)) {
 		M4UMSG("m4u:failed to register m4u in proc/m4u_device.\n");
 		return ret;
@@ -2206,16 +2179,6 @@ static int __init MTK_M4U_Init(void)
 #ifdef M4U_PROFILE
 	m4u_profile_init();
 #endif
-
-#ifdef M4U_TEE_SERVICE_ENABLE
-	m4u_fb_notifier.notifier_call = m4u_fb_notifier_callback;
-	ret = fb_register_client(&m4u_fb_notifier);
-	if (ret)
-		M4UMSG("m4u register fb_notifier failed! ret(%d)\n", ret);
-	else
-		M4UMSG("m4u register fb_notifier OK!\n");
-#endif
-
 	return 0;
 }
 

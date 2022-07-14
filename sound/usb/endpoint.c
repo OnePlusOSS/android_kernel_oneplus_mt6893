@@ -834,7 +834,8 @@ static int data_ep_set_params(struct snd_usb_endpoint *ep,
 			"nurbs=%d, urbs_per_period=%d, periods_per_buffer=%d\n",
 			ep->nurbs, urbs_per_period, periods_per_buffer);
 	}
-
+//#ifndef OPLUS_ARCH_EXTENDS
+#if 0
 	/* allocate and initialize data urbs */
 	if (usb_pipein(ep->pipe))
 		ep->databuf = mtk_usb_alloc_sram(USB_AUDIO_DATA_IN,
@@ -845,6 +846,8 @@ static int data_ep_set_params(struct snd_usb_endpoint *ep,
 
 	if (ep->databuf)
 		ep->databuf_sram = 1;
+#endif
+//#endif /*OPLUS_ARCH_EXTENDS*/
 	for (i = 0; i < ep->nurbs; i++) {
 		struct snd_urb_ctx *u = &ep->urb[i];
 		u->index = i;

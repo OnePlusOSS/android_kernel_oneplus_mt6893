@@ -58,17 +58,24 @@ struct mtk_mbox_recv_record {
 struct mtk_mbox_send_record {
 };
 
+struct mboxmon_s {
+	unsigned short idx;
+	unsigned long long ts;
+};
+
 /*
  * mbox record information
  *
  * write_count    :mbox write success count
  * busy_count     :mbox read success count
  * trig_irq_count :mbox trigger irq success count
+ * mbox_record    :mbox timestamp
  */
 struct mtk_mbox_record {
 	uint32_t write_count;
 	uint32_t busy_count;
 	uint32_t trig_irq_count;
+	struct mboxmon_s mbox_record[8];
 };
 
 /*

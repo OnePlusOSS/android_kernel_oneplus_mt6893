@@ -39,6 +39,7 @@ enum vdec_src_chg_type {
 	VDEC_NEED_SEQ_HEADER        = (1 << 3),
 	VDEC_NEED_MORE_OUTPUT_BUF   = (1 << 4),
 	VDEC_CROP_CHANGED           = (1 << 5),
+	VDEC_OUTPUT_NOT_GENERATED     = (1 << 6),
 };
 
 enum vdec_ipi_msg_status {
@@ -127,6 +128,7 @@ enum vdec_get_param_type {
  * SET_PARAM_CRC_PATH: set CRC path used for UT
  * SET_PARAM_GOLDEN_PATH: set Golden YUV path used for UT
  * SET_PARAM_FB_NUM_PLANES                      : frame buffer plane count
+ * SET_PARAM_DEC_LOG: set decoder log
  */
 enum vdec_set_param_type {
 	SET_PARAM_DECODE_MODE,
@@ -140,7 +142,7 @@ enum vdec_set_param_type {
 	SET_PARAM_NAL_SIZE_LENGTH,
 	SET_PARAM_OPERATING_RATE,
 	SET_PARAM_TOTAL_FRAME_BUFQ_COUNT,
-	SET_PARAM_FORCE_RES_CHANGE
+	SET_PARAM_DEC_LOG,
 };
 
 /**

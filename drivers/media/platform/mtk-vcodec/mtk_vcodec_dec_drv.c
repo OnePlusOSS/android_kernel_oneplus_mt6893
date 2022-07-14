@@ -68,6 +68,7 @@ static int fops_vcodec_open(struct file *file)
 		init_waitqueue_head(&ctx->queue[i]);
 	mutex_init(&ctx->buf_lock);
 	mutex_init(&ctx->worker_lock);
+	mutex_init(&ctx->hw_status);
 
 	ctx->type = MTK_INST_DECODER;
 	ret = mtk_vcodec_dec_ctrls_setup(ctx);
@@ -306,8 +307,11 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 	if (ret)
 		goto err_res;
 
-	for (i = 0; i < MTK_VDEC_HW_NUM; i++)
+	for (i = 0; i < MTK_VDEC_HW_NUM; i++) {
 		sema_init(&dev->dec_sem[i], 1);
+		spin_lock_init(&dev->dec_power_lock[i]);
+		dev->dec_is_power_on[i] = false;
+	}
 	mutex_init(&dev->dev_mutex);
 	mutex_init(&dev->dec_dvfs_mutex);
 	spin_lock_init(&dev->irqlock);
@@ -417,6 +421,9 @@ static const struct of_device_id mtk_vcodec_match[] = {
 	{.compatible = "mediatek,mt6885-vcodec-dec",},
 	{.compatible = "mediatek,mt6873-vcodec-dec",},
 	{.compatible = "mediatek,mt6853-vcodec-dec",},
+	{.compatible = "mediatek,mt6833-vcodec-dec",},
+	{.compatible = "mediatek,mt6877-vcodec-dec",},
+	{.compatible = "mediatek,mt6781-vcodec-dec",},
 	{.compatible = "mediatek,vdec_gcon",},
 	{},
 };

@@ -531,11 +531,30 @@ config UID_SYS_STATS_DEBUG
 	help
 	  Per TASK based io statistics exported to /proc/uid_io
 
+config OPLUS_FEATURE_UID_PERF
+	bool "Per-TASK perf_event statistics"
+	depends on UID_SYS_STATS
+	default n
+	help
+	  Per TASK based on perf_event
+
 config MEMORY_STATE_TIME
 	tristate "Memory freq/bandwidth time statistics"
 	depends on PROFILING
 	help
 	  Memory time statistics exported to /sys/kernel/memory_state_time
+
+config SIM_DETECT
+	tristate "SIM_DETECT system"
+	default n
+	help
+	  Say Y here to enable sim detect system support
+
+config OPLUS_FEATURE_SDCARD
+	tristate "Sdcard add for sdcard support"
+	default n
+	help
+	  Say Y here to use ldo5 in mt6360 for sdcard
 
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
@@ -550,4 +569,11 @@ source "drivers/misc/genwqe/Kconfig"
 source "drivers/misc/echo/Kconfig"
 source "drivers/misc/cxl/Kconfig"
 source "drivers/misc/mediatek/Kconfig"
+#ifdef CONFIG_OPLUS_TRIKEY_HALL
+source "drivers/misc/tri_state_key/Kconfig"
+#endif CONFIG_OPLUS_TRIKEY_HALL
+#ifdef OPLUS_FEATURE_CHG_BASIC//Fanhong.Kong@ProDrv.CHG,add 2018/10/25 for vib aw8697
+source "drivers/misc/aw8697_haptic/Kconfig"
+#endif
+source "drivers/misc/oplus_misc_healthinfo/Kconfig"
 endmenu

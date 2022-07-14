@@ -1870,7 +1870,9 @@ static int sec_buf_ion_alloc(int buf_size)
 	if (IS_ERR_OR_NULL(sec_ion_handle)) {
 		DISPERR("Fatal Error, ion_alloc for size %d failed\n",
 			buf_size);
-		ion_free(ion_client, sec_ion_handle);
+//#ifdef OPLUS_FEATURE_SECURITY_COMMON
+		//ion_free(ion_client, sec_ion_handle);
+//#endif /* OPLUS_FEATURE_SECURITY_COMMON */
 		ion_client_destroy(ion_client);
 		return -1;
 	}
@@ -8237,11 +8239,9 @@ int primary_display_capture_framebuffer_ovl(unsigned long pbuf,
 		goto out;
 	}
 
-	/*
-	 * TODO: legacy ion_handle allocate API phase out,
-	 *	need develop another method allocate MVA
-	 */
-
+	ion_display_handle = disp_ion_alloc(ion_display_client,
+					    ION_HEAP_MULTIMEDIA_MAP_MVA_MASK,
+					    pbuf, buffer_size);
 	if (!ion_display_handle) {
 		DISPMSG("primary capture:Fail to allocate buffer\n");
 		ret = -1;

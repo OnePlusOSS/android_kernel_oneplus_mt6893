@@ -272,8 +272,6 @@ extern void mtk_ccci_ccb_info_peek(void);
 	_IOWR(CCCI_IOC_MAGIC, 64, struct ccci_ccb_config)
 #define CCCI_IOC_CCB_CTRL_OFFSET		\
 	_IOR(CCCI_IOC_MAGIC, 65, unsigned int)
-#define CCCI_IOC_GET_CCB_DEBUG_VAL		\
-	_IOWR(CCCI_IOC_MAGIC, 67, struct ccci_ccb_debug)
 
 #define CCCI_IOC_CCB_CTRL_INFO			\
 	_IOWR(CCCI_IOC_MAGIC, 71, struct ccb_ctrl_info)
@@ -292,7 +290,16 @@ extern void mtk_ccci_ccb_info_peek(void);
 /* RILD  factory */
 #define CCCI_IOC_LEAVE_DEEP_FLIGHT_ENHANCED     \
 	_IO(CCCI_IOC_MAGIC,  124)
+/* RILD nodify ccci power off md */
+#define CCCI_IOC_RILD_POWER_OFF_MD		\
+	_IO(CCCI_IOC_MAGIC,  125)
 
+//#ifdef OPLUS_FEATURE_SWTP
+//Add for caple detect when SIM plug in
+/* RILD  */
+#define CCCI_IOC_SIM_INSERTED_FOR_SWITCH_RF_SAR     \
+    _IO(CCCI_IOC_MAGIC,  126)
+//#endif /* OPLUS_FEATURE_SWTP */
 
 #define CCCI_IPC_MAGIC 'P' /* only for IPC user */
 #define CCCI_IPC_RESET_RECV			_IO(CCCI_IPC_MAGIC, 0)
@@ -602,6 +609,7 @@ enum md_bc_event {
 	MD_STA_EV_READY,
 	MD_STA_EV_EXCEPTION,
 	MD_STA_EV_STOP,
+	MD_STA_EV_RILD_POWEROFF_START,
 };
 
 /* ========================================================================= */

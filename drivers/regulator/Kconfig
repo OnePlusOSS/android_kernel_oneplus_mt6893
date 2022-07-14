@@ -559,6 +559,20 @@ config REGULATOR_MT6315
 	  This driver supports the control of different power rails of device
 	  through regulator interface.
 
+config REGULATOR_MT6317
+	tristate "Mediatek MT6317 regulator driver"
+	depends on I2C && GPIOLIB
+	select REGMAP
+	select CRC8
+	select OF_GPIO
+	select REGULATOR_FIXED_VOLTAGE
+	help
+	  MT6317 is an integrated chip. It includes 8 LDOs and 3 GPIOs that
+	  can be used to drive output high/low purpose. The dependency of the
+	  GPIO block is internally LDO1 voltage. If LDO1 voltage output disabled,
+	  GPIO cannot be used to drive output high. It need to pay more
+	  attention on the usage.
+
 config REGULATOR_MT6323
 	tristate "MediaTek MT6323 PMIC"
 	depends on MFD_MT6397
@@ -775,6 +789,20 @@ config REGULATOR_RT5033
 	  RT5033 PMIC. The device supports multiple regulators like
 	  current source, LDO and Buck.
 
+config REGULATOR_RT5133
+	tristate "Richtek RT5133 regulator driver"
+	depends on I2C && GPIOLIB
+	select REGMAP
+	select CRC8
+	select OF_GPIO
+	select REGULATOR_FIXED_VOLTAGE
+	help
+	  RT5133 is an integrated chip. It includes 8 LDOs and 3 GPIOs that
+	  can be used to drive output high/low purpose. The dependency of the
+	  GPIO block is internally LDO1 voltage. If LDO1 voltage output disabled,
+	  GPIO cannot be used to drive output high. It need to pay more
+	  attention on the usage.
+
 config REGULATOR_S2MPA01
 	tristate "Samsung S2MPA01 voltage regulator"
 	depends on MFD_SEC_CORE
@@ -869,6 +897,16 @@ config REGULATOR_TPS62360
 	  regulator is meant for processor core supply. This chip is
 	  high-frequency synchronous step down dc-dc converter optimized
 	  for battery-powered portable applications.
+
+config REGULATOR_SM5109_TPS65132
+        tristate "SM5109 &  TPS6236x Power Regulator"
+        depends on I2C
+        select REGMAP_I2C
+        help
+          This driver supports TPS6236x voltage regulator chip. This
+          regulator is meant for processor core supply. This chip is
+          high-frequency synchronous step down dc-dc converter optimized
+          for battery-powered portable applications.
 
 config REGULATOR_TPS65023
 	tristate "TI TPS65023 Power regulators"

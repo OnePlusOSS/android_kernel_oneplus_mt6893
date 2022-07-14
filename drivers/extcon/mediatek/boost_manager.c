@@ -100,6 +100,17 @@ static enum alarmtimer_restart
 }
 #endif
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+extern bool oplus_otgctl_by_buckboost(void);
+extern int oplus_otg_enable_by_buckboost(void);
+extern int oplus_otg_disable_by_buckboost(void);
+#endif
+#ifdef CONFIG_OPLUS_CHARGER_MTK6853
+extern int is_vooc_support_single_batt_svooc(void);
+extern void vooc_enable_cp_for_otg(int en);
+#endif
+
+
 int usb_otg_set_vbus(int is_on)
 {
 	if (!IS_ERR(drvvbus)) {
@@ -116,20 +127,71 @@ int usb_otg_set_vbus(int is_on)
 
 #if CONFIG_MTK_GAUGE_VERSION == 30
 	if (is_on) {
+#if !defined(CONFIG_OPLUS_CHARGER_MTK6853) && !defined(CONFIG_OPLUS_CHARGER_MTK6873)
+#ifdef OPLUS_FEATURE_CHG_BASIC
+		if (oplus_otgctl_by_buckboost()) {
+			oplus_otg_enable_by_buckboost();
+		} else {
+			charger_dev_enable_otg(g_info->primary_charger, true);
+			charger_dev_set_boost_current_limit(g_info->primary_charger,
+				1100000);
+		}
+#else
 		charger_dev_enable_otg(g_info->primary_charger, true);
 		charger_dev_set_boost_current_limit(g_info->primary_charger,
 			1500000);
+#endif
+		if (g_info->polling_interval) {
+			charger_dev_kick_wdt(g_info->primary_charger);
+			enable_boost_polling(true);
+		}
+#else /* CONFIG_OPLUS_CHARGER_MTK6853 */
+		printk("typec vbus_on\n");
+#ifdef CONFIG_OPLUS_CHARGER_MTK6853
+		if (is_vooc_support_single_batt_svooc() == true){
+			vooc_enable_cp_for_otg(1);
+		}
+#endif
+		charger_dev_enable_otg(g_info->primary_charger, true);
+		charger_dev_set_boost_current_limit(g_info->primary_charger,
+			1100000);
 		charger_dev_kick_wdt(g_info->primary_charger);
 		enable_boost_polling(true);
+#endif
 	} else {
+#if !defined(CONFIG_OPLUS_CHARGER_MTK6853) && !defined(CONFIG_OPLUS_CHARGER_MTK6873)
+#ifdef OPLUS_FEATURE_CHG_BASIC
+			if (oplus_otgctl_by_buckboost()) {
+				oplus_otg_disable_by_buckboost();
+			} else {
+				charger_dev_enable_otg(g_info->primary_charger, false);
+			}
+#else
+			charger_dev_enable_otg(g_info->primary_charger, false);
+#endif
+		if (g_info->polling_interval) {
+			enable_boost_polling(false);
+		}
+#else /* CONFIG_OPLUS_CHARGER_MTK6853 */
 		charger_dev_enable_otg(g_info->primary_charger, false);
 		enable_boost_polling(false);
+#ifdef CONFIG_OPLUS_CHARGER_MTK6853
+		if (is_vooc_support_single_batt_svooc() == true){
+			vooc_enable_cp_for_otg(0);
+		}
+#endif
+#endif
 	}
 #else
 	if (is_on) {
 		charger_dev_enable_otg(g_info->primary_charger, true);
+#ifdef OPLUS_FEATURE_CHG_BASIC
+		charger_dev_set_boost_current_limit(g_info->primary_charger,
+			1100000);
+#else
 		charger_dev_set_boost_current_limit(g_info->primary_charger,
 			1500000);
+#endif
 	} else {
 		charger_dev_enable_otg(primary_charger, false);
 	}
@@ -177,10 +239,12 @@ static int usbotg_boost_probe(struct platform_device *pdev)
 	alarm_init(&info->otg_timer, ALARM_BOOTTIME,
 		usbotg_alarm_timer_func);
 	if (of_property_read_u32(node, "boost_period",
-		(u32 *) &info->polling_interval))
-		return -EINVAL;
+		(u32 *) &info->polling_interval)) {
+		 pr_info("%s: get boost_period failed\n", __func__);
+		 info->polling_interval = 0;
+	}
+	pr_info("%s: polling_interval : %d\n", __func__, info->polling_interval);
 
-	info->polling_interval = 30;
 	info->boost_workq = create_singlethread_workqueue("boost_workq");
 	INIT_WORK(&info->kick_work, usbotg_boost_kick_work);
 #endif

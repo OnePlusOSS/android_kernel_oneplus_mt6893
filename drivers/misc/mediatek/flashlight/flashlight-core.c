@@ -618,7 +618,7 @@ static int pt_trigger(void)
 
 	return 0;
 }
-
+#ifndef OPLUS_FEATURE_CAMERA_COMMON
 static void pt_low_vol_callback(LOW_BATTERY_LEVEL level)
 {
 	if (level == LOW_BATTERY_LEVEL_0) {
@@ -645,7 +645,7 @@ static void pt_low_bat_callback(BATTERY_PERCENT_LEVEL level)
 		/* unlimited cpu and gpu*/
 	}
 }
-
+#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 static void pt_oc_callback(BATTERY_OC_LEVEL level)
 {
 	if (level == BATTERY_OC_LEVEL_0) {
@@ -1098,8 +1098,10 @@ static ssize_t flashlight_pt_store(struct device *dev,
 
 	/* call callback function */
 	pt_strict = strict;
+#ifndef OPLUS_FEATURE_CAMERA_COMMON
 	pt_low_vol_callback(low_vol);
 	pt_low_bat_callback(low_bat);
+#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 	pt_oc_callback(over_cur);
 #endif
 
@@ -1410,6 +1412,7 @@ unlock:
 }
 static DEVICE_ATTR_RW(flashlight_current);
 
+#ifndef OPLUS_FEATURE_CAMERA_COMMON
 /* flashlight fault sysfs */
 static ssize_t flashlight_fault_show(
 		struct device *dev, struct device_attribute *attr, char *buf)
@@ -1567,6 +1570,7 @@ unlock:
 	return ret;
 }
 static DEVICE_ATTR_RW(flashlight_sw_disable);
+#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 
 /******************************************************************************
  * Platform device and driver
@@ -1677,6 +1681,7 @@ static int flashlight_probe(struct platform_device *dev)
 		pr_err("Failed to create device file(current)\n");
 		goto err_create_current_device_file;
 	}
+#ifndef OPLUS_FEATURE_CAMERA_COMMON
 	if (device_create_file(flashlight_device, &dev_attr_flashlight_fault)) {
 		pr_err("Failed to create device file(fault)\n");
 		goto err_create_fault_device_file;
@@ -1686,18 +1691,19 @@ static int flashlight_probe(struct platform_device *dev)
 		pr_err("Failed to create device file(sw_disable)\n");
 		goto err_create_sw_disable_device_file;
 	}
-
+#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 	/* init flashlight */
 	fl_init();
 
 	pr_debug("Probe done\n");
 
 	return 0;
-
+#ifndef OPLUS_FEATURE_CAMERA_COMMON
 err_create_sw_disable_device_file:
 	device_remove_file(flashlight_device, &dev_attr_flashlight_sw_disable);
 err_create_fault_device_file:
 	device_remove_file(flashlight_device, &dev_attr_flashlight_fault);
+#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 err_create_current_device_file:
 	device_remove_file(flashlight_device, &dev_attr_flashlight_capability);
 err_create_capability_device_file:
@@ -1724,8 +1730,10 @@ static int flashlight_remove(struct platform_device *dev)
 	fl_uninit();
 
 	/* remove device file */
+#ifndef OPLUS_FEATURE_CAMERA_COMMON
 	device_remove_file(flashlight_device, &dev_attr_flashlight_sw_disable);
 	device_remove_file(flashlight_device, &dev_attr_flashlight_fault);
+#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 	device_remove_file(flashlight_device, &dev_attr_flashlight_current);
 	device_remove_file(flashlight_device, &dev_attr_flashlight_capability);
 	device_remove_file(flashlight_device, &dev_attr_flashlight_charger);
@@ -1800,10 +1808,12 @@ static int __init flashlight_init(void)
 	}
 
 #ifdef CONFIG_MTK_FLASHLIGHT_PT
+#ifndef OPLUS_FEATURE_CAMERA_COMMON
 	register_low_battery_notify(
 			&pt_low_vol_callback, LOW_BATTERY_PRIO_FLASHLIGHT);
 	register_battery_percent_notify(
 			&pt_low_bat_callback, BATTERY_PERCENT_PRIO_FLASHLIGHT);
+#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 	register_battery_oc_notify(
 			&pt_oc_callback, BATTERY_OC_PRIO_FLASHLIGHT);
 #endif

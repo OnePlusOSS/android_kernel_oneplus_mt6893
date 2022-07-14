@@ -20,6 +20,9 @@
 #ifdef CONFIG_MACH_MT8183
 #include "helio-dvfsrc-opp-mt8183.h"
 #endif
+#ifdef CONFIG_MACH_MT6785
+#include "helio-dvfsrc-opp-mt6785.h"
+#endif
 #endif
 #endif
 
@@ -226,6 +229,7 @@
 
 /* SDC_ADV_CFG0 mask */
 #define SDC_CMD_RESP_CRC        (0x7f  << 0) /* RW */
+#define SDC_IRQ_ENHANCE_EN      (0x1 << 19)     /* RW */
 #define SDC_RX_ENHANCE_EN	(0x1 << 20)	/* RW */
 
 /* DMA_SA_H4BIT mask */
@@ -570,6 +574,7 @@ struct msdc_host {
 				 /* cmd response sample selection for HS400 */
 	bool hs400_mode;	/* current eMMC will run at hs400 mode */
 	bool is_ddr208;
+	bool no_sdio_incr1;
 	struct msdc_save_para save_para; /* used when gate HCLK */
 	struct msdc_tune_para def_tune_para; /* default tune setting */
 	struct msdc_tune_para saved_tune_para; /* tune result of CMD21/CMD19 */
@@ -719,6 +724,20 @@ static const struct mtk_mmc_compatible mt7622_compat = {
 };
 
 static const struct mtk_mmc_compatible mt8183_compat = {
+	.clk_div_bits = 12,
+	.hs400_tune = false,
+	.pad_tune_reg = MSDC_PAD_TUNE0,
+	.async_fifo = true,
+	.data_tune = true,
+	.busy_check = true,
+	.stop_clk_fix = true,
+	.enhance_rx = true,
+	.support_64g = true,
+	.tune_resp_data_together = true,
+	.v3_plus = true,
+};
+
+static const struct mtk_mmc_compatible mt8185_compat = {
 	.clk_div_bits = 12,
 	.hs400_tune = false,
 	.pad_tune_reg = MSDC_PAD_TUNE0,

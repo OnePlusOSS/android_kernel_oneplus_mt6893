@@ -20,6 +20,14 @@
 #include <asm/pgtable.h>
 #include "internal.h"
 
+#ifdef OPLUS_FEATURE_HEALTHINFO
+#include <linux/healthinfo/ion.h>
+#endif /*OPLUS_FEATURE_HEALTHINFO*/
+
+//#ifdef OPLUS_FEATURE_HEALTHINFO
+//extern unsigned long gpu_total(void);
+//#endif /*OPLUS_FEATURE_HEALTHINFO*/
+
 void __attribute__((weak)) arch_report_meminfo(struct seq_file *m)
 {
 }
@@ -158,6 +166,14 @@ static int meminfo_proc_show(struct seq_file *m, void *v)
 	show_val_kb(m, "CmaFree:        ",
 		    global_zone_page_state(NR_FREE_CMA_PAGES));
 #endif
+
+#if defined(OPLUS_FEATURE_HEALTHINFO) && defined(CONFIG_ION) && defined(CONFIG_OPLUS_HEALTHINFO)
+	show_val_kb(m, "IonTotalCache:   ", global_zone_page_state(NR_IONCACHE_PAGES));
+	show_val_kb(m, "IonTotalUsed:   ", ion_total() >> PAGE_SHIFT);
+#endif /*OPLUS_FEATURE_HEALTHINFO*/
+//#ifdef OPLUS_FEATURE_HEALTHINFO
+	//show_val_kb(m, "GPUTotalUsed:	", gpu_total() >> PAGE_SHIFT);
+//#endif /*OPLUS_FEATURE_HEALTHINFO*/
 
 	hugetlb_report_meminfo(m);
 

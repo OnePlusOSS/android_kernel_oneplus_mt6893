@@ -26,6 +26,10 @@
 #include <mtk_gauge_time_service.h>
 #include <mtk_gauge_class.h>
 
+#ifndef OPLUS_FEATURE_CHG_BASIC
+#define OPLUS_FEATURE_CHG_BASIC
+#endif
+
 
 /* ============================================================ */
 /* Define Macro Value */
@@ -49,10 +53,18 @@
 #define BAT_VOLTAGE_LOW_BOUND 3400
 #define BAT_VOLTAGE_HIGH_BOUND 3450
 #define LOW_TMP_BAT_VOLTAGE_LOW_BOUND 3350
+#ifndef OPLUS_FEATURE_CHG_BASIC
 #define SHUTDOWN_TIME 40
+#else
+#define SHUTDOWN_TIME 60
+#endif
 #define AVGVBAT_ARRAY_SIZE 30
 #define INIT_VOLTAGE 3450
+#ifdef OPLUS_FEATURE_CHG_BASIC
+#define BATTERY_SHUTDOWN_TEMPERATURE 90
+#else
 #define BATTERY_SHUTDOWN_TEMPERATURE 60
+#endif /*OPLUS_FEATURE_CHG_BASIC*/
 
 /* ============================================================ */
 /* typedef and Struct*/
@@ -486,6 +498,7 @@ struct fuel_gauge_custom_data {
 	/* ZCV update */
 	int zcv_suspend_time;
 	int sleep_current_avg;
+	int zcv_com_vol_limit;
 
 	int dc_ratio_sel;
 	int dc_r_cnt;
@@ -614,7 +627,7 @@ struct FUELGAUGE_PROFILE_STRUCT {
 	unsigned int mah;
 	unsigned short voltage;
 	unsigned short resistance; /* Ohm*/
-	unsigned int percentage;
+	signed int percentage;
 	struct FUELGAUGE_CHARGER_STRUCT charge_r;
 };
 
@@ -788,6 +801,10 @@ struct mtk_battery {
 
 	struct zcv_filter zcvf;
 
+/*fcc*/
+	int prev_batt_fcc;
+	int prev_batt_remaining_capacity;
+
 /*simulator log*/
 	struct simulator_log log;
 
@@ -818,6 +835,9 @@ struct mtk_battery {
 	int d_saved_car;
 	int tbat_precise;
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+        int soh;
+#endif
 /*battery flag*/
 	bool init_flag;
 	bool is_probe_done;
@@ -855,6 +875,10 @@ struct mtk_battery {
 	unsigned int proc_subcmd;
 	unsigned int proc_subcmd_para1;
 	char proc_log[4096];
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/*Yichun.Chen  PSW.BSP.CHG  2020-03-10  for aging issue*/
+	char ag_log[2000];
+#endif
 
 /*battery interrupt*/
 	int fg_bat_int1_gap;
@@ -936,6 +960,14 @@ struct mtk_battery {
 	int last_nafg_cnt;
 	struct timespec last_nafg_update_time;
 	bool is_nafg_broken;
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	int nafg_c_dltv_thr;
+#endif
+
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	int old_pid;
+	int force_restart_daemon;
+#endif
 
 	/* battery temperature table */
 	int no_bat_temp_compensate;
@@ -943,6 +975,7 @@ struct mtk_battery {
 	struct battery_temperature_table rbat;
 
 	struct fgd_cmd_param_t_custom fg_data;
+	bool soc_initial_done;
 };
 
 
@@ -957,13 +990,26 @@ enum {
 	SHUTDOWN_FACTOR_MAX
 };
 
-
 extern struct mtk_battery gm;
 extern struct battery_data battery_main;
 extern struct fuel_gauge_custom_data fg_cust_data;
 extern struct fuel_gauge_table_custom_data fg_table_cust_data;
 extern struct gauge_hw_status FG_status;
 extern struct FUELGAUGE_TEMPERATURE Fg_Temperature_Table[];
+#if defined CONFIG_OPLUS_CHARGER_MTK6853 || defined CONFIG_OPLUS_CHARGER_MTK6877 || defined(CONFIG_OPLUS_CHARGER_MTK6833)
+extern struct FUELGAUGE_TEMPERATURE Fg_Temperature_01_Precision_Table[];
+#endif
+
+static int select_bat_ntc_project;
+#if defined(CONFIG_MACH_MT6781)
+#define PROJECT_SPACE_B	21684
+#define PROJECT_SPACE_D	21690
+#define RBAT_PULL_UP_R_33W  16000
+#define RBAT_PULL_UP_R_new	12000
+extern struct FUELGAUGE_TEMPERATURE Fg_Temperature_Table_18w_temp[];
+extern struct FUELGAUGE_TEMPERATURE Fg_Temperature_Table_33w_temp[];
+extern struct FUELGAUGE_TEMPERATURE Fg_Temperature_Table_new_temp[];
+#endif
 
 extern int wakeup_fg_algo_cmd(unsigned int flow_state, int cmd, int para1);
 extern int wakeup_fg_algo(unsigned int flow_state);

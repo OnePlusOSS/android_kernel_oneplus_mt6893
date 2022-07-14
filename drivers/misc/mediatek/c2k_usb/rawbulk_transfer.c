@@ -232,6 +232,7 @@ static struct upstream_transaction *alloc_upstream_transaction(
 		struct rawbulk_transfer *transfer, int bufsz)
 {
 	struct upstream_transaction *t;
+	int ret = 0;
 
 	C2K_DBG("%s\n", __func__);
 
@@ -258,9 +259,11 @@ static struct upstream_transaction *alloc_upstream_transaction(
 		goto failto_alloc_usb_request;
 	t->req->context = t;
 	t->name[0] = 0;
-	snprintf(t->name, sizeof(t->name), "U%d ( G:%s)",
+	ret = snprintf(t->name, sizeof(t->name), "U%d ( G:%s)",
 		transfer->upstream.ntrans, transfer->upstream.ep->name);
-
+	if (ret < 0 || ret >= sizeof(t->name))
+		C2K_ERR("%s-%d:snprintf fail, ret=%d\n",
+			__func__, __LINE__, ret);
 	INIT_LIST_HEAD(&t->tlist);
 	list_add_tail(&t->tlist, &transfer->upstream.transactions);
 	transfer->upstream.ntrans++;
@@ -885,7 +888,7 @@ int rawbulk_start_transactions(int transfer_id, int nups, int ndowns, int upsz,
 	C2K_NOTE("%s\n", __func__);
 
 	transfer = id_to_transfer(transfer_id);
-	if (!transfer)
+	if ((!transfer) || (transfer_id >= ARRAY_SIZE(transfer_name)))
 		return -ENODEV;
 
 	memset(name, 0, 20);
@@ -1315,6 +1318,7 @@ static __init int rawbulk_init(void)
 {
 	int n;
 	char name[20];
+	int ret = 0;
 
 	C2K_NOTE("%s\n", __func__);
 	drop_check_timeout = jiffies;
@@ -1333,10 +1337,18 @@ static __init int rawbulk_init(void)
 		INIT_LIST_HEAD(&t->cache_buf_lists.transactions);
 		INIT_DELAYED_WORK(&t->delayed, downstream_delayed_work);
 		memset(name, 0, 20);
-		snprintf(name, sizeof(name), "%s_flow_ctrl", transfer_name[n]);
+		ret = snprintf(name, sizeof(name), "%s_flow_ctrl",
+			 transfer_name[n]);
+		if (ret >= sizeof(name))
+			return -ENOMEM;
+
 		INIT_WORK(&t->write_work, start_upstream);
 		memset(name, 0, 20);
-		snprintf(name, sizeof(name), "%s_tx_wq", transfer_name[n]);
+		ret = snprintf(name, sizeof(name), "%s_tx_wq",
+			       transfer_name[n]);
+		if (ret >= sizeof(name))
+			return -ENOMEM;
+
 		mutex_init(&t->modem_up_mutex);
 		mutex_init(&t->usb_up_mutex);
 		spin_lock_init(&t->lock);

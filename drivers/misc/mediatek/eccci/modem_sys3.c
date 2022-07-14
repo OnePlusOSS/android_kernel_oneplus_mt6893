@@ -53,15 +53,6 @@ static irqreturn_t md_cd_wdt_isr(int irq, void *data)
 {
 	struct ccci_modem *md = (struct ccci_modem *)data;
 
-	/*1. disable MD WDT */
-#ifdef ENABLE_MD_WDT_DBG
-	unsigned int state;
-
-	state = ccif_read32(md->md_rgu_base, C2K_WDT_MD_STA);
-	ccif_write32(md->md_rgu_base, C2K_WDT_MD_MODE, C2K_WDT_MD_MODE_KEY);
-	CCCI_NORMAL_LOG(md->index, TAG,
-		"WDT IRQ disabled for debug, state=%X\n", state);
-#endif
 	CCCI_NORMAL_LOG(md->index, TAG, "MD WDT IRQ\n");
 	ccci_event_log("md%d: MD WDT IRQ\n", md->index);
 
@@ -422,7 +413,7 @@ static int md_ccif_op_force_assert(struct ccci_modem *md,
 
 static inline void clear_md1_md3_smem(struct ccci_modem *md)
 {
-	struct ccci_smem_region *region;
+	struct ccci_smem_region *region = NULL;
 
 	CCCI_NORMAL_LOG(md->index, TAG, "%s start\n", __func__);
 	region = ccci_md_get_smem_by_user_id(md->index, SMEM_USER_RAW_MD2MD);
@@ -502,7 +493,7 @@ static void md_ccif_hw_init(struct ccci_modem *md)
 
 static int md_ccif_probe(struct platform_device *dev)
 {
-	struct ccci_modem *md;
+	struct ccci_modem *md = NULL;
 	int md_id, ret;
 	struct ccci_dev_cfg dev_cfg;
 	struct md_hw_info *md_hw;

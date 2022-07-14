@@ -706,13 +706,16 @@ config NONLINEAR_FREQ_CTL
 	  loading tracking/opp calculation will be affected.
 	  If unsure, say N.
 
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+source "kernel/sched_assist/Kconfig"
+#endif
 endmenu
 
 menu "FAIR Scheuler tunables"
 
 choice
 	prompt "Utilization's PELT half-Life"
-	default PELT_UTIL_HALFLIFE_32
+	default PELT_UTIL_HALFLIFE_8
 	help
 	  Allows choosing one of the possible values for the PELT half-life to
 	  be used for the update of the utilization of tasks and CPUs.
@@ -1869,7 +1872,7 @@ config HAVE_GENERIC_DMA_COHERENT
 config SLABINFO
 	bool
 	depends on PROC_FS
-	depends on SLAB || SLUB_DEBUG
+	depends on SLAB || SLUB_DEBUG || KMALLOC_DEBUG
 	default y
 
 config RT_MUTEXES

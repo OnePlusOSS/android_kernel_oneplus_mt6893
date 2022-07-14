@@ -121,6 +121,11 @@ static const char *const Audio_Debug_Setting[] = {"Off", "On"};
 static const char *const Audio_IPOH_State[] = {"Off", "On"};
 static const char *const Audio_I2S1_Setting[] = {"Off", "On"};
 
+#ifdef OPLUS_BUG_COMPATIBILITY
+static const char *audio_i2s0di_setting[] = {"Off", "On"};
+static bool is_audio_i2s0di_setting = false;
+#endif /* OPLUS_BUG_COMPATIBILITY */
+
 static bool AudDrvSuspendStatus;
 /* static bool mModemPcm_ASRC_on = false; */
 static bool AudioI2S1Setting;
@@ -515,9 +520,24 @@ static int AudioDebug_Setting_Set(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+#ifdef OPLUS_BUG_COMPATIBILITY
+static void auddrv_i2s0di_gpio_set(void)
+{
+	auddrv_gpio_i2s0_select(true);
+}
+
+static void auddrv_i2s0di_gpio_reset(void)
+{
+	auddrv_gpio_i2s0_select(false);
+}
+#endif /* OPLUS_BUG_COMPATIBILITY */
+
 static void Auddrv_I2S1GpioSet(void)
 {
-
+#ifdef OPLUS_BUG_COMPATIBILITY
+	auddrv_gpio_i2s1_select(true);
+	auddrv_i2s0di_gpio_set();
+#else /* OPLUS_BUG_COMPATIBILITY */
 #ifndef CONFIG_FPGA_EARLY_PORTING
 
 /* I2S1 gpio set */
@@ -531,11 +551,15 @@ static void Auddrv_I2S1GpioSet(void)
 #endif
 
 #endif
+#endif /* OPLUS_BUG_COMPATIBILITY */
 }
 
 static void Auddrv_I2S1GpioReset(void)
 {
-
+#ifdef OPLUS_BUG_COMPATIBILITY
+	auddrv_gpio_i2s1_select(false);
+	auddrv_i2s0di_gpio_reset();
+#else /* OPLUS_BUG_COMPATIBILITY */
 #ifndef CONFIG_FPGA_EARLY_PORTING
 
 #ifdef CONFIG_OF
@@ -548,6 +572,7 @@ static void Auddrv_I2S1GpioReset(void)
 #endif
 
 #endif
+#endif /* OPLUS_BUG_COMPATIBILITY */
 }
 
 static int AudioDebug_Setting_Get(struct snd_kcontrol *kcontrol,
@@ -556,6 +581,33 @@ static int AudioDebug_Setting_Get(struct snd_kcontrol *kcontrol,
 	pr_debug("%s()\n", __func__);
 	return 0;
 }
+
+#ifdef OPLUS_BUG_COMPATIBILITY
+static int audio_i2s0_setting_set(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	printk("%s()\n", __func__);
+	if (ucontrol->value.enumerated.item[0] > ARRAY_SIZE(audio_i2s0di_setting)) {
+		pr_err("return -EINVAL\n");
+		return -EINVAL;
+	}
+	is_audio_i2s0di_setting = ucontrol->value.enumerated.item[0];
+	if (is_audio_i2s0di_setting == true) {
+		auddrv_i2s0di_gpio_set();
+	} else {
+		auddrv_i2s0di_gpio_reset();
+	}
+	return 0;
+}
+
+static int audio_i2s0_setting_get(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	pr_warn("%s()\n", __func__);
+	ucontrol->value.enumerated.item[0] = is_audio_i2s0di_setting;
+	return 0;
+}
+#endif /* OPLUS_BUG_COMPATIBILITY */
 
 static int AudioI2S1_Setting_Set(struct snd_kcontrol *kcontrol,
 				 struct snd_ctl_elem_value *ucontrol)
@@ -752,6 +804,9 @@ static const struct soc_enum Audio_Routing_Enum[] = {
 			    Audio_Debug_Setting),
 	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(Audio_IPOH_State), Audio_IPOH_State),
 	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(Audio_I2S1_Setting), Audio_I2S1_Setting),
+#ifdef OPLUS_BUG_COMPATIBILITY
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(audio_i2s0di_setting), audio_i2s0di_setting),
+#endif /* OPLUS_BUG_COMPATIBILITY */
 	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(spk_type_str), spk_type_str),
 };
 
@@ -789,6 +844,10 @@ static const struct snd_kcontrol_new Audio_snd_routing_controls[] = {
 		       Audio_AssignDRAM_Get, Audio_AssignDRAM_Set),
 	SOC_ENUM_EXT("MTK_SPK_TYPE_GET",
 		     Audio_Routing_Enum[9], spk_type_get, NULL),
+#ifdef OPLUS_BUG_COMPATIBILITY
+	SOC_ENUM_EXT("Audio_I2S0_Setting", Audio_Routing_Enum[9],
+		       audio_i2s0_setting_get, audio_i2s0_setting_set),
+#endif /* OPLUS_BUG_COMPATIBILITY */
 };
 
 void EnAble_Anc_Path(int state)

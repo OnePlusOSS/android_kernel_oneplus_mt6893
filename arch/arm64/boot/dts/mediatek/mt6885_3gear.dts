@@ -442,22 +442,6 @@ page_owner=on loop.max_part=7";
 			alloc-ranges = <0 0x40000000 0 0x80000000>;
 		};
 
-#ifdef CONFIG_MICROTRUST_TEE_SUPPORT
-		soter-shared-mem {
-			compatible = "microtrust,shared_mem";
-			no-map;
-#if defined(CONFIG_MTK_SEC_VIDEO_PATH_SUPPORT) || \
-	defined(CONFIG_MTK_CAM_SECURITY_SUPPORT)
-			size = <0 0x800000>;
-			alignment = <0 0x1000000>;
-#else
-			size = <0 0x200000>;
-			alignment = <0 0x200000>;
-#endif
-			alloc-ranges = <0 0x40000000 0 0x50000000>;
-		};
-#endif
-
 		reserve-memory-sspm_share {
 			compatible = "mediatek,reserve-memory-sspm_share";
 			no-map;
@@ -1523,7 +1507,8 @@ page_owner=on loop.max_part=7";
 			<0 0x11022000 0 0x1000>,
 			<0 0x10030000 0 0x1000>,
 			<0 0x1020e000 0 0x1000>,
-			<0 0x10033000 0 0x1000>;
+			<0 0x10033000 0 0x1000>,
+			<0 0x0010c000 0 0x1000>;
 		interrupts = <GIC_SPI 187 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&infracfg_ao INFRACFG_AO_DEVICE_APC_CG>;
 		clock-names = "devapc-infra-clock";
@@ -3074,7 +3059,7 @@ page_owner=on loop.max_part=7";
 			"PWR";
 	};
 
-	gpufreq: gpufreq {
+	gpufreq {
 		compatible = "mediatek,gpufreq";
 		clocks =
 			<&topckgen TOP_MUX_MFG>,
@@ -3111,11 +3096,6 @@ page_owner=on loop.max_part=7";
 			"mtcmos_mfg_core7_8";
 			_vgpu-supply = <&mt6315_7_vbuck1>;
 			_vsram_gpu-supply = <&mt_pmic_vsram_others_ldo_reg>;
-	};
-
-	ged: ged {
-		compatible = "mediatek,ged";
-		gpufreq-supply = <&gpufreq>;
 	};
 
 	mali_dvfs_hint@13fbb000 {
@@ -5636,7 +5616,7 @@ page_owner=on loop.max_part=7";
 						"MDP_PWR";
 	};
 
-	wifi@18000000 {
+	wifi: wifi@18000000 {
 		compatible = "mediatek,wifi";
 		reg = <0 0x18000000 0 0x700000>;
 		interrupts = <GIC_SPI 375 IRQ_TYPE_LEVEL_HIGH>,
@@ -5646,6 +5626,9 @@ page_owner=on loop.max_part=7";
 
 	fm: fm@18000000 {
 		compatible = "mediatek,fm";
+		family-id = <0x6885>;
+		host-id = <0x6885>;
+		conn-id = <0x2001>;
 		interrupts = <GIC_SPI 380 IRQ_TYPE_LEVEL_HIGH>;
 	};
 
@@ -5835,12 +5818,12 @@ page_owner=on loop.max_part=7";
 
 	memory_ssmr_features: memory-ssmr-features {
 		compatible = "mediatek,memory-ssmr-features";
-		svp-size = <0 0x10000000>;
+		svp-region-based-size = <0 0x10000000>;
 		iris-recognition-size = <0 0x10000000>;
 		2d_fr-size = <0 0>;
 		tui-size = <0 0x4000000>;
 		wfd-size = <0 0x4000000>;
-		prot-sharedmem-size = <0 0x8000000>;
+		prot-region-based-size = <0 0x8000000>;
 		ta-elf-size = <0 0x1000000>;
 		ta-stack-heap-size = <0 0x6000000>;
 		sdsp-tee-sharedmem-size = <0 0x1000000>;

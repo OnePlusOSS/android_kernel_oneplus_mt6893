@@ -224,6 +224,8 @@ static int mtu3_prepare_tx_gpd(struct mtu3_ep *mep, struct mtu3_request *mreq)
 		gpd->ext_flag |= GPD_EXT_FLAG_ZLP;
 
 	gpd->chksum = qmu_calc_checksum((u8 *)gpd);
+	/* requires a memory barrier */
+	smp_mb();
 	gpd->flag |= GPD_FLAGS_HWO;
 
 	mreq->gpd = gpd;
@@ -263,6 +265,8 @@ static int mtu3_prepare_rx_gpd(struct mtu3_ep *mep, struct mtu3_request *mreq)
 
 	gpd->next_gpd = cpu_to_le32((u32)gpd_virt_to_dma(ring, enq));
 	gpd->chksum = qmu_calc_checksum((u8 *)gpd);
+	/* requires a memory barrier */
+	smp_mb();
 	gpd->flag |= GPD_FLAGS_HWO;
 
 	mreq->gpd = gpd;
@@ -408,6 +412,9 @@ static void qmu_tx_zlp_error_handler(struct mtu3 *mtu, u8 epnum)
 	/* by pass the current GDP */
 	gpd_current->flag |= GPD_FLAGS_BPS;
 	gpd_current->chksum = qmu_calc_checksum((u8 *)gpd_current);
+
+	/* requires a memory barrier */
+	smp_mb();
 	gpd_current->flag |= GPD_FLAGS_HWO;
 
 	/*enable DMAREQEN, switch back to QMU mode */

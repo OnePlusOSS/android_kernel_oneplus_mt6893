@@ -180,10 +180,11 @@ static void filter_by_yuv_layers(struct drm_mtk_layering_info *disp_info)
 
 static void filter_2nd_display(struct drm_mtk_layering_info *disp_info)
 {
-	unsigned int i, j, layer_cnt = 0;
+	unsigned int i = 0, j = 0;
 
 	for (i = HRT_SECONDARY; i < HRT_TYPE_NUM; i++) {
 		unsigned int max_layer_cnt = SECONDARY_OVL_LAYER_NUM;
+		unsigned int layer_cnt = 0;
 
 		if (is_triple_disp(disp_info) && i == HRT_SECONDARY)
 			max_layer_cnt = 1;
@@ -192,7 +193,7 @@ static void filter_2nd_display(struct drm_mtk_layering_info *disp_info)
 				continue;
 
 			layer_cnt++;
-			if (layer_cnt > max_layer_cnt)
+			if (layer_cnt >= max_layer_cnt)
 				mtk_rollback_layer_to_GPU(disp_info, i, j);
 		}
 	}
@@ -267,16 +268,18 @@ static void filter_by_wcg(struct drm_device *dev,
 
 static bool can_be_compress(uint32_t format)
 {
-#if defined(CONFIG_MACH_MT6873) || defined(CONFIG_MACH_MT6853)
+#if defined(CONFIG_MACH_MT6873) || defined(CONFIG_MACH_MT6853) || \
+	defined(CONFIG_MACH_MT6877) || defined(CONFIG_MACH_MT6833) || \
+	defined(CONFIG_MACH_MT6781)
 	if (mtk_is_yuv(format))
 		return 0;
 #else
-	if (mtk_is_yuv(format) || format == DRM_FORMAT_RGB565)
+	if (mtk_is_yuv(format) || format == DRM_FORMAT_RGB565 ||
+	    format == DRM_FORMAT_BGR565)
 		return 0;
 #endif
 
-	else
-		return 1;
+	return 1;
 }
 
 static void filter_by_fbdc(struct drm_mtk_layering_info *disp_info)
@@ -519,7 +522,11 @@ unsigned long long _layering_get_frame_bw(struct drm_crtc *crtc,
 
 	bw_base = (unsigned long long)width * height * fps * 125 * 4;
 
+#if BITS_PER_LONG == 32
+	do_div(bw_base, 100 * 1024 * 1024);
+#else
 	bw_base /= 100 * 1024 * 1024;
+#endif
 
 	return bw_base;
 }
@@ -549,7 +556,11 @@ static int layering_get_valid_hrt(struct drm_crtc *crtc,
 		DDPPR_ERR("Get frame hrt bw by datarate is zero\n");
 		return 600;
 	}
+#if BITS_PER_LONG == 32
+	do_div(dvfs_bw, tmp * 100);
+#else
 	dvfs_bw /= tmp * 100;
+#endif
 
 	/* error handling when requested BW is less than 2 layers */
 	if (dvfs_bw < 200) {

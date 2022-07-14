@@ -35,6 +35,7 @@
 static struct ppm_limit_data *freq_to_set;
 static struct ppm_limit_data *current_freq;
 static int dfrc_fps;
+static int limit_freq;
 static int limit_freq_at_60;
 static int limit_freq_at_90;
 static int limit_freq_at_120;
@@ -66,15 +67,23 @@ static void syslimiter_update_limit_freq(void)
 	mutex_lock(&syslimiter);
 
 	if (syslimiter_disable == 1 || fpsgo_state == STATE_OFF) {
-		freq_to_set[cluster_1].max = -1;
-		freq_to_set[cluster_0].max = -1;
+		if (perfmgr_clusters == 2) {
+			freq_to_set[cluster_1].max = -1;
+		} else if (perfmgr_clusters == 3) {
+			freq_to_set[cluster_1].max = -1;
+			freq_to_set[cluster_0].max = -1;
+		}
 		goto out;
 	}
 
 	if (dfrc_fps == -1) {
-		freq_to_set[cluster_1].max = -1;
-		freq_to_set[cluster_0].max = -1;
-		goto out;
+		if (perfmgr_clusters == 2) {
+			freq_to_set[cluster_1].max = -1;
+		} else if (perfmgr_clusters == 3) {
+			freq_to_set[cluster_1].max = -1;
+			freq_to_set[cluster_0].max = -1;
+		}
+		//goto out;
 	}
 
 	perfmgr_trace_count(dfrc_fps, "dfrc_fps");
@@ -125,8 +134,30 @@ static void syslimiter_update_limit_freq(void)
 		perfmgr_trace_count(limit_freq_at_144, "limit_freq_at_144");
 		goto out;
 	} else {
-		freq_to_set[cluster_1].max = -1;
-		freq_to_set[cluster_0].max = -1;
+		if (perfmgr_clusters == 2) {
+			freq_to_set[cluster_1].max = -1;
+		} else if (perfmgr_clusters == 3) {
+			freq_to_set[cluster_1].max = -1;
+			freq_to_set[cluster_0].max = -1;
+		}
+	}
+
+	if (limit_freq > 0) {
+		if (perfmgr_clusters == 2) {
+			freq_to_set[cluster_1].max = limit_freq;
+		} else if (perfmgr_clusters == 3) {
+			freq_to_set[cluster_1].max = limit_freq;
+			freq_to_set[cluster_0].max = limit_freq;
+		}
+		perfmgr_trace_count(limit_freq, "limit_freq");
+		goto out;
+	} else {
+		if (perfmgr_clusters == 2) {
+			freq_to_set[cluster_1].max = -1;
+		} else if (perfmgr_clusters == 3) {
+			freq_to_set[cluster_1].max = -1;
+			freq_to_set[cluster_0].max = -1;
+		}
 	}
 
 out:
@@ -140,15 +171,16 @@ out:
 			"current_freq");
 	}
 
-	if ((freq_to_set[cluster_0].max != current_freq[cluster_0].max)
-		&& perfmgr_clusters == 3) {
-		pr_debug("update_userlimit_cpu_freq freq:%d\n",
-			freq_to_set[cluster_0].max);
-		update_userlimit_cpu_freq(CPU_KIR_SYSLIM,
-			perfmgr_clusters, freq_to_set);
-		current_freq[cluster_0].max = freq_to_set[cluster_0].max;
-		perfmgr_trace_count(current_freq[cluster_0].max,
-			"current_freq");
+	if (perfmgr_clusters == 3) {
+		if (freq_to_set[cluster_0].max != current_freq[cluster_0].max) {
+			pr_debug("update_userlimit_cpu_freq freq:%d\n",
+				freq_to_set[cluster_0].max);
+			update_userlimit_cpu_freq(CPU_KIR_SYSLIM,
+				perfmgr_clusters, freq_to_set);
+			current_freq[cluster_0].max = freq_to_set[cluster_0].max;
+			perfmgr_trace_count(current_freq[cluster_0].max,
+				"current_freq");
+		}
 	}
 
 	mutex_unlock(&syslimiter);
@@ -341,6 +373,32 @@ static int perfmgr_syslimiter_tolerance_percent_proc_show(struct seq_file *m,
 	return 0;
 }
 
+static ssize_t perfmgr_syslimiter_limit_freq_proc_write(struct file *filp,
+		const char __user *ubuf, size_t cnt, loff_t *pos)
+{
+	int data = 0;
+	int rv = check_proc_write(&data, ubuf, cnt);
+
+	if (rv != 0)
+		return rv;
+
+	mutex_lock(&syslimiter);
+	limit_freq = data;
+	mutex_unlock(&syslimiter);
+
+	syslimiter_update_limit_freq();
+
+	return cnt;
+}
+
+static int perfmgr_syslimiter_limit_freq_proc_show(struct seq_file *m, void *v)
+{
+	if (m)
+		seq_printf(m, "%d\n", limit_freq);
+	return 0;
+}
+
+PROC_FOPS_RW(syslimiter_limit_freq);
 PROC_FOPS_RW(syslimiter_fps_144);
 PROC_FOPS_RW(syslimiter_fps_120);
 PROC_FOPS_RW(syslimiter_fps_90);
@@ -353,6 +411,7 @@ int syslimiter_init(struct proc_dir_entry *parent)
 {
 	struct proc_dir_entry *syslimiter_dir = NULL;
 	int i, ret = 0;
+	size_t idx;
 
 	struct pentry {
 		const char *name;
@@ -360,6 +419,7 @@ int syslimiter_init(struct proc_dir_entry *parent)
 	};
 
 	const struct pentry entries[] = {
+		PROC_ENTRY(syslimiter_limit_freq),
 		PROC_ENTRY(syslimiter_fps_60),
 		PROC_ENTRY(syslimiter_fps_90),
 		PROC_ENTRY(syslimiter_fps_120),
@@ -376,11 +436,11 @@ int syslimiter_init(struct proc_dir_entry *parent)
 		pr_debug("syslimiter_dir null\n ");
 
 	/* create procfs */
-	for (i = 0; i < ARRAY_SIZE(entries); i++) {
-		if (!proc_create(entries[i].name, 0644,
-					syslimiter_dir, entries[i].fops)) {
+	for (idx = 0; idx < ARRAY_SIZE(entries); idx++) {
+		if (!proc_create(entries[idx].name, 0644,
+					syslimiter_dir, entries[idx].fops)) {
 			pr_debug("%s(), create /syslimiter_dir%s failed\n",
-					__func__, entries[i].name);
+					__func__, entries[idx].name);
 			ret = -EINVAL;
 			goto out;
 		}
@@ -410,6 +470,7 @@ int syslimiter_init(struct proc_dir_entry *parent)
 	}
 
 	dfrc_fps = FPS_THRESHOLD_60;
+	limit_freq = -1;
 	limit_freq_at_60 = -1;
 	limit_freq_at_90 = -1;
 	limit_freq_at_120 = -1;

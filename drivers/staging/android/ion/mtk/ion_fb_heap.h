@@ -34,5 +34,6 @@ struct ion_fb_buffer_info {
 	struct mutex lock;	/*mutex lock on fb buffer */
 };
 
+struct ion_heap *ion_fb_heap_create(struct ion_platform_heap *heap_data);
 void ion_fb_heap_destroy(struct ion_heap *heap);
 #endif

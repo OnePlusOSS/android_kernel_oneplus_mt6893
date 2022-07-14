@@ -424,10 +424,15 @@ struct msdc_host {
 	u32                     power_flash;
 
 	struct pm_qos_request   msdc_pm_qos_req; /* use for pm qos */
+	struct pm_qos_request   *req_vcore;
+	int                     vcore_opp;
 
 	struct clk              *clk_ctl;
 	struct clk              *aes_clk_ctl;
+	/* src hclk for clk source of MSDC register */
+	struct clk              *src_hclk_ctl;
 	struct clk              *hclk_ctl;
+	struct clk              *new_rx_clk_ctl;
 	/* pclk for msdc register access */
 	struct clk              *pclk_ctl;
 	struct clk              *axi_clk_ctl; /* axi bus clk */
@@ -450,6 +455,7 @@ struct msdc_host {
 	u64                     stop_dma_time;
 	/* flag to record if eMMC will enter hs400 mode */
 	bool                    hs400_mode;
+	atomic_t                dma_status;
 #ifdef CONFIG_MTK_EMMC_HW_CQ
 	struct cmdq_host *cq_host;
 #endif
@@ -725,6 +731,11 @@ void msdc_save_timing_setting(struct msdc_host *host);
 void msdc_set_bad_card_and_remove(struct msdc_host *host);
 void msdc_ops_set_bad_card_and_remove(struct mmc_host *mmc);
 void msdc_remove_card(struct work_struct *work);
+void msdc_select_new_tx(struct msdc_host *host);
+void msdc_loop_setting(struct msdc_host *host, struct mmc_ios *ios);
+void msdc_new_tx_new_rx_setting(struct msdc_host *host);
+void msdc_new_tx_old_rx_setting(struct msdc_host *host);
+void msdc_new_rx_tx_timing_setting(struct msdc_host *host);
 
 /* Function provided by mmc/core/sd.c */
 /* FIX ME: maybe removed in kernel 4.4 */

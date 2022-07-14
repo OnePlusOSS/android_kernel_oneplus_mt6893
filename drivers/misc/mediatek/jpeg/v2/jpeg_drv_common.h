@@ -18,6 +18,7 @@
 /* #include <mach/typedefs.h> */
 
 #include "jpeg_drv.h"
+#include <ion_drv.h>
 
 
 
@@ -88,6 +89,12 @@ struct JpegDrvEncCtrlCfg {
 #define JPEG_WRN pr_debug
 #define JPEG_ERR pr_debug
 #define JPEG_VEB pr_debug
+#define JPEG_LOG(level, format, args...)                       \
+	do {                                                        \
+		if ((jpg_dbg_level & level) == level)              \
+			pr_info("[JPEG] level=%d %s(),%d: " format "\n",\
+				level, __func__, __LINE__, ##args);      \
+	} while (0)
 
 /* /////// JPEG Driver Decoder /////// */
 /*  */
@@ -132,8 +139,8 @@ void jpeg_drv_enc_start(void);
 unsigned int jpeg_drv_enc_set_quality(unsigned int quality);
 unsigned int jpeg_drv_enc_set_img_size(unsigned int width, unsigned int height);
 unsigned int jpeg_drv_enc_set_blk_num(unsigned int blk_num);
-unsigned int jpeg_drv_enc_set_luma_addr(unsigned int src_luma_addr);
-unsigned int jpeg_drv_enc_set_chroma_addr(unsigned int src_luma_addr);
+unsigned int jpeg_drv_enc_set_luma_addr(dma_addr_t src_luma_addr);
+unsigned int jpeg_drv_enc_set_chroma_addr(dma_addr_t src_luma_addr);
 unsigned int jpeg_drv_enc_set_memory_stride(unsigned int mem_stride);
 unsigned int jpeg_drv_enc_set_image_stride(unsigned int img_stride);
 void jpeg_drv_enc_set_restart_interval(unsigned int restart_interval);
@@ -142,7 +149,8 @@ unsigned int jpeg_drv_enc_set_offset_addr(unsigned int offset);
 void jpeg_drv_enc_set_EncodeMode(unsigned int exif_en);
 void jpeg_drv_enc_set_burst_type(unsigned int burst_type);
 unsigned int jpeg_drv_enc_set_dst_buff(
-	unsigned int dst_addr,
+	struct ion_client *pIonClient,
+	int dstFd,
 	 unsigned int stall_size,
 	 unsigned int init_offset,
 	 unsigned int offset_mask);
@@ -165,6 +173,13 @@ void jpegenc_drv_enc_update_bw_request(struct JPEG_ENC_DRV_IN cfgEnc);
 int jpeg_isr_enc_lisr(void);
 int jpeg_isr_dec_lisr(void);
 int jpeg_isr_hybrid_dec_lisr(int id);
+int jpeg_drv_hybrid_dec_start(unsigned int data[],
+				unsigned int id,
+				int *index_buf_fd);
+
+void jpeg_drv_hybrid_dec_get_p_n_s(unsigned int id,
+				int *progress_n_status);
+
 
 
 unsigned int jpeg_drv_enc_set_src_image(
@@ -174,11 +189,13 @@ unsigned int jpeg_drv_enc_set_src_image(
 	 unsigned int totalEncDU);
 
 unsigned int jpeg_drv_enc_set_src_buf(
+		struct ion_client *pIonClient,
 		unsigned int yuv_format,
 		 unsigned int img_stride,
 		 unsigned int mem_stride,
-		 unsigned int srcAddr,
-		 unsigned int srcAddr_C);
+		 unsigned int mem_height,
+		 int srcFd,
+		 int srcFd2);
 unsigned int jpeg_drv_enc_set_encFormat(unsigned int encFormat);
 
 #endif

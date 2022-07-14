@@ -12,6 +12,10 @@ obj-$(CONFIG_SCSI_UFS_DWC_TC_PLATFORM) += tc-dwc-g210-pltfrm.o ufshcd-dwc.o tc-d
 ifeq ($(CONFIG_MTK_UFS_SUPPORT),y)
 ifeq (y, $(filter y, $(CONFIG_MACH_MT6893)))
 MTK_PLATFORM := mt6893
+else ifeq (y, $(filter y, $(CONFIG_MACH_MT6877)))
+MTK_PLATFORM := mt6877
+else ifeq (y, $(filter y, $(CONFIG_MACH_MT6781)))
+MTK_PLATFORM := mt6781
 else
 MTK_PLATFORM := $(subst ",,$(CONFIG_MTK_PLATFORM))
 endif
@@ -37,3 +41,4 @@ obj-$(CONFIG_MTK_UFS_SUPPORT) += ufs-mtk.o
 obj-$(CONFIG_MTK_UFS_SUPPORT) += mediatek/$(MTK_PLATFORM)/ufs-mtk-platform.o
 obj-$(CONFIG_MTK_UFS_BLOCK_IO_LOG) += ufs-mtk-block.o
 obj-$(CONFIG_MTK_UFS_SUPPORT) += ufs-mtk-dbg.o
+

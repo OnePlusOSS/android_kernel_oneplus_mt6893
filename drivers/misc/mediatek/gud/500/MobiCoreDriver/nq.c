@@ -45,12 +45,18 @@
 #include "logging.h"
 #include "nq.h"
 
+#include <soc/oplus/oplus_project.h>
+
 #define NQ_NUM_ELEMS		64
 #define DEFAULT_TIMEOUT_MS	20000	/* We do nothing on timeout anyway */
 
 #if !defined(NQ_TEE_WORKER_THREADS)
 #define NQ_TEE_WORKER_THREADS	1
 #endif
+
+//#ifdef OPLUS_FEATURE_SECURITY_COMMON
+extern int phx_is_system_boot_completed(void);
+//#endif /* OPLUS_FEATURE_SECURITY_COMMON */
 
 static struct {
 	struct mutex buffer_mutex;	/* Lock on SWd communication buffer */
@@ -275,7 +281,8 @@ static int irq_bh_worker(void *arg)
 		/* This is needed to properly handle secure interrupts when */
 		/* there is no active worker.                               */
 		if (!get_workers())
-			wake_up(&l_ctx.workers_wq);
+			wake_up_process(
+				l_ctx.tee_worker[NQ_TEE_WORKER_THREADS - 1]);
 	}
 	return 0;
 }
@@ -298,7 +305,11 @@ cpumask_t tee_set_affinity(void)
 		     l_ctx.default_affinity_mask,
 		     cpumask_pr_args(&old_affinity),
 		     current->pid);
-	set_cpus_allowed_ptr(current, to_cpumask(&affinity));
+	if (current->flags & PF_NO_SETAFFINITY) {
+		mc_dev_devel("Skip set_cpus_allowed_ptr as PF_NO_SETAFFINITY masked (pid = %u)", current->pid);
+	} else {
+		set_cpus_allowed_ptr(current, to_cpumask(&affinity));
+	}
 
 	return old_affinity;
 }
@@ -313,7 +324,11 @@ void tee_restore_affinity(cpumask_t old_affinity)
 		     l_ctx.default_affinity_mask,
 		     cpumask_pr_args(&current_affinity),
 		     current->pid);
-	set_cpus_allowed_ptr(current, &old_affinity);
+	if (current->flags & PF_NO_SETAFFINITY) {
+		mc_dev_devel("Skip set_cpus_allowed_ptr as PF_NO_SETAFFINITY masked (pid = %u)", current->pid);
+	} else {
+		set_cpus_allowed_ptr(current, &old_affinity);
+	}
 }
 
 void nq_session_init(struct nq_session *session, bool is_gp)
@@ -384,7 +399,7 @@ int nq_session_notify(struct nq_session *session, u32 id, u32 payload)
 		if (fc_nsiq(session->id, payload))
 			ret = -EPROTO;
 		tee_restore_affinity(old_affinity);
-		wake_up(&l_ctx.workers_wq);
+		wake_up_process(l_ctx.tee_worker[NQ_TEE_WORKER_THREADS - 1]);
 		logging_run();
 	}
 
@@ -502,6 +517,10 @@ static void nq_dump_status(void)
 	size_t i;
 	cpumask_t old_affinity;
 
+//#ifdef OPLUS_FEATURE_SECURITY_COMMON
+	int boot_completed_tee = 0;
+//#endif /* OPLUS_FEATURE_SECURITY_COMMON */
+
 	if (l_ctx.dump.off)
 		ret = -EBUSY;
 
@@ -547,6 +566,16 @@ static void nq_dump_status(void)
 	tee_restore_affinity(old_affinity);
 
 	mc_dev_info("  %-22s= 0x%s", "mcExcep.uuid", uuid_str);
+	//#ifdef OPLUS_FEATURE_SECURITY_COMMON
+	if(0 == strcmp(uuid_str, "07170000000000000000000000000000")) {
+		boot_completed_tee = phx_is_system_boot_completed();
+		if(boot_completed_tee == 1) {
+			mc_dev_info("tee boot complete\n");
+		} else {
+			BUG();
+		}
+	}
+	//#endif /* OPLUS_FEATURE_SECURITY_COMMON */
 	if (ret >= 0)
 		ret = kasnprintf(&l_ctx.dump, "%-22s= 0x%s\n", "mcExcep.uuid",
 				 uuid_str);
@@ -746,7 +775,7 @@ out:
 
 static int tee_wait_infinite(void)
 {
-	return wait_event_interruptible(l_ctx.workers_wq,
+	return wait_event_interruptible_exclusive(l_ctx.workers_wq,
 					!l_ctx.tee_scheduler_run ||
 					get_workers() < get_required_workers());
 }
@@ -938,9 +967,16 @@ static s32 tee_schedule(uintptr_t arg, unsigned int *timeout_ms)
 
 		/* If SWd has more threads to run, then add a worker */
 		if (run < req_workers && run < NQ_TEE_WORKER_THREADS) {
+			int i = 0;
+
 			mc_dev_devel("[%d] R1 run=%d sc=%d", id, run,
 				     req_workers);
-			wake_up(&l_ctx.workers_wq);
+			while ((i < NQ_TEE_WORKER_THREADS)) {
+				if (wake_up_process(
+			    l_ctx.tee_worker[NQ_TEE_WORKER_THREADS - 1 - i]))
+					break;
+				i++;
+			}
 		}
 
 		/* If SWd has less threads to run, then current worker */
@@ -1346,3 +1382,32 @@ void nq_exit(void)
 	logging_exit(l_ctx.log_buffer_busy);
 	mc_clock_exit();
 }
+
+#ifdef MC_TEE_HOTPLUG
+int nq_cpu_off(unsigned int cpu)
+{
+	int err;
+	unsigned long tee_affinity = get_tee_affinity();
+	unsigned long new_affinity = tee_affinity & (~(1 << cpu));
+	cpumask_t old_affinity;
+
+	mc_dev_devel("%s cpu %d tee_affinity = %lx new_affinity = %lx",
+		     __func__,
+		     cpu,
+		     tee_affinity,
+		     new_affinity);
+
+	old_affinity = current->cpus_allowed;
+	set_cpus_allowed_ptr(current, to_cpumask(&new_affinity));
+
+	err = fc_cpu_off();
+	set_cpus_allowed_ptr(current, &old_affinity);
+
+	return err;
+}
+
+int nq_cpu_on(unsigned int cpu)
+{
+	return 0;
+}
+#endif

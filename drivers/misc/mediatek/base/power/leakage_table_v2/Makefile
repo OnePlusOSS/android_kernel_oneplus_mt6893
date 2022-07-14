@@ -64,6 +64,11 @@ obj-$(CONFIG_MACH_MT6785) += mtk_static_power.o
 
 obj-$(CONFIG_MACH_MT6785) += mtk_static_power_mt6785.o
 
+#MT6781
+obj-$(CONFIG_MACH_MT6781) += mtk_static_power.o
+
+obj-$(CONFIG_MACH_MT6781) += mtk_static_power_mt6781.o
+
 # MT6885
 ifeq ($(CONFIG_MACH_MT6885), y)
 obj-$(CONFIG_MACH_MT6885) += mtk_static_power.o
@@ -93,6 +98,11 @@ obj-$(CONFIG_MACH_MT6853) += mtk_static_power_mt6853.o
 obj-$(CONFIG_MACH_MT6833) += mtk_static_power.o
 
 obj-$(CONFIG_MACH_MT6833) += mtk_static_power_mt6833.o
+
+# MT6877
+obj-$(CONFIG_MACH_MT6877) += mtk_static_power.o
+
+obj-$(CONFIG_MACH_MT6877) += mtk_static_power_mt6877.o
 
 # MT8168
 obj-$(CONFIG_MACH_MT8168) += mtk_static_power.o

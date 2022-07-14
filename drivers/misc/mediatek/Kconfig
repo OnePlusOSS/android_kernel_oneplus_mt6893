@@ -129,6 +129,7 @@ source "drivers/misc/mediatek/base/power/Kconfig"
 source "drivers/misc/mediatek/hdmi/Kconfig"
 source "drivers/misc/mediatek/power/Kconfig"
 source "drivers/misc/mediatek/thermal/Kconfig"
+source "drivers/misc/mediatek/pmsr/Kconfig"
 
 config MTK_SPMTWAM
 	tristate "Mediatek Signal profiling tool"
@@ -170,8 +171,6 @@ config CUSTOM_KERNEL_CAM_CAL_DRV
 config MTK_SEC_VIDEO_PATH_SUPPORT
 	bool "Enable MTK Secure Video Path Support"
 	default n
-	depends on MTK_IN_HOUSE_TEE_SUPPORT || TRUSTONIC_TEE_SUPPORT || \
-	           MTK_GOOGLE_TRUSTY_SUPPORT || MICROTRUST_TEE_SUPPORT
 	help
 	  This enable MTK Secure Video Path function of Widevine Level1,
 	  HW protect the online secure video streaming by ARM/Trustzone
@@ -182,6 +181,17 @@ config MTK_SEC_VIDEO_PATH_SUPPORT
 	  relative options including: MTK_TEE_SUPPORT, MTK_GP_SUPPORT,
 	  MTK_DRM_L1_SUPPORT, MTK_PERSIST_PARTITION_SUPPORT,
 	  MTK_DRM_KEY_MNG_SUPPORT.
+
+config MTK_SVP_ON_MTEE_SUPPORT
+	bool "Enable MTK SVP on MTEE"
+	help
+	  This enable MTK TEE function of Widevine Level1,
+	  relative modules include: DRM, vdec, venc, cmdq, m4u, display,
+	  tplay/DXCC,ssvp, secmem, TEE frameworks, keyinstall, DAPC, MPU,
+	  ION, gralloc,RPMB, DXCC, mediacodec, WFD, MDP.etc
+	  relative options including: MTK_TEE_SUPPORT, MTK_GP_SUPPORT,
+	  MTK_DRM_L1_SUPPORT, MTK_PERSIST_PARTITION_SUPPORT,
+	  MTK_DRM_KEY_MNG_SUPPORT
 
 config MTK_DRM_KEY_MNG_SUPPORT
 	bool "Enable MTK DRM Key Manager Support"
@@ -194,6 +204,14 @@ config MTK_DRM_KEY_MNG_SUPPORT
 	  relative options including: MTK_SEC_VIDEO_PATH_SUPPORT and
 	  MTK_PERSIST_PARTITION_SUPPORT.
 
+config MTK_MT6382_BDG
+	bool "Support Bridge IC 6382"
+	help
+	  This config decide if device with BridgeIC 6382
+	  BridgeIC 6382 can support VESA-1.2 DSC, compressing display framedata
+	  Normal project will disable it first
+	  If you are not sure about this, do not set it to y
+
 source "drivers/misc/mediatek/cameraisp/Kconfig"
 source "drivers/misc/mediatek/cam_cal/Kconfig"
 source "drivers/misc/mediatek/cmdq/Kconfig"
@@ -202,6 +220,7 @@ source "drivers/misc/mediatek/jpeg/Kconfig"
 source "drivers/misc/mediatek/smi/Kconfig"
 source "drivers/misc/mediatek/lcm/Kconfig"
 source "drivers/misc/mediatek/video/Kconfig"
+source "drivers/misc/mediatek/vdec_fmt/Kconfig"
 source "drivers/misc/mediatek/ext_disp/Kconfig"
 source "drivers/misc/mediatek/mmp/Kconfig"
 source "drivers/misc/mediatek/hifi_dsp/Kconfig"
@@ -209,6 +228,9 @@ source "drivers/misc/mediatek/dfrc/Kconfig"
 source "drivers/misc/mediatek/camera_security/Kconfig"
 source "drivers/misc/mediatek/jpeg/Kconfig"
 source "drivers/misc/mediatek/ccu/src/Kconfig"
+#ifdef ODM_HQ_EDIT
+source "drivers/misc/mediatek/lcd_bias/Kconfig"
+#endif #ODM_HQ_EDIT
 
 endmenu  # MM
 
@@ -252,7 +274,6 @@ menu "Security"
 config MTK_TEE_GP_SUPPORT
 	bool "Enable MTK GlobalPlatform support in TEE related modules"
 	default n
-	depends on (TRUSTONIC_TEE_SUPPORT) || (MICROTRUST_TEE_SUPPORT)
 	help
 	  GlobalPlatform defines common/consistent APIs and this option
 	  enables TEE related modules to use GPAPIs. (depending on
@@ -292,6 +313,7 @@ source "drivers/misc/mediatek/flashlight/Kconfig"
 source "drivers/misc/mediatek/flashlight/richtek/Kconfig"
 source "drivers/misc/mediatek/scp/Kconfig"
 source "drivers/misc/mediatek/leds/Kconfig"
+source "drivers/misc/mediatek/gate_ic/Kconfig"
 source "drivers/misc/mediatek/irtx/Kconfig"
 source "drivers/misc/mediatek/pwm/Kconfig"
 source "drivers/misc/mediatek/systracker/Kconfig"
@@ -451,6 +473,8 @@ source "drivers/misc/mediatek/mcupm/Kconfig"
 source "drivers/misc/mediatek/udi/Kconfig"
 source "drivers/misc/mediatek/hdmi/Kconfig"
 source "drivers/misc/mediatek/otp/Kconfig"
+source "drivers/misc/mediatek/sda/Kconfig"
+source "drivers/misc/mediatek/camera_ldo/Kconfig"
 
 endmenu    # Misc
 

@@ -38,9 +38,14 @@
 #if (CONFIG_THERMAL_AEE_RR_REC == 1)
 #include <mtk_ram_console.h>
 #endif
+#ifndef CLATM_USE_MIN_CPU_OPP
+#define CLATM_USE_MIN_CPU_OPP			(0)
+#endif
 #ifdef ATM_USES_PPM
 #include "mtk_ppm_api.h"
+#if CLATM_USE_MIN_CPU_OPP
 #include "mtk_ppm_platform.h"
+#endif
 #else
 #ifndef CONFIG_MACH_MT8168
 #include "mt_cpufreq.h"
@@ -228,10 +233,6 @@ static int MINIMUM_GPU_POWERS[MAX_CPT_ADAPTIVE_COOLERS] = { 350, 0 };
 static int MAXIMUM_GPU_POWERS[MAX_CPT_ADAPTIVE_COOLERS] = { 960, 0 };
 #endif
 static int is_max_gpu_power_specified[MAX_CPT_ADAPTIVE_COOLERS] = { 0, 0 };
-
-#ifndef CLATM_USE_MIN_CPU_OPP
-#define CLATM_USE_MIN_CPU_OPP			(0)
-#endif
 
 #if CLATM_USE_MIN_CPU_OPP
 struct atm_cpu_min_opp {
@@ -535,6 +536,14 @@ mt_get_uartlog_status(void)
 {
 	return 0;
 }
+
+#if CLATM_USE_MIN_CPU_OPP
+int  __attribute__ ((weak))
+ppm_find_pwr_idx(struct ppm_cluster_status *cluster_status)
+{
+	return 0;
+}
+#endif
 
 /*=============================================================*/
 
@@ -1666,8 +1675,13 @@ static int phpb_calc_total(int prev_total_power, long curr_temp, long prev_temp)
 	g_delta_power = delta_power;
 #endif
 	if (delta_power == 0) {
+#if defined(THERMAL_VPU_SUPPORT) || defined(THERMAL_MDLA_SUPPORT)
 		trace_ATM__pid(curr_temp, prev_temp, g_tt, g_tp, g_theta, g_delta_power_tt,
 				g_delta_power_tp, g_delta_power, prev_total_power);
+#else
+		trace_ATM__pid(curr_temp, prev_temp, g_tt, g_tp, g_theta, g_delta_power_tt,
+				g_delta_power_tp, 0, prev_total_power);
+#endif
 		return prev_total_power;
 	}
 
@@ -1708,8 +1722,13 @@ static int phpb_calc_total(int prev_total_power, long curr_temp, long prev_temp)
 	total_power = clamp(total_power, MINIMUM_TOTAL_POWER,
 						MAXIMUM_TOTAL_POWER);
 
+#if defined(THERMAL_VPU_SUPPORT) || defined(THERMAL_MDLA_SUPPORT)
 	trace_ATM__pid(curr_temp, prev_temp, g_tt, g_tp, g_theta, g_delta_power_tt,
 			g_delta_power_tp, g_delta_power, total_power);
+#else
+	trace_ATM__pid(curr_temp, prev_temp, g_tt, g_tp, g_theta, g_delta_power_tt,
+			g_delta_power_tp, 0, total_power);
+#endif
 
 	return total_power;
 }
@@ -3524,6 +3543,7 @@ static unsigned long atm_get_timeout_time(int curr_temp)
 #ifdef ATM_CFG_PROFILING
 	return atm_timer_polling_delay;
 #else
+
 	if (curr_temp >= polling_trip_temp0)
 		return atm_timer_polling_delay / polling_factor0;
 	else if (curr_temp >= polling_trip_temp1)
@@ -3792,15 +3812,28 @@ static int krtatm_thread(void *arg)
 			trace_ATM__result(
 				TARGET_TJ,
 				atm_curr_maxtj,
+#if defined(CONFIG_MACH_MT6739)
+				get_immediate_cpu_wrap(),
+				0,
+#elif defined(CONFIG_MACH_MT6765) || defined(CONFIG_MACH_MT6771) || defined(CONFIG_MACH_MT8168)
+				get_immediate_cpuLL_wrap(),
+				get_immediate_cpuL_wrap(),
+#else
 				get_immediate_cpuL_wrap(),
 				get_immediate_cpuB_wrap(),
+#endif
 				get_immediate_gpu_wrap(),
 				gpu_loading,
 				(adaptive_cpu_power_limit == 0x7FFFFFFF)
 					? MAXIMUM_CPU_POWER : adaptive_cpu_power_limit,
 				(adaptive_gpu_power_limit == 0x7FFFFFFF)
 					? MAXIMUM_GPU_POWER : adaptive_gpu_power_limit,
-				cl_dev_adp_cpu_state_active, is_EARA_handled
+				cl_dev_adp_cpu_state_active,
+#if defined(EARA_THERMAL_SUPPORT)
+				is_EARA_handled
+#else
+				0
+#endif
 			);
 
 			/* To confirm if krtatm kthread is really running. */

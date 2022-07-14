@@ -53,6 +53,12 @@
 #define MTK_ION_MAPPING_PERF_DEBUG
 #endif
 
+#ifdef CONFIG_OPLUS_ION_BOOSTPOOL
+#include "oplus_ion_boost_pool.h"
+#endif /* CONFIG_OPLUS_ION_BOOSTPOOL */
+
+#define SZ_4G				_AC(0x100000000, ULL)
+
 struct ion_mm_buffer_info {
 	int module_id;
 	int fix_module_id;
@@ -96,6 +102,11 @@ static unsigned int order_gfp_flags[] = {
 
 static const unsigned int orders[] = { 4, 1, 0 };
 
+#ifdef CONFIG_OPLUS_ION_BOOSTPOOL
+struct kmem_cache *boost_ion_info_cachep;
+bool create_kmemcache_ion_info_success = false;
+#endif
+
 /* static const unsigned int orders[] = {8, 4, 0}; */
 static const int num_orders = ARRAY_SIZE(orders);
 static int order_to_index(unsigned int order)
@@ -118,12 +129,19 @@ struct ion_system_heap {
 	struct ion_heap heap;
 	struct ion_page_pool **pools;
 	struct ion_page_pool **cached_pools;
+#ifdef CONFIG_OPLUS_ION_BOOSTPOOL
+	struct ion_boost_pool *cached_boost_pool;
+	struct ion_boost_pool *uncached_boost_pool;
+#endif /* CONFIG_OPLUS_ION_BOOSTPOOL */
 };
 
 struct page_info {
 	struct page *page;
 	unsigned int order;
 	struct list_head list;
+#ifdef CONFIG_OPLUS_ION_BOOSTPOOL
+	bool from_boost_kmem_cache;
+#endif
 };
 
 unsigned int caller_pid;
@@ -163,6 +181,15 @@ static void free_buffer_page(struct ion_system_heap *heap,
 	int order_idx = order_to_index(order);
 	unsigned long private_flags = buffer->private_flags;
 
+#ifdef CONFIG_OPLUS_ION_BOOSTPOOL
+	struct ion_boost_pool* boost_pool =
+		cached ? heap->cached_boost_pool : heap->uncached_boost_pool;
+
+	if (boost_pool && !(private_flags & ION_PRIV_FLAG_SHRINKER_FREE) &&
+	    (0 == boost_pool_free(boost_pool, page, order)))
+		return;
+#endif /* CONFIG_OPLUS_ION_BOOSTPOOL */
+
 	if (!cached && !(private_flags & ION_PRIV_FLAG_SHRINKER_FREE)) {
 		struct ion_page_pool *pool = heap->pools[order_idx];
 
@@ -191,11 +218,25 @@ static struct page_info *alloc_largest_available(struct ion_system_heap *heap,
 	struct page_info *info;
 	int i;
 
+#ifdef CONFIG_OPLUS_ION_BOOSTPOOL
+	if (likely(create_kmemcache_ion_info_success)) {
+		info = kmem_cache_zalloc(boost_ion_info_cachep, GFP_KERNEL);
+		if (!info)
+			return ERR_PTR(-ENOMEM);
+		info->from_boost_kmem_cache = true;
+	} else {
+		info = kmalloc(sizeof(*info), GFP_KERNEL);
+		if (!info)
+			return ERR_PTR(-ENOMEM);
+		info->from_boost_kmem_cache = false;
+	}
+#else
 	info = kmalloc(sizeof(*info), GFP_KERNEL);
 	if (!info) {
 		IONMSG("%s kmalloc failed info is null.\n", __func__);
 		return NULL;
 	}
+#endif
 
 	for (i = 0; i < num_orders; i++) {
 		if (size < order_to_size(orders[i]))
@@ -212,7 +253,14 @@ static struct page_info *alloc_largest_available(struct ion_system_heap *heap,
 		INIT_LIST_HEAD(&info->list);
 		return info;
 	}
+#ifdef CONFIG_OPLUS_ION_BOOSTPOOL
+	if (likely(info->from_boost_kmem_cache))
+		kmem_cache_free(boost_ion_info_cachep, info);
+	else
+		kfree(info);
+#else
 	kfree(info);
+#endif
 
 	return NULL;
 }
@@ -340,6 +388,7 @@ static int ion_mm_heap_init_domain(struct ion_mm_buffer_info *buffer_info,
 	return 0;
 }
 
+/* #define BOOSTPOOL_DEBUG */
 static int ion_mm_heap_allocate(struct ion_heap *heap,
 				struct ion_buffer *buffer, unsigned long size,
 				unsigned long align, unsigned long flags)
@@ -361,6 +410,16 @@ static int ion_mm_heap_allocate(struct ion_heap *heap,
 	unsigned long long start, end;
 	unsigned long user_va = 0;
 
+#ifdef CONFIG_OPLUS_ION_BOOSTPOOL
+	bool cached = ion_buffer_cached(buffer);
+	struct ion_boost_pool *boost_pool =
+		cached ? sys_heap->cached_boost_pool : sys_heap->uncached_boost_pool;
+#ifdef BOOSTPOOL_DEBUG
+	int boostpool_order[3] = {0};
+	unsigned long alloc_start = jiffies;
+#endif /* BOOSTPOOL_DEBUG */
+#endif /* CONFIG_OPLUS_ION_BOOSTPOOL */
+
 	INIT_LIST_HEAD(&pages);
 	if (size / PAGE_SIZE > totalram_pages / 2) {
 		IONMSG("%s size %lu is larger than totalram_pages.\n", __func__,
@@ -369,6 +428,70 @@ static int ion_mm_heap_allocate(struct ion_heap *heap,
 	}
 
 	start = sched_clock();
+
+#ifdef CONFIG_OPLUS_ION_BOOSTPOOL
+	if (size < SZ_1M)
+		boost_pool = NULL;
+
+	if (boost_pool) {
+		unsigned int alloc_sz = 0;
+		struct page *page = NULL;
+
+		while (size_remaining > 0) {
+			if (likely(create_kmemcache_ion_info_success)) {
+				info = kmem_cache_zalloc(boost_ion_info_cachep, GFP_KERNEL);
+				if (!info)
+					break;
+				info->from_boost_kmem_cache = true;
+			} else {
+				info = kmalloc(sizeof(*info), GFP_KERNEL);
+				if (!info)
+					break;
+				info->from_boost_kmem_cache = false;
+			}
+			page = boost_pool_allocate(boost_pool,
+						   size_remaining, max_order);
+			if (!page) {
+				if (info->from_boost_kmem_cache)
+					kmem_cache_free(boost_ion_info_cachep, info);
+				else
+					kfree(info);
+				break;
+			}
+
+			info->page = page;
+			/* TODO if not use GFP_COMP, we should save page order. */
+			info->order = compound_order(page);
+			alloc_sz += (1 << info->order);
+			INIT_LIST_HEAD(&info->list);
+#ifdef BOOSTPOOL_DEBUG
+			boostpool_order[order_to_index(info->order)] += 1;
+#endif /* BOOSTPOOL_DEBUG */
+
+			list_add_tail(&info->list, &pages);
+
+			size_remaining -= (1 << info->order) * PAGE_SIZE;
+			max_order = info->order;
+			i++;
+		}
+
+		boost_pool_dec_high(boost_pool, alloc_sz);
+
+
+#ifdef BOOSTPOOL_DEBUG
+		if (size_remaining != 0 || true) {
+			pr_info("boostpool %s-%d alloc failed. boostpool_sz: %d size: %d orders(%d, %d, %d) %d ms\n",
+				boost_pool->name, sys_heap->heap.id,
+				size_remaining, (int) size,
+				boostpool_order[0], boostpool_order[1],
+				boostpool_order[2],
+				jiffies_to_msecs(jiffies - alloc_start));
+		}
+#endif /* BOOSTPOOL_DEBUG */
+
+		max_order = orders[0];
+	}
+#endif /* CONFIG_OPLUS_ION_BOOSTPOOL */
 
 	/* add time interval to alloc 64k page in low memory status*/
 	if (((start - alloc_large_fail_ts) < 1000000000) &&
@@ -419,7 +542,14 @@ static int ion_mm_heap_allocate(struct ion_heap *heap,
 		sg_dma_len(sg) = sg->length;
 		sg = sg_next(sg);
 		list_del(&info->list);
+#ifdef CONFIG_OPLUS_ION_BOOSTPOOL
+		if (likely(info->from_boost_kmem_cache))
+			kmem_cache_free(boost_ion_info_cachep, info);
+		else
+			kfree(info);
+#else
 		kfree(info);
+#endif
 	}
 
 	/* create MM buffer info for it */
@@ -466,6 +596,10 @@ static int ion_mm_heap_allocate(struct ion_heap *heap,
 	caller_pid = 0;
 	caller_tid = 0;
 
+#ifdef CONFIG_OPLUS_ION_BOOSTPOOL
+	/* if (boost_pool) */
+	/* 	boost_pool_wakeup_process(boost_pool); */
+#endif /* CONFIG_OPLUS_ION_BOOSTPOOL */
 	return 0;
 
 err1:
@@ -477,7 +611,14 @@ err:
 		list_for_each_entry_safe(info, tmp_info, &pages, list) {
 			free_buffer_page(sys_heap, buffer, info->page,
 					 info->order);
+#ifdef CONFIG_OPLUS_ION_BOOSTPOOL
+		if (likely(info->from_boost_kmem_cache))
+			kmem_cache_free(boost_ion_info_cachep, info);
+		else
 			kfree(info);
+#else
+			kfree(info);
+#endif
 		}
 	}
 	IONMSG("error: mm_alloc fail: size=%lu, flag=%lu.\n", size, flags);
@@ -642,8 +783,85 @@ static int ion_mm_heap_shrink(struct ion_heap *heap, gfp_t gfp_mask,
 	struct ion_system_heap *sys_heap;
 	int nr_total = 0;
 	int i;
+#ifdef CONFIG_OPLUS_ION_BOOSTPOOL
+	struct ion_boost_pool *boost_pool = NULL;
+	int nr_freed;
+#endif /* CONFIG_OPLUS_ION_BOOSTPOOL */
 
 	sys_heap = container_of(heap, struct ion_system_heap, heap);
+
+#ifdef CONFIG_OPLUS_ION_BOOSTPOOL
+	for (i = 0; i < num_orders; i++) {
+		if (!nr_to_scan) {
+			boost_pool = sys_heap->cached_boost_pool;
+			if (boost_pool) {
+				nr_total += boost_pool_shrink(boost_pool,
+							      boost_pool->pools[i],
+							      gfp_mask,
+							      nr_to_scan);
+			}
+			boost_pool = sys_heap->uncached_boost_pool;
+			if (boost_pool) {
+				nr_total += boost_pool_shrink(boost_pool,
+							      boost_pool->pools[i],
+							      gfp_mask,
+							      nr_to_scan);
+			}
+
+			/* shrink cached pool */
+			nr_total +=
+			    ion_page_pool_shrink(sys_heap->pools[i],
+						 gfp_mask,
+						 nr_to_scan);
+			nr_total +=
+			    ion_page_pool_shrink(sys_heap->cached_pools[i],
+						 gfp_mask,
+						 nr_to_scan);
+		} else {
+
+			boost_pool = sys_heap->uncached_boost_pool;
+			if (boost_pool) {
+				nr_freed = boost_pool_shrink(boost_pool,
+							     boost_pool->pools[i],
+							     gfp_mask,
+							     nr_to_scan);
+				nr_to_scan -= nr_freed;
+				nr_total += nr_freed;
+				if (nr_to_scan <= 0)
+					break;
+			}
+
+			boost_pool = sys_heap->cached_boost_pool;
+			if (boost_pool) {
+				nr_freed = boost_pool_shrink(boost_pool,
+							     boost_pool->pools[i],
+							     gfp_mask,
+							     nr_to_scan);
+				nr_to_scan -= nr_freed;
+				nr_total += nr_freed;
+				if (nr_to_scan <= 0)
+					break;
+			}
+
+			nr_freed = ion_page_pool_shrink(sys_heap->pools[i],
+							gfp_mask, nr_to_scan);
+			nr_total += nr_freed;
+			nr_to_scan -= nr_freed;
+			if (nr_to_scan <= 0)
+				break;
+
+			/* shrink cached pool */
+			nr_freed =
+				ion_page_pool_shrink(sys_heap->cached_pools[i],
+						     gfp_mask,
+						     nr_to_scan);
+			nr_to_scan -= nr_freed;
+			nr_total += nr_freed;
+			if (nr_to_scan <= 0)
+				break;
+		}
+	}
+#else /* CONFIG_OPLUS_ION_BOOSTPOOL */
 
 	for (i = 0; i < num_orders; i++) {
 		struct ion_page_pool *pool = sys_heap->pools[i];
@@ -654,6 +872,7 @@ static int ion_mm_heap_shrink(struct ion_heap *heap, gfp_t gfp_mask,
 		    ion_page_pool_shrink(sys_heap->cached_pools[i], gfp_mask,
 					 nr_to_scan);
 	}
+#endif /* CONFIG_OPLUS_ION_BOOSTPOOL */
 
 	return nr_total;
 }
@@ -955,8 +1174,13 @@ out:
 	end = sched_clock();
 	if (buffer->sg_table &&
 	    (buffer->sg_table->nents > 10 &&
+#if BITS_PER_LONG == 32
+	    (div_u64((end - start),
+	     buffer->sg_table->nents > 500000ULL)) ||
+#else
 	    ((end - start) /
 	     buffer->sg_table->nents > 500000ULL) ||
+#endif
 	    (end - start > 50000000ULL)))
 		IONMSG("warn: p(%d-%d) phys time:%lluns n:%u s:%zu\n",
 		       buffer_info->module_id,
@@ -1095,6 +1319,16 @@ static int __do_dump_share_fd(const void *data, struct file *file,
 
 	buffer = ion_drv_file_to_buffer(file);
 	if (IS_ERR_OR_NULL(buffer))
+		return 0;
+
+	/*
+	 * secure heap buffer struct is different with mm_heap buffer,
+	 * and it isn't public, don't dump here.
+	 *
+	 * only dump supported heap type in ion_mm_heap.c
+	 */
+	if (buffer->heap->type != (unsigned int)ION_HEAP_TYPE_MULTIMEDIA &&
+	    buffer->heap->type != (unsigned int)ION_HEAP_TYPE_SYSTEM)
 		return 0;
 
 	bug_info = (struct ion_mm_buffer_info *)buffer->priv_virt;
@@ -1302,7 +1536,11 @@ static int ion_mm_heap_debug_show(struct ion_heap *heap, struct seq_file *s,
 		 "----------------------------------------------------\n");
 
 	/* dump all handle's backtrace */
+#ifdef OPLUS_FEATURE_MTK_ION_SEPARATE_LOCK
+	down_read(&dev->client_lock);
+#else /* OPLUS_FEATURE_MTK_ION_SEPARATE_LOCK */
 	down_read(&dev->lock);
+#endif /* OPLUS_FEATURE_MTK_ION_SEPARATE_LOCK */
 	for (n = rb_first(&dev->clients); n; n = rb_next(n)) {
 		struct ion_client
 		*client = rb_entry(n, struct ion_client, node);
@@ -1337,9 +1575,8 @@ static int ion_mm_heap_debug_show(struct ion_heap *heap, struct seq_file *s,
 
 			client->dbg_hnd_cnt++;
 			ION_DUMP(s,
-				 "\thandle=0x%p (id: %d), buffer=0x%p/0x%lx, heap=%u, fd=%4d, ts: %lldms (%d)\n",
+				 "\thandle=0x%p (id: %d), buffer=0x%p, heap=%u, fd=%4d, ts: %lldms (%d)\n",
 				 handle, handle->id, handle->buffer,
-				 (unsigned long)handle->buffer,
 				 handle->buffer->heap->id,
 				 handle->dbg.fd,
 				 handle->dbg.user_ts,
@@ -1356,7 +1593,11 @@ static int ion_mm_heap_debug_show(struct ion_heap *heap, struct seq_file *s,
 #ifdef CONFIG_MTK_IOMMU_V2
 	mtk_iommu_log_dump(s);
 #endif
+#ifdef OPLUS_FEATURE_MTK_ION_SEPARATE_LOCK
+	up_read(&dev->client_lock);
+#else /* OPLUS_FEATURE_MTK_ION_SEPARATE_LOCK */
 	up_read(&dev->lock);
+#endif /* OPLUS_FEATURE_MTK_ION_SEPARATE_LOCK */
 
 	return 0;
 }
@@ -1435,7 +1676,11 @@ void ion_mm_heap_memory_detail(void)
 		 "client", "dbg_name", "pid", "size", "address");
 	ION_DUMP(NULL, "--------------------------------------\n");
 
+#ifdef OPLUS_FEATURE_MTK_ION_SEPARATE_LOCK
+	if (!down_read_trylock(&dev->client_lock)) {
+#else /* OPLUS_FEATURE_MTK_ION_SEPARATE_LOCK */
 	if (!down_read_trylock(&dev->lock)) {
+#endif /* OPLUS_FEATURE_MTK_ION_SEPARATE_LOCK */
 		ION_DUMP(NULL,
 			 "detail trylock fail, alloc pid(%d-%d)\n",
 				     caller_pid, caller_tid);
@@ -1488,7 +1733,11 @@ void ion_mm_heap_memory_detail(void)
 	ION_DUMP(NULL, "%s\n", seq_log);
 
 	if (need_dev_lock)
+#ifdef OPLUS_FEATURE_MTK_ION_SEPARATE_LOCK
+		up_read(&dev->client_lock);
+#else /* OPLUS_FEATURE_MTK_ION_SEPARATE_LOCK */
 		up_read(&dev->lock);
+#endif /* OPLUS_FEATURE_MTK_ION_SEPARATE_LOCK */
 
 	ION_DUMP(NULL, "---------ion_mm_heap buffer info------\n");
 
@@ -1654,6 +1903,60 @@ size_t ion_mm_heap_total_memory(void)
 	return (size_t)(atomic64_read(&page_sz_cnt) * 4096);
 }
 
+#ifdef OPLUS_BUG_STABILITY
+size_t get_ion_heap_by_pid(pid_t pid)
+{
+	struct ion_device *dev = g_ion_device;
+	struct rb_node *n, *m;
+	int buffer_size = 0;
+	unsigned int id = 0;
+	enum mtk_ion_heap_type cam_heap = ION_HEAP_TYPE_MULTIMEDIA_FOR_CAMERA;
+	enum mtk_ion_heap_type mm_heap = ION_HEAP_TYPE_MULTIMEDIA;
+
+#ifdef OPLUS_FEATURE_MTK_ION_SEPARATE_LOCK
+	if (!down_read_trylock(&dev->client_lock))
+#else /* OPLUS_FEATURE_MTK_ION_SEPARATE_LOCK */
+	if (!down_read_trylock(&dev->lock))
+#endif /* OPLUS_FEATURE_MTK_ION_SEPARATE_LOCK */
+		return 0;
+	for (n = rb_first(&dev->clients); n; n = rb_next(n)) {
+		struct ion_client *client = rb_entry(n, struct ion_client, node);
+		if(client->pid == pid) {
+			mutex_lock(&client->lock);
+			for (m = rb_first(&client->handles); m;
+			     m = rb_next(m)) {
+				struct ion_handle *handle =
+				    rb_entry(m, struct ion_handle,
+					     node);
+				id = handle->buffer->heap->id;
+
+				if ((id == mm_heap || id == cam_heap) &&
+				    (handle->buffer->handle_count) != 0) {
+					buffer_size +=
+					    (int)(handle->buffer->size) /
+					    (handle->buffer->handle_count);
+				}
+			}
+			mutex_unlock(&client->lock);
+		}
+	}
+#ifdef OPLUS_FEATURE_MTK_ION_SEPARATE_LOCK
+	up_read(&dev->client_lock);
+#else /* OPLUS_FEATURE_MTK_ION_SEPARATE_LOCK */
+	up_read(&dev->lock);
+#endif /* OPLUS_FEATURE_MTK_ION_SEPARATE_LOCK */
+	return buffer_size/1024;
+}
+EXPORT_SYMBOL(get_ion_heap_by_pid);
+#endif
+
+#ifdef CONFIG_OPLUS_ION_BOOSTPOOL
+static void init_once(void *foo)
+{
+	;
+}
+#endif
+
 struct ion_heap *ion_mm_heap_create(struct ion_platform_heap *unused)
 {
 	struct ion_system_heap *heap;
@@ -1685,12 +1988,12 @@ struct ion_heap *ion_mm_heap_create(struct ion_platform_heap *unused)
 		if (unused->id == ION_HEAP_TYPE_MULTIMEDIA_FOR_CAMERA)
 			gfp_flags |= __GFP_HIGHMEM;
 
-		pool = ion_page_pool_create(gfp_flags, orders[i], false);
+		pool = ion_page_pool_create(gfp_flags, orders[i], false, false);
 		if (!pool)
 			goto err_create_pool;
 		heap->pools[i] = pool;
 
-		pool = ion_page_pool_create(gfp_flags, orders[i], true);
+		pool = ion_page_pool_create(gfp_flags, orders[i], true, false);
 		if (!pool)
 			goto err_create_pool;
 		heap->cached_pools[i] = pool;
@@ -1698,6 +2001,43 @@ struct ion_heap *ion_mm_heap_create(struct ion_platform_heap *unused)
 
 	heap->heap.debug_show = ion_mm_heap_debug_show;
 	ion_comm_init();
+#ifdef CONFIG_OPLUS_ION_BOOSTPOOL
+	if (unused->id == ION_HEAP_TYPE_MULTIMEDIA_FOR_CAMERA &&
+	    !IS_ERR_OR_NULL(boost_root_dir)) {
+		if (!kcrit_scene_init())
+			pr_err("%s: init kcrit scene failed!\n",
+			       __func__);
+
+		unsigned long cam_sz = 32 * 256, uncached_sz = 32 * 256;
+		/* on low memory target, we should not set 128Mib on camera pool. */
+		if (totalram_pages > (SZ_4G >> PAGE_SHIFT)) {
+			cam_sz = 128 * 256;
+			uncached_sz = 64 * 256;
+		}
+
+		heap->uncached_boost_pool = boost_pool_create(0,
+							      uncached_sz,
+							      boost_root_dir,
+							      "ion_uncached");
+		if (!heap->uncached_boost_pool)
+			pr_err("%s: create boost_pool ion_uncached failed!\n",
+			       __func__);
+
+		heap->cached_boost_pool = boost_pool_create(ION_FLAG_CACHED,
+							    cam_sz,
+							    boost_root_dir,
+							    "camera");
+		if (!heap->cached_boost_pool)
+			pr_err("%s: create boost_pool camera failed!\n",
+			       __func__);
+		boost_ion_info_cachep = kmem_cache_create("boost_ion_info_cachep",
+			sizeof(struct page_info), 0,0, init_once);
+		if (boost_ion_info_cachep != NULL)
+			create_kmemcache_ion_info_success = true;
+		else
+			pr_err("boost_ion_info_cachep create failed\n");
+	}
+#endif /* CONFIG_OPLUS_ION_BOOSTPOOL */
 	return &heap->heap;
 
 err_create_pool:
@@ -1926,18 +2266,33 @@ long ion_mm_ioctl(struct ion_client *client, unsigned int cmd,
 	struct ion_mm_data param;
 	long ret = 0;
 	/* char dbgstr[256]; */
-	unsigned long ret_copy;
+	unsigned long ret_copy = 0;
 	unsigned int buffer_sec = 0;
 	enum ion_heap_type buffer_type = 0;
 	struct ion_buffer *buffer;
 	struct ion_handle *kernel_handle;
 	int domain_idx = 0;
 
-	if (from_kernel)
+	if (!arg) {
+		IONMSG("%s:err arg = NULL. %s(%s),k:%d\n",
+		       __func__, client->name, client->dbg_name, from_kernel);
+		ret = -EINVAL;
+		goto ioctl_out;
+	}
+
+	if (from_kernel) {
 		param = *(struct ion_mm_data *)arg;
-	else
+	} else {
 		ret_copy = copy_from_user(&param, (void __user *)arg,
 					  sizeof(struct ion_mm_data));
+		if (ret_copy != 0) {
+			IONMSG("%s:err arg copy failed, ret_copy = %lu. %s(%s),%d, k:%d\n",
+			       __func__, ret_copy, client->name, client->dbg_name,
+			       client->pid, from_kernel);
+			ret = -EFAULT;
+			goto ioctl_out;
+		}
+	}
 
 	switch (param.mm_cmd) {
 	case ION_MM_CONFIG_BUFFER:
@@ -1984,7 +2339,7 @@ long ion_mm_ioctl(struct ion_client *client, unsigned int cmd,
 		}
 
 		if ((int)buffer->heap->type == ION_HEAP_TYPE_MULTIMEDIA) {
-			struct ion_fb_buffer_info *buffer_info =
+			struct ion_mm_buffer_info *buffer_info =
 			    buffer->priv_virt;
 			enum ION_MM_CMDS mm_cmd = param.mm_cmd;
 
@@ -2086,9 +2441,9 @@ long ion_mm_ioctl(struct ion_client *client, unsigned int cmd,
 #endif
 		} else {
 			IONMSG
-			    (": Error. config buffer is not from %c heap.\n",
+			    (": Error. config buffer is not from %d heap.\n",
 			     buffer->heap->type);
-			ret = 0;
+			ret = -EINVAL;
 		}
 		ion_drv_put_kernel_handle(kernel_handle);
 
@@ -2177,10 +2532,32 @@ long ion_mm_ioctl(struct ion_client *client, unsigned int cmd,
 			param.get_phys_param.phy_addr = phy_addr;
 
 			mutex_unlock(&buffer->lock);
+		} else if (buffer_type == ION_HEAP_TYPE_MULTIMEDIA_SEC) {
+			struct ion_heap *sec_heap;
+			ion_phys_addr_t phy_addr;
+			size_t len;
+			struct ion_heap_ops *sec_ops;
+			int ret;
+
+			len = param.get_phys_param.len;
+			sec_heap = buffer->heap;
+			if (sec_heap->ops) {
+				sec_ops = sec_heap->ops;
+			} else {
+				IONMSG("%s #%d: buffer err\n",
+				       __func__, __LINE__);
+				ion_drv_put_kernel_handle(kernel_handle);
+				return -EFAULT;
+			}
+
+			mutex_lock(&buffer->lock);
+			ret = sec_ops->phys(sec_heap, buffer, &phy_addr, &len);
+			param.get_phys_param.phy_addr = phy_addr;
+			mutex_unlock(&buffer->lock);
 
 		} else {
 			IONMSG
-			    (": Error. get iova is not from %c heap.\n",
+			    (": Error. get iova is not from %d heap.\n",
 			     buffer->heap->type);
 			ret = -EFAULT;
 		}
@@ -2318,12 +2695,29 @@ long ion_mm_ioctl(struct ion_client *client, unsigned int cmd,
 		ret = -EFAULT;
 	}
 
-	if (from_kernel)
+	if (ret) {
+		IONMSG("[%s]:failed to finish io-cmd(%d). %s(%s),%d, k:%d\n",
+		       __func__, param.mm_cmd,
+		       client->name, client->dbg_name,
+		       client->pid, from_kernel);
+		goto ioctl_out;
+	}
+
+	if (from_kernel) {
 		*(struct ion_mm_data *)arg = param;
-	else
+	} else {
 		ret_copy =
 		    copy_to_user((void __user *)arg, &param,
 				 sizeof(struct ion_mm_data));
+		if (ret_copy) {
+			IONMSG("%s: copytouser failed, ret = %lu. %s(%s),%d, k:%d\n",
+			       __func__, ret_copy, client->name, client->dbg_name,
+			       client->pid, from_kernel);
+			ret = -EFAULT;
+		}
+	}
+
+ioctl_out:
 	return ret;
 }
 
@@ -2397,7 +2791,15 @@ int ion_mm_heap_cache_allocate(struct ion_heap *heap,
 		sg_dma_len(sg) = sg->length;
 		sg = sg_next(sg);
 		list_del(&info->list);
+
+#ifdef CONFIG_OPLUS_ION_BOOSTPOOL
+		if (likely(info->from_boost_kmem_cache))
+			kmem_cache_free(boost_ion_info_cachep, info);
+		else
+			kfree(info);
+#else
 		kfree(info);
+#endif
 	}
 
 	buffer->sg_table = table;
@@ -2413,7 +2815,14 @@ err:
 	list_for_each_entry_safe(info, tmp_info, &pages, list) {
 		free_buffer_page(sys_heap, buffer,
 				 info->page, info->order);
+#ifdef CONFIG_OPLUS_ION_BOOSTPOOL
+		if (likely(info->from_boost_kmem_cache))
+			kmem_cache_free(boost_ion_info_cachep, info);
+		else
+			kfree(info);
+#else
 		kfree(info);
+#endif
 	}
 	IONMSG("mm_cache_alloc fail: size=%lu, flag=%lu.\n", size, flags);
 

@@ -36,7 +36,7 @@ static irqreturn_t mmc_gpio_cd_irqt(int irq, void *dev_id)
 	struct mmc_host *host = dev_id;
 
 	host->trigger_card_event = true;
-	mmc_detect_change(host, msecs_to_jiffies(200));
+	mmc_detect_change(host, msecs_to_jiffies(500));
 
 	return IRQ_HANDLED;
 }

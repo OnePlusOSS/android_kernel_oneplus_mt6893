@@ -1,0 +1,53 @@
+
+&charger {
+	io-channels =  <&auxadc 3>,<&auxadc 4>,<&auxadc 5>;
+	io-channel-names = "auxadc6-subboard_temp","auxadc4-usb_temp_v_l","auxadc5-usb_temp_v_r";
+};
+
+&i2c7 {
+	rt5125-fastcg@0e{
+	#include "../../../fastchg_fw/rt5125_fw_data_4450_vooc_ffc_5v6a_7bit_20619.dtsi"
+	};
+};
+
+&vooc_asic_id_active {
+	pins_cmd_dat {
+		pinmux = <PINMUX_GPIO56__FUNC_GPIO56>;
+		input-enable;
+		slew-rate = <0>;
+		bias-pull-up = <MTK_PUPD_SET_R1R0_10>;
+	};
+};
+
+&vooc_asic_id_sleep {
+	pins_cmd_dat {
+		pinmux = <PINMUX_GPIO56__FUNC_GPIO56>;
+		input-enable;
+		slew-rate = <0>;
+		bias-pull-down = <MTK_PUPD_SET_R1R0_10>;
+	};
+};
+
+
+&odm {
+	oplus_devinfo:oplus_devinfo {
+	compatible = "oplus-devinfo";
+	main-sub {
+		compatible = "hw-match, main-sub";
+		aboard-patterns = <0>;
+		/*main board*/
+		match-projects = <20619>;
+	};
+	};
+};
+
+&rear_cct_1 {
+        config_id = <1>;
+};
+//#endif
+
+&swtp {
+    compatible = "mediatek, swtp-eint";
+    debounce = <512000>;
+};
+

@@ -19,6 +19,7 @@
 
 #include <helio-dvfsrc-qos.h>
 #include <helio-dvfsrc-opp.h>
+#include "helio-dvfsrc-ip-v2.h"
 
 static struct pm_qos_request dvfsrc_memory_bw_req;
 static struct pm_qos_request dvfsrc_ddr_opp_req;
@@ -273,6 +274,41 @@ static ssize_t dvfsrc_level_intr_log_store(struct device *dev,
 static DEVICE_ATTR(dvfsrc_level_intr_log, 0644,
 		dvfsrc_level_intr_log_show, dvfsrc_level_intr_log_store);
 
+static ssize_t dvfsrc_num_opps_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", VCORE_DVFS_OPP_NUM);
+}
+static DEVICE_ATTR(dvfsrc_num_opps, 0444, dvfsrc_num_opps_show, NULL);
+
+static ssize_t dvfsrc_get_dvfs_time_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	u32 last;
+	u64 time_1, time_2;
+	u64 dvfs_time_us;
+
+	if (!(dvfsrc_read(DVFSRC_BASIC_CONTROL) & (1 << FORCE_EN_TAR_SHIFT)))
+		return sprintf(buf, "Not in force mode\n");
+
+	last = dvfsrc_read(DVFSRC_LAST);
+	time_1 = dvfsrc_read(DVFSRC_RECORD_0_1 + RECORD_SHIFT * last);
+	time_1 = time_1 << 32;
+	time_1 = dvfsrc_read(DVFSRC_RECORD_0_0 + RECORD_SHIFT * last) + time_1;
+	last = (last + 7) % 8;
+	time_2 = dvfsrc_read(DVFSRC_RECORD_0_1 + RECORD_SHIFT * last);
+	time_2 = time_2 << 32;
+	time_2 = dvfsrc_read(DVFSRC_RECORD_0_0 + RECORD_SHIFT * last) + time_2;
+#if BITS_PER_LONG == 32
+	dvfs_time_us = div_u64((time_1 - time_2), 13);
+#else
+	dvfs_time_us = (time_1 - time_2) / 13;
+#endif
+
+	return sprintf(buf, "dvfs_time = %llu us\n", dvfs_time_us);
+}
+static DEVICE_ATTR(dvfsrc_get_dvfs_time, 0444,
+		dvfsrc_get_dvfs_time_show, NULL);
 
 static struct attribute *helio_dvfsrc_attrs[] = {
 	&dev_attr_dvfsrc_enable.attr,
@@ -289,6 +325,8 @@ static struct attribute *helio_dvfsrc_attrs[] = {
 	&dev_attr_dvfsrc_dump.attr,
 	&dev_attr_dvfsrc_level_intr_log.attr,
 	&dev_attr_dvfsrc_req_isphrt_bw.attr,
+	&dev_attr_dvfsrc_num_opps.attr,
+	&dev_attr_dvfsrc_get_dvfs_time.attr,
 	NULL,
 };
 
@@ -302,9 +340,9 @@ int helio_dvfsrc_add_interface(struct device *dev)
 	pm_qos_add_request(&dvfsrc_memory_bw_req, PM_QOS_APU_MEMORY_BANDWIDTH,
 			PM_QOS_APU_MEMORY_BANDWIDTH_DEFAULT_VALUE);
 	pm_qos_add_request(&dvfsrc_ddr_opp_req, PM_QOS_DDR_OPP,
-			PM_QOS_DDR_OPP_DEFAULT_VALUE);
+			0);
 	pm_qos_add_request(&dvfsrc_vcore_opp_req, PM_QOS_VCORE_OPP,
-			PM_QOS_VCORE_OPP_DEFAULT_VALUE);
+			0);
 	pm_qos_add_request(&dvfsrc_scp_vcore_req, PM_QOS_SCP_VCORE_REQUEST,
 			PM_QOS_SCP_VCORE_REQUEST_DEFAULT_VALUE);
 	pm_qos_add_request(&dvfsrc_power_model_ddr_req,
@@ -321,6 +359,13 @@ int helio_dvfsrc_add_interface(struct device *dev)
 			PM_QOS_ISP_HRT_BANDWIDTH_DEFAULT_VALUE);
 
 	return sysfs_create_group(&dev->kobj, &helio_dvfsrc_attr_group);
+}
+
+void helio_dvfsrc_qos_init_done(void)
+{
+	pm_qos_update_request(&dvfsrc_vcore_opp_req, PM_QOS_VCORE_OPP_DEFAULT_VALUE);
+	pm_qos_update_request(&dvfsrc_ddr_opp_req, PM_QOS_DDR_OPP_DEFAULT_VALUE);
+
 }
 
 void helio_dvfsrc_remove_interface(struct device *dev)

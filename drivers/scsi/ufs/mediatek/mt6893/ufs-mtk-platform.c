@@ -496,6 +496,8 @@ int ufs_mtk_pltfrm_host_sw_rst(struct ufs_hba *hba, u32 target)
 
 	dev_dbg(hba->dev, "ufs_mtk_host_sw_rst: 0x%x\n", target);
 
+	ufshcd_update_evt_hist(hba, UFS_EVT_SW_RESET, (u32)target);
+
 	if (target & SW_RST_TARGET_UFSHCI) {
 		/* reset HCI */
 		reg = readl(ufs_mtk_mmio_base_infracfg_ao +

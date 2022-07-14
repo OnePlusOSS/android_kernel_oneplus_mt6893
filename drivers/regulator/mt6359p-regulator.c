@@ -372,6 +372,7 @@ static const u32 vfe28_voltages[] = {
 	2800000,
 };
 
+#ifndef OPLUS_FEATURE_CAMERA_COMMON
 static const u32 vcn13_voltages[] = {
 	900000,
 	1000000,
@@ -379,6 +380,15 @@ static const u32 vcn13_voltages[] = {
 	1200000,
 	1300000,
 };
+#else /*OPLUS_FEATURE_CAMERA_COMMON*/
+static const u32 vcn13_voltages[] = {
+	900000,
+	1000000,
+	1100000,
+	1200000,
+	1300000,
+};
+#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 
 static const u32 vcn33_1_bt_voltages[] = {
 	0,
@@ -648,6 +658,11 @@ static int mt6359_regulator_get_voltage_sel(struct regulator_dev *rdev)
 	struct mt6359_regulator_info *info = rdev_get_drvdata(rdev);
 	int ret, regval = 0;
 
+	if (info == NULL) {
+		dev_notice(&rdev->dev,
+			"regulator info null pointer\n");
+		return -EINVAL;
+	}
 	ret = regmap_read(rdev->regmap, info->da_vsel_reg, &regval);
 	if (ret != 0) {
 		dev_notice(&rdev->dev,
@@ -665,6 +680,11 @@ static unsigned int mt6359_regulator_get_mode(struct regulator_dev *rdev)
 	struct mt6359_regulator_info *info = rdev_get_drvdata(rdev);
 	int ret, regval = 0;
 
+	if (info == NULL) {
+		dev_notice(&rdev->dev,
+			"regulator info null pointer\n");
+		return -EINVAL;
+	}
 	ret = regmap_read(rdev->regmap, info->modeset_reg, &regval);
 	if (ret != 0) {
 		dev_notice(&rdev->dev,
@@ -697,6 +717,11 @@ static int mt6359_regulator_set_mode(struct regulator_dev *rdev,
 	int ret = 0, val;
 	int curr_mode;
 
+	if (info == NULL) {
+		dev_notice(&rdev->dev,
+			"regulator info null pointer\n");
+		return -EINVAL;
+	}
 	curr_mode = mt6359_regulator_get_mode(rdev);
 	switch (mode) {
 	case REGULATOR_MODE_FAST:
@@ -768,6 +793,11 @@ static int mt6359_get_status(struct regulator_dev *rdev)
 	u32 regval = 0;
 	struct mt6359_regulator_info *info = rdev_get_drvdata(rdev);
 
+	if (info == NULL) {
+		dev_notice(&rdev->dev,
+			"regulator info null pointer\n");
+		return -EINVAL;
+	}
 	ret = regmap_read(rdev->regmap, info->da_reg, &regval);
 	if (ret != 0) {
 		dev_notice(&rdev->dev, "Failed to get enable reg: %d\n", ret);
@@ -1293,6 +1323,8 @@ static irqreturn_t mt6359_oc_irq(int irq, void *data)
 	struct regulator_dev *rdev = (struct regulator_dev *)data;
 	struct mt6359_regulator_info *info = rdev_get_drvdata(rdev);
 
+	if (info == NULL)
+		return IRQ_NONE;
 	disable_irq_nosync(info->irq);
 	if (!regulator_is_enabled_regmap(rdev))
 		goto delayed_enable;

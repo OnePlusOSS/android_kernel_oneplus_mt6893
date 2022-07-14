@@ -378,6 +378,10 @@ static int mtk_spi_prepare_message(struct spi_master *master,
 		writel(mdata->pad_sel[spi->chip_select],
 		       mdata->base + SPI_PAD_SEL_REG);
 
+	reg_val = readl(mdata->base + SPI_CFG1_REG);
+	reg_val &= 0x1FFFFFFF;
+	reg_val |= (chip_config->tick_delay << SPI_CFG1_GET_TICK_DLY_OFFSET);
+	writel(reg_val, mdata->base + SPI_CFG1_REG);
 	return 0;
 }
 
@@ -814,7 +818,6 @@ static int mtk_spi_probe(struct platform_device *pdev)
 	master->dev.of_node = pdev->dev.of_node;
 	master->mode_bits = SPI_CPOL | SPI_CPHA;
 
-	master->set_cs = mtk_spi_set_cs;
 	master->prepare_message = mtk_spi_prepare_message;
 	master->unprepare_message = mtk_spi_unprepare_message;
 	master->transfer_one = mtk_spi_transfer_one;
@@ -848,6 +851,10 @@ static int mtk_spi_probe(struct platform_device *pdev)
 		else
 			master->rt = false;
 	}
+
+	/* avoid access spi register when accessed only in tee in case devapc error */
+	if (!of_property_read_bool(pdev->dev.of_node, "tee-only"))
+		master->set_cs = mtk_spi_set_cs;
 
 	if (mdata->dev_comp->need_pad_sel) {
 		mdata->pad_num = of_property_count_u32_elems(
@@ -953,13 +960,6 @@ static int mtk_spi_probe(struct platform_device *pdev)
 		goto err_put_master;
 	}
 
-	ret = devm_spi_register_master(&pdev->dev, master);
-	if (ret) {
-		dev_err(&pdev->dev, "failed to register master (%d)\n", ret);
-		clk_disable(mdata->spi_clk);
-		goto err_disable_runtime_pm;
-	}
-
 	mdata->spi_clk_hz = clk_get_rate(mdata->spi_clk);
 	clk_disable(mdata->spi_clk);
 
@@ -1011,6 +1011,12 @@ static int mtk_spi_probe(struct platform_device *pdev)
 	pm_qos_add_request(&mdata->spi_qos_request, PM_QOS_CPU_DMA_LATENCY,
 		PM_QOS_DEFAULT_VALUE);
 
+	ret = devm_spi_register_master(&pdev->dev, master);
+	if (ret) {
+		dev_notice(&pdev->dev, "failed to register master (%d)\n", ret);
+		clk_disable(mdata->spi_clk);
+		goto err_disable_runtime_pm;
+	}
 	return 0;
 
 err_disable_runtime_pm:

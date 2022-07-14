@@ -1,6 +1,15 @@
 ifeq (y, $(filter y, $(CONFIG_MACH_MT6893)))
 MTK_PLATFORM := mt6885
 endif
+ifeq (y, $(filter y, $(CONFIG_MACH_MT6833)))
+MTK_PLATFORM := mt6833
+endif
+ifeq (y, $(filter y, $(CONFIG_MACH_MT6877)))
+MTK_PLATFORM := mt6877
+endif
+ifeq (y, $(filter y, $(CONFIG_MACH_MT6781)))
+MTK_PLATFORM := mt6781
+endif
 
 obj-$(CONFIG_VIDEO_MEDIATEK_VCODEC) += mtk-vcodec-dec.o \
 				       mtk-vcodec-enc.o \
@@ -15,6 +24,7 @@ mtk-vcodec-dec-y := mtk_vcodec_dec_drv.o \
 
 ifdef CONFIG_VIDEO_MEDIATEK_VCU
 	mtk-vcodec-dec-y += vdec/vdec_common_if.o \
+		vdec/vdec_log_if.o \
 		vdec_vcu_if.o
 endif
 ifdef CONFIG_VIDEO_MEDIATEK_VPU
@@ -31,6 +41,7 @@ mtk-vcodec-enc-y := mtk_vcodec_enc.o \
 
 ifdef CONFIG_VIDEO_MEDIATEK_VCU
 	mtk-vcodec-enc-y += venc/venc_common_if.o \
+		venc/venc_log_if.o \
 		venc_vcu_if.o
 endif
 ifdef CONFIG_VIDEO_MEDIATEK_VPU

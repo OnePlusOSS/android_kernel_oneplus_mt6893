@@ -50,13 +50,14 @@
 			ircmp_vclamp = <32000>;		/* uV */
 			enable_te;
 			enable_wdt;
+			enable_otg_wdt;
 			lbp_hys_sel = <1>;	/* 0: 100mV, 1: 200mV */
 			lbp_dt = <1>;		/* 0: 10ms, 1: 20ms */
 						/* 2: 40ms, 3: 500us */
 			/* with it: don't check 1.2v while PD/SD during BC12 */
 			/* disable_vlgc; */
 			/* with it: enable fast unknown TA detection */
-			/* fast_unknown_ta_dect; */
+			fast_unknown_ta_dect;
 			/* enable_polling; */
 			/* with it: do post aicl measure */
 			/* post_aicl; */
@@ -92,7 +93,7 @@
 						/* 3: 8 steps/16us */
 			ldo_vrc_lt = <1>;	/* 0: disable, 1: 10us */
 						/* 2: 20us, 3: 40us */
-			mt6370_ldo {
+			mt6370_spd_ldo: mt6370_ldo {
 				/* change name by yourself */
 				regulator-name = "irtx_ldo";
 				regulator-min-microvolt = <1600000>;
@@ -129,7 +130,7 @@
 			mt,led_default_trigger = "cc_mode", "cc_mode",
 						 "cc_mode", "none";
 		};
-		bled {
+		mt6370_pmu_bled: bled {
 			compatible = "mediatek,mt6370_pmu_bled";
 			interrupt-names = "bled_ocp";
 			mt,bled_name = "mt6370_pmu_bled";
@@ -144,7 +145,10 @@
 						/* 1: 1200mA */
 						/* 2: 1500mA */
 						/* 3: 1800mA */
-			mt,use_pwm;
+/*#ifdef OPLUS_BUG_COMPATIBILITY*/
+/*Yuwei.Zhang, MULTIMEDIA.DISPLAY, 2022/01/22, disable property, it can be enabled in a particular project*/
+			/*mt,use_pwm;*/
+/*#endif*/
 			mt,pwm_fsample = <2>;	/* 0: 1MHz */
 						/* 1: 4MHz */
 						/* 2: or 3: 24mHz */

@@ -74,16 +74,6 @@ unsigned int ccci_get_md_debug_mode(struct ccci_modem *md)
 }
 EXPORT_SYMBOL(ccci_get_md_debug_mode);
 
-void ccci_get_platform_version(char *ver)
-{
-#ifdef ENABLE_CHIP_VER_CHECK
-	sprintf(ver, "MT%04x_S%02x",
-		get_chip_hw_ver_code(), (get_chip_hw_subcode() & 0xFF));
-#else
-	sprintf(ver, "MT6735_S00");
-#endif
-}
-
 #ifdef FEATURE_LOW_BATTERY_SUPPORT
 static int ccci_md_low_power_notify(
 	struct ccci_modem *md, enum LOW_POEWR_NOTIFY_TYPE type, int level)
@@ -365,8 +355,11 @@ static  struct dvfs_ref s_dl_dvfs_tbl[] = {
 	{1350000000LL, 1530000, 1526000, -1, -1, 1, 0x02, 0x70, 0x70},
 	{1000000000LL, 1300000, 1406000, -1, -1, 1, 0x02, 0x70, 0x70},
 	{450000000LL, 1200000, 1406000, -1, -1, 1, 0x02, 0x70, 0x70},
-	{230000000LL, 1181000, -1, -1, -1, 1, 0xFF, 0xFF, 0x0D},
-	{50000000LL, -1, -1, -1, -1, 1, 0xFF, 0xFF, 0x0D},
+	/*
+	 *  Note : Delete for 5G power issue BUG ID:1403007
+	 */
+	/*	{230000000LL, 1181000, -1, -1, -1, 1, 0xFF, 0xFF, 0x0D}, */
+	/*	{50000000LL, -1, -1, -1, -1, 1, 0xFF, 0xFF, 0x0D}, */
 	/* normal */
 	{0LL, -1, -1, -1, -1, -1, 0xFF, 0xFF, 0x0D},
 };

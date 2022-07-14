@@ -1,0 +1,138 @@
+&odm {
+        oplus_devinfo:oplus_devinfo {
+                compatible = "oplus-devinfo";
+                pinctrl-names = "default", "aboard_gpio0_sleep", "aboard_gpio0_active", "aboard_gpio0_idle";
+                pinctrl-0 = <&hw_pins_default>;
+                pinctrl-1 = <&aboard_pin_gpio0_sleep>;
+                pinctrl-2 = <&aboard_pin_gpio0_active>;
+                pinctrl-3 = <&aboard_pin_gpio0_idle>;
+                main-sub {
+                        use_tristate_gpio;
+                        compatible = "hw-match, main-sub";
+                        aboard-gpio0 = <&pio 132 0x00>;
+                        aboard-patterns = <1 1>;        /*0[high-resistance] 1[pull-down] 2[pull-up]*/
+                        /*main board*/
+                        match-projects = <20255 20257>;
+                };
+        };
+};
+&pio {
+        hw_pins_default:default@hw_sub_id {
+        };
+
+        aboard_pin_gpio0_sleep:sleep@id0 {
+                pins_cmd_dat {
+                        pinmux = <PINMUX_GPIO132__FUNC_GPIO132>;
+                        slew-rate = <0>;
+                        bias-pull-down;
+                        input-enable;
+                };
+        };
+
+        aboard_pin_gpio0_active:active@id0 {
+                pins_cmd_dat {
+                        pinmux = <PINMUX_GPIO132__FUNC_GPIO132>;
+                        slew-rate = <0>;
+                        bias-pull-up;
+                        input-enable;
+                };
+        };
+
+        aboard_pin_gpio0_idle:idle@id0 {
+                pins_cmd_dat {
+                        pinmux = <PINMUX_GPIO132__FUNC_GPIO132>;
+                        slew-rate = <0>;
+                        bias-disable;
+                        input-enable;
+                };
+        };
+};
+/*#endif OPLUS_FEATURE_TP_BASIC*/
+//#ifdef OPLUS_FEATURE_CHG_BASIC
+&lk_charger{
+	charger_by_buckboost;
+	support_tuv_authentication;
+};
+//#endif
+
+//#ifdef OPLUS_FEATURE_SWTP
+&swtp {
+	compatible = "mediatek, swtp-eint";
+	debounce = <512000>;
+};
+//#endif
+
+&dsi0 {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	/*#ifdef VENDOE_EDIT*/
+	panel1@0 {
+		compatible = "oplus20131_boe_nt37800_1080p_dsi_cmd";
+		reg = <0>;
+		pm-enable-gpios = <&pio 41 0>;
+		reset-gpios = <&pio 42 0>;
+		bias-gpios = <&pio 29 0>;
+		ldo3-supply = <&mt_pmic_vmc_ldo_reg>;
+		/*pm8008ldo1-supply = <&L1P>;*/
+		pinctrl-names = "default";
+		port {
+			panel_in1: endpoint {
+				remote-endpoint = <&dsi_out>;
+			};
+		};
+	};
+	panel2@0 {
+		compatible = "oplus20131_tianma_nt37701_1080p_dsi_cmd";
+		reg = <1>;
+		pm-enable-gpios = <&pio 41 0>;
+		reset-gpios = <&pio 42 0>;
+		bias-gpios = <&pio 29 0>;
+		ldo3-supply = <&mt_pmic_vmc_ldo_reg>;
+		/*pm8008ldo1-supply = <&L1P>;*/
+		pinctrl-names = "default";
+		port {
+			panel_in2: endpoint {
+				remote-endpoint = <&dsi_out>;
+			};
+		};
+	};
+	panel3@0 {
+		compatible = "oplus20131_tianma_nt37701_32_1080p_dsi_cmd";
+		reg = <2>;
+		pm-enable-gpios = <&pio 41 0>;
+		reset-gpios = <&pio 42 0>;
+		bias-gpios = <&pio 29 0>;
+		ldo3-supply = <&mt_pmic_vmc_ldo_reg>;
+		/*pm8008ldo1-supply = <&L1P>;*/
+		pinctrl-names = "default";
+		port {
+			panel_in3: endpoint {
+				remote-endpoint = <&dsi_out>;
+			};
+		};
+	};
+	panel4@0 {
+		compatible = "oplus20131_samsung_ana6705_1080p_dsi_cmd,lcm";
+		reg = <3>;
+		pm-enable-gpios = <&pio 41 0>;
+		reset-gpios = <&pio 42 0>;
+		bias-gpios = <&pio 29 0>;
+		ldo3-supply = <&mt_pmic_vmc_ldo_reg>;
+		pinctrl-names = "default";
+		port {
+			panel_in4: endpoint {
+				remote-endpoint = <&dsi_out>;
+			};
+		};
+	};
+
+	ports {
+		port {
+			dsi_out: endpoint {
+				remote-endpoint = <&panel_in1>;
+			};
+		};
+	};
+	/*#endif*/
+};

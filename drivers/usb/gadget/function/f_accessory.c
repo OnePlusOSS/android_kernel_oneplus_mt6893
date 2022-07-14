@@ -302,7 +302,9 @@ static void acc_complete_set_string(struct usb_ep *ep, struct usb_request *req)
 	struct acc_dev	*dev = ep->driver_data;
 	char *string_dest = NULL;
 	int length = req->actual;
-
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	unsigned long flags;
+#endif
 	if (req->status != 0) {
 		pr_err("acc_complete_set_string, err %d\n", req->status);
 		return;
@@ -327,7 +329,31 @@ static void acc_complete_set_string(struct usb_ep *ep, struct usb_request *req)
 	case ACCESSORY_STRING_SERIAL:
 		string_dest = dev->serial;
 		break;
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	default:
+		pr_err("unknown accessory string index %d\n",
+				dev->string_index);
+		return;
+#endif
 	}
+
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	if (!length) {
+		pr_debug("zero length for accessory string index %d\n",
+				dev->string_index);
+		return;
+	}
+
+	if (length >= ACC_STRING_SIZE)
+		length = ACC_STRING_SIZE - 1;
+
+	spin_lock_irqsave(&dev->lock, flags);
+	memcpy(string_dest, req->buf, length);
+	/* ensure zero termination */
+	string_dest[length] = 0;
+	spin_unlock_irqrestore(&dev->lock, flags);
+
+#else
 	if (string_dest) {
 		unsigned long flags;
 
@@ -343,6 +369,7 @@ static void acc_complete_set_string(struct usb_ep *ep, struct usb_request *req)
 		pr_err("unknown accessory string index %d\n",
 			dev->string_index);
 	}
+#endif /*OPLUS_FEATURE_CHG_BASIC*/
 }
 
 static void acc_complete_set_hid_report_desc(struct usb_ep *ep,
@@ -848,6 +875,11 @@ int acc_ctrlrequest(struct usb_composite_dev *cdev,
 			w_value, w_index, w_length);
 */
 
+//#ifdef OPLUS_BUG_STABILITY
+	if (!dev)
+		goto err;
+//#endif /*OPLUS_BUG_STABILITY*/
+
 	if (b_requestType == (USB_DIR_OUT | USB_TYPE_VENDOR)) {
 		if (b_request == ACCESSORY_START) {
 			dev->start_requested = 1;
@@ -906,14 +938,16 @@ int acc_ctrlrequest(struct usb_composite_dev *cdev,
 			value = sizeof(u16);
 			cdev->req->complete = acc_complete_setup_noop;
 			/* clear any string left over from a previous session */
-			memset(dev->manufacturer, 0, sizeof(dev->manufacturer));
-			memset(dev->model, 0, sizeof(dev->model));
-			memset(dev->description, 0, sizeof(dev->description));
-			memset(dev->version, 0, sizeof(dev->version));
-			memset(dev->uri, 0, sizeof(dev->uri));
-			memset(dev->serial, 0, sizeof(dev->serial));
-			dev->start_requested = 0;
-			dev->audio_mode = 0;
+			if (dev) {
+				memset(dev->manufacturer, 0, sizeof(dev->manufacturer));
+				memset(dev->model, 0, sizeof(dev->model));
+				memset(dev->description, 0, sizeof(dev->description));
+				memset(dev->version, 0, sizeof(dev->version));
+				memset(dev->uri, 0, sizeof(dev->uri));
+				memset(dev->serial, 0, sizeof(dev->serial));
+				dev->start_requested = 0;
+				dev->audio_mode = 0;
+			}
 		}
 	}
 

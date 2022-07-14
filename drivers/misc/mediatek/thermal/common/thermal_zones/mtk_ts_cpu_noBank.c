@@ -32,6 +32,7 @@
 #include "mach/mtk_thermal.h"
 #include "mtk_thermal_timer.h"
 #include <mtk_ts_setting.h>
+#include <soc/oplus/system/oplus_project.h>
 
 #if defined(CONFIG_MTK_CLKMGR)
 #include <mach/mtk_clkmgr.h>
@@ -1567,6 +1568,7 @@ static void check_temp_range(void)
 				g_is_TempOutsideNormalRange |= (j << 8);
 				tscpu_printk(TSCPU_LOG_TAG"ONRT=%d,0x%x\n",
 					temp, g_is_TempOutsideNormalRange);
+				dump_lvts_error_info();
 			}
 
 			if (temp <= -30000) {
@@ -1615,13 +1617,17 @@ static void read_all_tc_temperature(void)
 		if (lvts_hw_protect_enabled) {
 			dump_lvts_error_info();
 			tscpu_printk("thermal_hw_protect_en\n");
-			BUG();
+			if (get_eng_version() != HIGH_TEMP_AGING)
+				BUG();
+			else
+				pr_info("%s should reset but bypass\n", __func__);
 		} else {
 			tscpu_printk("thermal_hw_protect_dis\n");
 		}
 #else
 		dump_lvts_error_info();
-		BUG();
+		if (get_eng_version() != HIGH_TEMP_AGING)
+			BUG();
 #endif
 
 	}
@@ -1656,8 +1662,13 @@ static void tscpu_thermal_shutdown(struct platform_device *dev)
 
 
 /*tscpu_thermal_suspend spend 1000us~1310us*/
+#if defined(CFG_THERM_SUSPEND_RESUME_NOIRQ)
+static int tscpu_thermal_suspend_noirq(struct device *dev)
+#else
 static int tscpu_thermal_suspend
 (struct platform_device *dev, pm_message_t state)
+
+#endif
 {
 #if !defined(CFG_THERM_NO_AUXADC)
 	int cnt = 0;
@@ -1751,7 +1762,11 @@ static int tscpu_thermal_suspend
 }
 
 /*tscpu_thermal_suspend spend 3000us~4000us*/
+#if defined(CFG_THERM_SUSPEND_RESUME_NOIRQ)
+static int tscpu_thermal_resume_noirq(struct device *dev)
+#else
 static int tscpu_thermal_resume(struct platform_device *dev)
+#endif
 {
 #if !defined(CFG_THERM_NO_AUXADC)
 	int temp = 0;
@@ -1889,16 +1904,28 @@ static int tscpu_thermal_resume(struct platform_device *dev)
 	return 0;
 }
 
+#if defined(CFG_THERM_SUSPEND_RESUME_NOIRQ)
+static const struct dev_pm_ops lvts_pm_ops = {
+	.suspend_noirq = tscpu_thermal_suspend_noirq,
+	.resume_noirq = tscpu_thermal_resume_noirq,
+};
+#endif
+
 static struct platform_driver mtk_thermal_driver = {
 	.remove = NULL,
 	.shutdown = tscpu_thermal_shutdown,
 	.probe = tscpu_thermal_probe,
+#if !defined(CFG_THERM_SUSPEND_RESUME_NOIRQ)
 	.suspend = tscpu_thermal_suspend,
 	.resume = tscpu_thermal_resume,
+#endif
 	.driver = {
 		.name = THERMAL_NAME,
 #ifdef CONFIG_OF
 		.of_match_table = mt_thermal_of_match,
+#endif
+#if defined(CFG_THERM_SUSPEND_RESUME_NOIRQ)
+		.pm = &lvts_pm_ops,
 #endif
 	},
 };
@@ -2575,9 +2602,10 @@ static void init_thermal(void)
 	lvts_enable_all_sensing_points();
 
 	read_all_tc_temperature();
-
+#if defined(CONFIG_MTK_TINYSYS_SSPM_SUPPORT)
 #if THERMAL_ENABLE_TINYSYS_SSPM || THERMAL_ENABLE_ONLY_TZ_SSPM
 	lvts_ipi_send_efuse_data();
+#endif
 #endif
 #endif
 }
@@ -2719,6 +2747,11 @@ static int tscpu_thermal_probe(struct platform_device *dev)
 	if (err)
 		tscpu_warn("tscpu_init IRQ register fail\n");
 
+#ifdef CFG_THERM_MCU_LVTS
+	err = request_irq(thermal_mcu_irq_number,
+				lvts_tscpu_thermal_all_tc_interrupt_handler,
+				IRQF_TRIGGER_NONE, THERMAL_NAME, NULL);
+#endif
 #if CFG_LVTS_MCU_INTERRUPT_HANDLER
 	err = request_irq(thermal_mcu_irq_number,
 #if CFG_LVTS_DOMINATOR

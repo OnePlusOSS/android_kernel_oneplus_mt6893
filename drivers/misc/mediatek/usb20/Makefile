@@ -21,6 +21,7 @@ ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat
 obj-$(CONFIG_MACH_MT6739) += $(subst ",,$(CONFIG_MTK_PLATFORM))/
 obj-$(CONFIG_MACH_MT6765) += $(subst ",,$(CONFIG_MTK_PLATFORM))/
 obj-$(CONFIG_MACH_MT6768) += $(subst ",,$(CONFIG_MTK_PLATFORM))/
+obj-$(CONFIG_MACH_MT6781) += mt6781/
 obj-$(CONFIG_MACH_MT6833) += mt6833/
 obj-$(CONFIG_MACH_MT8167) += $(subst ",,$(CONFIG_MTK_PLATFORM))/
 
@@ -29,7 +30,7 @@ musb_hdrc-$(CONFIG_USB_MTK_HDRC) := musb_core.o
 musb_hdrc-$(CONFIG_USB_MTK_HDRC) += musb_gadget_ep0.o musb_gadget.o
 musb_hdrc-$(CONFIG_USB_MTK_HDRC) += musb_virthub.o musb_host.o
 musb_hdrc-$(CONFIG_USB_MTK_HDRC) += musbhsdma.o
-musb_hdrc-$(CONFIG_DEBUG_FS) += musb_debugfs.o
+musb_hdrc-$(CONFIG_PROC_FS) += musb_debugfs.o
 # QMU Realted
 obj-$(CONFIG_MTK_MUSB_QMU_SUPPORT) += mtk_qmu.o musb_qmu.o
 ifeq ($(CONFIG_MTK_MUSB_QMU_SUPPORT),y)
@@ -38,4 +39,5 @@ endif
 
 obj-$(CONFIG_DUAL_ROLE_USB_INTF) += mtk_dual_role.o
 
+subdir-ccflags-$(CONFIG_MACH_MT6781) += -DUSB2_PHY_V2
 subdir-ccflags-$(CONFIG_MACH_MT6833) += -DUSB2_PHY_V2

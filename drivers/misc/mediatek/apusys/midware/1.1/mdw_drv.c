@@ -12,16 +12,10 @@
  */
 
 #include <linux/module.h>  /* Needed by all modules */
-#include <linux/kernel.h>  /* Needed for KERN_ALERT */
-#include <linux/cdev.h>
-#include <linux/device.h>
-#include <linux/delay.h>
-#include <linux/jiffies.h>
+#include <linux/miscdevice.h>
 #include <linux/platform_device.h>
 #include <linux/uaccess.h>
 #include <linux/slab.h>
-#include <linux/init.h>
-#include <linux/dma-mapping.h>
 
 #include "apusys_power.h"
 
@@ -38,13 +32,10 @@
 
 /* define */
 #define APUSYS_DEV_NAME "apusys"
-//#define MDW_LOAD_FW_SUPPORT
 
 /* global variable */
-static dev_t mdw_devt;
-static struct cdev *mdw_cdev;
-static struct class *mdw_class;
 struct device *mdw_device;
+struct miscdevice mdw_miscdev;
 
 /* function declaration */
 static int mdw_open(struct inode *, struct file *);
@@ -85,7 +76,6 @@ static int mdw_release(struct inode *inode, struct file *filp)
 static int mdw_probe(struct platform_device *pdev)
 {
 	int ret = 0;
-	struct device *dev = NULL;
 
 	mdw_drv_info("+\n");
 
@@ -96,75 +86,27 @@ static int mdw_probe(struct platform_device *pdev)
 
 	mdw_device = &pdev->dev;
 
-	/* get major */
-	ret = alloc_chrdev_region(&mdw_devt, 0, 1, APUSYS_DEV_NAME);
-	if (ret < 0) {
-		mdw_drv_err("alloc_chrdev_region failed, %d\n", ret);
-		return ret;
-	}
-
-	/* Allocate driver */
-	mdw_cdev = cdev_alloc();
-	if (mdw_cdev == NULL) {
-		mdw_drv_err("cdev_alloc failed\n");
-		ret = -ENOMEM;
-		goto out;
-	}
-
-	/* Attatch file operation. */
-	cdev_init(mdw_cdev, &mdw_fops);
-	mdw_cdev->owner = THIS_MODULE;
-
-	/* Add to system */
-	ret = cdev_add(mdw_cdev, mdw_devt, 1);
-	if (ret < 0) {
-		mdw_drv_err("attatch file operation failed, %d\n", ret);
-		goto out;
-	}
-
-	/* Create class register */
-	mdw_class = class_create(THIS_MODULE, "apusysdrv");
-	if (IS_ERR(mdw_class)) {
-		ret = PTR_ERR(mdw_class);
-		mdw_drv_err("unable to create class, err = %d\n", ret);
-		goto out;
-	}
-
-	dev = device_create(mdw_class, NULL, mdw_devt,
-		NULL, APUSYS_DEV_NAME);
-	if (IS_ERR(dev)) {
-		ret = PTR_ERR(dev);
-		mdw_drv_err("failed to create device: /dev/%s, err = %d",
-			APUSYS_DEV_NAME, ret);
+	/* register misc device */
+	memset(&mdw_miscdev, 0, sizeof(mdw_miscdev));
+	mdw_miscdev.minor = MISC_DYNAMIC_MINOR;
+	mdw_miscdev.name = APUSYS_DEV_NAME;
+	mdw_miscdev.fops = &mdw_fops;
+	ret = misc_register(&mdw_miscdev);
+	if (ret) {
+		mdw_drv_err("register misc device fail(%d)\n", ret);
+		mdw_device = NULL;
 		goto out;
 	}
 
 	mdw_dbg_init();
-	mdw_sysfs_init(mdw_device);
+	mdw_sysfs_init(mdw_miscdev.this_device);
 	mdw_tag_init();
 	mdw_mem_init();
 	mdw_rsc_init();
 	mdw_usr_init();
 	mdw_drv_info("-\n");
 
-	return 0;
-
 out:
-	/* Release device */
-	if (dev != NULL)
-		device_destroy(mdw_class, mdw_devt);
-
-	/* Release class */
-	if (mdw_class != NULL)
-		class_destroy(mdw_class);
-
-	/* Release char driver */
-	if (mdw_cdev != NULL) {
-		cdev_del(mdw_cdev);
-		mdw_cdev = NULL;
-	}
-	unregister_chrdev_region(mdw_devt, 1);
-
 	return ret;
 }
 
@@ -178,29 +120,17 @@ static int mdw_remove(struct platform_device *pdev)
 	mdw_tag_exit();
 	mdw_sysfs_exit();
 	mdw_dbg_exit();
-
-	/* Release device */
-	device_destroy(mdw_class, mdw_devt);
-
-	/* Release class */
-	if (mdw_class != NULL)
-		class_destroy(mdw_class);
-
-	/* Release char driver */
-	if (mdw_cdev != NULL) {
-		cdev_del(mdw_cdev);
-		mdw_cdev = NULL;
-	}
-	unregister_chrdev_region(mdw_devt, 1);
+	misc_deregister(&mdw_miscdev);
+	mdw_device = NULL;
 
 	mdw_drv_info("-\n");
+
 	return 0;
 }
 
 static int mdw_suspend(struct platform_device *pdev, pm_message_t mesg)
 {
-	mdw_sched_pause();
-	return 0;
+	return mdw_sched_pause();
 }
 
 static int mdw_resume(struct platform_device *pdev)
@@ -262,9 +192,6 @@ static long mdw_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	struct apusys_ioctl_power upwr;
 	struct apusys_ioctl_ucmd uc;
 	struct apusys_ioctl_sec us;
-#ifdef MDW_LOAD_FW_SUPPORT
-	struct apusys_ioctl_fw f;
-#endif
 
 	u = (struct mdw_usr *)filp->private_data;
 
@@ -404,35 +331,13 @@ static long mdw_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		break;
 
 	case APUSYS_IOCTL_FW_LOAD:
-#ifdef MDW_LOAD_FW_SUPPORT
-		ret = copy_from_user(&f, (void *)arg,
-			sizeof(struct apusys_ioctl_fw));
-		if (ret) {
-			mdw_drv_err("copy fw struct fail\n");
-			goto out;
-		}
-
-		ret = mdw_usr_fw(&f, APUSYS_FIRMWARE_LOAD);
-#else
 		ret = -EINVAL;
 		mdw_drv_warn("not support fw load\n");
-#endif
 		break;
 
 	case APUSYS_IOCTL_FW_UNLOAD:
-#ifdef MDW_LOAD_FW_SUPPORT
-		ret = copy_from_user(&f, (void *)arg,
-			sizeof(struct apusys_ioctl_fw));
-		if (ret) {
-			mdw_drv_err("copy fw struct fail\n");
-			goto out;
-		}
-
-		ret = mdw_usr_fw(&f, APUSYS_FIRMWARE_UNLOAD);
-#else
 		ret = -EINVAL;
 		mdw_drv_warn("not suppot fw unload\n");
-#endif
 		break;
 
 	case APUSYS_IOCTL_USER_CMD:

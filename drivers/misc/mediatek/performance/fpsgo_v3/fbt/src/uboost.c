@@ -54,8 +54,8 @@ void fpsgo_base2uboost_compute(
 	struct uboost *boost;
 	struct hrtimer *timer;
 	unsigned long long t_sched_runtime;
-	unsigned long long timer_period = 0;
 	unsigned long long t_vsyc_period = 0;
+	unsigned long long timer_period = 0;
 	int frame_idx = 0;
 	int get_result = 0;
 
@@ -66,6 +66,7 @@ void fpsgo_base2uboost_compute(
 
 	get_result = uboost2xgf_get_info(render->pid,
 		render->buffer_id, &timer_period, &frame_idx);
+	render->ux = get_result;
 
 	if (!get_result)
 		return;

@@ -136,6 +136,11 @@ int enable_regulator(enum DVFS_BUCK buck)
 			LOG_ERR("regulator_enable vvpu_reg_id failed\n");
 			return ret;
 		} else {
+//#ifdef OPLUS_BUG_STABILITY
+#ifdef VVPU_VMDLA_FORCE_PWM
+			regulator_set_mode(vvpu_reg_id, REGULATOR_MODE_FAST);
+#endif
+//#endif /*OPLUS_BUG_STABILITY*/
 			LOG_DBG("enable vvpu success\n");
 		}
 
@@ -151,6 +156,11 @@ int enable_regulator(enum DVFS_BUCK buck)
 			LOG_ERR("regulator_enable vmdla_reg_id failed\n");
 			return ret;
 		} else {
+//#ifdef OPLUS_BUG_STABILITY
+#ifdef VVPU_VMDLA_FORCE_PWM
+			regulator_set_mode(vmdla_reg_id, REGULATOR_MODE_FAST);
+#endif
+//#endif /*OPLUS_BUG_STABILITY*/
 			LOG_DBG("enable vmdla success\n");
 		}
 

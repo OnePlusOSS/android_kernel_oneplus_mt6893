@@ -222,7 +222,8 @@ static int cpufreq_freq_proc_show(struct seq_file *m, void *v)
 	struct mt_cpu_dvfs *p = m->private;
 	struct pll_ctrl_t *pll_p = id_to_pll_ctrl(p->Pll_id);
 
-	seq_printf(m, "%d KHz\n", pll_p->pll_ops->get_cur_freq(pll_p));
+	if (pll_p != NULL)
+		seq_printf(m, "%d KHz\n", pll_p->pll_ops->get_cur_freq(pll_p));
 
 	return 0;
 }

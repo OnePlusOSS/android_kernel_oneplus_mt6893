@@ -44,6 +44,7 @@ struct qlist_head {
 	struct qlist_node *head;
 	struct qlist_node *tail;
 	size_t bytes;
+	bool offline;
 };
 
 #define QLIST_INIT { NULL, NULL, 0 }
@@ -98,7 +99,6 @@ static void qlist_move_all(struct qlist_head *from, struct qlist_head *to)
  * guarded by quarantine_lock.
  */
 static DEFINE_PER_CPU(struct qlist_head, cpu_quarantine);
-static DEFINE_PER_CPU(int, cpu_quarantine_offline);
 
 /* Round-robin FIFO array of batches. */
 static struct qlist_head global_quarantine[QUARANTINE_BATCHES];
@@ -177,8 +177,6 @@ void quarantine_put(struct kasan_free_meta *info, struct kmem_cache *cache)
 	unsigned long flags;
 	struct qlist_head *q;
 	struct qlist_head temp = QLIST_INIT;
-	int *offline;
-	struct qlist_head q_offline = QLIST_INIT;
 
 	/*
 	 * Note: irq must be disabled until after we move the batch to the
@@ -190,16 +188,13 @@ void quarantine_put(struct kasan_free_meta *info, struct kmem_cache *cache)
 	 */
 	local_irq_save(flags);
 
-	offline = this_cpu_ptr(&cpu_quarantine_offline);
-	if (*offline == 0) {
-		q = this_cpu_ptr(&cpu_quarantine);
-		qlist_put(q, &info->quarantine_link, cache->size);
-	} else {
-		qlist_put(&q_offline, &info->quarantine_link, cache->size);
-		qlist_free_all(&q_offline, cache);
+	q = this_cpu_ptr(&cpu_quarantine);
+	if (q->offline) {
+		qlink_free(&info->quarantine_link, cache);
 		local_irq_restore(flags);
 		return;
 	}
+	qlist_put(q, &info->quarantine_link, cache->size);
 	if (unlikely(q->bytes > QUARANTINE_PERCPU_SIZE)) {
 		qlist_move_all(q, &temp);
 
@@ -342,42 +337,33 @@ void quarantine_remove_cache(struct kmem_cache *cache)
 
 static int kasan_cpu_online(unsigned int cpu)
 {
-	int *offline;
-	unsigned long flags;
-
-	local_irq_save(flags);
-	offline = this_cpu_ptr(&cpu_quarantine_offline);
-	*offline = 0;
-	local_irq_restore(flags);
+	this_cpu_ptr(&cpu_quarantine)->offline = false;
 	return 0;
 }
 
 static int kasan_cpu_offline(unsigned int cpu)
 {
-	struct kmem_cache *s;
-	int *offline;
-	unsigned long flags;
+	struct qlist_head *q;
 
-	local_irq_save(flags);
-	offline = this_cpu_ptr(&cpu_quarantine_offline);
-	*offline = 1;
-	local_irq_restore(flags);
-
-	mutex_lock(&slab_mutex);
-
-	list_for_each_entry(s, &slab_caches, list) {
-		per_cpu_remove_cache(s);
-	}
-	mutex_unlock(&slab_mutex);
+	q = this_cpu_ptr(&cpu_quarantine);
+	/* Ensure the ordering between the writing to q->offline and
+	 * qlist_free_all. Otherwise, cpu_quarantine may be corrupted
+	 * by interrupt.
+	 */
+	WRITE_ONCE(q->offline, true);
+	barrier();
+	qlist_free_all(q, NULL);
 	return 0;
 }
 
-static int __init kasan_cpu_offline_quarantine_init(void)
+static int __init kasan_cpu_quarantine_init(void)
 {
 	int ret = 0;
 
 	ret = cpuhp_setup_state(CPUHP_AP_ONLINE_DYN, "mm/kasan:online",
-							kasan_cpu_online, kasan_cpu_offline);
+				kasan_cpu_online, kasan_cpu_offline);
+	if (ret < 0)
+		pr_err("kasan cpu quarantine register failed [%d]\n", ret);
 	return ret;
 }
-late_initcall(kasan_cpu_offline_quarantine_init);
+late_initcall(kasan_cpu_quarantine_init);

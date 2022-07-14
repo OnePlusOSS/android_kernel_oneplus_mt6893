@@ -35,7 +35,7 @@ static unsigned int s_dl_active_bitmap;
 static unsigned int dl_active_scan(void)
 {
 	unsigned int i;
-	struct buffer_header *ptr;
+	struct buffer_header *ptr = NULL;
 	unsigned int bit_mask;
 
 	if (!s_ccb_ctl_head_tbl)
@@ -115,7 +115,7 @@ static enum hrtimer_restart smem_tx_timer_func(struct hrtimer *timer)
 static void collect_ccb_info(int md_id, struct ccci_smem_port *smem_port)
 {
 	unsigned int i, j, len, curr_size;
-	struct ccci_smem_region *prev, *curr;
+	struct ccci_smem_region *prev = NULL, *curr = NULL;
 
 	if (md_id != MD_SYS1)
 		return;
@@ -400,7 +400,7 @@ long port_ccb_ioctl(struct port_t *port, unsigned int cmd, unsigned long arg)
 	struct ccci_smem_region *ccb_ctl =
 		ccci_md_get_smem_by_user_id(md_id, SMEM_USER_RAW_CCB_CTRL);
 	struct ccb_ctrl_info ctrl_info;
-	struct port_t *s_port;
+	struct port_t *s_port = NULL;
 	struct ccci_smem_port *smem_port =
 		(struct ccci_smem_port *)port->private_data;
 
@@ -483,7 +483,7 @@ long port_ccb_ioctl(struct port_t *port, unsigned int cmd, unsigned long arg)
 		/* use user_id as input param, which is the array index,
 		 * and it will override user space's ID value
 		 */
-		if (in_ccb.user_id > ccb_configs_len) {
+		if (in_ccb.user_id >= ccb_configs_len) {
 			ret = -EINVAL;
 			break;
 		}
@@ -512,51 +512,8 @@ long port_smem_ioctl(struct port_t *port, unsigned int cmd, unsigned long arg)
 	unsigned int data;
 	struct ccci_smem_port *smem_port =
 		(struct ccci_smem_port *)port->private_data;
-	unsigned char *ptr;
-	struct ccci_ccb_debug debug_in, debug_out;
-	struct ccci_smem_region *ccb_dhl =
-		ccci_md_get_smem_by_user_id(md_id, SMEM_USER_CCB_DHL);
-
-	ptr = NULL;
 
 	switch (cmd) {
-	case CCCI_IOC_GET_CCB_DEBUG_VAL:
-		if ((smem_port->addr_phy == 0)
-			|| (smem_port->length == 0)) {
-			ret = -EFAULT;
-			break;
-		}
-		if (copy_from_user(&debug_in, (void __user *)arg,
-			sizeof(struct ccci_ccb_debug))) {
-			CCCI_ERROR_LOG(md_id, TAG,
-				"set user_id fail: copy_from_user fail!\n");
-		} else {
-			CCCI_DEBUG_LOG(md_id, TAG,
-				"get buf_num=%d, page_num=%d\n",
-				debug_in.buffer_id, debug_in.page_id);
-		}
-		memset(&debug_out, 0, sizeof(debug_out));
-		if (debug_in.buffer_id == 0) {
-			ptr = (char *)ccb_dhl->base_ap_view_vir +
-			ccb_configs[0].dl_buff_size +
-			debug_in.page_id*ccb_configs[0].ul_page_size + 8;
-			debug_out.value = *ptr;
-		} else if (debug_in.buffer_id == 1) {
-			ptr  = (char *)ccb_dhl->base_ap_view_vir +
-			ccb_configs[0].dl_buff_size +
-			ccb_configs[0].ul_buff_size +
-			ccb_configs[1].dl_buff_size +
-			debug_in.page_id*ccb_configs[1].ul_page_size + 8;
-			debug_out.value = *ptr;
-		} else
-			CCCI_ERROR_LOG(md_id, TAG, "wrong buffer num\n");
-
-		if (copy_to_user((void __user *)arg, &debug_out,
-			sizeof(struct ccci_ccb_debug)))
-			CCCI_ERROR_LOG(md_id, TAG,
-				"copy_to_user ccb failed !!\n");
-
-		break;
 	case CCCI_IOC_SMEM_BASE:
 		smem_port = (struct ccci_smem_port *)port->private_data;
 		CCCI_NORMAL_LOG(md_id, TAG, "smem_port->addr_phy=%lx\n",
@@ -761,10 +718,10 @@ static const struct file_operations smem_dev_fops = {
 
 int port_smem_init(struct port_t *port)
 {
-	struct cdev *dev;
+	struct cdev *dev = NULL;
 	int ret = 0;
 	int md_id = port->md_id;
-	struct ccci_smem_port *smem_port;
+	struct ccci_smem_port *smem_port = NULL;
 	struct ccci_smem_region *smem_region =
 		ccci_md_get_smem_by_user_id(md_id, port->minor);
 
@@ -797,6 +754,11 @@ int port_smem_init(struct port_t *port)
 
 	port->private_data = smem_port =
 		kzalloc(sizeof(struct ccci_smem_port), GFP_KERNEL);
+	if (smem_port == NULL) {
+		CCCI_ERROR_LOG(port->md_id, CHAR,
+			"alloc ccci_smem_port fail\n");
+		return -1;
+	}
 	kmemleak_ignore(smem_port);
 	/*user ID is from 0*/
 	smem_port->user_id = port->minor - CCCI_SMEM_MINOR_BASE;
@@ -822,6 +784,12 @@ int port_smem_init(struct port_t *port)
 	smem_port->poll_save_idx = 0;
 }
 	s_dl_last_w = kmalloc(sizeof(int) * ccb_configs_len, GFP_KERNEL);
+	if (!s_dl_last_w) {
+		CCCI_ERROR_LOG(port->md_id, CHAR,
+			"%s:kmalloc s_dl_last_w fail\n",
+			__func__);
+		return -1;
+	}
 	kmemleak_ignore(s_dl_last_w);
 #endif
 	return 0;

@@ -236,7 +236,7 @@ static struct imgsensor_struct imgsensor = {
 	 */
 	.autoflicker_en = KAL_FALSE,
 
-	.test_pattern = KAL_FALSE,
+	.test_pattern = 0,
 
 	/* current scenario id */
 	.current_scenario_id = MSDK_SCENARIO_ID_CAMERA_PREVIEW,
@@ -1312,17 +1312,37 @@ static void slim_video_setting(void)
 	    sizeof(addr_data_pair_slim_video_imx481) / sizeof(kal_uint16));
 }
 
-static kal_uint32 set_test_pattern_mode(kal_bool enable)
+static kal_uint32 set_test_pattern_mode(kal_uint32 modes,
+		struct SET_SENSOR_PATTERN_SOLID_COLOR *pdata)
 {
-	pr_debug("enable: %d\n", enable);
+	kal_uint16 Color_R, Color_Gr, Color_Gb, Color_B;
 
-	if (enable)
-		write_cmos_sensor(0x0601, 0x02);
+	pr_debug("set_test_pattern enum: %d\n", modes);
+
+	if (modes) {
+		write_cmos_sensor(0x0601, modes);
+		if (modes == 1 && (pdata != NULL)) { //Solid Color
+			pr_debug("R=0x%x,Gr=0x%x,B=0x%x,Gb=0x%x",
+				pdata->COLOR_R, pdata->COLOR_Gr, pdata->COLOR_B, pdata->COLOR_Gb);
+			Color_R = (pdata->COLOR_R >> 22) & 0x3FF; //10bits depth color
+			Color_Gr = (pdata->COLOR_Gr >> 22) & 0x3FF;
+			Color_B = (pdata->COLOR_B >> 22) & 0x3FF;
+			Color_Gb = (pdata->COLOR_Gb >> 22) & 0x3FF;
+			write_cmos_sensor(0x0602, (Color_R >> 8) & 0x3);
+			write_cmos_sensor(0x0603, Color_R & 0xFF);
+			write_cmos_sensor(0x0604, (Color_Gr >> 8) & 0x3);
+			write_cmos_sensor(0x0605, Color_Gr & 0xFF);
+			write_cmos_sensor(0x0606, (Color_B >> 8) & 0x3);
+			write_cmos_sensor(0x0607, Color_B & 0xFF);
+			write_cmos_sensor(0x0608, (Color_Gb >> 8) & 0x3);
+			write_cmos_sensor(0x0609, Color_Gb & 0xFF);
+		}
+	}
 	else
-		write_cmos_sensor(0x0601, 0x00);
+		write_cmos_sensor(0x0601, 0x00); /*No pattern*/
 
 	spin_lock(&imgsensor_drv_lock);
-	imgsensor.test_pattern = enable;
+	imgsensor.test_pattern = modes;
 	spin_unlock(&imgsensor_drv_lock);
 	return ERROR_NONE;
 }
@@ -1450,7 +1470,7 @@ static kal_uint32 open(void)
 	imgsensor.dummy_pixel = 0;
 	imgsensor.dummy_line = 0;
 	imgsensor.hdr_mode = 0;
-	imgsensor.test_pattern = KAL_FALSE;
+	imgsensor.test_pattern = 0;
 	imgsensor.current_fps = imgsensor_info.pre.max_framerate;
 	spin_unlock(&imgsensor_drv_lock);
 
@@ -2121,12 +2141,31 @@ static kal_uint32 get_sensor_temperature(void)
 	return temperature_convert;
 }
 
+static void check_stream_is_on(void)
+{
+	int i = 0;
+	UINT32 framecnt;
+	int timeout = (10000/imgsensor.current_fps)+1;
+
+	for (i = 0; i < timeout; i++) {
+
+		framecnt = read_cmos_sensor(0x0005);
+		if (framecnt != 0xFF) {
+			pr_debug("IMX481 stream is on, %d \\n", framecnt);
+			break;
+		}
+		pr_debug("IMX481 stream is not on %d \\n", framecnt);
+		mdelay(1);
+	}
+}
+
 static kal_uint32 streaming_control(kal_bool enable)
 {
 	pr_debug("streaming_enable(0=Sw Standby,1=streaming): %d\n", enable);
-	if (enable)
+	if (enable) {
 		write_cmos_sensor(0x0100, 0X01);
-	else
+		check_stream_is_on();
+	} else
 		write_cmos_sensor(0x0100, 0x00);
 	return ERROR_NONE;
 }
@@ -2196,6 +2235,11 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 			break;
 		}
 		break;
+#ifdef IMGSENSOR_MT6885
+	case SENSOR_FEATURE_GET_OFFSET_TO_START_OF_EXPOSURE:
+		*(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = 1500000;
+		break;
+#endif
 	case SENSOR_FEATURE_GET_PERIOD_BY_SCENARIO:
 		switch (*feature_data) {
 		case MSDK_SCENARIO_ID_CAMERA_CAPTURE_JPEG:
@@ -2284,7 +2328,8 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 		pr_debug("Please use EEPROM function\n");
 		break;
 	case SENSOR_FEATURE_SET_TEST_PATTERN:
-		set_test_pattern_mode((BOOL) (*feature_data));
+		set_test_pattern_mode((UINT32)*feature_data,
+		(struct SET_SENSOR_PATTERN_SOLID_COLOR *)(uintptr_t)(*(feature_data + 1)));
 		break;
 
 	/* for factory mode auto testing */

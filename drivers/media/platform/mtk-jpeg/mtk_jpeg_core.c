@@ -245,7 +245,7 @@ void mtk_jpeg_unprepare_dvfs(void)
 void mtk_jpeg_start_dvfs(void)
 {
 	if (g_freq_steps[0] != 0) {
-		pr_info("highest freq 0x%x", g_freq_steps[0]);
+		pr_info("highest freq 0x%llx", g_freq_steps[0]);
 		pm_qos_update_request(&jpeg_qos_request,  g_freq_steps[0]);
 	}
 }
@@ -285,7 +285,6 @@ void mtk_jpeg_update_bw_request(struct mtk_jpeg_ctx *ctx,
 	unsigned int emi_bw = 0;
 	unsigned int picSize = 0;
 	unsigned int limitedFPS = 0;
-	unsigned int core_id = ctx->coreid;
 	struct mtk_jpeg_dev *jpeg = ctx->jpeg;
 
 	/* Support QoS */
@@ -341,7 +340,6 @@ void mtk_jpeg_update_bw_request(struct mtk_jpeg_ctx *ctx,
 
 void mtk_jpeg_end_bw_request(struct mtk_jpeg_ctx *ctx)
 {
-	unsigned int core_id = ctx->coreid;
 	struct mtk_jpeg_dev *jpeg = ctx->jpeg;
 
 	mm_qos_set_request(&jpeg->jpeg_y_rdma, 0, 0, BW_COMP_NONE);
@@ -374,7 +372,7 @@ int mtk_jpeg_ctrls_setup(struct mtk_jpeg_ctx *ctx)
 		return handler->error;
 	}
 	v4l2_ctrl_new_std(handler, ops, V4L2_CID_JPEG_COMPRESSION_QUALITY,
-			48, 100, 1, 90);
+			0, 100, 1, 90);
 	if (handler->error) {
 		v4l2_err(&jpeg->v4l2_dev, "V4L2_CID_JPEG_COMPRESSION_QUALITY Init control handler fail %d\n",
 		handler->error);
@@ -1158,24 +1156,24 @@ static void mtk_jpeg_set_param(struct mtk_jpeg_ctx *ctx,
 		param->enc_quality = JPEG_ENCODE_QUALITY_Q97;
 	else if (jpeg_params->enc_quality >= 95)
 		param->enc_quality = JPEG_ENCODE_QUALITY_Q95;
-	else if (jpeg_params->enc_quality >= 92)
-		param->enc_quality = JPEG_ENCODE_QUALITY_Q92;
 	else if (jpeg_params->enc_quality >= 90)
 		param->enc_quality = JPEG_ENCODE_QUALITY_Q90;
-	else if (jpeg_params->enc_quality >= 87)
-		param->enc_quality = JPEG_ENCODE_QUALITY_Q87;
-	else if (jpeg_params->enc_quality >= 84)
-		param->enc_quality = JPEG_ENCODE_QUALITY_Q84;
-	else if (jpeg_params->enc_quality >= 80)
-		param->enc_quality = JPEG_ENCODE_QUALITY_Q80;
-	else if (jpeg_params->enc_quality >= 74)
-		param->enc_quality = JPEG_ENCODE_QUALITY_Q74;
-	else if (jpeg_params->enc_quality >= 64)
-		param->enc_quality = JPEG_ENCODE_QUALITY_Q64;
+	else if (jpeg_params->enc_quality >= 85)
+		param->enc_quality = JPEG_ENCODE_QUALITY_Q85;
+	else if (jpeg_params->enc_quality >= 78)
+		param->enc_quality = JPEG_ENCODE_QUALITY_Q78;
+	else if (jpeg_params->enc_quality >= 72)
+		param->enc_quality = JPEG_ENCODE_QUALITY_Q72;
 	else if (jpeg_params->enc_quality >= 60)
 		param->enc_quality = JPEG_ENCODE_QUALITY_Q60;
+	else if (jpeg_params->enc_quality >= 52)
+		param->enc_quality = JPEG_ENCODE_QUALITY_Q52;
+	else if (jpeg_params->enc_quality >= 44)
+		param->enc_quality = JPEG_ENCODE_QUALITY_Q44;
+	else if (jpeg_params->enc_quality >= 38)
+		param->enc_quality = JPEG_ENCODE_QUALITY_Q38;
 	else
-		param->enc_quality = JPEG_ENCODE_QUALITY_Q48;
+		param->enc_quality = JPEG_ENCODE_QUALITY_Q30;
 	param->enable_exif = jpeg_params->enable_exif;
 	param->restart_interval = jpeg_params->restart_interval;
 	width_even = ((param->enc_w + 1) >> 1) << 1;
@@ -1615,9 +1613,8 @@ static void mtk_jpeg_clk_on_ctx(struct mtk_jpeg_ctx *ctx)
 
 static void mtk_jpeg_clk_off_ctx(struct mtk_jpeg_ctx *ctx)
 {
-	pr_info("%s  +", __func__);
 	struct mtk_jpeg_dev *jpeg = ctx->jpeg;
-
+	pr_info("%s  +", __func__);
 	disable_irq(jpeg->irq[ctx->coreid]);
 
 	if (jpeg->mode == MTK_JPEG_ENC)
@@ -2054,11 +2051,6 @@ static int mtk_jpeg_probe(struct platform_device *pdev)
 	if (ret)
 		pr_info("BSDMA read failed:%d\n", ret);
 
-
-	mtk_jpeg_prepare_bw_request(jpeg);
-
-	mtk_jpeg_prepare_dvfs();
-
 	ret = mtk_jpeg_clk_init(jpeg);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to init clk, err %d\n", ret);
@@ -2106,6 +2098,10 @@ static int mtk_jpeg_probe(struct platform_device *pdev)
 		v4l2_err(&jpeg->v4l2_dev, "Failed to register video device\n");
 		goto err_vfd_jpeg_register;
 	}
+
+	mtk_jpeg_prepare_bw_request(jpeg);
+
+	mtk_jpeg_prepare_dvfs();
 
 	video_set_drvdata(jpeg->vfd_jpeg, jpeg);
 	v4l2_info(&jpeg->v4l2_dev,

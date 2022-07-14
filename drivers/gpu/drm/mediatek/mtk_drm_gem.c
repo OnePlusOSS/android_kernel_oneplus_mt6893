@@ -26,6 +26,7 @@
 #include "mtk_drm_mmp.h"
 #include "ion_drv.h"
 #include "ion_priv.h"
+#include "ion_sec_heap.h"
 #include <soc/mediatek/smi.h>
 #if defined(CONFIG_MTK_IOMMU_V2)
 #include "mt_iommu.h"
@@ -89,6 +90,7 @@ static struct sg_table *mtk_gem_vmap_pa(struct mtk_drm_gem_obj *mtk_gem,
 	sgt = kzalloc(sizeof(*sgt), GFP_KERNEL);
 	if (!sgt) {
 		DDPPR_ERR("sgt creation failed\n");
+		kfree(pages);
 		return NULL;
 	}
 
@@ -103,7 +105,47 @@ static struct sg_table *mtk_gem_vmap_pa(struct mtk_drm_gem_obj *mtk_gem,
 
 	return sgt;
 }
+#if 0
+static void mtk_gem_vmap_pa_legacy(phys_addr_t pa, uint size,
+				   struct mtk_drm_gem_obj *mtk_gem)
+{
+#if defined(CONFIG_MTK_IOMMU_V2)
+	struct ion_client *client;
+	struct ion_handle *handle;
+	struct ion_mm_data mm_data;
 
+	mtk_gem->cookie = (void *)ioremap_nocache(pa, size);
+	mtk_gem->kvaddr = mtk_gem->cookie;
+
+	client = mtk_drm_gem_ion_create_client("disp_fb0");
+	handle =
+		ion_alloc(client, size, (size_t)mtk_gem->kvaddr,
+			  ION_HEAP_MULTIMEDIA_MAP_MVA_MASK, 0);
+	if (IS_ERR(handle)) {
+		DDPPR_ERR("ion alloc failed, handle:0x%p\n", handle);
+		return;
+	}
+
+	/* use get_iova replace config_buffer & get_phys*/
+	memset((void *)&mm_data, 0, sizeof(struct ion_mm_data));
+	/* should use Your HW port id, please don't use other's port id */
+	mm_data.get_phys_param.module_id = 0;
+	mm_data.get_phys_param.kernel_handle = handle;
+	mm_data.mm_cmd = ION_MM_GET_IOVA;
+
+	if (ion_kernel_ioctl(client, ION_CMD_MULTIMEDIA,
+				 (unsigned long)&mm_data) < 0) {
+		DDPPR_ERR("ion config failed, handle:0x%p\n", handle);
+		mtk_drm_gem_ion_free_handle(client, handle,
+				__func__, __LINE__);
+		return;
+	}
+	mtk_gem->sec = false;
+	mtk_gem->dma_addr = (unsigned int)mm_data.get_phys_param.phy_addr;
+	mtk_gem->size = mm_data.get_phys_param.len;
+#endif
+}
+#endif
 static inline void *mtk_gem_dma_alloc(struct device *dev, size_t size,
 				       dma_addr_t *dma_handle, gfp_t flag,
 				       unsigned long attrs, const char *name,
@@ -159,12 +201,16 @@ struct mtk_drm_gem_obj *mtk_drm_fb_gem_insert(struct drm_device *dev,
 	sgt = mtk_gem_vmap_pa(mtk_gem, fb_base, 0, dev->dev, &fb_pa);
 
 	mtk_gem->sec = false;
+#ifndef CONFIG_MTK_DISPLAY_M4U
+	mtk_gem->dma_addr = fb_base;
+#else
 	mtk_gem->dma_addr = (dma_addr_t)fb_pa;
+#endif
 	mtk_gem->kvaddr = mtk_gem->cookie;
 	mtk_gem->sg = sgt;
 
-	DDPINFO("%s cookie = %p dma_addr = %pad size = %zu\n", __func__,
-		mtk_gem->cookie, &mtk_gem->dma_addr, size);
+	DDPINFO("%s cookie = %p dma_addr = %pad pa = 0x%lx size = %zu\n", __func__,
+		mtk_gem->cookie, &mtk_gem->dma_addr, (unsigned long)fb_base, size);
 
 	return mtk_gem;
 }
@@ -453,21 +499,19 @@ void mtk_drm_gem_ion_destroy_client(struct ion_client *client)
 void mtk_drm_gem_ion_free_handle(struct ion_client *client,
 	struct ion_handle *handle, const char *name, int line)
 {
-	DRM_MMP_EVENT_START(ion_import_free,
-			    (unsigned long)handle->buffer, line);
-
 	if (!client) {
 		DDPPR_ERR("invalid ion client!\n");
 		DRM_MMP_MARK(ion_import_free, 0, 1);
-		DRM_MMP_EVENT_END(ion_import_free, (unsigned long)client, line);
 		return;
 	}
 	if (!handle) {
 		DDPPR_ERR("invalid ion handle!\n");
 		DRM_MMP_MARK(ion_import_free, 0, 2);
-		DRM_MMP_EVENT_END(ion_import_free, (unsigned long)client, line);
 		return;
 	}
+
+	DRM_MMP_EVENT_START(ion_import_free,
+			    (unsigned long)handle->buffer, line);
 
 	ion_free(client, handle);
 
@@ -783,6 +827,7 @@ int mtk_drm_sec_hnd_to_gem_hnd(struct drm_device *dev, void *data,
 {
 	struct drm_mtk_sec_gem_hnd *args = data;
 	struct mtk_drm_gem_obj *mtk_gem_obj;
+	int sec_buffer = 0;
 
 	DDPDBG("%s:%d dev:0x%p, data:0x%p, priv:0x%p +\n",
 		  __func__, __LINE__,
@@ -798,15 +843,20 @@ int mtk_drm_sec_hnd_to_gem_hnd(struct drm_device *dev, void *data,
 		return -ENOMEM;
 
 	mtk_gem_obj->sec = true;
-	mtk_gem_obj->dma_addr = args->sec_hnd;
+	ion_fd2sec_type(args->sec_hnd/*ion_fd*/, &sec_buffer,
+			&mtk_gem_obj->sec_id, (ion_phys_addr_t *)&mtk_gem_obj->dma_addr);
+
 	drm_gem_private_object_init(dev, &mtk_gem_obj->base, 0);
 	drm_gem_handle_create(file_priv, &mtk_gem_obj->base, &args->gem_hnd);
 
-	DDPDBG("%s:%d obj:0x%p, sec:%d, addr:0x%llx -\n",
+	DDPDBG("%s:%d obj:0x%p, sec_hnd:%d, sec:%d, addr:0x%llx, sec_id:%d, gem_hnd:%d-\n",
 		  __func__, __LINE__,
 		  mtk_gem_obj,
+		  args->sec_hnd,
 		  mtk_gem_obj->sec,
-		  mtk_gem_obj->dma_addr);
+		  mtk_gem_obj->dma_addr,
+		  mtk_gem_obj->sec_id,
+		  args->gem_hnd);
 
 	return 0;
 }

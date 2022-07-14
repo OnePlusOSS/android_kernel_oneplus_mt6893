@@ -187,6 +187,12 @@ struct gauge_ops {
 		struct gauge_device *gauge_dev, int *nag_dltv);
 	int (*gauge_get_nag_c_dltv)(
 		struct gauge_device *gauge_dev, int *nag_c_dltv);
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	int (*gauge_get_nag_c_dltv_thr)(
+		struct gauge_device *gauge_dev, int *nag_c_dltv_thr);
+	int (*gauge_get_nag_c_dltv_thr_reg)(
+		struct gauge_device *gauge_dev, int *nag_c_dltv_thr_reg);
+#endif
 	int (*gauge_get_nag_vbat)(
 		struct gauge_device *gauge_dev, int *vbat);
 	int (*gauge_enable_zcv_interrupt)(
@@ -313,6 +319,12 @@ extern int gauge_dev_get_nag_dltv(
 	struct gauge_device *gauge_dev, int *nag_dltv);
 extern int gauge_dev_get_nag_c_dltv(
 	struct gauge_device *gauge_dev, int *nag_c_dltv);
+#ifdef OPLUS_FEATURE_CHG_BASIC
+extern int gauge_dev_get_nag_c_dltv_thr(
+	struct gauge_device *gauge_dev, int *nafg_c_dltv_thr);
+extern int gauge_dev_get_nag_c_dltv_thr_reg(
+	struct gauge_device *gauge_dev, int *nafg_c_dltv_thr_reg);
+#endif
 extern int gauge_dev_enable_zcv_interrupt(
 	struct gauge_device *gauge_dev, int en);
 extern int gauge_dev_set_zcv_interrupt_threshold(

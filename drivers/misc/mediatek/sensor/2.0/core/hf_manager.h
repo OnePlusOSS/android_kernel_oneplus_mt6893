@@ -22,6 +22,10 @@
 
 #include "hf_sensor_type.h"
 #include "hf_sensor_io.h"
+#ifdef OPLUS_FEATURE_SENSOR_ALGORITHM
+#include <oplus_sensor.h>
+#endif /*OPLUS_FEATURE_SENSOR_ALGORITHM*/
+
 
 #define HF_MANAGER_IO_IN_PROGRESS 0
 #define HF_MANAGER_IO_READY       1
@@ -34,38 +38,20 @@
 
 #define HF_CLIENT_FIFO_SIZE 128
 
-struct coordinate {
-	int8_t sign[3];
-	uint8_t map[3];
-};
-
 struct sensor_state {
-	bool enable;
-	bool bias;
-	bool cali;
-	bool temp;
-	bool test;
-	bool raw;
+	uint8_t enable : 1;
+	uint8_t bias : 1;
+	uint8_t cali : 1;
+	uint8_t temp : 1;
+	uint8_t test : 1;
+	uint8_t raw : 1;
+	uint8_t down_sample : 1;
+	uint8_t flush;
+	uint8_t down_sample_cnt;
+	uint8_t down_sample_div;
 	int64_t delay;
 	int64_t latency;
-	atomic_t flush;
-	atomic64_t start_time;
-};
-
-struct sensor_info {
-	uint8_t sensor_type;
-	uint32_t gain;
-	char name[16];
-	char vendor[16];
-};
-
-struct custom_cmd {
-	int data[16];
-};
-
-enum custom_action {
-	CUST_CMD_CALI = 0,
-	/*Add custom cmd action here!*/
+	int64_t start_time;
 };
 
 struct hf_core {
@@ -75,6 +61,9 @@ struct hf_core {
 
 	spinlock_t client_lock;
 	struct list_head client_list;
+
+	struct mutex device_lock;
+	struct list_head device_list;
 
 	struct kthread_worker kworker;
 };
@@ -87,20 +76,25 @@ struct hf_device {
 	int (*flush)(struct hf_device *hfdev, int sensor_type);
 	int (*calibration)(struct hf_device *hfdev, int sensor_type);
 	int (*config_cali)(struct hf_device *hfdev,
-		int sensor_type, int32_t *data);
+		int sensor_type, void *data, uint8_t length);
 	int (*selftest)(struct hf_device *hfdev, int sensor_type);
 	int (*rawdata)(struct hf_device *hfdev, int sensor_type, int en);
+	int (*debug)(struct hf_device *hfdev, int sensor_type,
+		uint8_t *buffer, unsigned int len);
 	int (*custom_cmd)(struct hf_device *hfdev, int sensor_type,
 		struct custom_cmd *cust_cmd);
 
-	char *dev_name;
 	unsigned char device_poll;
 	unsigned char device_bus;
-
 	struct sensor_info *support_list;
 	unsigned int support_size;
 
+	char *dev_name;
+
 	struct hf_manager *manager;
+	struct list_head list;
+	bool ready;
+
 	void *private_data;
 };
 
@@ -163,8 +157,12 @@ static inline void *hf_device_get_private_data(struct hf_device *device)
 	return device->private_data;
 }
 
+int hf_device_register(struct hf_device *device);
+void hf_device_unregister(struct hf_device *device);
 int hf_manager_create(struct hf_device *device);
-int hf_manager_destroy(struct hf_manager *manager);
+void hf_manager_destroy(struct hf_manager *manager);
+int hf_device_register_manager_create(struct hf_device *device);
+void hf_device_unregister_manager_destroy(struct hf_device *device);
 void coordinate_map(unsigned char direction, int32_t *data);
 struct hf_client *hf_client_create(void);
 void hf_client_destroy(struct hf_client *client);

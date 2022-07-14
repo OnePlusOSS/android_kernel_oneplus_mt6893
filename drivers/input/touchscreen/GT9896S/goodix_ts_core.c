@@ -357,7 +357,7 @@ static void gt9896s_debugfs_exit(void)
 	gt9896s_dbg.dentry = NULL;
 	pr_info("Debugfs module exit\n");
 }
-
+#ifdef GT_SYSFS_ATTR
 /* show external module infomation */
 static ssize_t gt9896s_ts_extmod_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -646,6 +646,133 @@ static ssize_t gt9896s_ts_irq_info_store(struct device *dev,
 	return count;
 }
 
+/*reg read/write */
+static u16 rw_addr;
+static u32 rw_len;
+static u8 rw_flag;
+static u8 store_buf[32];
+static u8 show_buf[PAGE_SIZE];
+static ssize_t gt9896s_ts_reg_rw_show(struct device *dev,
+			struct device_attribute *attr, char *buf)
+{
+	int ret;
+	struct gt9896s_ts_core *core_data = dev_get_drvdata(dev);
+	struct gt9896s_ts_device *ts_dev = core_data->ts_dev;
+
+	if (!rw_addr || !rw_len) {
+		ts_err("address(0x%x) and length(%d) cann't be null\n",
+			rw_addr, rw_len);
+		return -EINVAL;
+	}
+
+	if (rw_flag != 1) {
+		ts_err("invalid rw flag %d, only support [1/2]", rw_flag);
+		return -EINVAL;
+	}
+
+	ret = ts_dev->hw_ops->read(ts_dev, rw_addr, show_buf, rw_len);
+	if (ret) {
+		ts_err("failed read addr(%x) length(%d)\n", rw_addr, rw_len);
+		return snprintf(buf, PAGE_SIZE,
+				"failed read addr(%x), len(%d)\n",
+				rw_addr, rw_len);
+	}
+
+	return snprintf(buf, PAGE_SIZE, "0x%x,%d {%*ph}\n",
+			rw_addr, rw_len, rw_len, show_buf);
+}
+
+static ssize_t gt9896s_ts_reg_rw_store(struct device *dev,
+				      struct device_attribute *attr,
+				      const char *buf, size_t count)
+{
+	struct gt9896s_ts_core *core_data = dev_get_drvdata(dev);
+	struct gt9896s_ts_device *ts_dev = core_data->ts_dev;
+	char *pos = NULL, *token = NULL;
+	long result = 0;
+	int ret, i;
+
+	if (!buf || !count) {
+		ts_err("invalid params\n");
+		goto err_out;
+	}
+
+	if (buf[0] == 'r') {
+		rw_flag = 1;
+	} else if (buf[0] == 'w') {
+		rw_flag = 2;
+	} else {
+		ts_err("string must start with 'r/w'\n");
+		goto err_out;
+	}
+
+	/* get addr */
+	pos = (char *)buf;
+	token = strsep(&pos, ":");
+	if (!token) {
+		ts_err("invalid address info\n");
+		goto err_out;
+	} else {
+		if (kstrtol(token, 16, &result)) {
+			ts_err("failed get addr info\n");
+			goto err_out;
+		}
+		rw_addr = (u16)result;
+		ts_info("rw addr is 0x%x\n", rw_addr);
+	}
+
+	/* get length */
+	token = strsep(&pos, ":");
+	if (!token) {
+		ts_err("invalid length info\n");
+		goto err_out;
+	} else {
+		if (kstrtol(token, 0, &result)) {
+			ts_err("failed get length info\n");
+			goto err_out;
+		}
+		rw_len = (u32)result;
+		ts_info("rw length info is %d\n", rw_len);
+		if (rw_len > sizeof(store_buf)) {
+			ts_err("data len > %lu\n", sizeof(store_buf));
+			goto err_out;
+		}
+	}
+
+	if (rw_flag == 1)
+		return count;
+
+	for (i = 0; i < rw_len; i++) {
+		token = strsep(&pos, ":");
+		if (!token) {
+			ts_err("invalid data info\n");
+			goto err_out;
+		} else {
+			if (kstrtol(token, 16, &result)) {
+				ts_err("failed get data[%d] info\n", i);
+				goto err_out;
+			}
+			store_buf[i] = (u8)result;
+			ts_info("get data[%d]=0x%x\n", i, store_buf[i]);
+		}
+	}
+	ret = ts_dev->hw_ops->write(ts_dev, rw_addr, store_buf, rw_len);
+	if (ret) {
+		ts_err("failed write addr(%x) data %*ph\n", rw_addr,
+			rw_len, store_buf);
+		goto err_out;
+	}
+
+	ts_info("%s write to addr (%x) with data %*ph\n",
+		"success", rw_addr, rw_len, store_buf);
+
+	return count;
+err_out:
+	snprintf(show_buf, PAGE_SIZE, "%s\n",
+		"invalid params, format{r/w:4100:length:[41:21:31]}");
+	return -EINVAL;
+}
+
 static DEVICE_ATTR(extmod_info, S_IRUGO, gt9896s_ts_extmod_show, NULL);
 static DEVICE_ATTR(driver_info, S_IRUGO, gt9896s_ts_driver_info_show, NULL);
 static DEVICE_ATTR(chip_info, S_IRUGO, gt9896s_ts_chip_info_show, NULL);
@@ -654,6 +781,8 @@ static DEVICE_ATTR(send_cfg, S_IWUSR | S_IWGRP, NULL, gt9896s_ts_send_cfg_store)
 static DEVICE_ATTR(read_cfg, S_IRUGO, gt9896s_ts_read_cfg_show, NULL);
 static DEVICE_ATTR(irq_info, S_IRUGO | S_IWUSR | S_IWGRP,
 		   gt9896s_ts_irq_info_show, gt9896s_ts_irq_info_store);
+static DEVICE_ATTR(reg_rw, S_IRUGO | S_IWUSR | S_IWGRP,
+		   gt9896s_ts_reg_rw_show, gt9896s_ts_reg_rw_store);
 
 static struct attribute *sysfs_attrs[] = {
 	&dev_attr_extmod_info.attr,
@@ -663,6 +792,7 @@ static struct attribute *sysfs_attrs[] = {
 	&dev_attr_send_cfg.attr,
 	&dev_attr_read_cfg.attr,
 	&dev_attr_irq_info.attr,
+	&dev_attr_reg_rw.attr,
 	NULL,
 };
 
@@ -746,6 +876,7 @@ static int gt9896s_ts_sysfs_init(struct gt9896s_ts_core *core_data)
 {
 	int ret;
 
+	ts_info("GT_SYSFS_ATTR start");
 	ret = sysfs_create_bin_file(&core_data->pdev->dev.kobj,
 				    &gt9896s_config_bin_attr);
 	if (ret) {
@@ -770,7 +901,7 @@ static void gt9896s_ts_sysfs_exit(struct gt9896s_ts_core *core_data)
 			      &gt9896s_config_bin_attr);
 	sysfs_remove_group(&core_data->pdev->dev.kobj, &sysfs_group);
 }
-
+#endif
 /* event notifier */
 static BLOCKING_NOTIFIER_HEAD(ts_notifier_list);
 /**
@@ -1020,7 +1151,7 @@ static int gt9896s_ts_power_init(struct gt9896s_ts_core *core_data)
 			core_data->avdd = NULL;
 			return r;
 		}
-		r = regulator_set_voltage(core_data->avdd, 3000000, 3000000);
+		r = regulator_set_voltage(core_data->avdd, 2800000, 2800000);
 		if (r) {
 			ts_err("regulator_set_voltage failed %d\n", r);
 			return r;
@@ -1285,15 +1416,32 @@ static void gt9896s_ts_set_input_params(struct input_dev *input_dev,
 {
 	int i;
 
-	if (ts_bdata->swap_axis)
-		swap(ts_bdata->input_max_x, ts_bdata->input_max_y);
+	if (ts_bdata->lcm_max_x && ts_bdata->lcm_max_y) {
+		if (ts_bdata->swap_axis)
+			swap(ts_bdata->lcm_max_x, ts_bdata->lcm_max_y);
 
-	input_set_abs_params(input_dev, ABS_MT_POSITION_X,
-			     0, ts_bdata->input_max_x, 0, 0);
-	input_set_abs_params(input_dev, ABS_MT_POSITION_Y,
-			     0, ts_bdata->input_max_y, 0, 0);
+		input_set_abs_params(input_dev, ABS_MT_POSITION_X,
+				     0, ts_bdata->lcm_max_x, 0, 0);
+		input_set_abs_params(input_dev, ABS_MT_POSITION_Y,
+				     0, ts_bdata->lcm_max_y, 0, 0);
+	} else {
+		if (ts_bdata->swap_axis)
+			swap(ts_bdata->input_max_x, ts_bdata->input_max_y);
+
+		input_set_abs_params(input_dev, ABS_MT_POSITION_X,
+				     0, ts_bdata->input_max_x, 0, 0);
+		input_set_abs_params(input_dev, ABS_MT_POSITION_Y,
+				     0, ts_bdata->input_max_y, 0, 0);
+	}
+
 	input_set_abs_params(input_dev, ABS_MT_TOUCH_MAJOR,
 			     0, ts_bdata->panel_max_w, 0, 0);
+
+	if (ts_bdata->panel_max_key) {
+		for (i = 0; i < ts_bdata->panel_max_key; i++)
+			input_set_capability(input_dev, EV_KEY,
+					     ts_bdata->panel_key_map[i]);
+	}
 }
 
 /**
@@ -1394,8 +1542,14 @@ static int gt9896s_ts_pen_dev_config(struct gt9896s_ts_core *core_data)
 	__set_bit(BTN_TOUCH, pen_dev->keybit);
 	__set_bit(BTN_TOOL_PEN, pen_dev->keybit);
 	__set_bit(INPUT_PROP_DIRECT, pen_dev->propbit);
-	input_set_abs_params(pen_dev, ABS_X, 0, ts_bdata->input_max_x, 0, 0);
-	input_set_abs_params(pen_dev, ABS_Y, 0, ts_bdata->input_max_y, 0, 0);
+
+	if (ts_bdata->lcm_max_x && ts_bdata->lcm_max_y) {
+		input_set_abs_params(pen_dev, ABS_X, 0, ts_bdata->lcm_max_x, 0, 0);
+		input_set_abs_params(pen_dev, ABS_Y, 0, ts_bdata->lcm_max_y, 0, 0);
+	} else {
+		input_set_abs_params(pen_dev, ABS_X, 0, ts_bdata->input_max_x, 0, 0);
+		input_set_abs_params(pen_dev, ABS_Y, 0, ts_bdata->input_max_y, 0, 0);
+	}
 	input_set_abs_params(pen_dev, ABS_PRESSURE, 0,
 			     GOODIX_PEN_MAX_PRESSURE, 0, 0);
 
@@ -1437,6 +1591,11 @@ static void gt9896s_ts_esd_work(struct work_struct *work)
 	const struct gt9896s_ts_hw_ops *hw_ops = ts_hw_ops(core);
 	u8 data = GOODIX_ESD_TICK_WRITE_DATA;
 	int r = 0;
+
+	if (!hw_ops) {
+		ts_info("hw_ops is NULL");
+		return;
+	}
 
 	if (!atomic_read(&ts_esd->esd_on))
 		return;
@@ -1860,6 +2019,11 @@ static int gt9896s_generic_noti_callback(struct notifier_block *self,
 	const struct gt9896s_ts_hw_ops *hw_ops = ts_hw_ops(ts_core);
 	int r;
 
+	if (!hw_ops) {
+		ts_info("hw_ops is NULL");
+		return -1;
+	}
+
 	ts_info("notify event type 0x%x", (unsigned int)action);
 	switch (action) {
 	case NOTIFY_FWUPDATE_SUCCESS:
@@ -1922,9 +2086,10 @@ int gt9896s_ts_stage2_init(struct gt9896s_ts_core *core_data)
 	core_data->early_suspend.suspend = gt9896s_ts_earlysuspend;
 	register_early_suspend(&core_data->early_suspend);
 #endif
+#ifdef GT_SYSFS_ATTR
 	/*create sysfs files*/
 	gt9896s_ts_sysfs_init(core_data);
-
+#endif
 	/* esd protector */
 	gt9896s_ts_esd_init(core_data);
 	return 0;
@@ -2056,7 +2221,9 @@ int gt9896s_ts_remove(struct platform_device *pdev)
 	gt9896s_remove_all_ext_modules();
 	gt9896s_ts_power_off(core_data);
 	gt9896s_debugfs_exit();
+#ifdef GT_SYSFS_ATTR
 	gt9896s_ts_sysfs_exit(core_data);
+#endif
 	// can't free the memory for tools or gesture module
 	//kfree(core_data);
 	return 0;

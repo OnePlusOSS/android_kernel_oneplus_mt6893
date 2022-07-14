@@ -38,7 +38,7 @@
 #include "mt6771/mtk_clkbuf_hw.h"
 #elif defined(CONFIG_MACH_MT6765)
 #include "mt6765/mtk_clkbuf_hw.h"
-#elif defined(CONFIG_MACH_MT6768)
+#elif defined(CONFIG_MACH_MT6768) || defined(CONFIG_MACH_MT6781)
 #include "mt6768/mtk_clkbuf_hw.h"
 #elif defined(CONFIG_MACH_MT6785)
 #include "mt6785/mtk_clkbuf_hw.h"
@@ -49,6 +49,8 @@
 #elif defined(CONFIG_MACH_MT6885) || defined(CONFIG_MACH_MT6893)
 #include "mt6885/mtk_clkbuf_hw.h"
 #elif defined(CONFIG_MACH_MT6853) || defined(CONFIG_MACH_MT6833)
+#include "mt6853/mtk_clkbuf_hw.h"
+#elif defined(CONFIG_MACH_MT6877)
 #include "mt6853/mtk_clkbuf_hw.h"
 #endif
 

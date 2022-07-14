@@ -15,6 +15,8 @@
 
 ifeq ($(CONFIG_MACH_MT6833),y)
 MTK_PLATFORM := "mt6833"
+else ifeq ($(CONFIG_MACH_MT6781),y)
+MTK_PLATFORM := "mt6781"
 else
 MTK_PLATFORM := $(CONFIG_MTK_PLATFORM)
 endif
@@ -27,11 +29,12 @@ ccflags-$(CONFIG_MACH_MT6873) += -DCMDQ_MDP_ENABLE_SPR
 ccflags-$(CONFIG_MACH_MT6873) += -DMDP_MMPATH
 ccflags-$(CONFIG_MACH_MT6853) += -DCMDQ_MDP_ENABLE_SPR
 ccflags-$(CONFIG_MACH_MT6853) += -DMDP_MMPATH
-ccflags-$(CONFIG_MACH_MT6893) += -DCMDQ_MDP_ENABLE_SPR
-ccflags-$(CONFIG_MACH_MT6893) += -DPMQOS_VERSION2
-ccflags-$(CONFIG_MACH_MT6893) += -DMDP_MMPATH
 ccflags-$(CONFIG_MACH_MT6833) += -DCMDQ_MDP_ENABLE_SPR
 ccflags-$(CONFIG_MACH_MT6833) += -DMDP_MMPATH
+ccflags-$(CONFIG_MACH_MT6877) += -DCMDQ_MDP_ENABLE_SPR
+ccflags-$(CONFIG_MACH_MT6877) += -DMDP_MMPATH
+ccflags-$(CONFIG_MACH_MT6781) += -DCMDQ_MDP_ENABLE_SPR
+ccflags-$(CONFIG_MACH_MT6781) += -DMDP_MMPATH
 
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/smi/ \
 	     -I$(srctree)/drivers/misc/mediatek/smi/$(MTK_PLATFORM)/ \
@@ -40,7 +43,8 @@ ccflags-y += -I$(srctree)/drivers/misc/mediatek/smi/ \
 	     -I$(srctree)/drivers/misc/mediatek/mach/$(MTK_PLATFORM)/include \
 	     -I$(srctree)/drivers/iommu/ \
 	     -I$(srctree)/drivers/staging/android/ion \
-	     -I$(srctree)/drivers/staging/android/ion/mtk
+	     -I$(srctree)/drivers/staging/android/ion/mtk \
+	     -I$(srctree)/drivers/misc/mediatek/trusted_mem/public
 
 ccflags-$(CONFIG_MTK_CMDQ_MBOX_EXT) += -I$(srctree)/drivers/misc/mediatek/cmdq/mailbox/
 
@@ -54,6 +58,10 @@ else ifneq (,$(filter $(CONFIG_MTK_PLATFORM), "mt8167"))
 		-I$(srctree)/drivers/misc/mediatek/cmdq/v2/$(MTK_PLATFORM)
 endif
 
+ifeq ($(or $(strip $(CONFIG_MTK_SVP_ON_MTEE_SUPPORT)), $(strip $(CONFIG_MTK_CAM_GENIEZONE_SUPPORT))),y)
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/trustzone/m4u
+ccflags-y += -I$(srctree)/drivers/iommu
+endif
 
 # mdp platform code
 MDP_PLATFORM_DIR=$(srctree)/drivers/misc/mediatek/mdp/$(MTK_PLATFORM)

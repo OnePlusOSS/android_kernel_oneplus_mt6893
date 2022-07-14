@@ -15,7 +15,20 @@
 #include <linux/string.h>
 #include <linux/kernel.h>
 
-#if defined(CONFIG_RT5081_PMU_DSV) || defined(CONFIG_MT6370_PMU_DSV)
+#ifdef OPLUS_BUG_STABILITY
+#ifdef CONFIG_SET_LCD_BIAS_ODM_HQ
+typedef enum {
+	FIRST_VSP_AFTER_VSN = 0,
+	FIRST_VSN_AFTER_VSP = 1
+} LCD_BIAS_POWER_ON_SEQUENCE;
+#endif //CONFIG_SET_LCD_BIAS_ODM_HQ
+#endif /* OPLUS_BUG_STABILITY */
+
+/*#ifdef OPLUS_BUG_STABILITY*/
+#if defined(CONFIG_RT5081_PMU_DSV) || defined(CONFIG_MT6370_PMU_DSV) || defined(CONFIG_SET_LCD_BIAS_ODM_HQ)
+/*#else*/
+/*#if defined(CONFIG_RT5081_PMU_DSV) || defined(CONFIG_MT6370_PMU_DSV)*/
+/*#endif*/
 static struct regulator *disp_bias_pos;
 static struct regulator *disp_bias_neg;
 static int regulator_inited;
@@ -166,4 +179,76 @@ int display_bias_disable(void)
 }
 EXPORT_SYMBOL(display_bias_disable);
 #endif
+
+#ifdef OPLUS_BUG_STABILITY
+#ifdef CONFIG_SET_LCD_BIAS_ODM_HQ
+void pmi_lcd_bias_set_vspn_vol(unsigned int value)
+{
+	int ret = 0;
+	unsigned int level;
+
+	display_bias_regulator_init();
+
+	level = value * 1000;
+
+	ret = regulator_set_voltage(disp_bias_pos, level, level);
+	if (ret < 0)
+		pr_info("set voltage disp_bias_pos fail, ret = %d\n", ret);
+
+	ret = regulator_set_voltage(disp_bias_neg, level, level);
+	if (ret < 0)
+		pr_info("set voltage disp_bias_neg fail, ret = %d\n", ret);
+}
+EXPORT_SYMBOL(pmi_lcd_bias_set_vspn_vol);
+
+void pmi_lcd_bias_set_vspn_en(unsigned int en, unsigned int seq)
+{
+	int retval = 0;
+
+	display_bias_regulator_init();
+
+    if (en) {			/* enable regulator */
+		if (seq == FIRST_VSP_AFTER_VSN) {
+            retval |= regulator_enable(disp_bias_pos);
+	        //mdelay(5);
+			retval |= regulator_enable(disp_bias_neg);
+		} else if (seq == FIRST_VSN_AFTER_VSP) {
+		    retval |= regulator_enable(disp_bias_neg);
+			//mdelay(5);
+			retval |= regulator_enable(disp_bias_pos);
+
+		}
+		if (retval < 0)
+		pr_info("enable regulator disp_bias fail, retval = %d\n", retval);
+    } else {			/* disable regulator */
+        if (seq == FIRST_VSP_AFTER_VSN) {
+			retval |= regulator_disable(disp_bias_pos);
+			//mdelay(5);
+			retval |= regulator_disable(disp_bias_neg);
+        } else if (seq == FIRST_VSN_AFTER_VSP) {
+			retval |= regulator_disable(disp_bias_neg);
+			//mdelay(5);
+			retval |= regulator_disable(disp_bias_pos);
+        }
+		if (retval < 0)
+		pr_info("disable regulator disp_bias fail, retval = %d\n", retval);
+    }
+}
+EXPORT_SYMBOL(pmi_lcd_bias_set_vspn_en);
+
+
+int pmi_lcd_bias_vsp_is_enabled(void)
+{
+	return regulator_is_enabled(disp_bias_pos);
+}
+EXPORT_SYMBOL(pmi_lcd_bias_vsp_is_enabled);
+
+
+int pmi_lcd_bias_vsn_is_enabled(void)
+{
+	return regulator_is_enabled(disp_bias_neg);
+}
+EXPORT_SYMBOL(pmi_lcd_bias_vsn_is_enabled);
+#endif //CONFIG_SET_LCD_BIAS_ODM_HQ
+#endif /* OPLUS_BUG_STABILITY */
 

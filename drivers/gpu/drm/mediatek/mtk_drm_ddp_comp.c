@@ -115,9 +115,18 @@
 #define DVFS_HALT_MASK_SEL_WDMA0	REG_FLD_MSB_LSB(22, 22)
 #define DVFS_HALT_MASK_SEL_WDMA1	REG_FLD_MSB_LSB(23, 23)
 
+#define MT6877_INFRA_MEM_IDLE_ASYNC_2  0x178
+#define MT6877_MM_PORT0_AXI_IDLE_ASYNC  REG_FLD_MSB_LSB(2, 2)
+#define MT6877_MM_PORT1_AXI_IDLE_ASYNC  REG_FLD_MSB_LSB(3, 3)
+#define MT6877_INFRA_MEM_IDLE_ASYNC_3  0x17c
+#define MT6877_MDP2INFRA0_GALS_TX_AXI_IDLE  REG_FLD_MSB_LSB(12, 12)
+#define MT6877_COMM0_GALS_TX_AXI_IDLE  REG_FLD_MSB_LSB(13, 13)
+
 #define MT6833_INFRA_DISP_DDR_CTL  0x2C
 #define MT6833_INFRA_FLD_DDR_MASK  REG_FLD_MSB_LSB(7, 4)
 
+#define MT6781_INFRA_DISP_DDR_CTL 0xB8
+#define MT6781_INFRA_DISP_DDR_MASK 0xC02
 #define SMI_LARB_NON_SEC_CON 0x0380
 
 #define MTK_DDP_COMP_USER "DISP"
@@ -614,7 +623,8 @@ int mtk_ddp_comp_register(struct drm_device *drm, struct mtk_ddp_comp *comp)
 void mtk_ddp_comp_unregister(struct drm_device *drm, struct mtk_ddp_comp *comp)
 {
 	struct mtk_drm_private *private = drm->dev_private;
-	if (comp && comp->id >= 0)
+
+	if (comp && comp->id >= 0 && comp->id < DDP_COMPONENT_ID_MAX)
 		private->ddp_comp[comp->id] = NULL;
 }
 
@@ -662,9 +672,9 @@ static enum mtk_iommu_callback_ret_t
 	DDPPR_ERR("fault call port=%d, mva=0x%lx, data=0x%p\n", port, mva,
 		  data);
 
-	if (comp) {
-		mtk_dump_analysis(comp);
-		mtk_dump_reg(comp);
+	if (comp && comp->mtk_crtc) {
+		mtk_drm_crtc_analysis(&(comp->mtk_crtc->base));
+		mtk_drm_crtc_dump(&(comp->mtk_crtc->base));
 	}
 
 	return MTK_IOMMU_CALLBACK_HANDLED;
@@ -701,9 +711,17 @@ void mtk_ddp_comp_iommu_enable(struct mtk_ddp_comp *comp,
 				comp->larb_dev->of_node->full_name);
 			return;
 		}
-		cmdq_pkt_write(handle, NULL,
-			       res.start + SMI_LARB_NON_SEC_CON + port * 4, 0x1,
-			       0x1);
+#ifndef CONFIG_MTK_DISPLAY_M4U
+//bypass m4u
+	cmdq_pkt_write(handle, NULL,
+		res.start + SMI_LARB_NON_SEC_CON + port * 4, 0,
+		0x1);
+#else
+	cmdq_pkt_write(handle, NULL,
+		res.start + SMI_LARB_NON_SEC_CON + port * 4, 0x1,
+		0x1);
+#endif
+
 		index++;
 	}
 }
@@ -820,6 +838,240 @@ void mt6853_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 	}
 }
 
+void mt6781_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
+			    struct cmdq_pkt *handle, void *data)
+{
+	struct mtk_drm_private *priv = drm->dev_private;
+	unsigned int sodi_req_val = 0, sodi_req_mask = 0;
+	unsigned int emi_req_val = 0, emi_req_mask = 0;
+	bool en = *((bool *)data);
+
+	if (id == DDP_COMPONENT_ID_MAX) { /* config when top clk on */
+		if (!en)
+			return;
+
+		SET_VAL_MASK(sodi_req_val, sodi_req_mask,
+					0, MT6873_SODI_REQ_SEL_ALL);
+		SET_VAL_MASK(sodi_req_val, sodi_req_mask,
+					0, MT6873_SODI_REQ_VAL_ALL);
+
+		SET_VAL_MASK(sodi_req_val, sodi_req_mask,
+					1, SODI_REQ_SEL_RDMA0_PD_MODE);
+		SET_VAL_MASK(sodi_req_val, sodi_req_mask,
+					1, SODI_REQ_VAL_RDMA0_PD_MODE);
+
+		SET_VAL_MASK(emi_req_val, emi_req_mask,
+					0x1, HRT_URGENT_CTL_SEL_RDMA0);
+		SET_VAL_MASK(emi_req_val, emi_req_mask,
+					0x1, HRT_URGENT_CTL_SEL_WDMA0);
+
+		SET_VAL_MASK(emi_req_val, emi_req_mask,
+					0, HRT_URGENT_CTL_VAL_RDMA0);
+		SET_VAL_MASK(emi_req_val, emi_req_mask,
+					0, HRT_URGENT_CTL_VAL_WDMA0);
+
+		SET_VAL_MASK(emi_req_val, emi_req_mask,
+					0, DVFS_HALT_MASK_SEL_RDMA0);
+		SET_VAL_MASK(emi_req_val, emi_req_mask,
+					0, DVFS_HALT_MASK_SEL_WDMA0);
+	} else if (id == DDP_COMPONENT_RDMA0) {
+		SET_VAL_MASK(sodi_req_val, sodi_req_mask, (!en),
+					SODI_REQ_SEL_RDMA0_CG_MODE);
+
+		SET_VAL_MASK(emi_req_val, emi_req_mask, (!en),
+				HRT_URGENT_CTL_SEL_RDMA0);
+		SET_VAL_MASK(emi_req_val, emi_req_mask, en,
+				DVFS_HALT_MASK_SEL_RDMA0);
+	} else if (id == DDP_COMPONENT_WDMA0) {
+		SET_VAL_MASK(emi_req_val, emi_req_mask, (!en),
+					HRT_URGENT_CTL_SEL_WDMA0);
+		SET_VAL_MASK(emi_req_val, emi_req_mask, en,
+					DVFS_HALT_MASK_SEL_WDMA0);
+	} else
+		return;
+
+	if (handle == NULL) {
+		unsigned int v;
+
+		v = (readl(priv->config_regs + MMSYS_SODI_REQ_MASK)
+			& (~sodi_req_mask));
+		v += (sodi_req_val & sodi_req_mask);
+		writel_relaxed(v, priv->config_regs + MMSYS_SODI_REQ_MASK);
+
+		v = (readl(priv->config_regs +  MMSYS_EMI_REQ_CTL)
+			& (~emi_req_mask));
+		v += (emi_req_val & emi_req_mask);
+		writel_relaxed(v, priv->config_regs +  MMSYS_EMI_REQ_CTL);
+		if (priv->data->bypass_infra_ddr_control) {
+			if (!IS_ERR(priv->infra_regs)) {
+				v = (readl(priv->infra_regs + MT6781_INFRA_DISP_DDR_CTL)
+					| MT6781_INFRA_DISP_DDR_MASK);
+				writel_relaxed(v, priv->infra_regs + MT6781_INFRA_DISP_DDR_CTL);
+			} else
+				DDPINFO("%s: failed to disable infra ddr control\n", __func__);
+		}
+	} else {
+		cmdq_pkt_write(handle, NULL, priv->config_regs_pa +
+			MMSYS_SODI_REQ_MASK, sodi_req_val, sodi_req_mask);
+		cmdq_pkt_write(handle, NULL, priv->config_regs_pa +
+			MMSYS_EMI_REQ_CTL, emi_req_val, emi_req_mask);
+		if (priv->data->bypass_infra_ddr_control) {
+			if (priv->infra_regs_pa) {
+				cmdq_pkt_write(handle, NULL,  priv->infra_regs_pa +
+						MT6781_INFRA_DISP_DDR_CTL,
+						MT6781_INFRA_DISP_DDR_MASK,
+						MT6781_INFRA_DISP_DDR_MASK);
+			} else
+				DDPINFO("%s: failed to disable infra ddr control\n", __func__);
+		}
+	}
+}
+
+void mt6877_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
+			    struct cmdq_pkt *handle, void *data)
+{
+	struct mtk_drm_private *priv = drm->dev_private;
+	struct mtk_crtc_state *ctrc_state;
+	struct drm_crtc *crtc;
+	unsigned int sodi_req_val = 0, sodi_req_mask = 0;
+	unsigned int emi_req_val = 0, emi_req_mask = 0;
+	unsigned int infra_req_val1 = 0, infra_req_mask1 = 0;
+	unsigned int infra_req_val2 = 0, infra_req_mask2 = 0;
+	unsigned int infra_req_val3 = 0, infra_req_mask3 = 0;
+	unsigned int infra_req_val4 = 0, infra_req_mask4 = 0;
+	bool en = *((bool *)data);
+	crtc = priv->crtc[0];
+	ctrc_state = to_mtk_crtc_state(crtc->state);
+
+	if (id == DDP_COMPONENT_ID_MAX) { /* config when top clk on */
+		if (!en)
+			return;
+
+		SET_VAL_MASK(sodi_req_val, sodi_req_mask,
+					0, MT6873_SODI_REQ_SEL_ALL);
+		SET_VAL_MASK(sodi_req_val, sodi_req_mask,
+					0, MT6873_SODI_REQ_VAL_ALL);
+
+		SET_VAL_MASK(sodi_req_val, sodi_req_mask,
+					1, SODI_REQ_SEL_RDMA0_PD_MODE);
+		SET_VAL_MASK(sodi_req_val, sodi_req_mask,
+					1, SODI_REQ_VAL_RDMA0_PD_MODE);
+
+		SET_VAL_MASK(emi_req_val, emi_req_mask,
+					0x1, HRT_URGENT_CTL_SEL_RDMA0);
+		SET_VAL_MASK(emi_req_val, emi_req_mask,
+					0x1, HRT_URGENT_CTL_SEL_WDMA0);
+
+		SET_VAL_MASK(emi_req_val, emi_req_mask,
+					0, HRT_URGENT_CTL_VAL_RDMA0);
+		SET_VAL_MASK(emi_req_val, emi_req_mask,
+					0, HRT_URGENT_CTL_VAL_WDMA0);
+		SET_VAL_MASK(emi_req_val, emi_req_mask,
+					0, HRT_URGENT_CTL_VAL_RDMA4);
+		SET_VAL_MASK(emi_req_val, emi_req_mask,
+					0, HRT_URGENT_CTL_VAL_MDP_RDMA4);
+
+		SET_VAL_MASK(emi_req_val, emi_req_mask,
+					0, DVFS_HALT_MASK_SEL_RDMA0);
+		SET_VAL_MASK(emi_req_val, emi_req_mask,
+					0, DVFS_HALT_MASK_SEL_RDMA4);
+		SET_VAL_MASK(emi_req_val, emi_req_mask,
+					0, DVFS_HALT_MASK_SEL_WDMA0);
+	} else if (id == DDP_COMPONENT_RDMA0) {
+		SET_VAL_MASK(sodi_req_val, sodi_req_mask, (!en),
+					SODI_REQ_SEL_RDMA0_CG_MODE);
+
+		SET_VAL_MASK(emi_req_val, emi_req_mask, (!en),
+				HRT_URGENT_CTL_SEL_RDMA0);
+		SET_VAL_MASK(emi_req_val, emi_req_mask, en,
+				DVFS_HALT_MASK_SEL_RDMA0);
+	} else if (id == DDP_COMPONENT_WDMA0) {
+		SET_VAL_MASK(emi_req_val, emi_req_mask, (!en),
+					HRT_URGENT_CTL_SEL_WDMA0);
+		SET_VAL_MASK(emi_req_val, emi_req_mask, en,
+					DVFS_HALT_MASK_SEL_WDMA0);
+	} else
+		return;
+
+	if (priv->data->bypass_infra_ddr_control) {
+		SET_VAL_MASK(infra_req_val1, infra_req_mask1,
+				0x1, MT6877_MM_PORT0_AXI_IDLE_ASYNC);
+		SET_VAL_MASK(infra_req_val2, infra_req_mask2,
+				0x1, MT6877_MM_PORT1_AXI_IDLE_ASYNC);
+		SET_VAL_MASK(infra_req_val3, infra_req_mask3,
+				0x1, MT6877_MDP2INFRA0_GALS_TX_AXI_IDLE);
+		SET_VAL_MASK(infra_req_val4, infra_req_mask4,
+				0x1, MT6877_COMM0_GALS_TX_AXI_IDLE);
+	}
+
+	if (handle == NULL) {
+		unsigned int v;
+
+		v = (readl(priv->config_regs + MMSYS_SODI_REQ_MASK)
+			& (~sodi_req_mask));
+		v += (sodi_req_val & sodi_req_mask);
+		writel_relaxed(v, priv->config_regs + MMSYS_SODI_REQ_MASK);
+
+		v = (readl(priv->config_regs +  MMSYS_EMI_REQ_CTL)
+			& (~emi_req_mask));
+		v += (emi_req_val & emi_req_mask);
+		writel_relaxed(v, priv->config_regs +  MMSYS_EMI_REQ_CTL);
+		if (priv->data->bypass_infra_ddr_control) {
+			if (!IS_ERR(priv->infra_regs)) {
+				v = (readl(priv->infra_regs + MT6877_INFRA_MEM_IDLE_ASYNC_2)
+					| infra_req_mask1 | infra_req_mask2);
+				writel_relaxed(v, priv->infra_regs + MT6877_INFRA_MEM_IDLE_ASYNC_2);
+				v = (readl(priv->infra_regs + MT6877_INFRA_MEM_IDLE_ASYNC_3)
+					| infra_req_mask3 | infra_req_mask4);
+				writel_relaxed(v, priv->infra_regs + MT6877_INFRA_MEM_IDLE_ASYNC_3);
+			} else
+				DDPINFO("%s: failed to disable infra ddr control\n", __func__);
+		}
+		if (ctrc_state->prop_val[CRTC_PROP_DOZE_ACTIVE]) {
+			writel_relaxed(0x0, priv->infra_regs + MT6877_INFRA_MEM_IDLE_ASYNC_2);
+			writel_relaxed(0x0, priv->infra_regs + MT6877_INFRA_MEM_IDLE_ASYNC_3);
+			writel_relaxed(0x0, priv->infra_regs + 0x170);
+			writel_relaxed(0x0, priv->infra_regs + 0x174);
+		   }
+	} else {
+		cmdq_pkt_write(handle, NULL, priv->config_regs_pa +
+			MMSYS_SODI_REQ_MASK, sodi_req_val, sodi_req_mask);
+		cmdq_pkt_write(handle, NULL, priv->config_regs_pa +
+			MMSYS_EMI_REQ_CTL, emi_req_val, emi_req_mask);
+		if (priv->data->bypass_infra_ddr_control) {
+			if (priv->infra_regs_pa) {
+				cmdq_pkt_write(handle, NULL,  priv->infra_regs_pa +
+						MT6877_INFRA_MEM_IDLE_ASYNC_2,
+						infra_req_val1, infra_req_mask1);
+				cmdq_pkt_write(handle, NULL,  priv->infra_regs_pa +
+						MT6877_INFRA_MEM_IDLE_ASYNC_2,
+						infra_req_val2, infra_req_mask2);
+				cmdq_pkt_write(handle, NULL,  priv->infra_regs_pa +
+						MT6877_INFRA_MEM_IDLE_ASYNC_3,
+						infra_req_val3, infra_req_mask3);
+				cmdq_pkt_write(handle, NULL,  priv->infra_regs_pa +
+						MT6877_INFRA_MEM_IDLE_ASYNC_3,
+						infra_req_val4, infra_req_mask4);
+			} else
+				DDPINFO("%s: failed to disable infra ddr control\n", __func__);
+		}
+		if (ctrc_state->prop_val[CRTC_PROP_DOZE_ACTIVE]) {
+			cmdq_pkt_write(handle, NULL,  priv->infra_regs_pa +
+							MT6877_INFRA_MEM_IDLE_ASYNC_2,
+							0x0, ~0);
+			cmdq_pkt_write(handle, NULL,  priv->infra_regs_pa +
+							MT6877_INFRA_MEM_IDLE_ASYNC_3,
+							0x0, ~0);
+			cmdq_pkt_write(handle, NULL,  priv->infra_regs_pa +
+							0x170,
+							0x0, ~0);
+			cmdq_pkt_write(handle, NULL,  priv->infra_regs_pa +
+							0x174,
+							0x0, ~0);
+		}
+	}
+}
+
 void mt6833_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 			    struct cmdq_pkt *handle, void *data)
 {
@@ -898,7 +1150,7 @@ void mt6833_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 		if (priv->data->bypass_infra_ddr_control) {
 			if (!IS_ERR(priv->infra_regs)) {
 				v = (readl(priv->infra_regs + MT6833_INFRA_DISP_DDR_CTL)
-					| MT6833_INFRA_FLD_DDR_MASK);
+					| infra_req_mask);
 				writel_relaxed(v, priv->infra_regs + MT6833_INFRA_DISP_DDR_CTL);
 			} else
 				DDPINFO("%s: failed to disable infra ddr control\n", __func__);

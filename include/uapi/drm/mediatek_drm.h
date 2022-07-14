@@ -25,7 +25,9 @@
 #define MTK_DRM_PROP_OVERLAP_LAYER_NUM  "OVERLAP_LAYER_NUM"
 #define MTK_DRM_PROP_NEXT_BUFF_IDX  "NEXT_BUFF_IDX"
 #define MTK_DRM_PROP_PRESENT_FENCE  "PRESENT_FENCE"
+#define MTK_DRM_PROP_OVL_DSI_SEQ  "OVL_DSI_SEQ"
 
+struct mml_frame_info;
 
 /**
  * User-desired buffer creation information structure.
@@ -115,15 +117,44 @@ struct drm_mtk_session {
 	uint32_t session_id;
 };
 
+/**
+ * A structure for session create.
+ *
+ * @level_id: id
+ * @level_fps: fps
+ * @max_fps: max fps
+ * @min_fps: min fps
+ */
+struct msync_level_table {
+	unsigned int level_id;
+	unsigned int level_fps;
+	unsigned int max_fps;
+	unsigned int min_fps;
+};
+
+/**
+ * A structure for session create.
+ *
+ * @msync_max_fps: max fps
+ * @msync_min_fps: min fps
+ * @msync_level_num: level number
+ * @level_tb: A pointer of level table
+ */
+struct msync_parameter_table {
+	unsigned int msync_max_fps;
+	unsigned int msync_min_fps;
+	unsigned int msync_level_num;
+	struct msync_level_table *level_tb;
+};
 /* PQ */
 #define C_TUN_IDX 19 /* COLOR_TUNING_INDEX */
 #define COLOR_TUNING_INDEX 19
-#define THSHP_TUNING_INDEX 12
+#define THSHP_TUNING_INDEX 24
 #define THSHP_PARAM_MAX 146 /* TDSHP_3_0 */
-#define PARTIAL_Y_INDEX 10
-#define GLOBAL_SAT_SIZE 10
-#define CONTRAST_SIZE 10
-#define BRIGHTNESS_SIZE 10
+#define PARTIAL_Y_INDEX 22
+#define GLOBAL_SAT_SIZE 22
+#define CONTRAST_SIZE 22
+#define BRIGHTNESS_SIZE 22
 #define PARTIAL_Y_SIZE 16
 #define PQ_HUE_ADJ_PHASE_CNT 4
 #define PQ_SAT_ADJ_PHASE_CNT 4
@@ -409,8 +440,13 @@ struct DISP_PQ_PARAM {
 #define DRM_MTK_SEC_HND_TO_GEM_HND	0x0B
 #define DRM_MTK_GET_MASTER_INFO		0x0C
 #define DRM_MTK_CRTC_GETSFFENCE         0x0D
+#define DRM_MTK_MML_GEM_SUBMIT         0x0E
+#define DRM_MTK_SET_MSYNC_PARAMS         0x0F
+#define DRM_MTK_GET_MSYNC_PARAMS         0x10
+#define DRM_MTK_FACTORY_LCM_AUTO_TEST    0x11
 
 /* PQ */
+#define DRM_MTK_PQ_PERSIST_PROPERTY	0x1F
 #define DRM_MTK_SET_CCORR			0x20
 #define DRM_MTK_CCORR_EVENTCTL   0x21
 #define DRM_MTK_CCORR_GET_IRQ    0x22
@@ -440,6 +476,11 @@ struct DISP_PQ_PARAM {
 #define DRM_MTK_HDMI_AUDIO_ENABLE	0x3B
 #define DRM_MTK_HDMI_AUDIO_CONFIG	0x3C
 #define DRM_MTK_HDMI_GET_CAPABILITY	0x3D
+
+#define DRM_MTK_GET_PQ_CAPS 0x54
+#define DRM_MTK_SET_PQ_CAPS 0x55
+
+#define DRM_MTK_DEBUG_LOG			0x3E
 
 enum MTKFB_DISPIF_TYPE {
 	DISPIF_TYPE_DBI = 0,
@@ -506,6 +547,12 @@ enum MTK_LAYERING_CAPS {
 	MTK_CLIENT_CLEAR_LAYER =	0x00000040,
 	MTK_DISP_CLIENT_CLEAR_LAYER =	0x00000080,
 	MTK_DMDP_RSZ_LAYER =		0x00000100,
+	MTK_MML_OVL_LAYER =	0x00000200,
+	MTK_MML_DISP_DIRECT_LINK_LAYER =	0x00000400,
+	MTK_MML_DISP_DIRECT_DECOUPLE_LAYER =	0x00000800,
+	MTK_MML_DISP_DECOUPLE_LAYER =	0x00001000,
+	MTK_MML_DISP_MDP_LAYER =	0x00002000,
+	MTK_MML_DISP_NOT_SUPPORT =	0x00004000,
 };
 
 struct drm_mtk_layer_config {
@@ -524,7 +571,7 @@ struct drm_mtk_layer_config {
 };
 
 struct drm_mtk_layering_info {
-	struct drm_mtk_layer_config *input_config[3];
+	struct drm_mtk_layer_config __user *input_config[3];
 	int disp_mode[3];
 	/* index of crtc display mode including resolution, fps... */
 	int disp_mode_idx[3];
@@ -536,6 +583,7 @@ struct drm_mtk_layering_info {
 	int res_idx;
 	uint32_t hrt_weight;
 	uint32_t hrt_idx;
+	struct mml_frame_info *mml_cfg[3];
 };
 
 /**
@@ -574,9 +622,32 @@ enum MTK_DRM_DISP_FEATURE {
 	DRM_DISP_FEATURE_FBDC = 0x00000040,
 	DRM_DISP_FEATURE_SF_PRESENT_FENCE = 0x00000080,
 	DRM_DISP_FEATURE_PQ_34_COLOR_MATRIX = 0x00000100,
+	/*Msync*/
+	DRM_DISP_FEATURE_MSYNC2_0 = 0x00000200,
+	DRM_DISP_FEATURE_MML_PRIMARY = 0x00000400,
+	DRM_DISP_FEATURE_VIRUTAL_DISPLAY = 0x00000800,
+	DRM_DISP_FEATURE_IOMMU = 0x00001000,
+};
+
+enum mtk_mmsys_id {
+	MMSYS_MT2701 = 0x2701,
+	MMSYS_MT2712 = 0x2712,
+	MMSYS_MT8173 = 0x8173,
+	MMSYS_MT6779 = 0x6779,
+	MMSYS_MT6885 = 0x6885,
+	MMSYS_MT6983 = 0x6983,
+	MMSYS_MT6873 = 0x6873,
+	MMSYS_MT6853 = 0x6853,
+	MMSYS_MT6833 = 0x6833,
+	MMSYS_MT6877 = 0x6877,
+	MMSYS_MT6879 = 0x6879,
+	MMSYS_MT6781 = 0x6781,
+	MMSYS_MT6895 = 0x6895,
+	MMSYS_MAX,
 };
 
 struct mtk_drm_disp_caps_info {
+	unsigned int hw_ver;
 	unsigned int disp_feature_flag;
 	int lcm_degree; /* for rotate180 */
 	unsigned int rsz_in_max[2]; /* for RPO { width, height } */
@@ -586,6 +657,9 @@ struct mtk_drm_disp_caps_info {
 	unsigned int max_luminance;
 	unsigned int average_luminance;
 	unsigned int min_luminance;
+
+	/* Msync2.0 */
+	unsigned int msync_level_num;
 };
 
 struct drm_mtk_session_info {
@@ -605,6 +679,8 @@ struct DRM_DISP_CCORR_COEF_T {
 	enum drm_disp_ccorr_id_t hw_id;
 	unsigned int coef[3][3];
 	unsigned int offset[3];
+	int FinalBacklight;
+	int silky_bright_flag;
 };
 
 enum drm_disp_gamma_id_t {
@@ -632,6 +708,16 @@ struct DRM_DISP_WRITE_REG {
 	unsigned int mask;
 };
 
+struct drm_mtk_ccorr_caps {
+	unsigned int ccorr_bit;
+	unsigned int ccorr_number;
+	unsigned int ccorr_linear;//1st byte:high 4 bit:CCORR1,low 4 bit:CCORR0
+};
+
+struct mtk_drm_pq_caps_info {
+	struct drm_mtk_ccorr_caps ccorr_caps;
+};
+
 #define DRM_IOCTL_MTK_GEM_CREATE	DRM_IOWR(DRM_COMMAND_BASE + \
 		DRM_MTK_GEM_CREATE, struct drm_mtk_gem_create)
 
@@ -656,6 +742,12 @@ struct DRM_DISP_WRITE_REG {
 #define DRM_IOCTL_MTK_CRTC_GETSFFENCE	DRM_IOWR(DRM_COMMAND_BASE + \
 		DRM_MTK_CRTC_GETSFFENCE, struct drm_mtk_fence)
 
+#define DRM_IOCTL_MTK_SET_MSYNC_PARAMS    DRM_IOWR(DRM_COMMAND_BASE + \
+		DRM_MTK_SET_MSYNC_PARAMS, struct msync_parameter_table)
+
+#define DRM_IOCTL_MTK_GET_MSYNC_PARAMS    DRM_IOWR(DRM_COMMAND_BASE + \
+		DRM_MTK_GET_MSYNC_PARAMS, struct msync_parameter_table)
+
 #define DRM_IOCTL_MTK_WAIT_REPAINT	DRM_IOWR(DRM_COMMAND_BASE + \
 		DRM_MTK_WAIT_REPAINT, unsigned int)
 
@@ -673,6 +765,9 @@ struct DRM_DISP_WRITE_REG {
 
 #define DRM_IOCTL_MTK_SEC_HND_TO_GEM_HND     DRM_IOWR(DRM_COMMAND_BASE + \
 		DRM_MTK_SEC_HND_TO_GEM_HND, struct drm_mtk_sec_gem_hnd)
+
+#define DRM_IOCTL_MTK_PQ_PERSIST_PROPERTY    DRM_IOWR(DRM_COMMAND_BASE + \
+		DRM_MTK_PQ_PERSIST_PROPERTY, unsigned int [32])
 
 #define DRM_IOCTL_MTK_SET_CCORR     DRM_IOWR(DRM_COMMAND_BASE + \
 		DRM_MTK_SET_CCORR, struct DRM_DISP_CCORR_COEF_T)
@@ -725,6 +820,15 @@ struct DRM_DISP_WRITE_REG {
 #define DRM_IOCTL_MTK_SUPPORT_COLOR_TRANSFORM    DRM_IOWR(DRM_COMMAND_BASE + \
 			DRM_MTK_SUPPORT_COLOR_TRANSFORM, \
 			struct DISP_COLOR_TRANSFORM)
+
+#define DRM_IOCTL_MTK_DEBUG_LOG     DRM_IOWR(DRM_COMMAND_BASE + \
+			DRM_MTK_DEBUG_LOG, int)
+
+#define DRM_IOCTL_MTK_GET_PQ_CAPS DRM_IOWR(DRM_COMMAND_BASE + \
+		DRM_MTK_GET_PQ_CAPS, struct mtk_drm_pq_caps_info)
+#define DRM_IOCTL_MTK_SET_PQ_CAPS    DRM_IOWR(DRM_COMMAND_BASE + \
+		DRM_MTK_SET_PQ_CAPS, struct mtk_drm_pq_caps_info)
+
 
 /* AAL IOCTL */
 #define AAL_HIST_BIN            33	/* [0..32] */
@@ -783,8 +887,10 @@ struct DISP_AAL_PARAM {
 	int cabc_fltgain_force;	/* 10-bit ; [0,1023] */
 	int cabc_gainlmt[33];
 	int FinalBacklight;	/* 10-bit ; [0,1023] */
+	int silky_bright_flag;
 	int allowPartial;
 	int refreshLatency;	/* DISP_AAL_REFRESH_LATENCY */
+	unsigned int silky_bright_gain[3];	/* 13-bit ; [1,8192] */
 	unsigned long long dre30_gain;
 };
 
@@ -796,6 +902,7 @@ struct DISP_DRE30_INIT {
 struct DISP_AAL_DISPLAY_SIZE {
 	int width;
 	int height;
+	bool isdualpipe;
 };
 
 struct DISP_AAL_HIST {
@@ -815,7 +922,6 @@ struct DISP_AAL_HIST {
 	unsigned int aal1_yHist[AAL_HIST_BIN];
 	unsigned int MaxHis_denominator_pipe0[AAL_DRE_BLK_NUM];
 	unsigned int MaxHis_denominator_pipe1[AAL_DRE_BLK_NUM];
-	int pipeLineNum;
 };
 
 #define DRM_IOCTL_MTK_AAL_INIT_REG	DRM_IOWR(DRM_COMMAND_BASE + \

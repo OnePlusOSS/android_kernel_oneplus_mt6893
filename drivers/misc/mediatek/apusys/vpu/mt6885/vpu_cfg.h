@@ -17,7 +17,12 @@
 #include <linux/types.h>
 
 struct vpu_device;
-void vpu_emi_mpu_set(unsigned long start, unsigned int size);
+
+static inline
+void vpu_emi_mpu_set(unsigned long start, unsigned int size)
+{
+}
+
 bool vpu_is_disabled(struct vpu_device *vd);
 
 /* 20180703, 00:00: vpu log mechanism */
@@ -47,7 +52,11 @@ bool vpu_is_disabled(struct vpu_device *vd);
 
 /* Time Constrains */
 #define VPU_CMD_TIMEOUT  (9000)
+#ifdef CONFIG_OPLUS_APUSYS_LATENCY
+#define VPU_PWR_OFF_LATENCY (15)
+#else
 #define VPU_PWR_OFF_LATENCY (3000)
+#endif
 #define WAIT_CMD_LATENCY_US (2000)
 #define WAIT_CMD_RETRY  (5)
 #define WAIT_XOS_LATENCY_US (500)

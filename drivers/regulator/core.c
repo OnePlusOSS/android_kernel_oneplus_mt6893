@@ -32,6 +32,7 @@
 #include <linux/regulator/driver.h>
 #include <linux/regulator/machine.h>
 #include <linux/module.h>
+#include <soc/oplus/system/oplus_project.h>
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/regulator.h>
@@ -4512,6 +4513,16 @@ static int __init regulator_late_cleanup(struct device *dev, void *data)
 
 	if (c && c->always_on)
 		return 0;
+
+	if(strcmp(rdev->desc->name,"LDO1") == 0 && (get_project() >= 20730 && get_project() <= 20733)){
+		/* ldo1 is enable in lk, kernel enable this ldo1 to protect from unbalanced enable/disable */
+		struct regulator *ldo1;//VCI 3.0V
+		ldo1 = regulator_get(dev, "VFP");
+		if(!IS_ERR(ldo1))
+			regulator_enable(ldo1);
+		rdev_info(rdev,"LDO1 is used for VCCI for samsung oled amsy643xy04,can't clean up.\n");
+		return 0;
+	}
 
 	if (!regulator_ops_is_valid(rdev, REGULATOR_CHANGE_STATUS))
 		return 0;

@@ -474,7 +474,11 @@ extern unsigned int work_busy(struct work_struct *work);
 extern __printf(1, 2) void set_worker_desc(const char *fmt, ...);
 extern void print_worker_info(const char *log_lvl, struct task_struct *task);
 extern void show_workqueue_state(void);
-
+#ifdef CONFIG_OPLUS_FEATURE_MIDAS
+extern void get_worker_info(struct task_struct *task, char *buf);
+#else
+static inline void get_worker_info(struct task_struct *task, char *buf) { }
+#endif
 /**
  * queue_work - queue work on a workqueue
  * @wq: workqueue to use

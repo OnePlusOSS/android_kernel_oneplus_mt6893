@@ -966,13 +966,14 @@ static inline int FDVT_switchCmdqToSecure(void *handle)
 
 	/*cmdq_engine = module_to_cmdq_engine(module);*/
 	cmdq_engine = CMDQ_ENG_FDVT;
-	/*cmdq_event	= CMDQ_EVENT_DVE_EOF;*/
 
 	cmdqRecSetSecure(handle, 1);
 	/* set engine as sec */
 	cmdqRecSecureEnablePortSecurity(handle, (1LL << cmdq_engine));
 	//cmdqRecSecureEnableDAPC(handle, (1LL << cmdq_engine));
-
+#ifdef CMDQ_MTEE
+	cmdq_task_set_mtee(handle, true);
+#endif
 	return 0;
 }
 
@@ -990,6 +991,9 @@ static inline int FDVT_switchPortToNonSecure(void)
 	cmdqRecSetEngine(handle, engineFlag);
 	//cmdq_task_secure_enable_dapc(handle, engineFlag);
 	cmdq_task_secure_enable_port_security(handle, engineFlag);
+#ifdef CMDQ_MTEE
+	cmdq_task_set_mtee(handle, true);
+#endif
 	cmdq_task_flush(handle);
 
 	return 0;
@@ -1120,7 +1124,7 @@ static inline void FDVT_Reset_Every_Frame(void)
  *
  *****************************************************************************/
 
-static bool ConfigFDVTRequest(signed int ReqIdx)
+static bool ConfigFDVTRequest(unsigned int ReqIdx)
 {
 #ifdef FDVT_USE_GCE
 	unsigned int j;
@@ -1563,21 +1567,21 @@ static signed int ConfigFDVTHW(FDVT_Config *pFdvtConfig)
 	if (pFdvtConfig->FDVT_IS_SECURE != 0) {
 		cmdqRecWriteSecure(handle,
 			FDVT_RSCON_BASE_ADR_HW,
-			CMDQ_SAM_H_2_MVA,
+			CMDQ_SAM_PH_2_MVA,
 			pFdvtConfig->FDVT_RSCON_BASE_ADR,
 			0,
 			pFdvtConfig->FDVT_RSCON_BUFSIZE,
 			M4U_PORT_FDVT_RDA);
 		cmdqRecWriteSecure(handle,
 			FDVT_FD_CON_BASE_ADR_HW,
-			CMDQ_SAM_H_2_MVA,
+			CMDQ_SAM_PH_2_MVA,
 			pFdvtConfig->FDVT_FD_CON_BASE_ADR,
 			0,
 			pFdvtConfig->FDVT_FD_CON_BUFSIZE,
 			M4U_PORT_FDVT_RDA);
 		cmdqRecWriteSecure(handle,
 			FDVT_YUV2RGBCON_BASE_ADR_HW,
-			CMDQ_SAM_H_2_MVA,
+			CMDQ_SAM_PH_2_MVA,
 			pFdvtConfig->FDVT_YUV2RGBCON_BASE_ADR,
 			0,
 			pFdvtConfig->FDVT_YUV2RGBCON_BUFSIZE,
@@ -1592,7 +1596,7 @@ static signed int ConfigFDVTHW(FDVT_Config *pFdvtConfig)
 		cmdqRecWrite(handle, FDVT_FD_RLT_BASE_ADR_HW,
 			0x0, CMDQ_REG_MASK);
 	}
-#if 1
+
 	if (pFdvtConfig->FDVT_IS_SECURE == 1) {
 		cmdq_task_set_secure_meta(
 			handle,
@@ -1600,7 +1604,7 @@ static signed int ConfigFDVTHW(FDVT_Config *pFdvtConfig)
 			&(pFdvtConfig->FDVT_METADATA_TO_GCE),
 			sizeof(pFdvtConfig->FDVT_METADATA_TO_GCE));
 	}
-#endif
+
 	cmdqRecWrite(handle, FDVT_START_HW, 0x1, CMDQ_REG_MASK);
 	cmdqRecWait(handle, CMDQ_EVENT_FDVT_DONE);
 	cmdqRecWrite(handle, FDVT_START_HW, 0x0, CMDQ_REG_MASK);
@@ -2752,7 +2756,7 @@ static long FDVT_ioctl(struct file *pFile,
 	FDVT_CLEAR_IRQ_STRUCT ClearIrq;
 	FDVT_Config fdvt_FdvtConfig;
 	FDVT_Request fdvt_FdvtReq;
-	signed int FdvtWriteIdx = 0;
+	unsigned int FdvtWriteIdx = 0;
 	int idx;
 	struct FDVT_USER_INFO_STRUCT *pUserInfo;
 	int enqueNum;

@@ -19,8 +19,15 @@
 #include "mtk_drm_drv.h"
 #include "mtk_drm_session.h"
 #include "mtk_drm_mmp.h"
+#if defined(CONFIG_MTK_SVP_ON_MTEE_SUPPORT)
+#include "tz_m4u.h"
+#endif
 
 static DEFINE_MUTEX(disp_session_lock);
+
+#ifdef OPLUS_BUG_STABILITY
+int mtk_drm_session_created = 0;
+#endif /* OPLUS_BUG_STABILITY */
 
 int mtk_drm_session_create(struct drm_device *dev,
 			   struct drm_mtk_session *config)
@@ -160,8 +167,10 @@ int mtk_session_set_mode(struct drm_device *dev, unsigned int session_mode)
 		mtk_set_layering_opt(LYE_OPT_RPO, 1);
 
 		/* OVL0_2l switch back to main path */
-		DDPMSG("Switch vds: crtc2 vds set ddp mode to DL\n");
-		mtk_need_vds_path_switch(private->crtc[0]);
+		if (private->need_vds_path_switch_back) {
+			DDPMSG("Switch vds: crtc2 vds set ddp mode to DL\n");
+			mtk_need_vds_path_switch(private->crtc[0]);
+		}
 	}
 
 	/* has memory session. need disconnect wdma from cwb*/
@@ -190,7 +199,20 @@ int mtk_session_set_mode(struct drm_device *dev, unsigned int session_mode)
 					private->crtc[i],
 					mode_tb[session_mode].ddp_mode[i], 1);
 		}
+#if defined(CONFIG_MTK_SEC_VIDEO_PATH_SUPPORT) && \
+		defined(CONFIG_MTK_TEE_GP_SUPPORT)
+#if !defined(CONFIG_MTK_SVP_ON_MTEE_SUPPORT)
+		/* For wfd secure region */
+		DDPINFO("Switch WFD: display call m4u_sec_init\n");
+		m4u_sec_init();
+#elif defined(CONFIG_MTK_SVP_ON_MTEE_SUPPORT)
+		/* For wfd secure region */
+		DDPINFO("Switch WFD: display call m4u_gz_sec_init\n");
+		m4u_gz_sec_init(SEC_ID_WFD);
+#endif
+#endif
 	}
+
 
 	/* has no memory session. need disconnect wdma from cwb*/
 	if (session_id == -1) {
@@ -267,6 +289,10 @@ int mtk_drm_session_create_ioctl(struct drm_device *dev, void *data,
 
 	if (mtk_drm_session_create(dev, config) != 0)
 		ret = -EFAULT;
+
+	#ifdef OPLUS_BUG_STABILITY
+	mtk_drm_session_created = 1;
+	#endif /* OPLUS_BUG_STABILITY */
 
 	return ret;
 }

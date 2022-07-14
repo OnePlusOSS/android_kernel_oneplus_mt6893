@@ -17,10 +17,16 @@
 #include <drm/drm_panel.h>
 
 #define RT_MAX_NUM 10
+
+#ifdef OPLUS_BUG_STABILITY
+#define ESD_CHECK_NUM 4
+#else
 #define ESD_CHECK_NUM 3
+#endif/*OPLUS_BUG_STABILITY*/
+
 #define MAX_TX_CMD_NUM 20
 #define MAX_RX_CMD_NUM 20
-#define READ_DDIC_SLOT_NUM 4
+#define READ_DDIC_SLOT_NUM (4 * MAX_RX_CMD_NUM)
 #define MAX_DYN_CMD_NUM 20
 
 
@@ -128,8 +134,25 @@ enum FPS_CHANGE_INDEX {
 	DYNFPS_DSI_MIPI_CLK = 4,
 };
 
+struct dsc_rc_range_parameters {
+	/**
+	 * @range_min_qp: Min Quantization Parameters allowed for this range
+	 */
+	u8 range_min_qp;
+	/**
+	 * @range_max_qp: Max Quantization Parameters allowed for this range
+	 */
+	u8 range_max_qp;
+	/**
+	 * @range_bpg_offset:
+	 * Bits/group offset to apply to target for this group
+	 */
+	u8 range_bpg_offset;
+};
+
 struct mtk_panel_dsc_params {
 	unsigned int enable;
+	unsigned int bdg_dsc_enable;
 	unsigned int ver; /* [7:4] major [3:0] minor */
 	unsigned int slice_mode;
 	unsigned int rgb_swap;
@@ -162,6 +185,8 @@ struct mtk_panel_dsc_params {
 	unsigned int rc_quant_incr_limit1;
 	unsigned int rc_tgt_offset_hi;
 	unsigned int rc_tgt_offset_lo;
+	unsigned int rc_buf_thresh[14];
+	struct dsc_rc_range_parameters rc_range_parameters[15];
 };
 struct mtk_dsi_phy_timcon {
 	unsigned int hs_trail;
@@ -218,9 +243,15 @@ struct mtk_panel_params {
 	struct dynamic_fps_params dyn_fps;
 	unsigned int cust_esd_check;
 	unsigned int esd_check_enable;
+	unsigned int esd_two_para_compare;
 	struct esd_check_item lcm_esd_check_table[ESD_CHECK_NUM];
 	unsigned int ssc_disable;
+	unsigned int bdg_ssc_disable;
 	unsigned int ssc_range;
+	#ifdef OPLUS_BUG_STABILITY
+	unsigned int ssc_enable;
+	unsigned int ssc_range_div;
+	#endif
 	int lcm_color_mode;
 	unsigned int min_luminance;
 	unsigned int average_luminance;
@@ -245,13 +276,42 @@ struct mtk_panel_params {
 	unsigned int lcm_cmd_if;
 	unsigned int hbm_en_time;
 	unsigned int hbm_dis_time;
+	/* #ifdef OPLUS_BUG_STABILITY */
+	unsigned int before_hbm_en_time;
+	unsigned int before_hbm_en_delay_time;
+	unsigned int before_hbm_dis_time;
+	/* #endif */ /* OPLUS_BUG_STABILITY */
 	unsigned int lcm_index;
 	unsigned int wait_sof_before_dec_vfp;
 	unsigned int doze_delay;
+	/* #ifdef OPLUS_BUG_STABILITY */
+	unsigned int oplus_panel_cv_switch;
+	unsigned int oplus_lpx_ns_multiplier;
+	unsigned int oplus_teot_ns_multiplier;
+	unsigned int oplus_dc_then_hbm_on;
+	unsigned int oplus_hbm_on_sync_with_flush;
+	unsigned int oplus_hbm_off_sync_with_flush;
+	unsigned int oplus_need_hbm_wait;
+	unsigned int oplus_need_before_hbm_wait;
+	unsigned int oplus_samsung_panel;
+	unsigned int oplus_wait_te_num;
+	unsigned int tp_lcd_suspend;
+	unsigned char vendor[32];
+	unsigned char manufacture[32];
+	/* #endif */ /* OPLUS_BUG_STABILITY */
 
-//Settings for LFR Function:
+	//Settings for LFR Function:
 	unsigned int lfr_enable;
 	unsigned int lfr_minimum_fps;
+	unsigned int oplus_serial_para0;
+	unsigned int oplus_serial_para2;
+	#ifdef OPLUS_BUG_STABILITY
+	int *blmap;
+	int blmap_size;
+	int brightness_max;
+	int brightness_min;
+	#endif
+	unsigned int oplus_display_global_dre;
 };
 
 struct mtk_panel_ext {
@@ -282,6 +342,16 @@ struct mtk_panel_funcs {
 		unsigned int dst_mode, enum MTK_PANEL_MODE_SWITCH_STAGE stage);
 	int (*get_virtual_heigh)(void);
 	int (*get_virtual_width)(void);
+	int (*esd_backlight_recovery)(void *dsi_drv, dcs_write_gce cb,
+		void *handle);
+	int (*panel_poweroff)(struct drm_panel *panel);
+	int (*panel_poweron)(struct drm_panel *panel);
+	void (*hbm_set_state)(struct drm_panel *panel, bool state);
+	int (*set_hbm)(void *dsi_drv, dcs_write_gce cb,
+		void *handle, unsigned int hbm_mode);
+	int (*set_seed)(void *dsi_drv, dcs_write_gce cb,
+		void *handle, unsigned int seed_mode);
+	//#endif
 	/**
 	 * @doze_enable_start:
 	 *
@@ -326,6 +396,25 @@ struct mtk_panel_funcs {
 	int (*doze_area)(struct drm_panel *panel,
 		void *dsi_drv, dcs_write_gce cb, void *handle);
 
+	/* #ifdef OPLUS_FEATURE_AOD */
+	/**
+	 * @doze_area_setting:
+	 *
+	 * Send the panel area in command here.
+	 */
+	int (*doze_area_set)(void *dsi, dcs_write_gce cb, void *handle);
+	/* #endif */ /* OPLUS_FEATURE_AOD */
+
+	/* #ifdef OPLUS_BUG_STABILITY */
+	int (*doze_enable_end)(struct drm_panel *panel,
+		void *dsi_drv, dcs_write_gce cb, void *handle);
+	int (*doze_post_disp_off)(struct drm_panel *panel,
+		void *dsi_drv, dcs_write_gce cb, void *handle);
+	int (*set_safe_mode)(void *dsi_drv, dcs_write_gce cb,
+		void *handle, unsigned int level);
+	int (*panel_disp_off)(void *dsi, dcs_write_gce cb, void *handle);
+	/* #endif */ /* OPLUS_BUG_STABILITY */
+
 	/**
 	 * @doze_get_mode_flags:
 	 *
@@ -337,9 +426,27 @@ struct mtk_panel_funcs {
 
 	int (*hbm_set_cmdq)(struct drm_panel *panel, void *dsi_drv,
 			    dcs_write_gce cb, void *handle, bool en);
+	int (*sn_set)(struct drm_panel *panel);
 	void (*hbm_get_state)(struct drm_panel *panel, bool *state);
 	void (*hbm_get_wait_state)(struct drm_panel *panel, bool *wait);
 	bool (*hbm_set_wait_state)(struct drm_panel *panel, bool wait);
+	int (*esd_backlight_check)(void *dsi_drv, dcs_write_gce cb,
+		void *handle);
+	/*#ifdef OPLUS_BUG_STABILITY*/
+	int (*lcm_osc_change)(void *dsi, dcs_write_gce cb, void *handle, bool en);
+	/*#endif*/
+	int (*oplus_get_aod_state)(void);
+	#ifdef OPLUS_BUG_STABILITY
+	int (*set_dc_backlight)(void *dsi_drv, dcs_write_gce cb,
+		void *handle, unsigned int level);
+	void (*cabc_switch)(void *dsi_drv, dcs_write_gce cb,
+		void *handle, unsigned int cabc_mode);
+	int (*send_cmd_before_dsi_read)(struct drm_panel *panel);
+	int (*esd_check_precondition)(void *dsi, dcs_write_gce cb, void *handle);
+	int (*nt_reset)(struct drm_panel *panel, int on);
+	int (*lcm_dc_post_exitd)(void *dsi_drv, dcs_write_gce cb,
+		void *handle);
+	#endif /* OPLUS_BUG_STABILITY */
 };
 
 void mtk_panel_init(struct mtk_panel_ctx *ctx);

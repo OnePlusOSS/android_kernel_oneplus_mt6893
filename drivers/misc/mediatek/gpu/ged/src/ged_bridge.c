@@ -44,6 +44,7 @@ int ged_bridge_log_buf_write(
 	struct GED_BRIDGE_IN_LOGBUFWRITE *psLogBufWriteIN,
 	struct GED_BRIDGE_OUT_LOGBUFWRITE *psLogBufWriteOUT)
 {
+	psLogBufWriteIN->acLogBuf[GED_BRIDGE_IN_LOGBUF_SIZE - 1] = '\0';
 	psLogBufWriteOUT->eError =
 		ged_log_buf_print2(psLogBufWriteIN->hLogBuf,
 		psLogBufWriteIN->attrs, "%s", psLogBufWriteIN->acLogBuf);
@@ -72,8 +73,16 @@ int ged_bridge_monitor_3D_fence(
 	struct GED_BRIDGE_IN_MONITOR3DFENCE *psMonitor3DFenceINT,
 	struct GED_BRIDGE_OUT_MONITOR3DFENCE *psMonitor3DFenceOUT)
 {
-	psMonitor3DFenceOUT->eError =
-		ged_monitor_3D_fence_add(psMonitor3DFenceINT->fd);
+	if (psMonitor3DFenceINT->dump_flag == 1) {
+		mtk_gpu_fence_debug_dump(
+			psMonitor3DFenceINT->fd,
+			psMonitor3DFenceINT->pid,
+			psMonitor3DFenceINT->eType);
+		psMonitor3DFenceOUT->eError = GED_OK;
+	} else {
+		psMonitor3DFenceOUT->eError =
+			ged_monitor_3D_fence_add(psMonitor3DFenceINT->fd);
+	}
 	return 0;
 }
 //-----------------------------------------------------------------------------
@@ -224,7 +233,30 @@ int ged_bridge_query_dvfs_freq_pred(
 	}
 	return 0;
 }
-//-----------------------------------------------------------------------------
 
+//-----------------------------------------------------------------------------
+int ged_bridge_query_gpu_dvfs_info(
+	struct GED_BRIDGE_IN_QUERY_GPU_DVFS_INFO *QueryGPUDVFSInfoIn,
+	struct GED_BRIDGE_OUT_QUERY_GPU_DVFS_INFO *QueryGPUDVFSInfoOut)
+{
+	/* GiFT hint PID status to GED */
+	if (QueryGPUDVFSInfoIn->pid)
+		ged_kpi_set_gift_target_pid(QueryGPUDVFSInfoIn->pid);
+
+	/* GiFT hint status to GED */
+	if (QueryGPUDVFSInfoIn->hint) {
+		if (QueryGPUDVFSInfoIn->gift_ratio)
+			QueryGPUDVFSInfoOut->eError =
+				ged_kpi_set_gift_status(QueryGPUDVFSInfoIn->gift_ratio);
+		else
+			QueryGPUDVFSInfoOut->eError =
+				ged_kpi_set_gift_status(QueryGPUDVFSInfoIn->hint);
+	}
+	QueryGPUDVFSInfoOut->eError = ged_kpi_query_gpu_dvfs_info(
+			QueryGPUDVFSInfoOut);
+	return 0;
+}
+
+//-----------------------------------------------------------------------------
 module_param(ged_boost_enable, uint, 0644);
 module_param(ged_force_mdp_enable, int, 0644);

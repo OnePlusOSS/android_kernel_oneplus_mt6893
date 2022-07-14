@@ -17,7 +17,13 @@
 #endif
 
 #include "ccci_fsm_internal.h"
-
+//#ifdef OPLUS_FEATURE_SWTP
+//Add for caple detect when SIM plug in
+#include "ccci_swtp.h"
+//#endif /* OPLUS_FEATURE_SWTP */
+//#ifdef OPLUS_FEATURE_SWTP
+#include <linux/proc_fs.h>
+//#endif  /*OPLUS_FEATURE_SWTP*/
 signed int __weak battery_get_bat_voltage(void)
 {
 	pr_debug("[ccci/dummy] %s is not supported!\n", __func__);
@@ -207,25 +213,15 @@ static int fsm_md_data_ioctl(int md_id, unsigned int cmd, unsigned long arg)
 		}
 		break;
 	case CCCI_IOC_RELOAD_MD_TYPE:
-		data = 0;
 		if (copy_from_user(&data, (void __user *)arg,
 				sizeof(unsigned int))) {
-			CCCI_NORMAL_LOG(md_id, FSM,
+			CCCI_ERROR_LOG(md_id, FSM,
 				"CCCI_IOC_RELOAD_MD_TYPE: copy_from_user fail\n");
 			ret = -EFAULT;
 		} else {
+			ret = set_soc_md_rt_rat_by_idx(md_id, (unsigned int)data);
 			CCCI_NORMAL_LOG(md_id, FSM,
-				"CCCI_IOC_RELOAD_MD_TYPE: 0x%x\n", data);
-			/* add md type check to
-			 * avoid it being changed to illegal value
-			 */
-			if (check_md_type(data) > 0) {
-				if (set_modem_support_cap(md_id, data) == 0)
-					per_md_data->config.load_type = data;
-			} else {
-				CCCI_ERROR_LOG(md_id, FSM,
-				"invalid MD TYPE: 0x%x\n", data);
-			}
+				"CCCI_IOC_RELOAD_MD_TYPE: %d ret:%d\n", data, ret);
 		}
 		break;
 	case CCCI_IOC_SET_MD_IMG_EXIST:
@@ -241,7 +237,7 @@ static int fsm_md_data_ioctl(int md_id, unsigned int cmd, unsigned long arg)
 			"CCCI_IOC_SET_MD_IMG_EXIST: set done!\n");
 		break;
 	case CCCI_IOC_GET_MD_IMG_EXIST:
-		data = get_md_type_from_lk(md_id);
+		data = get_md_img_type(md_id);
 		if (data) {
 			memset(&per_md_data->md_img_exist, 0,
 				sizeof(per_md_data->md_img_exist));
@@ -265,14 +261,19 @@ static int fsm_md_data_ioctl(int md_id, unsigned int cmd, unsigned long arg)
 		}
 		break;
 	case CCCI_IOC_GET_MD_TYPE:
-		retry = 600;
-		do {
-			data = get_legacy_md_type(md_id);
-			if (data)
-				break;
-			msleep(500);
-			retry--;
-		} while (retry);
+		data = get_md_img_type(md_id);
+		if (!data)
+			data = 3; //MT6580 using this
+		else {
+			retry = 6000;
+			do {
+				data = get_soc_md_rt_rat_idx(md_id);
+				if (data)
+					break;
+				msleep(50);
+				retry--;
+			} while (retry);
+		}
 		CCCI_NORMAL_LOG(md_id, FSM,
 			"CCCI_IOC_GET_MD_TYPE: %d!\n", data);
 		ret = put_user((unsigned int)data,
@@ -343,7 +344,7 @@ static int fsm_md_data_ioctl(int md_id, unsigned int cmd, unsigned long arg)
 			per_md_data->sim_setting.sim_mode = sim_slot_cfg[1];
 			per_md_data->sim_setting.slot1_mode = sim_slot_cfg[2];
 			per_md_data->sim_setting.slot2_mode = sim_slot_cfg[3];
-			data = ((data << 16)
+			data = (((unsigned int)data << 16)
 					| per_md_data->sim_setting.sim_mode);
 			switch_sim_mode(md_id, (char *)&data, sizeof(data));
 			fsm_monitor_send_message(md_id,
@@ -419,6 +420,7 @@ long ccci_fsm_ioctl(int md_id, unsigned int cmd, unsigned long arg)
 	int ret = 0;
 	enum MD_STATE_FOR_USER state_for_user;
 	unsigned int data;
+	static unsigned long boot_ready_count;
 	char *VALID_USER = "ccci_mdinit";
 
 	if (!ctl)
@@ -557,6 +559,17 @@ long ccci_fsm_ioctl(int md_id, unsigned int cmd, unsigned long arg)
 		inject_md_status_event(md_id, MD_STA_EV_LEAVE_FLIGHT_E_REQUEST,
 					current->comm);
 		break;
+	/* RILD nodify ccci power off md */
+	case CCCI_IOC_RILD_POWER_OFF_MD:
+		if (ctl->boot_count == boot_ready_count || ctl->md_state != READY)
+			break;
+		CCCI_NORMAL_LOG(md_id, FSM,
+				"MD power off called by %s, boot_count %lu ,ready_count %lu\n",
+				current->comm, ctl->boot_count, boot_ready_count);
+		inject_md_status_event(md_id, MD_STA_EV_RILD_POWEROFF_START,
+				current->comm);
+		boot_ready_count = ctl->boot_count;
+		break;
 	case CCCI_IOC_SET_EFUN:
 		if (copy_from_user(&data, (void __user *)arg,
 				sizeof(unsigned int))) {
@@ -586,6 +599,15 @@ long ccci_fsm_ioctl(int md_id, unsigned int cmd, unsigned long arg)
 			"get modem exception type=%d ret=%d\n",
 			ctl->ee_ctl.ex_type, ret);
 		break;
+    //#ifdef OPLUS_FEATURE_SWTP
+    //Add for caple detect when SIM plug in
+    case CCCI_IOC_SIM_INSERTED_FOR_SWITCH_RF_SAR:
+        CCCI_NORMAL_LOG(md_id, FSM,
+            "SIM inserted notify to ioctl called by %s\n", current->comm);
+        ret = ccci_get_gpio175_value();
+    //Wrire the return value into Node file
+    //....
+    //#endif /* OPLUS_FEATURE_SWTP */
 	default:
 		ret = fsm_md_data_ioctl(md_id, cmd, arg);
 		break;

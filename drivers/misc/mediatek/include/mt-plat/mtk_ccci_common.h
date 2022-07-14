@@ -435,6 +435,7 @@ enum {
 	MODEM_CAP_NAPI = (1<<0),
 	MODEM_CAP_TXBUSY_STOP = (1<<1),
 	MODEM_CAP_SGIO = (1<<2),
+	MODEM_CAP_HWTXCSUM = (1<<3),
 	/*bit16-bit31:
 	 *for modem capability only
 	 *related with ccmni driver
@@ -625,7 +626,7 @@ int ccci_sysfs_add_modem(int md_id, void *kobj, void *ktype,
 int get_modem_support_cap(int md_id); /* Export by ccci util */
 int set_modem_support_cap(int md_id, int new_val);
 char *ccci_get_md_info_str(int md_id);
-void get_md_postfix(int md_id, char k[], char buf[], char buf_ex[]);
+void get_md_postfix(int md_id, const char k[], char buf[], char buf_ex[]);
 void update_ccci_port_ver(unsigned int new_ver);
 int ccci_load_firmware(int md_id, void *img_inf, char img_err_str[],
 	char post_fix[], struct device *dev);
@@ -681,8 +682,10 @@ void clear_meta_1st_boot_arg(int md_id);
 
 /* CCCI dump */
 #define CCCI_DUMP_TIME_FLAG		(1<<0)
-#define CCCI_DUMP_CLR_BUF_FLAG	(1<<1)
+#define CCCI_DUMP_CLR_BUF_FLAG		(1<<1)
 #define CCCI_DUMP_CURR_FLAG		(1<<2)
+#define CCCI_DUMP_ANDROID_TIME_FLAG	(1<<3)
+
 enum {
 	CCCI_DUMP_INIT = 0,
 	CCCI_DUMP_BOOTUP,
@@ -692,6 +695,7 @@ enum {
 	CCCI_DUMP_HISTORY,
 	CCCI_DUMP_REGISTER,
 	CCCI_DUMP_DPMA_DRB,
+	CCCI_DUMP_MD_INIT,
 	CCCI_DUMP_MAX,
 };
 void ccci_util_mem_dump(int md_id, int buf_type, void *start_addr, int len);
@@ -718,11 +722,14 @@ struct _mpu_cfg *get_mpu_region_cfg_info(int region_id);
 int ccci_get_opt_val(char *opt_name);
 
 /* RAT configure relate */
-unsigned int get_wm_bitmap_for_ubin(void); /* Universal bin */
-void update_rat_bit_map_to_drv(int md_id, unsigned int val);
 int get_md_img_type(int md_id);
-int get_legacy_md_type(int md_id);
-int check_md_type(int data);
+int check_rat_at_md_img(int md_id, char str[]);
+unsigned int get_md_bin_capability(int md_id);
+int set_soc_md_rt_rat_str(int md_id, char str[]);
+unsigned int get_soc_md_rt_rat(int md_id);
+int check_rat_at_rt_setting(int md_id, char str[]);
+unsigned int get_soc_md_rt_rat_idx(int md_id);
+int set_soc_md_rt_rat_by_idx(int md_id, unsigned int wm_idx);
 
 int get_nc_smem_region_info(unsigned int id, unsigned int *ap_off,
 				unsigned int *md_off, unsigned int *size);
@@ -733,7 +740,7 @@ int get_md_cache_region_info(int region_id, unsigned int *buf_base,
 void __iomem *ccci_map_phy_addr(phys_addr_t phy_addr, unsigned int size);
 unsigned int get_mtee_is_enabled(void);
 int mtk_ccci_request_port(char *name);
-int mtk_ccci_send_data(int index, char *buf, int size);
+int mtk_ccci_send_data(int index, const char *buf, int size);
 int mtk_ccci_read_data(int index, char *buf, size_t count);
 int mtk_ccci_open_port(int index);
 int mtk_ccci_release_port(int index);

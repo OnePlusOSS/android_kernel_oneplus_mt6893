@@ -480,7 +480,7 @@ static int _cpufreq_set_locked(struct cpufreq_policy *policy,
 #endif
 	FUNC_ENTER(FUNC_LV_HELP);
 
-	if (dvfs_disable_flag == 1)
+	if (pll_p == NULL || dvfs_disable_flag == 1)
 		return 0;
 
 	if (!policy) {
@@ -718,6 +718,10 @@ static void _hps_request_wrapper(struct mt_cpu_dvfs *p,
 	struct mt_cpu_dvfs *act_p;
 
 	act_p = id_to_cpu_dvfs(*id);
+
+	if (act_p == NULL)
+		return;
+
 	/* action switch */
 	switch (action & ~CPU_TASKS_FROZEN) {
 	case CPUFREQ_CPU_ONLINE:
@@ -939,6 +943,8 @@ static int _mt_cpufreq_setup_freqs_table(struct cpufreq_policy *policy,
 	FUNC_ENTER(FUNC_LV_LOCAL);
 
 	p = id_to_cpu_dvfs(_get_cpu_dvfs_id(policy->cpu));
+	if (p == NULL)
+		return ret;
 
 	ret = cpufreq_frequency_table_cpuinfo(policy, p->freq_tbl_for_cpufreq);
 
@@ -1034,6 +1040,8 @@ static void ppm_limit_callback(struct ppm_client_req req)
 			ppm->cpu_limit[i].advise_cpufreq_idx);
 
 		p = id_to_cpu_dvfs(i);
+		if (p == NULL)
+			return;
 
 		if (ppm->cpu_limit[i].has_advise_freq) {
 			p->idx_opp_ppm_base =
@@ -1118,6 +1126,9 @@ static int _mt_cpufreq_init(struct cpufreq_policy *policy)
 		struct opp_tbl_info *opp_tbl_info;
 		struct opp_tbl_m_info *opp_tbl_m_info;
 
+		if (p == NULL)
+			return ret;
+
 		cpufreq_ver_dbg("DVFS: %s: %s(cpu_id = %d)\n",
 			__func__, cpu_dvfs_get_name(p), p->cpu_id);
 
@@ -1182,7 +1193,11 @@ static struct freq_attr *_mt_cpufreq_attr[] = {
 };
 
 static struct cpufreq_driver _mt_cpufreq_driver = {
+#if defined(OPLUS_FEATURE_SCHEDUTIL_USE_TL) && defined(CONFIG_SCHEDUTIL_USE_TL)
+	.flags = CPUFREQ_ASYNC_NOTIFICATION | CPUFREQ_HAVE_GOVERNOR_PER_POLICY,
+#else
 	.flags = CPUFREQ_ASYNC_NOTIFICATION,
+#endif
 	.verify = _mt_cpufreq_ver_dbgify,
 	.target = _mt_cpufreq_target,
 	.init = _mt_cpufreq_init,

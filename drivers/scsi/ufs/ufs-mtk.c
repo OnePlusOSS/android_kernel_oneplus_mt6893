@@ -49,6 +49,9 @@
 
 #include "mtk_spm_resource_req.h"
 
+#define CREATE_TRACE_POINTS
+#include "ufs-mtk-trace.h"
+
 /* Query request retries */
 #define QUERY_REQ_RETRIES 10
 #define MAX_WRITE_BUFFER_SIZE (512 * 1024)
@@ -801,6 +804,9 @@ static int ufs_mtk_setup_clocks(struct ufs_hba *hba, bool on,
 			ret = ufs_mtk_pltfrm_ref_clk_ctrl(hba, false);
 			if (ret)
 				goto out;
+
+			if (host && host->qos_enabled)
+				ufs_mtk_biolog_clk_gating(on);
 		}
 		break;
 	case POST_CHANGE:
@@ -810,10 +816,11 @@ static int ufs_mtk_setup_clocks(struct ufs_hba *hba, bool on,
 				goto out;
 
 			if (host && host->pm_qos_init) {
-				pm_qos_update_request(
+				if (hba->quirks & UFSHCD_QUIRK_UFS_HCI_PERF_HEURISTIC) {
+					pm_qos_update_request(
 					&host->req_mm_bandwidth,
 					5554);
-
+				}
 				pm_qos_update_request(
 					&host->req_cpu_dma_latency, 0);
 
@@ -821,6 +828,9 @@ static int ufs_mtk_setup_clocks(struct ufs_hba *hba, bool on,
 				if (ret)
 					goto out;
 			}
+
+			if (host && host->qos_enabled)
+				ufs_mtk_biolog_clk_gating(on);
 		}
 		break;
 	default:
@@ -835,6 +845,40 @@ static void ufs_mtk_set_caps(struct ufs_hba *hba)
 {
 	hba->caps |= UFSHCD_CAP_AUTO_BKOPS_SUSPEND;
 }
+
+#if !defined(DISABLE_LOW_BATTERY_PROTECT) && defined(LOW_BATTERY_PT_SETTING_V2)
+static void ufs_mtk_low_batt_callback(LOW_BATTERY_LEVEL level)
+{
+	struct ufs_hba *hba = ufs_mtk_hba;
+	bool scale = false;
+	bool up;
+
+	if (!hba)
+		return;
+
+	if (level > LOW_BATTERY_LEVEL_2) {
+		if (hba->pwr_info.gear_rx > 1 ||
+			hba->pwr_info.gear_tx > 1) {
+			scale = true;
+			up = false;
+		}
+	} else {
+		if (hba->pwr_info.gear_rx <= 1 ||
+			hba->pwr_info.gear_tx <= 1) {
+			scale = true;
+			up = true;
+		}
+	}
+
+	if (scale) {
+		pm_runtime_get_sync(hba->dev);
+		ufshcd_devfreq_scale(hba, up);
+		pm_runtime_put_sync(hba->dev);
+	} else {
+		dev_info(hba->dev, "%s: skip scaling gear\n", __func__);
+	}
+}
+#endif
 
 /**
  * ufs_mtk_init - find other essential mmio bases
@@ -930,6 +974,12 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 
 	host->pm_qos_init = true;
 
+	ufs_mtk_biolog_init(host->qos_allowed);
+
+#if !defined(DISABLE_LOW_BATTERY_PROTECT) && defined(LOW_BATTERY_PT_SETTING_V2)
+	register_low_battery_notify(&ufs_mtk_low_batt_callback,
+		LOW_BATTERY_PRIO_UFS);
+#endif
 out:
 	return err;
 }
@@ -985,26 +1035,25 @@ static int ufs_mtk_pre_pwr_change(struct ufs_hba *hba,
 
 /* HSG3B as default power mode, only use HSG1B at FPGA */
 #ifndef CONFIG_FPGA_EARLY_PORTING
+	final->gear_rx = desired->gear_rx;
+	final->gear_tx = desired->gear_tx;
+
+	final->gear_rx = min_t(u32, final->gear_rx, final->gear_tx);
+	final->gear_tx = final->gear_rx;
+
 	if (ufs_mtk_hs_gear == UFS_HS_G4) {
 		if ((desired->gear_rx == UFS_HS_G4) &&
 			(desired->gear_tx == UFS_HS_G4)) {
-			final->gear_rx = UFS_HS_G4;
-			final->gear_tx = UFS_HS_G4;
 			/* INITIAL ADAPT */
 			ufshcd_dme_set(hba,
 				       UIC_ARG_MIB(PA_TXHSADAPTTYPE),
 				       PA_INITIAL_ADAPT);
 		} else {
-			final->gear_rx = UFS_HS_G3;
-			final->gear_tx = UFS_HS_G3;
 			/* NO ADAPT */
 			ufshcd_dme_set(hba,
 				       UIC_ARG_MIB(PA_TXHSADAPTTYPE),
 				       PA_NO_ADAPT);
 		}
-	} else {
-		final->gear_rx = UFS_HS_G3;
-		final->gear_tx = UFS_HS_G3;
 	}
 #else
 	final->gear_rx = UFS_HS_G1;
@@ -1018,11 +1067,9 @@ static int ufs_mtk_pre_pwr_change(struct ufs_hba *hba,
 		final->lane_rx = 1;
 		final->lane_tx = 1;
 	}
-	final->hs_rate = PA_HS_MODE_B;
-	final->pwr_rx = FAST_MODE;
-	final->pwr_tx = FAST_MODE;
-
-	ufs_mtk_pltfrm_pwr_change_final_gear(hba, final);
+	final->hs_rate = desired->hs_rate;
+	final->pwr_rx = desired->pwr_rx;
+	final->pwr_tx = desired->pwr_tx;
 
 	/* Set PAPowerModeUserData[0~5] = 0xffff, default is 0 */
 	ufshcd_dme_set(hba, UIC_ARG_MIB(PA_PWRMODEUSERDATA0), 0x1fff);
@@ -1124,8 +1171,10 @@ static int ufs_mtk_hce_enable_notify(struct ufs_hba *hba,
 	case PRE_CHANGE:
 		if (host->unipro_lpm)
 			hba->hba_enable_delay_us = 0;
-		else
+		else {
 			hba->hba_enable_delay_us = 600;
+			ufs_mtk_pltfrm_host_sw_rst(hba, SW_RST_TARGET_UFSHCI);
+		}
 		break;
 	case POST_CHANGE:
 		ret = ufs_mtk_enable_crypto(hba);
@@ -1454,6 +1503,11 @@ void ufs_mtk_parse_dt(struct ufs_hba *hba)
 			&ufs_mtk_hs_gear))
 			ufs_mtk_hs_gear = UFS_HS_G3;
 	}
+
+#ifdef UFS_MTK_PLATFORM_EARA_IO
+	host->qos_allowed = true;
+	host->qos_enabled = true;
+#endif
 }
 
 void ufs_mtk_parse_auto_hibern8_timer(struct ufs_hba *hba)
@@ -1704,7 +1758,7 @@ void ufs_mtk_device_resume(struct ufs_hba *hba)
  * Expected/Submitted buffer structure is struct ufs_ioctl_ffu_data.
  * It will read the buffer information of new firmware.
  */
-int ufs_mtk_ioctl_ffu(struct scsi_device *dev, void __user *buf_user)
+int ufs_mtk_ioctl_ffu(struct scsi_device *dev, const void __user *buf_user)
 {
 	struct ufs_hba *hba = shost_priv(dev->host);
 	struct ufs_ioctl_ffu_data *idata = NULL;
@@ -1897,6 +1951,9 @@ int ufs_mtk_ioctl_query(struct ufs_hba *hba, u8 lun, void __user *buf_user)
 		switch (read_desc) {
 		case QUERY_DESC_IDN_DEVICE:
 		case QUERY_DESC_IDN_STRING:
+#ifdef OPLUS_FEATURE_STORAGE_TOOL
+        case QUERY_DESC_IDN_HEALTH:
+#endif
 			break;
 		default:
 			goto out_einval;
@@ -2026,7 +2083,7 @@ out:
  * Expected/Submitted buffer structure is struct rpmb_cmd.
  * It will read/write data to rpmb
  */
-int ufs_mtk_ioctl_rpmb(struct ufs_hba *hba, void __user *buf_user)
+int ufs_mtk_ioctl_rpmb(struct ufs_hba *hba, const void __user *buf_user)
 {
 	struct rpmb_cmd cmd[3];
 	struct rpmb_frame *frame_buf = NULL;
@@ -2189,6 +2246,9 @@ void ufs_mtk_runtime_pm_init(struct scsi_device *sdev)
 
 static void ufs_mtk_device_reset(struct ufs_hba *hba)
 {
+	/* disable hba before device reset */
+	ufshcd_hba_stop(hba, true);
+
 	(void)ufs_mtk_pltfrm_ufs_device_reset(hba);
 
 #ifdef CONFIG_MTK_UFS_LBA_CRC16_CHECK
@@ -2700,6 +2760,66 @@ void ufs_mtk_perf_heurisic_req_done(struct ufs_hba *hba, struct scsi_cmnd *cmd)
 	}
 }
 
+static void ufs_mtk_event_notify(struct ufs_hba *hba,
+				 enum ufs_event_type evt, void *data)
+{
+	static bool skip_first_dev_reset = true;
+	unsigned int val = *(u32 *)data;
+
+	/* Ignore the first device reset during initialization */
+	if ((hba->lanes_per_direction == 2) &&
+	    (evt == UFS_EVT_DEV_RESET) &&
+	    skip_first_dev_reset) {
+		skip_first_dev_reset = false;
+		return;
+	}
+
+	if ((evt == UFS_EVT_SUSPEND_ERR && val == -EAGAIN) ||
+		(evt == UFS_EVT_PERF_WARN))
+		return;
+
+	trace_ufs_mtk_event(evt, val);
+}
+
+static void ufs_mtk_setup_xfer_req(struct ufs_hba *hba, int tag,
+				   bool is_scsi)
+{
+	struct ufshcd_lrb *lrbp;
+	struct scsi_cmnd *cmd;
+
+	if (is_scsi) {
+		lrbp = &hba->lrb[tag];
+		cmd = lrbp->cmd;
+
+		if (!ufs_mtk_is_data_cmd(cmd, false))
+			return;
+
+		ufs_mtk_biolog_send_command(tag, cmd);
+		ufs_mtk_biolog_check(hba->outstanding_reqs | (1 << tag));
+	}
+}
+
+static void ufs_mtk_compl_xfer_req(struct ufs_hba *hba, int tag,
+				   bool is_scsi)
+{
+	struct ufshcd_lrb *lrbp;
+	struct scsi_cmnd *cmd;
+	unsigned long req_mask;
+
+	if (is_scsi) {
+		lrbp = &hba->lrb[tag];
+		cmd = lrbp->cmd;
+
+		if (!ufs_mtk_is_data_cmd(cmd, false))
+			return;
+
+		req_mask = hba->outstanding_reqs &
+			   ~(1 << tag);
+		ufs_mtk_biolog_transfer_req_compl(tag, req_mask);
+		ufs_mtk_biolog_check(req_mask);
+	}
+}
+
 /**
  * struct ufs_hba_mtk_vops - UFS MTK specific variant operations
  *
@@ -2717,7 +2837,8 @@ static struct ufs_hba_variant_ops ufs_hba_mtk_vops = {
 	ufs_mtk_hce_enable_notify,    /* hce_enable_notify */
 	ufs_mtk_link_startup_notify,  /* link_startup_notify */
 	ufs_mtk_pwr_change_notify,    /* pwr_change_notify */
-	NULL,		 /* setup_xfer_req */
+	ufs_mtk_setup_xfer_req,       /* setup_xfer_req */
+	ufs_mtk_compl_xfer_req,       /* compl_xfer_req */
 	NULL,		 /* setup_task_mgmt */
 	NULL,		 /* hibern8_notify */
 	NULL,            /* apply_dev_quirks */
@@ -2731,7 +2852,8 @@ static struct ufs_hba_variant_ops ufs_hba_mtk_vops = {
 	ufs_mtk_pltfrm_deepidle_lock, /* deepidle_lock */
 	ufs_mtk_scsi_dev_cfg,         /* scsi_dev_cfg */
 	NULL,                         /* program_key */
-	ufs_mtk_abort_handler         /* abort_handler */
+	ufs_mtk_abort_handler,        /* abort_handler */
+	ufs_mtk_event_notify          /* event_notify */
 };
 
 /**
@@ -2743,8 +2865,6 @@ static struct ufs_hba_variant_ops ufs_hba_mtk_vops = {
 static int ufs_mtk_probe(struct platform_device *pdev)
 {
 	int err;
-	struct ufs_hba *hba;
-	struct ufs_mtk_host *host;
 	struct device *dev = &pdev->dev;
 	int boot_type;
 	void __iomem *ufs_base;
@@ -2775,8 +2895,6 @@ static int ufs_mtk_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
-	ufs_mtk_biolog_init();
-
 	/* perform generic probe */
 	err = ufshcd_pltfrm_init(pdev, &ufs_hba_mtk_vops);
 	if (err) {
@@ -2797,7 +2915,6 @@ out:
 static int ufs_mtk_remove(struct platform_device *pdev)
 {
 	struct ufs_hba *hba =  platform_get_drvdata(pdev);
-	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 
 	pm_runtime_get_sync(&(pdev)->dev);
 	ufshcd_remove(hba);

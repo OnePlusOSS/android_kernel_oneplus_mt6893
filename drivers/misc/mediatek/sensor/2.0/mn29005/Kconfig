@@ -1,0 +1,8 @@
+config MTK_AP_REAR_SENSOR
+	bool "MN29005 for MediaTek package"
+	help
+	  It support MN29005 light sensor.
+	  If this option is set,
+	  it will support
+	  MN29005 light sensor.
+

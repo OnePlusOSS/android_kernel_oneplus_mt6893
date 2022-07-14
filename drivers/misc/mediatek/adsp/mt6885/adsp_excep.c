@@ -19,12 +19,17 @@
 #include "adsp_platform_driver.h"
 #include "adsp_excep.h"
 #include "adsp_logger.h"
+#ifdef CONFIG_OPLUS_FEATURE_MM_FEEDBACK
+#include <soc/oplus/system/oplus_mm_kevent_fb.h>
+#endif /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
 
 #define ADSP_MISC_EXTRA_SIZE    0x400 //1KB
 #define ADSP_MISC_BUF_SIZE      0x10000 //64KB
+#define ADSP_TEST_EE_PATTERN    "Assert-Test"
 
 static char adsp_ke_buffer[ADSP_KE_DUMP_LEN];
 static struct adsp_exception_control excep_ctrl;
+static bool suppress_test_ee;
 
 static u32 copy_from_buffer(void *dest, size_t destsize, const void *src,
 			    size_t srcsize, u32 offset, size_t request)
@@ -110,8 +115,13 @@ static int dump_buffer(struct adsp_exception_control *ctrl, int coredump_id)
 	pdata = (struct adsp_priv *)ctrl->priv_data;
 
 	if (ctrl->buf_backup) {
+#ifdef  OPLUS_ARCH_EXTENDS
+//Kunhao.Yan@AudioDriver, remove for adsp dump time out waiting
+		ret = 0;
+#else
 		/* wait last dump done, and release buf_backup */
 		ret = wait_for_completion_timeout(&ctrl->done, 10 * HZ);
+#endif
 
 		/* if not release buf, return EBUSY */
 		if (ctrl->buf_backup)
@@ -180,13 +190,20 @@ static void adsp_exception_dump(struct adsp_exception_control *ctrl)
 	else
 		coredump_id = ADSP_B_CORE_DUMP_MEM_ID;
 
+	coredump = adsp_get_reserve_mem_virt(coredump_id);
+	coredump_size = adsp_get_reserve_mem_size(coredump_id);
+
+	if (suppress_test_ee && coredump
+	    && strstr(coredump->assert_log, ADSP_TEST_EE_PATTERN)) {
+		pr_info("%s, suppress Test EE dump", __func__);
+		return;
+	}
+
 	if (dump_flag) {
 		ret = dump_buffer(ctrl, coredump_id);
 		if (ret < 0)
 			pr_info("%s, excep dump fail ret(%d)", __func__, ret);
 	}
-	coredump = adsp_get_reserve_mem_virt(coredump_id);
-	coredump_size = adsp_get_reserve_mem_size(coredump_id);
 
 	n += snprintf(detail + n, ADSP_AED_STR_LEN - n, "%s %s\n",
 		      pdata->name, aed_type);
@@ -203,7 +220,10 @@ static void adsp_exception_dump(struct adsp_exception_control *ctrl)
 			      coredump->assert_log);
 	}
 	pr_info("%s", detail);
-
+#ifdef CONFIG_OPLUS_FEATURE_MM_FEEDBACK
+		mm_fb_audio_kevent_named(OPLUS_AUDIO_EVENTID_ADSP_CRASH, \
+					MM_FB_KEY_RATELIMIT_5MIN, "FieldData@@%s$$detailData@@audio$$module@@adsp", coredump->assert_log);
+#endif //CONFIG_OPLUS_FEATURE_MM_FEEDBACK
 	/* adsp aed api, only detail information available*/
 	aed_common_exception_api("adsp", (const int *)coredump, coredump_size,
 				 NULL, 0, detail, db_opt);
@@ -259,6 +279,10 @@ void adsp_aed_worker(struct work_struct *ws)
 					 "[ADSP]",
 					 "ASSERT: ADSP DEAD! Recovery Fail");
 
+#ifdef CONFIG_OPLUS_FEATURE_MM_FEEDBACK
+	mm_fb_audio_kevent_named(OPLUS_AUDIO_EVENTID_ADSP_RECOVERY_FAIL, \
+		MM_FB_KEY_RATELIMIT_5MIN, "payload@@ADSP DEAD! Recovery Fail,ret=%d", ret);
+#endif //CONFIG_OPLUS_FEATURE_MM_FEEDBACK
 		/* BUG_ON(1); */
 	}
 
@@ -537,6 +561,21 @@ struct bin_attribute bin_attr_adsp_dump_log = {
 	.read = adsp_dump_log_show,
 };
 
+static inline ssize_t suppress_ee_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	unsigned int input = 0;
+
+	if (kstrtouint(buf, 0, &input) != 0)
+		return -EINVAL;
+
+	suppress_test_ee = !!input;
+
+	return count;
+}
+DEVICE_ATTR_WO(suppress_ee);
+
 static struct bin_attribute *adsp_excep_bin_attrs[] = {
 	&bin_attr_adsp_dump,
 	&bin_attr_adsp_dump_ke,
@@ -544,7 +583,13 @@ static struct bin_attribute *adsp_excep_bin_attrs[] = {
 	NULL,
 };
 
+static struct attribute *adsp_excep_attrs[] = {
+	&dev_attr_suppress_ee.attr,
+	NULL,
+};
+
 struct attribute_group adsp_excep_attr_group = {
+	.attrs = adsp_excep_attrs,
 	.bin_attrs = adsp_excep_bin_attrs,
 };
 

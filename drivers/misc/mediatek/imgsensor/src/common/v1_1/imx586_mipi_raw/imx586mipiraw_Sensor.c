@@ -53,7 +53,14 @@
 #include "imx586_eeprom.h"
 #include "imx586_seamless_switch.h"
 
-#undef VENDOR_EDIT
+
+#define _I2C_BUF_SIZE 4096
+kal_uint16 imx586_i2c_data[_I2C_BUF_SIZE];
+unsigned int imx586_size_to_write;
+bool imx586_is_seamless;
+
+
+
 
 #define USE_BURST_MODE 1
 
@@ -210,17 +217,17 @@ static struct imgsensor_info_struct imgsensor_info = {
 		.max_framerate = 300,
 	},
 
-	.custom4 = { /* reg_G 1280x720 @240fps */
+	.custom4 = { /*reg_A center crop 12M@30fps*/
 		.pclk = 1728000000,
-		.linelength = 5376,
-		.framelength = 1338,
+		.linelength = 9440,
+		.framelength = 6142,
 		.startx = 0,
 		.starty = 0,
-		.grabwindow_width = 1280,
-		.grabwindow_height = 720,
+		.grabwindow_width = 4000,
+		.grabwindow_height = 3000,
 		.mipi_data_lp2hs_settle_dc = 85,
-		.mipi_pixel_rate = 1644132000,
-		.max_framerate = 2400,
+		.mipi_pixel_rate = 1711540000,
+		.max_framerate = 300,
 	},
 
 	.margin = 48,		/* sensor framelength & shutter margin */
@@ -288,7 +295,7 @@ static struct imgsensor_struct imgsensor = {
 	.dummy_line = 0,	/* current dummyline */
 	.current_fps = 300,
 	.autoflicker_en = KAL_FALSE,
-	.test_pattern = KAL_FALSE,
+	.test_pattern = 0,
 	.current_scenario_id = MSDK_SCENARIO_ID_CAMERA_PREVIEW,
 	.ihdr_mode = 0, /* sensor need support LE, SE with HDR feature */
 	.i2c_write_id = 0x34, /* record current sensor's i2c write id */
@@ -320,8 +327,8 @@ static struct SENSOR_WINSIZE_INFO_STRUCT imgsensor_winsize_info[9] = {
 	80, 420, 3840, 2160,  0,  0, 3840, 2160}, /* custom2 */
 	{8000, 6000, 0,   0, 8000, 6000, 8000, 6000,
 	0,   0, 8000, 6000,  0,  0, 8000, 6000}, /* custom3 */
-	{8000, 6000, 0,  744, 8000,  4512, 2000, 1128,
-	360, 204, 1280, 720,  0,  0, 1280, 720}, /* custom4 */
+	{8000, 6000, 2000, 1500, 4000, 3000, 4000, 3000,
+	0,  0, 4000, 3000,  0,  0, 4000, 3000}, /* custom4 */
 };
 
  /*VC1 for HDR(DT=0X35), VC2 for PDAF(DT=0X36), unit : 10bit */
@@ -350,10 +357,10 @@ static struct SENSOR_VC_INFO_STRUCT SENSOR_VC_INFO[8] = {
 	 {0x03, 0x0a, 0x00, 0x08, 0x40, 0x00,
 	 0x00, 0x2b, 0x1770, 0x1f40, 0x00, 0x00, 0x00, 0x00,
 	 0x00, 0x34, 0x04D8, 0x05D0, 0x00, 0x00, 0x0000, 0x0000},
-	/*custom4 setting*/
+	 /*custom4 setting*/
 	 {0x03, 0x0a, 0x00, 0x08, 0x40, 0x00,
-	 0x00, 0x2b, 0x0500, 0x02d0, 0x00, 0x00, 0x00, 0x00,
-	 0x00, 0x00, 0x0000, 0x0000, 0x00, 0x00, 0x0000, 0x0000},
+	 0x00, 0x2b, 0x0FA0, 0x0BB8, 0x00, 0x00, 0x00, 0x00,
+	 0x00, 0x00, 0x026c, 0x02e0, 0x00, 0x00, 0x0000, 0x0000},
 	 /*capture setting*/
 	 {0x03, 0x0a, 0x00, 0x08, 0x40, 0x00,
 	 0x00, 0x2b, 0x0FA0, 0x0BB8, 0x00, 0x00, 0x00, 0x00,
@@ -535,13 +542,16 @@ static void set_dummy(void)
 	pr_debug("dummyline = %d, dummypixels = %d\n",
 		imgsensor.dummy_line, imgsensor.dummy_pixel);
 	/* return;*/ /* for test */
-	write_cmos_sensor_8(0x0104, 0x01);
 
-	write_cmos_sensor_8(0x0340, imgsensor.frame_length >> 8);
-	write_cmos_sensor_8(0x0341, imgsensor.frame_length & 0xFF);
-
-	write_cmos_sensor_8(0x0104, 0x00);
-
+	if (!imx586_is_seamless) {
+		write_cmos_sensor_8(0x0340, imgsensor.frame_length >> 8);
+		write_cmos_sensor_8(0x0341, imgsensor.frame_length & 0xFF);
+	} else {
+		imx586_i2c_data[imx586_size_to_write++] = 0x0340;
+		imx586_i2c_data[imx586_size_to_write++] = imgsensor.frame_length >> 8;
+		imx586_i2c_data[imx586_size_to_write++] = 0x0341;
+		imx586_i2c_data[imx586_size_to_write++] = imgsensor.frame_length & 0xFF;
+	}
 }	/*	set_dummy  */
 
 static void set_mirror_flip(kal_uint8 image_mirror)
@@ -599,14 +609,12 @@ static void set_max_framerate(UINT16 framerate, kal_bool min_framelength_en)
 	if (min_framelength_en)
 		imgsensor.min_frame_length = imgsensor.frame_length;
 	spin_unlock(&imgsensor_drv_lock);
-	set_dummy();
 }	/*	set_max_framerate  */
 
 static void write_shutter(kal_uint32 shutter)
 {
 	kal_uint16 realtime_fps = 0;
 	#ifdef LONG_EXP
-	/*Yijun.Tan@camera.driver,20180116,add for slow shutter */
 	int longexposure_times = 0;
 	static int long_exposure_status;
 	#endif
@@ -629,26 +637,11 @@ static void write_shutter(kal_uint32 shutter)
 			set_max_framerate(296, 0);
 		else if (realtime_fps >= 147 && realtime_fps <= 150)
 			set_max_framerate(146, 0);
-		else {
-			/* Extend frame length */
-			write_cmos_sensor_8(0x0104, 0x01);
-			write_cmos_sensor_8(0x0340,
-					imgsensor.frame_length >> 8);
-			write_cmos_sensor_8(0x0341,
-					imgsensor.frame_length & 0xFF);
-			write_cmos_sensor_8(0x0104, 0x00);
-		}
-	} else {
-		/* Extend frame length*/
-		if (read_cmos_sensor_8(0x0350) != 0x01) {
-			pr_info("single cam scenario enable auto-extend");
-			write_cmos_sensor_8(0x0350, 0x01);
-		}
-		write_cmos_sensor_8(0x0104, 0x01);
-		write_cmos_sensor_8(0x0340, imgsensor.frame_length >> 8);
-		write_cmos_sensor_8(0x0341, imgsensor.frame_length & 0xFF);
-		write_cmos_sensor_8(0x0104, 0x00);
 	}
+
+	if (!imx586_is_seamless)
+		write_cmos_sensor_8(0x0104, 0x01);
+
 	#ifdef LONG_EXP
 	while (shutter >= 65535) {
 		shutter = shutter / 2;
@@ -660,27 +653,41 @@ static void write_shutter(kal_uint32 shutter)
 			longexposure_times);
 		long_exposure_status = 1;
 		imgsensor.frame_length = shutter + 32;
-		write_cmos_sensor_8(0x0104, 0x01);
-		write_cmos_sensor_8(0x3100, longexposure_times & 0x07);
-		write_cmos_sensor_8(0x0340, imgsensor.frame_length >> 8);
-		write_cmos_sensor_8(0x0341, imgsensor.frame_length & 0xFF);
-		write_cmos_sensor_8(0x0104, 0x00);
+		if (!imx586_is_seamless)
+			write_cmos_sensor_8(0x3100, longexposure_times & 0x07);
+		else {
+			imx586_i2c_data[imx586_size_to_write++] = 0x3100;
+			imx586_i2c_data[imx586_size_to_write++] = longexposure_times & 0x07;
+		}
+
 	} else if (long_exposure_status == 1) {
 		long_exposure_status = 0;
-		write_cmos_sensor_8(0x0104, 0x01);
-		write_cmos_sensor_8(0x3100, 0x00);
-		write_cmos_sensor_8(0x0340, imgsensor.frame_length >> 8);
-		write_cmos_sensor_8(0x0341, imgsensor.frame_length & 0xFF);
-		write_cmos_sensor_8(0x0104, 0x00);
-
+		if (!imx586_is_seamless)
+			write_cmos_sensor_8(0x3100, 0x00);
+		else {
+			imx586_i2c_data[imx586_size_to_write++] = 0x3100;
+			imx586_i2c_data[imx586_size_to_write++] = 0;
+		}
 		pr_debug("exit long exposure mode");
 	}
 	#endif
 	/* Update Shutter */
-	write_cmos_sensor_8(0x0104, 0x01);
-	write_cmos_sensor_8(0x0202, (shutter >> 8) & 0xFF);
-	write_cmos_sensor_8(0x0203, shutter  & 0xFF);
-	write_cmos_sensor_8(0x0104, 0x00);
+	if (!imx586_is_seamless) {
+		write_cmos_sensor_8(0x0340, imgsensor.frame_length >> 8);
+		write_cmos_sensor_8(0x0341, imgsensor.frame_length & 0xFF);
+		write_cmos_sensor_8(0x0202, (shutter >> 8) & 0xFF);
+		write_cmos_sensor_8(0x0203, shutter  & 0xFF);
+		write_cmos_sensor_8(0x0104, 0x00);
+	} else {
+		imx586_i2c_data[imx586_size_to_write++] = 0x0340;
+		imx586_i2c_data[imx586_size_to_write++] = imgsensor.frame_length >> 8;
+		imx586_i2c_data[imx586_size_to_write++] = 0x0341;
+		imx586_i2c_data[imx586_size_to_write++] = imgsensor.frame_length & 0xFF;
+		imx586_i2c_data[imx586_size_to_write++] = 0x0202;
+		imx586_i2c_data[imx586_size_to_write++] = (shutter >> 8) & 0xFF;
+		imx586_i2c_data[imx586_size_to_write++] = 0x0203;
+		imx586_i2c_data[imx586_size_to_write++] = shutter  & 0xFF;
+	}
 
 	pr_debug("shutter =%d, framelength =%d\n",
 		shutter, imgsensor.frame_length);
@@ -854,10 +861,17 @@ static kal_uint16 set_gain(kal_uint16 gain)
 	pr_debug("gain = %d, reg_gain = 0x%x, max_gain:0x%x\n ",
 		gain, reg_gain, max_gain);
 
-	write_cmos_sensor_8(0x0104, 0x01);
-	write_cmos_sensor_8(0x0204, (reg_gain>>8) & 0xFF);
-	write_cmos_sensor_8(0x0205, reg_gain & 0xFF);
-	write_cmos_sensor_8(0x0104, 0x00);
+	if (!imx586_is_seamless) {
+		write_cmos_sensor_8(0x0104, 0x01);
+		write_cmos_sensor_8(0x0204, (reg_gain>>8) & 0xFF);
+		write_cmos_sensor_8(0x0205, reg_gain & 0xFF);
+		write_cmos_sensor_8(0x0104, 0x00);
+	} else {
+		imx586_i2c_data[imx586_size_to_write++] = 0x0204;
+		imx586_i2c_data[imx586_size_to_write++] =  (reg_gain>>8) & 0xFF;
+		imx586_i2c_data[imx586_size_to_write++] = 0x0205;
+		imx586_i2c_data[imx586_size_to_write++] = reg_gain & 0xFF;
+	}
 
 	return gain;
 } /* set_gain */
@@ -970,6 +984,25 @@ static void imx586_set_lsc_reg_setting(
 
 	write_cmos_sensor_8(0x0B00, 0x00); /*lsc disable*/
 }
+
+static void check_stream_is_on(void)
+{
+	int i = 0;
+	UINT32 framecnt;
+	int timeout = (10000/imgsensor.current_fps)+1;
+
+	for (i = 0; i < timeout; i++) {
+
+		framecnt = read_cmos_sensor_8(0x0005);
+		if (framecnt != 0xFF) {
+			pr_debug("IMX586 stream is on, %d \\n", framecnt);
+			break;
+		}
+		pr_debug("IMX586 stream is not on %d \\n", framecnt);
+		mdelay(1);
+	}
+}
+
 /*************************************************************************
  * FUNCTION
  *	night_mode
@@ -998,12 +1031,15 @@ static kal_uint32 streaming_control(kal_bool enable)
 		write_cmos_sensor_8(0x3020, 0x00);/*Mode transition mode change*/
 		//write_cmos_sensor_8(0x3021, 0x01);/*complete mode*/
 		write_cmos_sensor_8(0x0100, 0X01);
+		check_stream_is_on();
 	} else
 		write_cmos_sensor_8(0x0100, 0x00);
 	return ERROR_NONE;
 }
 
 #if USE_BURST_MODE
+#define MULTI_WRITE 1
+
 #define I2C_BUFFER_LEN 255 /* trans# max is 255, each 3 bytes */
 static kal_uint16 imx586_table_write_cmos_sensor(kal_uint16 *para,
 						 kal_uint32 len)
@@ -1030,6 +1066,7 @@ static kal_uint16 imx586_table_write_cmos_sensor(kal_uint16 *para,
 		/* Write when remain buffer size is less than 3 bytes
 		 * or reach end of data
 		 */
+#if MULTI_WRITE
 		if ((I2C_BUFFER_LEN - tosend) < 3
 			|| IDX == len || addr != addr_last) {
 			iBurstWriteReg_multi(puSendCmd,
@@ -1039,6 +1076,10 @@ static kal_uint16 imx586_table_write_cmos_sensor(kal_uint16 *para,
 						imgsensor_info.i2c_speed);
 			tosend = 0;
 		}
+#else
+		iWriteRegI2C(puSendCmd, 3, imgsensor.i2c_write_id);
+		tosend = 0;
+#endif
 	}
 	return 0;
 }
@@ -2256,47 +2297,47 @@ static kal_uint16 imx586_custom4_setting[] = {
 	0x0113, 0x0A,
 	0x0114, 0x02,
 	/*Line Length PCK Setting*/
-	0x0342, 0x15,
-	0x0343, 0x00,
+	0x0342, 0x24,
+	0x0343, 0xe0,
 	/*Frame Length Lines Setting*/
-	0x0340, 0x05,
-	0x0341, 0x3a,
+	0x0340, 0x17,
+	0x0341, 0xfe,
 	/*ROI Setting*/
 	0x0344, 0x00,
 	0x0345, 0x00,
-	0x0346, 0x02,
-	0x0347, 0xe8,
+	0x0346, 0x00,
+	0x0347, 0x00,
 	0x0348, 0x1F,
 	0x0349, 0x3F,
-	0x034A, 0x14,
-	0x034B, 0x87,
+	0x034A, 0x17,
+	0x034B, 0x6f,
 	/*Mode Setting*/
 	0x0220, 0x62,
 	0x0222, 0x01,
-	0x0900, 0x01,
-	0x0901, 0x44,
-	0x0902, 0x0A,
+	0x0900, 0x00,
+	0x0901, 0x11,
+	0x0902, 0x0a,
 	0x3140, 0x00,
-	0x3246, 0x89,
-	0x3247, 0x89,
-	0x3F15, 0x01,
+	0x3246, 0x01,
+	0x3247, 0x01,
+	0x3F15, 0x00,
 	/*Digital Crop & Scaling*/
 	0x0401, 0x00,
 	0x0404, 0x00,
 	0x0405, 0x10,
-	0x0408, 0x01,
-	0x0409, 0x68,
-	0x040A, 0x00,
-	0x040B, 0xcc,
-	0x040C, 0x05,
-	0x040D, 0x00,
-	0x040E, 0x02,
-	0x040F, 0xD0,
+	0x0408, 0x07,
+	0x0409, 0xd0,
+	0x040A, 0x05,
+	0x040B, 0xdc,
+	0x040C, 0x0f,
+	0x040D, 0xa0,
+	0x040E, 0x0b,
+	0x040F, 0xb8,
 	/*Output Size Setting*/
-	0x034C, 0x05,
-	0x034D, 0x00,
-	0x034E, 0x02,
-	0x034F, 0xD0,
+	0x034C, 0x0f,
+	0x034D, 0xa0,
+	0x034E, 0x0b,
+	0x034F, 0xb8,
 	/*Clock Setting*/
 	0x0301, 0x05,
 	0x0303, 0x02,
@@ -2304,29 +2345,29 @@ static kal_uint16 imx586_custom4_setting[] = {
 	0x0306, 0x01,
 	0x0307, 0x68,
 	0x030B, 0x01,
-	0x030D, 0x06,
-	0x030E, 0x02,
-	0x030F, 0x58,
+	0x030D, 0x04,
+	0x030E, 0x01,
+	0x030F, 0xa0,
 	0x0310, 0x01,
 	/*Other Setting*/
-	0x3620, 0x00,
-	0x3621, 0x00,
-	0x3C11, 0x0c,
-	0x3C12, 0x05,
-	0x3C13, 0x2c,
+	0x3620, 0x01,
+	0x3621, 0x01,
+	0x3C11, 0x08,
+	0x3C12, 0x08,
+	0x3C13, 0x2a,
 	0x3F0C, 0x00,
-	0x3F14, 0x00,
+	0x3F14, 0x01,
 	0x3F80, 0x02,
-	0x3F81, 0x67,
-	0x3F8C, 0x02,
-	0x3F8D, 0x44,
+	0x3F81, 0x20,
+	0x3F8C, 0x01,
+	0x3F8D, 0x9a,
 	0x3FF8, 0x00,
 	0x3FF9, 0x00,
-	0x3FFE, 0x01,
-	0x3FFF, 0x90,
+	0x3FFE, 0x02,
+	0x3FFF, 0x0e,
 	/*Integration Setting*/
-	0x0202, 0x05,
-	0x0203, 0x0a,
+	0x0202, 0x17,
+	0x0203, 0xce,
 	0x0224, 0x01,
 	0x0225, 0xF4,
 	0x3FE0, 0x01,
@@ -2350,12 +2391,14 @@ static kal_uint16 imx586_custom4_setting[] = {
 	0x3FE3, 0x70,
 	0x3FE4, 0x01,
 	0x3FE5, 0x00,
-	/*PDAF TYPE1 Setting*/
-	0x3E20, 0x01,
-	0x3E3B, 0x00,
+	/*PDAF TYPE2 Setting*/
+	0x3E20, 0x02,
+	0x3E3B, 0x01,
+	0x4434, 0x00,
+	0x4435, 0xf8,
 };
 
-static kal_uint16 imx586_custom3_setting[] = {
+static kal_uint16 imx586_custom3_setting[] = {//k4
 	/*MIPI output setting*/
 	0x0112, 0x0A,
 	0x0113, 0x0A,
@@ -2415,7 +2458,7 @@ static kal_uint16 imx586_custom3_setting[] = {
 	0x0310, 0x01,
 	/*Other Setting*/
 	0x3620, 0x01,
-	0x3621, 0x01,
+	0x3621, 0x00,
 	0x3C11, 0x08,
 	0x3C12, 0x08,
 	0x3C13, 0x2a,
@@ -2459,7 +2502,7 @@ static kal_uint16 imx586_custom3_setting[] = {
 	0x3E20, 0x02,
 	0x3E3B, 0x01,
 	0x4434, 0x01,
-	0x4435, 0xf0,
+	0x4435, 0xF0,
 };
 
 
@@ -2696,11 +2739,26 @@ static void preview_setting(void)
 /*full size 30fps*/
 static void capture_setting(kal_uint16 currefps)
 {
+	int _length = 0;
+
+	_length = sizeof(imx586_capture_setting)/sizeof(kal_uint16);
 	pr_debug("%s 30 fps E! currefps:%d\n", __func__, currefps);
 	/*************MIPI output setting************/
-	imx586_table_write_cmos_sensor(imx586_capture_setting,
-		sizeof(imx586_capture_setting)/sizeof(kal_uint16));
-
+	if (!imx586_is_seamless)
+		imx586_table_write_cmos_sensor(imx586_capture_setting, _length);
+	else {
+		pr_debug("%s imx586_is_seamless %d, imx586_size_to_write %d\n",
+			__func__, imx586_is_seamless, imx586_size_to_write);
+		if (imx586_size_to_write + _length > _I2C_BUF_SIZE) {
+			pr_debug("_too much i2c data for fast siwtch %d\n",
+				imx586_size_to_write + _length);
+			return;
+		}
+		memcpy((void *) (imx586_i2c_data + imx586_size_to_write),
+			imx586_capture_setting,
+			sizeof(imx586_capture_setting));
+		imx586_size_to_write += _length;
+	}
 	pr_debug("%s 30 fpsX\n", __func__);
 }
 
@@ -3059,14 +3117,36 @@ static void slim_video_setting(void)
 /*full size 30fps*/
 static void custom3_setting(void)
 {
+	int _length = 0;
+
+	_length = sizeof(imx586_custom3_setting)/sizeof(kal_uint16);
+
 	pr_debug("%s full size 30 fps E!\n", __func__);
-	/*************MIPI output setting************/
-	imx586_table_write_cmos_sensor(imx586_custom3_setting,
-		sizeof(imx586_custom3_setting)/sizeof(kal_uint16));
+
+	if (!imx586_is_seamless)
+		imx586_table_write_cmos_sensor(imx586_custom3_setting, _length);
+	else {
+		pr_debug("%s imx586_is_seamless %d, imx586_size_to_write %d\n",
+			__func__, imx586_is_seamless, imx586_size_to_write);
+		if (imx586_size_to_write + _length > _I2C_BUF_SIZE) {
+			pr_debug("_too much i2c data for fast siwtch %d\n",
+				imx586_size_to_write + _length);
+			return;
+		}
+		memcpy((void *) (imx586_i2c_data + imx586_size_to_write),
+			imx586_custom3_setting,
+			sizeof(imx586_custom3_setting));
+		imx586_size_to_write += _length;
+	}
 
 	if (otp_flag == OTP_QSC_NONE) {
 		pr_info("OTP no QSC Data, close qsc register");
-		write_cmos_sensor_8(0x3621, 0x00);
+		if (!imx586_is_seamless)
+			write_cmos_sensor_8(0x3621, 0x00);
+		else {
+			imx586_i2c_data[imx586_size_to_write++] = 0x3621;
+			imx586_i2c_data[imx586_size_to_write++] = 0x0;
+		}
 	}
 
 	pr_debug("%s 30 fpsX\n", __func__);
@@ -3074,10 +3154,35 @@ static void custom3_setting(void)
 
 static void custom4_setting(void)
 {
-	pr_debug("%s 720p@240 fps E! currefps\n", __func__);
+	int _length = 0;
 
-	imx586_table_write_cmos_sensor(imx586_custom4_setting,
-		sizeof(imx586_custom4_setting)/sizeof(kal_uint16));
+	_length = sizeof(imx586_custom4_setting)/sizeof(kal_uint16);
+
+	if (!imx586_is_seamless)
+		imx586_table_write_cmos_sensor(imx586_custom4_setting, _length);
+	else {
+		pr_debug("%s imx586_is_seamless %d, imx586_size_to_write %d\n",
+			__func__, imx586_is_seamless, imx586_size_to_write);
+		if (imx586_size_to_write + _length > _I2C_BUF_SIZE) {
+			pr_debug("_too much i2c data for fast siwtch %d\n",
+				imx586_size_to_write + _length);
+			return;
+		}
+		memcpy((void *) (imx586_i2c_data + imx586_size_to_write),
+			imx586_custom4_setting,
+			sizeof(imx586_custom4_setting));
+		imx586_size_to_write += _length;
+	}
+
+	if (otp_flag == OTP_QSC_NONE) {
+		pr_info("OTP no QSC Data, close qsc register");
+		if (!imx586_is_seamless)
+			write_cmos_sensor_8(0x3621, 0x00);
+		else {
+			imx586_i2c_data[imx586_size_to_write++] = 0x3621;
+			imx586_i2c_data[imx586_size_to_write++] = 0x0;
+		}
+	}
 
 	pr_debug("X\n");
 }
@@ -3230,7 +3335,7 @@ static kal_uint32 open(void)
 	imgsensor.dummy_pixel = 0;
 	imgsensor.dummy_line = 0;
 	imgsensor.ihdr_mode = 0;
-	imgsensor.test_pattern = KAL_FALSE;
+	imgsensor.test_pattern = 0;
 	imgsensor.current_fps = imgsensor_info.pre.max_framerate;
 	spin_unlock(&imgsensor_drv_lock);
 	pr_debug("%s -\n", __func__);
@@ -3352,7 +3457,7 @@ static kal_uint32 capture(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	imgsensor.autoflicker_en = KAL_FALSE;
 	spin_unlock(&imgsensor_drv_lock);
 	capture_setting(imgsensor.current_fps);
-	set_mirror_flip(imgsensor.mirror);
+	//set_mirror_flip(imgsensor.mirror);
 
 	return ERROR_NONE;
 }	/* capture() */
@@ -3370,7 +3475,7 @@ static kal_uint32 normal_video(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	imgsensor.autoflicker_en = KAL_FALSE;
 	spin_unlock(&imgsensor_drv_lock);
 	normal_video_setting(imgsensor.current_fps);
-	set_mirror_flip(imgsensor.mirror);
+	//set_mirror_flip(imgsensor.mirror);
 	return ERROR_NONE;
 }	/*	normal_video   */
 
@@ -3392,7 +3497,7 @@ static kal_uint32 hs_video(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	imgsensor.autoflicker_en = KAL_FALSE;
 	spin_unlock(&imgsensor_drv_lock);
 	hs_video_setting();
-	set_mirror_flip(imgsensor.mirror);
+	//set_mirror_flip(imgsensor.mirror);
 
 	return ERROR_NONE;
 }	/*	hs_video   */
@@ -3415,7 +3520,7 @@ static kal_uint32 slim_video(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	imgsensor.autoflicker_en = KAL_FALSE;
 	spin_unlock(&imgsensor_drv_lock);
 	slim_video_setting();
-	set_mirror_flip(imgsensor.mirror);
+	//set_mirror_flip(imgsensor.mirror);
 
 	return ERROR_NONE;
 }	/* slim_video */
@@ -3436,7 +3541,7 @@ static kal_uint32 custom1(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	spin_unlock(&imgsensor_drv_lock);
 	custom1_setting();
 
-	set_mirror_flip(imgsensor.mirror);
+	//set_mirror_flip(imgsensor.mirror);
 
 	return ERROR_NONE;
 }	/* custom1 */
@@ -3455,7 +3560,7 @@ static kal_uint32 custom2(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	imgsensor.autoflicker_en = KAL_FALSE;
 	spin_unlock(&imgsensor_drv_lock);
 	custom2_setting();
-	set_mirror_flip(imgsensor.mirror);
+	//set_mirror_flip(imgsensor.mirror);
 
 	return ERROR_NONE;
 }	/* custom2 */
@@ -3480,7 +3585,7 @@ static kal_uint32 custom3(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 		qsc_flag = 1;
 	}
 	custom3_setting();
-	set_mirror_flip(imgsensor.mirror);
+	//set_mirror_flip(imgsensor.mirror);
 
 	return ERROR_NONE;
 }	/* custom3 */
@@ -3498,8 +3603,14 @@ static kal_uint32 custom4(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	imgsensor.min_frame_length = imgsensor_info.custom4.framelength;
 	imgsensor.autoflicker_en = KAL_FALSE;
 	spin_unlock(&imgsensor_drv_lock);
+	if (!qsc_flag) {
+		pr_debug("write_sensor_QSC Start\n");
+		write_sensor_QSC();
+		pr_debug("write_sensor_QSC End\n");
+		qsc_flag = 1;
+	}
 	custom4_setting();
-	set_mirror_flip(imgsensor.mirror);
+	//set_mirror_flip(imgsensor.mirror);
 
 	return ERROR_NONE;
 }	/* custom4 */
@@ -3779,140 +3890,7 @@ static kal_uint32 get_info(enum MSDK_SCENARIO_ID_ENUM scenario_id,
 	return ERROR_NONE;
 }	/*	get_info  */
 
-static kal_uint32 seamless_switch(enum MSDK_SCENARIO_ID_ENUM scenario_id,
-	kal_uint32 shutter, kal_uint32 gain,
-	kal_uint32 shutter_2ndframe, kal_uint32 gain_2ndframe)
-{
 
-	switch (scenario_id) {
-	case MSDK_SCENARIO_ID_CAMERA_CAPTURE_JPEG:
-	{
-		pr_info("seamless switch to full size!\n");
-		spin_lock(&imgsensor_drv_lock);
-		imgsensor.sensor_mode = IMGSENSOR_MODE_CAPTURE;
-		imgsensor.pclk = imgsensor_info.cap.pclk;
-		imgsensor.line_length = imgsensor_info.cap.linelength;
-		imgsensor.frame_length = imgsensor_info.cap.framelength;
-		imgsensor.min_frame_length = imgsensor_info.cap.framelength;
-		imgsensor.autoflicker_en = KAL_FALSE;
-		spin_unlock(&imgsensor_drv_lock);
-		if (gain != 0) {
-			imx586_seamless_capture[3] =
-				(gain >> 8) & 0xff;
-			imx586_seamless_capture[5] =
-				gain & 0xff;
-		}
-		if (shutter != 0) {
-			imx586_seamless_capture[7] =
-				(shutter >> 8) & 0xff;
-			imx586_seamless_capture[9] =
-				shutter & 0xff;
-		}
-
-		imx586_table_write_cmos_sensor(imx586_seamless_capture,
-		sizeof(imx586_seamless_capture) / sizeof(kal_uint16));
-		}
-		break;
-#if 0
-	case MSDK_SCENARIO_ID_CUSTOM4:
-	{
-	pr_info("seamless switch to zoom-in 2x!\n");
-	spin_lock(&imgsensor_drv_lock);
-	imgsensor.sensor_mode = IMGSENSOR_MODE_CUSTOM4;
-	imgsensor.pclk = imgsensor_info.custom4.pclk;
-	imgsensor.line_length = imgsensor_info.custom4.linelength;
-	imgsensor.frame_length = imgsensor_info.custom4.framelength;
-	imgsensor.min_frame_length = imgsensor_info.custom4.framelength;
-	imgsensor.autoflicker_en = KAL_FALSE;
-	spin_unlock(&imgsensor_drv_lock);
-		if (gain != 0) {
-			imx586_seamless_custom4[3] =
-				(gain >> 8) & 0xff;
-			imx586_seamless_custom4[5] =
-				gain & 0xff;
-	}
-	if (shutter != 0) {
-		imx586_seamless_custom4[7] =
-			(shutter >> 8) & 0xff;
-		imx586_seamless_custom4[9] =
-			shutter & 0xff;
-	}
-	 imx586_table_write_cmos_sensor(imx586_seamless_custom4,
-	sizeof(imx586_seamless_custom4) / sizeof(kal_uint16));
-	}
-	break;
-	case MSDK_SCENARIO_ID_CUSTOM1:
-	{
-		pr_info("seamless switch to zoom-in 1.3x!\n");
-		spin_lock(&imgsensor_drv_lock);
-		imgsensor.sensor_mode = IMGSENSOR_MODE_CUSTOM1;
-		imgsensor.pclk = imgsensor_info.custom1.pclk;
-		imgsensor.line_length = imgsensor_info.custom1.linelength;
-		imgsensor.frame_length = imgsensor_info.custom1.framelength;
-		imgsensor.min_frame_length = imgsensor_info.custom1.framelength;
-		imgsensor.autoflicker_en = KAL_FALSE;
-		spin_unlock(&imgsensor_drv_lock);
-		if (gain != 0) {
-			imx586_seamless_custom1[3] =
-				(gain >> 8) & 0xff;
-			imx586_seamless_custom1[5] =
-				gain & 0xff;
-		}
-		if (shutter != 0) {
-			imx586_seamless_custom1[7] =
-				(shutter >> 8) & 0xff;
-			imx586_seamless_custom1[9] =
-				shutter & 0xff;
-		}
-		imx586_table_write_cmos_sensor(imx586_seamless_custom1,
-		sizeof(imx586_seamless_custom1) / sizeof(kal_uint16));
-	}
-	break;
-#endif
-	case MSDK_SCENARIO_ID_CUSTOM3:
-	{
-		spin_lock(&imgsensor_drv_lock);
-		imgsensor.sensor_mode = IMGSENSOR_MODE_CUSTOM3;
-		imgsensor.pclk = imgsensor_info.custom3.pclk;
-		imgsensor.line_length = imgsensor_info.custom3.linelength;
-		imgsensor.frame_length = imgsensor_info.custom3.framelength;
-		imgsensor.min_frame_length = imgsensor_info.custom3.framelength;
-		imgsensor.autoflicker_en = KAL_FALSE;
-		spin_unlock(&imgsensor_drv_lock);
-		if (gain != 0) {
-			imx586_seamless_custom3[3] =
-				(gain >> 8) & 0xff;
-			imx586_seamless_custom3[5] =
-				gain & 0xff;
-		}
-		if (shutter != 0) {
-			imx586_seamless_custom3[7] =
-				(shutter >> 8) & 0xff;
-			imx586_seamless_custom3[9] =
-				shutter & 0xff;
-		}
-
-		pr_info("seamless switch Full remosaic!\n");
-		 imx586_table_write_cmos_sensor(imx586_seamless_custom3,
-		sizeof(imx586_seamless_custom3) / sizeof(kal_uint16));
-	}
-	break;
-	default:
-	{
-		pr_info(
-		"error! wrong setting in set_seamless_switch = %d",
-		scenario_id);
-		return 0xff;
-	}
-	}
-
-	if (shutter_2ndframe != 0)
-		set_shutter(shutter_2ndframe);
-	if (gain_2ndframe != 0)
-		set_gain(gain_2ndframe);
-
-	return 0;
-}
 
 static kal_uint32 control(enum MSDK_SCENARIO_ID_ENUM scenario_id,
 			MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
@@ -3974,6 +3952,49 @@ static kal_uint32 control(enum MSDK_SCENARIO_ID_ENUM scenario_id,
 }	/* control() */
 
 
+static kal_uint32 seamless_switch(enum MSDK_SCENARIO_ID_ENUM scenario_id,
+	kal_uint32 shutter, kal_uint32 gain,
+	kal_uint32 shutter_2ndframe, kal_uint32 gain_2ndframe)
+{
+	//int k = 0;
+	imx586_is_seamless = true;
+	memset(imx586_i2c_data, 0x0, sizeof(imx586_i2c_data));
+	imx586_size_to_write = 0;
+
+	pr_debug("seamless switch %d, %d, %d, %d, %d sizeof(imx586_i2c_data) %d\n",
+		scenario_id, shutter, gain,
+		shutter_2ndframe, gain_2ndframe,
+		sizeof(imx586_i2c_data));
+
+	if (scenario_id != MSDK_SCENARIO_ID_CAMERA_CAPTURE_JPEG &&
+		scenario_id != MSDK_SCENARIO_ID_CUSTOM4 &&
+		scenario_id != MSDK_SCENARIO_ID_CUSTOM3)
+		return ERROR_INVALID_SCENARIO_ID;
+
+
+	imx586_i2c_data[imx586_size_to_write++] = 0x0104;
+	imx586_i2c_data[imx586_size_to_write++] = 0x01;
+
+	control(scenario_id, NULL, NULL);
+	if (shutter != 0)
+		set_shutter(shutter);
+	if (gain != 0)
+		set_gain(gain);
+
+	imx586_i2c_data[imx586_size_to_write++] = 0x0104;
+	imx586_i2c_data[imx586_size_to_write++] = 0;
+
+	pr_debug("%s imx586_is_seamless %d, imx586_size_to_write %d\n",
+				__func__, imx586_is_seamless, imx586_size_to_write);
+
+	imx586_table_write_cmos_sensor(
+		imx586_i2c_data,
+		imx586_size_to_write);
+
+	imx586_is_seamless = false;
+	pr_debug("exit\n");
+	return ERROR_NONE;
+}
 
 static kal_uint32 set_video_mode(UINT16 framerate)
 {
@@ -3991,6 +4012,7 @@ static kal_uint32 set_video_mode(UINT16 framerate)
 		imgsensor.current_fps = framerate;
 	spin_unlock(&imgsensor_drv_lock);
 	set_max_framerate(imgsensor.current_fps, 1);
+	set_dummy();
 
 	return ERROR_NONE;
 }
@@ -4250,17 +4272,37 @@ static kal_uint32 get_default_framerate_by_scenario(
 	return ERROR_NONE;
 }
 
-static kal_uint32 set_test_pattern_mode(kal_bool enable)
+static kal_uint32 set_test_pattern_mode(kal_uint32 modes,
+	struct SET_SENSOR_PATTERN_SOLID_COLOR *pdata)
 {
-	pr_debug("enable: %d\n", enable);
+	kal_uint16 Color_R, Color_Gr, Color_Gb, Color_B;
 
-	if (enable)
-		write_cmos_sensor_8(0x0601, 0x0002); /*100% Color bar*/
+	pr_debug("set_test_pattern enum: %d\n", modes);
+
+	if (modes) {
+		write_cmos_sensor_8(0x0601, modes);
+		if (modes == 1 && (pdata != NULL)) { //Solid Color
+			pr_debug("R=0x%x,Gr=0x%x,B=0x%x,Gb=0x%x",
+				pdata->COLOR_R, pdata->COLOR_Gr, pdata->COLOR_B, pdata->COLOR_Gb);
+			Color_R = (pdata->COLOR_R >> 22) & 0x3FF; //10bits depth color
+			Color_Gr = (pdata->COLOR_Gr >> 22) & 0x3FF;
+			Color_B = (pdata->COLOR_B >> 22) & 0x3FF;
+			Color_Gb = (pdata->COLOR_Gb >> 22) & 0x3FF;
+			write_cmos_sensor_8(0x0602, (Color_R >> 8) & 0x3);
+			write_cmos_sensor_8(0x0603, Color_R & 0xFF);
+			write_cmos_sensor_8(0x0604, (Color_Gr >> 8) & 0x3);
+			write_cmos_sensor_8(0x0605, Color_Gr & 0xFF);
+			write_cmos_sensor_8(0x0606, (Color_B >> 8) & 0x3);
+			write_cmos_sensor_8(0x0607, Color_B & 0xFF);
+			write_cmos_sensor_8(0x0608, (Color_Gb >> 8) & 0x3);
+			write_cmos_sensor_8(0x0609, Color_Gb & 0xFF);
+		}
+	}
 	else
-		write_cmos_sensor_8(0x0601, 0x0000); /*No pattern*/
+		write_cmos_sensor_8(0x0601, 0x00); /*No pattern*/
 
 	spin_lock(&imgsensor_drv_lock);
-	imgsensor.test_pattern = enable;
+	imgsensor.test_pattern = modes;
 	spin_unlock(&imgsensor_drv_lock);
 	return ERROR_NONE;
 }
@@ -4386,6 +4428,11 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 			break;
 		}
 		break;
+#ifdef IMGSENSOR_MT6885
+	case SENSOR_FEATURE_GET_OFFSET_TO_START_OF_EXPOSURE:
+		*(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = 1500000;
+		break;
+#endif
 	case SENSOR_FEATURE_GET_PERIOD_BY_SCENARIO:
 		switch (*feature_data) {
 		case MSDK_SCENARIO_ID_CAMERA_CAPTURE_JPEG:
@@ -4463,11 +4510,9 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 	case SENSOR_FEATURE_SET_NIGHTMODE:
 		 /* night_mode((BOOL) *feature_data); */
 		break;
-	#ifdef VENDOR_EDIT
 	case SENSOR_FEATURE_CHECK_MODULE_ID:
 		*feature_return_para_32 = imgsensor_info.module_id;
 		break;
-	#endif
 	case SENSOR_FEATURE_SET_GAIN:
 		set_gain((UINT16) *feature_data);
 		break;
@@ -4476,8 +4521,13 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 	case SENSOR_FEATURE_SET_ISP_MASTER_CLOCK_FREQ:
 		break;
 	case SENSOR_FEATURE_SET_REGISTER:
-		write_cmos_sensor_8(sensor_reg_data->RegAddr,
-				    sensor_reg_data->RegData);
+
+		if (sensor_reg_data->RegAddr == 0xff) {
+			seamless_switch(sensor_reg_data->RegData, 0, 0, 0, 0);
+		} else {
+			write_cmos_sensor_8(sensor_reg_data->RegAddr,
+			sensor_reg_data->RegData);
+		}
 		break;
 	case SENSOR_FEATURE_GET_REGISTER:
 		sensor_reg_data->RegData =
@@ -4519,7 +4569,8 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 		pr_debug("SENSOR_FEATURE_GET_PDAF_DATA\n");
 		break;
 	case SENSOR_FEATURE_SET_TEST_PATTERN:
-		set_test_pattern_mode((BOOL)*feature_data);
+		set_test_pattern_mode((UINT32)*feature_data,
+		(struct SET_SENSOR_PATTERN_SOLID_COLOR *)(uintptr_t)(*(feature_data + 1)));
 		break;
 	case SENSOR_FEATURE_GET_TEST_PATTERN_CHECKSUM_VALUE:
 		/* for factory mode auto testing */
@@ -4971,9 +5022,15 @@ break;
 		switch (*feature_data) {
 		case MSDK_SCENARIO_ID_CAMERA_CAPTURE_JPEG:
 			*pScenarios = MSDK_SCENARIO_ID_CUSTOM3;
+			*(pScenarios + 1) = MSDK_SCENARIO_ID_CUSTOM4;
 			break;
 		case MSDK_SCENARIO_ID_CUSTOM3:
 			*pScenarios = MSDK_SCENARIO_ID_CAMERA_CAPTURE_JPEG;
+			*(pScenarios + 1) = MSDK_SCENARIO_ID_CUSTOM4;
+			break;
+		case MSDK_SCENARIO_ID_CUSTOM4:
+			*pScenarios = MSDK_SCENARIO_ID_CAMERA_CAPTURE_JPEG;
+			*(pScenarios + 1) = MSDK_SCENARIO_ID_CUSTOM3;
 			break;
 #if 0
 		case MSDK_SCENARIO_ID_CUSTOM2:

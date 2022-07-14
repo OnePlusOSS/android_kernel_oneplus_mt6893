@@ -27,7 +27,7 @@
 					  "adc_donei";
 			#io-channel-cells = <1>;
 		};
-		chg {
+		mt6360_pmu_chg: chg {
 			compatible = "mediatek,mt6360_pmu_chg";
 			interrupt-parent = <&mt6360_pmu>;
 			interrupts = <4 0>, <6 0>, <7 0>, <9 0>,
@@ -60,6 +60,7 @@
 			aicc_once = <1>;
 			post_aicc = <1>;
 			batoc_notify = <0>;
+			pp_sense_l = <0x08>;
 		};
 		fled {
 			compatible = "mediatek,mt6360_pmu_fled";
@@ -114,6 +115,10 @@
 			cc_open_sel = <3>;
 			i2c_cc_open_tsel = <1>;
 			ldo5_otp_en = <0>;
+//#ifdef OPLUS_FEATURE_CHG_BASIC
+			sda_sizesel = <3>;
+			sda_drvsrsel = <1>;
+//#endif
 		};
 	};
 
@@ -174,6 +179,8 @@
 			regulator-name = "VFP";
 			regulator-min-microvolt = <1200000>;
 			regulator-max-microvolt = <3600000>;
+			// FIXME: to delete later
+			//regulator-always-on;
 		};
 		mt_pmic_vtp_ldo_reg: ldo2 {
 			regulator-compatible = "LDO2";
@@ -190,8 +197,8 @@
 		mt_pmic_vmch_ldo_reg: ldo5 {
 			regulator-compatible = "LDO5";
 			regulator-name = "VMCH";
-			regulator-min-microvolt = <2700000>;
-			regulator-max-microvolt = <3600000>;
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
 		};
 	};
 };

@@ -21,6 +21,14 @@
 
 #ifdef CONFIG_DRM_MEDIATEK
 extern int mtkfb_set_backlight_level(unsigned int level);
+#ifdef OPLUS_BUG_STABILITY
+#define POWER_MODE_OFF 0
+extern int power_mode;
+int oplus_disp_no_bl_on_power_off = 0;
+int oplus_bl_recovery_level = 0;
+static struct workqueue_struct *oplus_bl_recovery_workqueue = NULL;
+static struct work_struct oplus_bl_recovery_work;
+#endif /* OPLUS_BUG_STABILITY */
 #endif
 
 #ifdef MET_USER_EVENT_SUPPORT
@@ -33,6 +41,13 @@ extern int mtkfb_set_backlight_level(unsigned int level);
  ***************************************************************************/
 #undef pr_fmt
 #define pr_fmt(fmt) KBUILD_MODNAME " %s(%d) :" fmt, __func__, __LINE__
+
+#ifdef OPLUS_BUG_STABILITY
+static int bl_after_aal = 0;
+extern struct timeval end;
+static int oplus_silky_brightness_support = 0;
+int oplus_disp_ccorr_without_gamma = 0;
+#endif
 
 struct mtk_leds_info;
 
@@ -121,11 +136,19 @@ static void led_debug_log(struct mtk_led_data *s_led,
 	do_div(cur_time_display, 1000000);
 	cur_time_mod = do_div(cur_time_display, 1000);
 
+	#ifndef OPLUS_BUG_STABILITY
 	ret = snprintf(s_led->debug.buffer + strlen(s_led->debug.buffer),
 		4095 - strlen(s_led->debug.buffer),
-		"T:%lld.%ld,L:%d L:%d map:%d    ",
+		"T:%llu.%lu,L:%d L:%d map:%d    ",
 		cur_time_display, cur_time_mod,
-		s_led->conf.cdev.brightness, level, mappingLevel);
+		(int)s_led->conf.cdev.brightness, level, mappingLevel);
+	#else
+	ret = snprintf(s_led->debug.buffer + strlen(s_led->debug.buffer),
+		4095 - strlen(s_led->debug.buffer),
+		"T:%llu.%lu,L:%d L:%d map:%d last:%d T:%ld.%ld  ",
+		cur_time_display, cur_time_mod,
+		(int)s_led->conf.cdev.brightness, level, mappingLevel, bl_after_aal, end.tv_sec, end.tv_usec/1000);
+	#endif /* OPLUS_BUG_STABILITY */
 
 	s_led->debug.count++;
 
@@ -136,7 +159,9 @@ static void led_debug_log(struct mtk_led_data *s_led,
 
 	if (level == 0 || s_led->debug.count >= 5 ||
 		(s_led->debug.current_t - s_led->debug.last_t) > 1000000000) {
-		pr_info("%s", s_led->debug.buffer);
+#ifdef OPLUS_BUG_STABILITY
+		pr_debug("%s", s_led->debug.buffer);
+#endif /* OPLUS_BUG_STABILITY */
 		s_led->debug.count = 0;
 		s_led->debug.buffer[strlen("[Light] Set directly ") +
 			strlen(s_led->conf.cdev.name)] = '\0';
@@ -199,8 +224,14 @@ int setMaxBrightness(char *name, int percent, bool enable)
 	}
 	led_dat = container_of(leds_info->leds[index],
 		struct mtk_led_data, desp);
-
+#ifdef OPLUS_BUG_STABILITY
+	if (oplus_silky_brightness_support == 0)
+		max_l = led_dat->conf.cdev.max_brightness;
+	else
+		max_l = (1 << led_dat->conf.trans_bits) - 1;
+#else
 	max_l = led_dat->conf.cdev.max_brightness;
+#endif /* OPLUS_BUG_STABILITY */
 	limit_l = (percent * max_l) / 100;
 	pr_info("before: name: %s, percent : %d, limit_l : %d, enable: %d",
 		leds_info->leds[index]->name, percent, limit_l, enable);
@@ -237,12 +268,31 @@ int mt_leds_brightness_set(char *name, int level)
 	}
 	led_dat = container_of(leds_info->leds[index],
 		struct mtk_led_data, desp);
+#ifdef OPLUS_BUG_STABILITY
+	if(oplus_silky_brightness_support == 0) {
+		led_Level = (
+			(((1 << led_dat->conf.led_bits) - 1) * level
+			+ (((1 << led_dat->conf.trans_bits) - 1) / 2))
+			/ ((1 << led_dat->conf.trans_bits) - 1));
+		led_level_disp_set(led_dat, led_Level);
+		led_dat->last_level = led_Level;
+	} else {
+		led_level_disp_set(led_dat, level);
+		led_dat->last_level = level;
+	}
+#else
 	led_Level = (
 		(((1 << led_dat->conf.led_bits) - 1) * level
 		+ (((1 << led_dat->conf.trans_bits) - 1) / 2))
 		/ ((1 << led_dat->conf.trans_bits) - 1));
+
 	led_level_disp_set(led_dat, led_Level);
 	led_dat->last_level = led_Level;
+#endif /* OPLUS_BUG_STABILITY */
+
+	#ifdef OPLUS_BUG_STABILITY
+	bl_after_aal = led_dat->last_level;
+	#endif
 
 	return 0;
 }
@@ -261,10 +311,39 @@ static int led_level_set(struct led_classdev *led_cdev,
 	if (led_dat->brightness == brightness)
 		return 0;
 
+#ifdef OPLUS_BUG_STABILITY
+	if (oplus_silky_brightness_support == 0)
+		trans_level = (
+			(((1 << led_dat->conf.trans_bits) - 1) * brightness
+			+ (((1 << led_dat->conf.led_bits) - 1) / 2))
+			/ ((1 << led_dat->conf.led_bits) - 1));
+	else
+		trans_level = (
+			(((1 << led_dat->conf.trans_bits) - 1) * brightness
+			+ (led_dat->conf.cdev.max_brightness / 2))
+			/ (led_dat->conf.cdev.max_brightness));
+
+	#ifdef CONFIG_DRM_MEDIATEK
+	if (oplus_disp_no_bl_on_power_off) {
+		if (power_mode == POWER_MODE_OFF) {
+			if (oplus_silky_brightness_support == 0)
+				oplus_bl_recovery_level = trans_level;
+			else
+				oplus_bl_recovery_level = brightness;
+			led_dat->brightness = brightness;
+			pr_err("%s return on power_mode:%d, recovery level:%d\n",
+					__func__, power_mode, oplus_bl_recovery_level);
+			return 0;
+		}
+		oplus_bl_recovery_level = 0;
+	}
+	#endif /* CONFIG_DRM_MEDIATEK */
+#else
 	trans_level = (
 		(((1 << led_dat->conf.trans_bits) - 1) * brightness
 		+ (((1 << led_dat->conf.led_bits) - 1) / 2))
 		/ ((1 << led_dat->conf.led_bits) - 1));
+#endif /* OPLUS_BUG_STABILITY */
 
 	led_debug_log(led_dat, brightness, trans_level);
 
@@ -278,7 +357,14 @@ led_dat->brightness = brightness;
 	call_notifier(1, led_dat);
 #endif
 #ifdef CONFIG_MTK_AAL_SUPPORT
+#ifdef OPLUS_BUG_STABILITY
+	if (oplus_silky_brightness_support == 0)
+		disp_pq_notify_backlight_changed(trans_level);
+	else
+		disp_pq_notify_backlight_changed(brightness);
+#else
 	disp_pq_notify_backlight_changed(trans_level);
+#endif /* OPLUS_BUG_STABILITY */
 #else
 	led_level_disp_set(led_dat, brightness);
 	led_dat->last_level = brightness;
@@ -287,6 +373,49 @@ led_dat->brightness = brightness;
 
 }
 
+#ifdef OPLUS_BUG_STABILITY
+#ifdef CONFIG_DRM_MEDIATEK
+static void oplus_bl_recovery_work_handler(struct work_struct *work)
+{
+	struct mtk_led_data *led_dat = NULL;
+	int index = -1;
+
+	printk("%s, level:%d\n", __func__, oplus_bl_recovery_level);
+	index = getLedDespIndex("lcd-backlight");
+	if (index < 0) {
+		pr_notice("can not find leds by led_desp lcd-backlight\n");
+		return;
+	}
+
+	led_dat = container_of(leds_info->leds[index],
+		struct mtk_led_data, desp);
+	if (!led_dat) {
+		pr_notice("led_dat is null\n");
+		return;
+	}
+
+	if (oplus_bl_recovery_level > 0) {
+#ifdef CONFIG_LEDS_BRIGHTNESS_CHANGED
+		call_notifier(1, led_dat);
+#endif
+#ifdef CONFIG_MTK_AAL_SUPPORT
+		disp_pq_notify_backlight_changed(oplus_bl_recovery_level);
+#else
+		led_level_disp_set(led_dat, oplus_bl_recovery_level);
+		led_dat->last_level = oplus_bl_recovery_level;
+#endif
+	}
+}
+
+void oplus_bl_recovery(void)
+{
+	printk("%s\n", __func__);
+	if (oplus_bl_recovery_workqueue)
+		queue_work(oplus_bl_recovery_workqueue, &oplus_bl_recovery_work);
+}
+#endif /* CONFIG_DRM_MEDIATEK */
+#endif /* OPLUS_BUG_STABILITY */
+
 static int led_data_init(struct device *dev, struct mtk_led_data *s_led)
 {
 	int ret;
@@ -294,8 +423,19 @@ static int led_data_init(struct device *dev, struct mtk_led_data *s_led)
 	s_led->conf.cdev.flags = LED_CORE_SUSPENDRESUME;
 	s_led->conf.cdev.brightness_set_blocking = led_level_set;
 	s_led->brightness = s_led->conf.cdev.max_brightness;
+#ifdef OPLUS_BUG_STABILITY
+	if (oplus_silky_brightness_support == 0) {
+		s_led->conf.level = s_led->conf.cdev.max_brightness;
+		s_led->last_level = s_led->conf.cdev.max_brightness;
+	} else {
+		s_led->conf.level = s_led->conf.max_level;
+		s_led->last_level = s_led->conf.max_level;
+	}
+#else
 	s_led->conf.level = s_led->conf.cdev.max_brightness;
 	s_led->last_level = s_led->conf.cdev.max_brightness;
+#endif /* OPLUS_BUG_STABILITY */
+
 	ret = devm_led_classdev_register(dev, &(s_led->conf.cdev));
 	if (ret < 0) {
 		pr_notice("led class register fail!");
@@ -319,7 +459,7 @@ static int mtk_leds_parse_dt(struct device *dev,
 {
 	struct device_node *leds_np, *child;
 	struct mtk_led_data *s_led;
-	int ret = 0, num = 0, level = 102;
+	int ret = 0, num = 0, level = 0;
 	const char *state;
 
 	leds_np = of_find_node_by_name(dev->of_node, "backlight");
@@ -360,6 +500,42 @@ static int mtk_leds_parse_dt(struct device *dev,
 			pr_info("No max-brightness, use default: %d",
 				s_led->conf.max_level);
 		}
+#ifdef OPLUS_BUG_STABILITY
+		ret = of_property_read_u32(child, "support_silky_brightness",
+					&oplus_silky_brightness_support);
+		if (ret) {
+				oplus_silky_brightness_support = 0;
+				pr_info("not support_silky_brightness property = 0\n");
+		}
+		if (oplus_silky_brightness_support == 1) {
+			pr_info("in silky brightness,before change l=%d b=%d, bit =%d %d\n",
+				s_led->conf.max_level, s_led->conf.cdev.max_brightness,
+				s_led->conf.led_bits, s_led->conf.trans_bits);
+			s_led->conf.cdev.max_brightness = s_led->conf.max_level;
+			s_led->conf.max_level = (1 << s_led->conf.trans_bits) - 1;
+			pr_info("in silky brightness,after change l=%d b=%d, bit =%d %d\n",
+				s_led->conf.max_level, s_led->conf.cdev.max_brightness,
+				s_led->conf.led_bits, s_led->conf.trans_bits);
+		}
+
+		ret = of_property_read_u32(child, "disp_ccorr_without_gamma",
+					&oplus_disp_ccorr_without_gamma);
+		if (ret) {
+			oplus_disp_ccorr_without_gamma = 0;
+			pr_info("get oplus_disp_ccorr_without_gamma property failed\n");
+		}
+		pr_info("oplus_disp_ccorr_without_gamma:%d\n", oplus_disp_ccorr_without_gamma);
+
+		#ifdef CONFIG_DRM_MEDIATEK
+		ret = of_property_read_u32(child, "oplus_disp_no_bl_on_power_off",
+					&oplus_disp_no_bl_on_power_off);
+		if (ret) {
+			oplus_disp_no_bl_on_power_off = 0;
+			pr_info("get oplus_disp_no_bl_on_power_off property failed\n");
+		}
+		pr_info("oplus_disp_no_bl_on_power_off:%d\n", oplus_disp_no_bl_on_power_off);
+		#endif /* CONFIG_DRM_MEDIATEK */
+#endif
 		ret = of_property_read_string(child, "default-state", &state);
 		if (!ret) {
 			if (!strcmp(state, "half"))
@@ -368,7 +544,9 @@ static int mtk_leds_parse_dt(struct device *dev,
 				level = s_led->conf.cdev.max_brightness;
 			else
 				level = 0;
-		};
+		} else {
+			level = s_led->conf.cdev.max_brightness;
+		}
 		pr_info("parse %d leds dt: %s, %d, %d",
 			num, s_led->conf.cdev.name,
 			s_led->conf.max_level,
@@ -433,6 +611,18 @@ static int mtk_leds_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, m_leds);
 	m_leds->dev = dev;
 
+	#ifdef OPLUS_BUG_STABILITY
+	#ifdef CONFIG_DRM_MEDIATEK
+	if (oplus_disp_no_bl_on_power_off) {
+		oplus_bl_recovery_workqueue = create_singlethread_workqueue("oplus_bl_recovery_workqueue");
+		if (!oplus_bl_recovery_workqueue)
+			pr_err("%s, create oplus_bl_recovery_workqueue failed\n", __func__);
+		else
+			INIT_WORK(&oplus_bl_recovery_work, oplus_bl_recovery_work_handler);
+	}
+	#endif /* CONFIG_DRM_MEDIATEK */
+	#endif /* OPLUS_BUG_STABILITY */
+
 	pr_info("probe end ---");
 
 	return ret;
@@ -456,6 +646,17 @@ static int mtk_leds_remove(struct platform_device *pdev)
 	}
 	kfree(m_leds);
 	m_leds = NULL;
+
+	#ifdef OPLUS_BUG_STABILITY
+	#ifdef CONFIG_DRM_MEDIATEK
+	if (oplus_disp_no_bl_on_power_off) {
+		if (oplus_bl_recovery_workqueue) {
+			destroy_workqueue(oplus_bl_recovery_workqueue);
+			oplus_bl_recovery_workqueue = NULL;
+		}
+	}
+	#endif /* CONFIG_DRM_MEDIATEK */
+	#endif /* OPLUS_BUG_STABILITY */
 
 	return 0;
 }

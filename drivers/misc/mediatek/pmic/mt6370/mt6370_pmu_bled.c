@@ -22,6 +22,14 @@
 #include "inc/mt6370_pmu.h"
 #include "inc/mt6370_pmu_bled.h"
 
+#ifdef OPLUS_BUG_COMPATIBILITY
+#if defined(CONFIG_DRM_PANEL_BOE_BOE_ILI7807S_VDO) || \
+	defined(CONFIG_DRM_PANEL_BOE_ILI7807S_60HZ_VDO) || \
+	defined(CONFIG_DRM_PANEL_TM_NT36672C_60HZ_VDO)
+#include <mt-plat/mtk_boot_common.h>
+extern unsigned long silence_mode;
+#endif
+#endif
 #define MT6370_PMU_BLED_DRV_VERSION	"1.0.2_MTK"
 
 struct mt6370_pmu_bled_data {
@@ -283,6 +291,77 @@ static const struct flashlight_properties mt6370_bledfl_props = {
 	.alias_name = "mt6370_pmu_bled",
 };
 
+/*#ifdef OPLUS_BUG_COMPATIBILITY*/
+#if defined(CONFIG_DRM_PANEL_BOE_BOE_ILI7807S_VDO) || \
+	defined(CONFIG_DRM_PANEL_BOE_ILI7807S_60HZ_VDO) || \
+	defined(CONFIG_DRM_PANEL_TM_NT36672C_60HZ_VDO)
+#define MT6370_BLED_MAX	1728
+#define BLED_REAPTIME_NORMAL1 9
+#define BLED_REAPTIME_NORMAL2 10
+#define BLED_REAPTIME_SUSPEND 0
+#define BLED_EN_SET 1
+#define BLED_EN_CLN 0
+int esd_brightness = 0;
+void _gate_ic_mode_switch(enum control_mode mode);
+#include <linux/delay.h>
+static int last_brightness = 0;
+static void mt6370_pmu_bled_bright_set(struct led_classdev *led_cdev,
+	enum led_brightness brightness)
+{
+	struct mt6370_pmu_bled_data *bled_data =
+				dev_get_drvdata(led_cdev->dev->parent);
+	uint8_t chip_vid = bled_data->chip->chip_vid;
+	uint32_t bright = brightness < 0 ? U32_MAX : brightness;
+	int ret = 0;
+
+	bright = min(bright, (uint32_t)MT6370_BLED_MAX);
+	if (silence_mode == 1) {
+		dev_info(led_cdev->dev, "%s: silence_mode is 1, set backlight to 0\n", __func__);
+		bright = 0;
+	}
+	esd_brightness = bright;
+	if (bright < 265) {
+		mt6370_pmu_reg_a3(BLED_REAPTIME_NORMAL2);
+		}else {
+		mt6370_pmu_reg_a3(BLED_REAPTIME_NORMAL1);
+		}
+	if (last_brightness == 0) {
+		mdelay(43);
+	}
+	last_brightness = bright;
+	if (chip_vid == MT6372_VENDOR_ID || chip_vid == MT6372C_VENDOR_ID) {
+		ret = mt6370_pmu_reg_update_bits(bled_data->chip,
+						 MT6370_PMU_REG_BLDIM2,
+						 0x3F,
+						 (bright & 0x7) << 3);
+		dev_err(led_cdev->dev, "%s:    chip_vid enter (bright & 0x7) << 3): %d, bright>>3: %d\n", __func__, ((bright & 0x7) << 3), bright>>3);
+	} else {
+		ret = mt6370_pmu_reg_update_bits(bled_data->chip,
+						 MT6370_PMU_REG_BLDIM2,
+						 MT6370_DIM2_MASK,
+						 (bright & 0x7));
+	}
+	if (ret < 0)
+		goto out_bright_set;
+	ret = mt6370_pmu_reg_write(bled_data->chip, MT6370_PMU_REG_BLDIM1,
+				   (bright >> 3) & MT6370_DIM_MASK);
+	if (ret < 0)
+		goto out_bright_set;
+	ret = mt6370_pmu_reg_update_bits(bled_data->chip, MT6370_PMU_REG_BLEN,
+					 MT6370_BLED_EN,
+					 brightness > 0 ?
+					 MT6370_BLED_EN : ~MT6370_BLED_EN);
+	if (bright == 0){
+		mt6370_pmu_reg_a3(BLED_REAPTIME_SUSPEND);
+		mt6370_pmu_reg_a0(BLED_EN_CLN);
+	}
+	if (ret < 0)
+		goto out_bright_set;
+	return;
+out_bright_set:
+	dev_err(led_cdev->dev, "%s error %d\n", __func__, ret);
+}
+#else
 static void mt6370_pmu_bled_bright_set(struct led_classdev *led_cdev,
 	enum led_brightness brightness)
 {
@@ -323,12 +402,12 @@ static void mt6370_pmu_bled_bright_set(struct led_classdev *led_cdev,
 out_bright_set:
 	dev_err(led_cdev->dev, "%s error %d\n", __func__, ret);
 }
-
+/*#endif*/
+#endif
 static struct led_classdev mt6370_pmu_bled_dev = {
 	.name = "mt6370_pmu_bled",
 	.brightness_set = mt6370_pmu_bled_bright_set,
 };
-
 static irqreturn_t mt6370_pmu_bled_ocp_irq_handler(int irq, void *data)
 {
 	struct mt6370_pmu_bled_data *bled_data = data;
@@ -404,7 +483,51 @@ static inline int mt6370_pmu_bled_init_register(
 
 	return ret;
 }
+#ifdef OPLUS_BUG_COMPATIBILITY
+#if defined(CONFIG_DRM_PANEL_BOE_BOE_ILI7807S_VDO) || \
+	defined(CONFIG_DRM_PANEL_BOE_ILI7807S_60HZ_VDO) || \
+	defined(CONFIG_DRM_PANEL_TM_NT36672C_60HZ_VDO)
+void _gate_ic_mode_switch(enum control_mode mode)
+{
+	struct mt6370_pmu_bled_data *bled_data =
+			dev_get_drvdata(mt6370_pmu_bled_dev.dev->parent);
 
+	pr_info("mt6370: %s, %d\n", __func__, mode);
+	mt6370_pmu_reg_update_bits(bled_data->chip, MT6370_PMU_REG_BLPWM,
+			MT6370_BLED_EXTEN, mode << MT6370_BLED_EXTEN_SHIFT);
+}
+EXPORT_SYMBOL_GPL(_gate_ic_mode_switch);
+void _gate_ic_backlight_set(unsigned int hw_level)
+{
+	if (hw_level > MT6370_BLED_MAX)
+		hw_level = MT6370_BLED_MAX;
+	pr_info("mt6370: %s, %d\n", __func__, hw_level);
+	led_set_brightness(&mt6370_pmu_bled_dev, hw_level);
+}
+EXPORT_SYMBOL_GPL(_gate_ic_backlight_set);
+void mt6370_pmu_reg_a3(unsigned int value)
+{
+    struct mt6370_pmu_bled_data *bled_data =
+            dev_get_drvdata(mt6370_pmu_bled_dev.dev->parent);
+
+    printk("mt6370: %s, %d\n", __func__,  value );
+    mt6370_pmu_reg_update_bits(bled_data->chip, MT6370_PMU_REG_BLCTRL,
+            0xF0, value << MT6370_BLED_RAMPTSHFT);
+}
+void mt6370_pmu_reg_a0(unsigned int bled_enable)
+{
+	struct mt6370_pmu_bled_data *bled_data =
+			dev_get_drvdata(mt6370_pmu_bled_dev.dev->parent);
+	printk("mt6370: %s,   bled_en = %d\n", __func__,   bled_enable);
+
+	mt6370_pmu_reg_update_bits(bled_data->chip, MT6370_PMU_REG_BLEN,
+			MT6370_BLED_EN, bled_enable << MT6370_BLED_EN_SHIFT);
+
+}
+EXPORT_SYMBOL_GPL(mt6370_pmu_reg_a0);
+EXPORT_SYMBOL_GPL(mt6370_pmu_reg_a3);
+#endif
+#endif
 static inline int mt6370_pmu_bled_parse_initdata(
 	struct mt6370_pmu_bled_data *bled_data)
 {
@@ -429,6 +552,18 @@ static inline int mt6370_pmu_bled_parse_initdata(
 	bled_init_data[2] |= (pdata->pwm_hys << MT6370_BLED_PWMHSHFT);
 	bled_init_data[3] |= (pdata->bled_ramptime << MT6370_BLED_RAMPTSHFT);
 	bright = (bright * 255) >> 8;
+#ifdef OPLUS_BUG_COMPATIBILITY
+#if defined(CONFIG_DRM_PANEL_BOE_BOE_ILI7807S_VDO) || \
+	defined(CONFIG_DRM_PANEL_BOE_ILI7807S_60HZ_VDO) || \
+	defined(CONFIG_DRM_PANEL_TM_NT36672C_60HZ_VDO)
+	if (silence_mode == 1) {
+		printk("%s: silence_mode is 1, set backlight to 0\n", __func__);
+		bright = 0;
+	}
+
+	mt6370_pmu_bled_dev.max_brightness = pdata->max_bled_brightness;
+#endif
+#endif
 	/* Set bled dimension 11 or 14 bits */
 	if (chip_vid == MT6372_VENDOR_ID || chip_vid == MT6372C_VENDOR_ID)
 		bled_init_data[4] |= ((bright & 0x7) << 3);
@@ -589,6 +724,13 @@ static int mt6370_pmu_bled_probe(struct platform_device *pdev)
 	}
 
 	mt6370_pmu_bled_irq_register(pdev);
+#ifdef OPLUS_BUG_COMPATIBILITY
+#if defined(CONFIG_DRM_PANEL_BOE_BOE_ILI7807S_VDO) || \
+	defined(CONFIG_DRM_PANEL_BOE_ILI7807S_60HZ_VDO) || \
+	defined(CONFIG_DRM_PANEL_TM_NT36672C_60HZ_VDO)
+	_gate_ic_mode_switch(EX_MODE);
+#endif
+#endif
 	dev_info(&pdev->dev, "%s successfully\n", __func__);
 	return 0;
 out_mt_flash_register:

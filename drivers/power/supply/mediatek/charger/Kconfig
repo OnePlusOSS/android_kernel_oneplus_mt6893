@@ -154,6 +154,14 @@ config CHARGER_RT9471
 	  which RT9470D, RT9471D and RT9472D support BC1.2
 	  It depends on config MTK_CHARGER.
 
+config CHARGER_SY6974
+        bool "Charger Driver for Richtek SY6974 Charger IC"
+        default n
+        depends on MTK_CHARGER
+        help
+          Say Yes to enable SY6974 driver.
+          It depends on config MTK_CHARGER.
+
 config CHARGER_RT9759
 	bool "Richtek RT9759 Divider Charger Driver"
 	depends on MTK_CHARGER
@@ -196,6 +204,22 @@ config CHARGER_BQ25601
 	  and config MTK_SWCHR_SUPPORT
 	  Set to Yes if BQ25601 is used.
 
+config CHARGER_BQ25890
+	bool "CHARGER_BQ25890"
+	help
+	  This is to enable MediaTek supports to BQ25890.
+	  It depends on config MTK_SMART_BATTERY
+	  and config MTK_SWCHR_SUPPORT
+	  Set to Yes if BQ25890 is used.
+
+config CHARGER_SGM41511
+	bool "CHARGER_SGM41511"
+	help
+	  This is to enable MediaTek supports to SGM41511.
+	  It depends on config MTK_SMART_BATTERY
+	  and config MTK_SWCHR_SUPPORT
+	  Set to Yes if SGM41511 is used.
+
 config LOAD_SWITCH_RT9750
 	bool "Load Switch Driver for Richtek RT9750"
 	depends on MTK_CHARGER
@@ -204,3 +228,36 @@ config LOAD_SWITCH_RT9750
 	  It is a load switch,
 	  which is good for direct charge.
 	  It depends on config MTK_CHARGER.
+
+config CHARGER_BQ2589X
+        bool "Charger Driver for BQ2589X Charger IC"
+        default n
+        depends on MTK_CHARGER
+        help
+          Say Yes to enable Richtek BQ2589X driver.
+          It is mainly used as slave IC for dual charger
+          application.
+          It depends on config MTK_CHARGER.
+
+config CHARGER_BQ2591X
+        bool "Charger Driver for Richtek BQ2591X Charger IC"
+        default n
+        depends on MTK_CHARGER
+        help
+          Say Yes to enable BQ2591X driver.
+          It depends on config MTK_CHARGER.
+
+config CHARGER_SY6970
+        bool "Charger Driver for sy6970 Charger IC"
+        default n
+        depends on MTK_CHARGER
+        help
+          Say Yes to enable sy6970 driver.
+          It depends on config MTK_CHARGER.
+
+config CHARGER_MM8013
+	bool "CHARGER MM8013"
+	help
+	  Say Y to enable
+	  mm8013 driver.
+	  Set to Yes if MM8013 is used.

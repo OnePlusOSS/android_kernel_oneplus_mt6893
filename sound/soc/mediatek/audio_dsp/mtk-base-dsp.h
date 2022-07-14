@@ -46,7 +46,11 @@ struct mtk_base_dsp_mem {
 	struct audio_dsp_dram dsp_ring_share_buf;
 	unsigned char ipi_payload_buf[MAX_PAYLOAD_SIZE];
 	unsigned int dsp_feature_counter;
-	int underflowed;
+	int adsp_xrun_flag;
+	spinlock_t ringbuf_lock;
+#ifdef CONFIG_OPLUS_FEATURE_MM_FEEDBACK
+	int underflow_cnt;
+#endif /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
 };
 
 struct audio_core_flag {

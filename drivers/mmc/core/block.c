@@ -46,6 +46,7 @@
 #include <linux/mmc/mmc.h>
 #include <linux/mmc/sd.h>
 
+#include <soc/oplus/device_info.h>
 #ifdef CONFIG_MMC_FFU
 #include <linux/mmc/ffu.h>
 #endif
@@ -159,6 +160,8 @@ struct mmc_blk_data {
 	/* debugfs files (only in main mmc_blk_data) */
 	struct dentry *status_dentry;
 	struct dentry *ext_csd_dentry;
+	struct dentry *sector_count_dentry;
+	struct dentry *life_time_dentry;
 };
 
 /* Device type for RPMB character devices */
@@ -1228,9 +1231,6 @@ static int mmc_blk_ioctl(struct block_device *bdev, fmode_t mode,
 		mmc_blk_put(md);
 		return ret;
 	case MMC_IOC_MULTI_CMD:
-		ret = mmc_blk_check_blkdev(bdev);
-		if (ret)
-			return ret;
 		md = mmc_blk_get(bdev->bd_disk);
 		if (!md)
 			return -EINVAL;
@@ -1810,6 +1810,9 @@ static int mmc_blk_cmdq_issue_discard_rq(struct mmc_queue *mq,
 	}
 	err = mmc_cmdq_erase(cmdq_req, card, from, nr, arg);
 clear_dcmd:
+	if (err == -EBADSLT)
+		goto out;
+
 	blk_complete_request(req);
 out:
 	return err ? 1 : 0;
@@ -2004,6 +2007,9 @@ static int mmc_blk_cmdq_issue_secdiscard_rq(struct mmc_queue *mq,
 				MMC_SECURE_TRIM2_ARG);
 	}
 clear_dcmd:
+	if (err == -EBADSLT)
+		goto out;
+
 	blk_complete_request(req);
 out:
 	return err ? 1 : 0;
@@ -2684,7 +2690,7 @@ static struct mmc_cmdq_req *mmc_blk_cmdq_rw_prep(
 	 * call it in CQHCI for safe, SWcmdq will do this in
 	 * mmc_blk_swcq_issue_rw_rq().
 	 */
-#ifndef CONFIG_MTK_EMMC_CQ_SUPPORT
+#ifdef CONFIG_MTK_EMMC_HW_CQ
 	mmc_crypto_prepare_req(mqrq);
 #endif
 #ifdef MMC_CQHCI_DEBUG
@@ -2900,6 +2906,29 @@ out:
 	return -ENOENT;
 }
 
+static void mmc_cmdq_dcmd_reset(struct request_queue *q, int tag)
+{
+	struct request *req;
+	struct mmc_queue_req *mq_rq;
+	struct mmc_cmdq_req *cmdq_req;
+	struct mmc_request *mrq;
+
+	req = blk_queue_find_tag(q, tag);
+	if (WARN_ON(!req))
+		return;
+	mq_rq = req->special;
+	if (WARN_ON(!mq_rq))
+		return;
+	cmdq_req = &(mq_rq->cmdq_req);
+	mrq = &cmdq_req->mrq;
+	if (mrq && !completion_done(&mrq->completion)) {
+		pr_info("%s: discard req reset done\n", __func__);
+		mrq->cmd->error = -EBADSLT;
+		mrq->done(mrq);
+	}
+
+}
+
 /**
  * mmc_blk_cmdq_reset_all - Reset everything for CMDQ block request.
  * @host:	mmc_host pointer.
@@ -2955,6 +2984,7 @@ static void mmc_blk_cmdq_reset_all(struct mmc_host *host, int err)
 				 &ctx_info->data_active_reqs));
 			mmc_cmdq_post_req(host, itag, err);
 		} else {
+			mmc_cmdq_dcmd_reset(q, itag);
 			clear_bit(CMDQ_STATE_DCMD_ACTIVE,
 					&ctx_info->curr_state);
 		}
@@ -3911,7 +3941,6 @@ void mmc_blk_issue_rq(struct mmc_queue *mq, struct request *req)
 					index + 1);
 				atomic_set(&mq->mqrq[index].index,
 					index + 1);
-				atomic_inc(&card->host->areq_cnt);
 			}
 #endif
 			/* Normal request, just issue it */
@@ -4532,6 +4561,177 @@ static const struct file_operations mmc_dbg_ext_csd_fops = {
 	.llseek		= default_llseek,
 };
 
+#define SECTOR_COUNT_BUF_LEN 16
+static int mmc_sector_count_open(struct inode *inode, struct file *filp)
+{
+	struct mmc_card *card = inode->i_private;
+	struct mmc_blk_data *md = dev_get_drvdata(&card->dev);
+	struct mmc_queue *mq = &md->queue;
+	struct request *req;
+	char *buf;
+	ssize_t n = 0;
+	u8 *ext_csd;
+	int err;
+    unsigned int sector_count = 0;
+    
+	buf = kmalloc(SECTOR_COUNT_BUF_LEN + 1, GFP_KERNEL);
+	if (!buf)
+		return -ENOMEM;
+
+	/* Ask the block layer for the EXT CSD */
+	req = blk_get_request(mq->queue, REQ_OP_DRV_IN, __GFP_RECLAIM);
+	if (IS_ERR(req)) {
+		err = PTR_ERR(req);
+		goto out_free;
+	}
+	req_to_mmc_queue_req(req)->drv_op = MMC_DRV_OP_GET_EXT_CSD;
+	req_to_mmc_queue_req(req)->drv_op_data = &ext_csd;
+	blk_execute_rq(mq->queue, NULL, req, 0);
+	err = req_to_mmc_queue_req(req)->drv_op_result;
+	blk_put_request(req);
+	if (err) {
+		pr_err("FAILED %d\n", err);
+		goto out_free;
+	}
+
+	sector_count = (ext_csd[215]<<24) |(ext_csd[214]<<16)|
+			(ext_csd[213]<<8)|(ext_csd[212]);
+	n = sprintf(buf, "0x%08x\n", sector_count);
+    
+	if (n > SECTOR_COUNT_BUF_LEN) {
+		err = -EINVAL;
+		kfree(ext_csd);
+		goto out_free;
+	}
+
+	filp->private_data = buf;
+
+	kfree(ext_csd);
+	return 0;
+
+out_free:
+	kfree(buf);
+	return err;
+}
+
+static ssize_t mmc_sector_count_read(struct file *filp, char __user *ubuf,
+	size_t cnt, loff_t *ppos)
+{
+	char *buf = filp->private_data;
+	int len = strlen(buf);
+	return simple_read_from_buffer(ubuf, cnt, ppos,
+		buf, len);
+}
+
+static int mmc_sector_count_release(struct inode *inode, struct file *file)
+{
+	kfree(file->private_data);
+	return 0;
+}
+
+static const struct file_operations mmc_dbg_sector_count_fops = {
+	.open		= mmc_sector_count_open,
+	.read		= mmc_sector_count_read,
+	.release	= mmc_sector_count_release,
+	.llseek		= default_llseek,
+};
+
+#define LIFE_TIME_BUF_LEN 256
+static char* life_time_table[]={
+	"Not defined",
+	"0%-10% device life time used",
+	"10%-20% device life time used",
+	"20%-30% device life time used",
+	"30%-40% device life time used",
+	"30%-40% device life time used",
+	"40%-50% device life time used",
+	"60%-70% device life time used",
+	"80%-90% device life time used",
+	"90%-100% device life time used",
+	"Exceeded its maximum estimated device life time",
+	"Reserved",
+	"Reserved",
+	"Reserved",
+	"Reserved",
+	"Reserved",
+};
+
+static int mmc_life_time_open(struct inode *inode, struct file *filp)
+{
+	struct mmc_card *card = inode->i_private;
+	struct mmc_blk_data *md = dev_get_drvdata(&card->dev);
+	struct mmc_queue *mq = &md->queue;
+	struct request *req;
+	char *buf;
+	ssize_t n = 0;
+	u8 *ext_csd;
+	int err;
+	unsigned char life_time_A = 0;
+	unsigned char life_time_B = 0;
+    
+	buf = kmalloc(LIFE_TIME_BUF_LEN + 1, GFP_KERNEL);
+	if (!buf)
+		return -ENOMEM;
+
+	/* Ask the block layer for the EXT CSD */
+	req = blk_get_request(mq->queue, REQ_OP_DRV_IN, __GFP_RECLAIM);
+	if (IS_ERR(req)) {
+		err = PTR_ERR(req);
+		goto out_free;
+	}
+	req_to_mmc_queue_req(req)->drv_op = MMC_DRV_OP_GET_EXT_CSD;
+	req_to_mmc_queue_req(req)->drv_op_data = &ext_csd;
+	blk_execute_rq(mq->queue, NULL, req, 0);
+	err = req_to_mmc_queue_req(req)->drv_op_result;
+	blk_put_request(req);
+	if (err) {
+		pr_err("FAILED %d\n", err);
+		goto out_free;
+	}
+
+	life_time_A = ext_csd[268];
+	life_time_B = ext_csd[269];
+	n = sprintf(buf, "type A:%s\n\rtype B:%s\n\r",
+		life_time_table[life_time_A],life_time_table[life_time_B]);
+
+	if (n > LIFE_TIME_BUF_LEN) {
+		err = -EINVAL;
+		kfree(ext_csd);
+		goto out_free;
+	}
+
+	filp->private_data = buf;
+
+	kfree(ext_csd);
+	return 0;
+
+out_free:
+	kfree(buf);
+	return err;
+}
+
+static ssize_t mmc_life_time_read(struct file *filp, char __user *ubuf,
+	size_t cnt, loff_t *ppos)
+{
+	char *buf = filp->private_data;
+	int len = strlen(buf);
+
+	return simple_read_from_buffer(ubuf, cnt, ppos,
+		buf, len);
+}
+
+static int mmc_life_time_release(struct inode *inode, struct file *file)
+{
+	kfree(file->private_data);
+	return 0;
+}
+
+static const struct file_operations mmc_dbg_life_time_fops = {
+	.open		= mmc_life_time_open,
+	.read		= mmc_life_time_read,
+	.release	= mmc_life_time_release,
+	.llseek		= default_llseek,
+};
 static int mmc_blk_add_debugfs(struct mmc_card *card, struct mmc_blk_data *md)
 {
 	struct dentry *root;
@@ -4556,7 +4756,21 @@ static int mmc_blk_add_debugfs(struct mmc_card *card, struct mmc_blk_data *md)
 		if (!md->ext_csd_dentry)
 			return -EIO;
 	}
+	if (mmc_card_mmc(card)) {
+		md->sector_count_dentry =
+			debugfs_create_file("sector_count", S_IRUSR, root, card,
+					    &mmc_dbg_sector_count_fops);
+		if (!md->sector_count_dentry)
+			return -EIO;
+	}
 
+	if (mmc_card_mmc(card)) {
+		md->life_time_dentry =
+			debugfs_create_file("life_time",(S_IRUSR|S_IRGRP|S_IROTH), root, card,
+					    &mmc_dbg_life_time_fops);
+		if (!md->life_time_dentry)
+			return -EIO;
+	}
 	return 0;
 }
 
@@ -4596,11 +4810,43 @@ static int mmc_blk_probe(struct mmc_card *card)
 	struct mmc_blk_data *md, *part_md;
 	char cap_str[10];
 
+	char * manufacturerid;
+    static char temp_version[30] = {0};
 	/*
 	 * Check that the card supports the command class(es) we need.
 	 */
-	if (!(card->csd.cmdclass & CCC_BLOCK_READ))
-		return -ENODEV;
+//	if (!(card->csd.cmdclass & CCC_BLOCK_READ))
+//		return -ENODEV;
+	switch (card->cid.manfid) {
+		case  0x11:
+			manufacturerid = "TOSHIBA";
+			break;
+		case  0x15:
+			manufacturerid = "SAMSUNG";
+			break;
+		case  0x45:
+			manufacturerid = "SANDISK";
+			break;
+		case  0x90:
+			manufacturerid = "HYNIX";
+			break;
+		case 0xFE:
+            manufacturerid = "ELPIDA";
+            break;
+		case 0x13:
+            manufacturerid = "MICRON";
+            break;
+        default:
+			printk("mmc_blk_probe unknown card->cid.manfid is %x\n",card->cid.manfid);
+			manufacturerid = "unknown";
+			break;
+	}
+
+	if (!strcmp(mmc_card_id(card), "mmc0:0001")) {
+		sprintf(temp_version,"0x%02x,0x%llx",card->cid.prv,*(unsigned long long*)card->ext_csd.fwrev);
+		register_device_proc("emmc", mmc_card_name(card), manufacturerid);
+		register_device_proc("emmc_version", mmc_card_name(card), temp_version);
+	}
 
 	mmc_fixup_device(card, mmc_blk_fixups);
 
@@ -4648,6 +4894,15 @@ static int mmc_blk_probe(struct mmc_card *card)
 	mmc_blk_remove_parts(card, md);
 	mmc_blk_remove_req(md);
 	return 0;
+}
+char *capacity_string(struct mmc_card *card){
+	static char cap_str[10] = "unknown";
+	struct mmc_blk_data *md = (struct mmc_blk_data *)card->dev.driver_data;
+	if(md==NULL){
+		return 0;
+	}
+	string_get_size((u64)get_capacity(md->disk), 512, STRING_UNITS_2, cap_str, sizeof(cap_str));
+	return cap_str;
 }
 
 static void mmc_blk_remove(struct mmc_card *card)
@@ -4738,10 +4993,12 @@ static int mmc_blk_suspend(struct device *dev)
 	 * suspend.
 	 */
 	if (md) {
+		mmc_get_card(card);
 		ret = mmc_blk_part_switch(card, md->part_type);
 		if (ret)
 			pr_info("%s: error %d during suspend\n",
 				md->disk->disk_name, ret);
+		mmc_put_card(card);
 	}
 out:
 		return ret;

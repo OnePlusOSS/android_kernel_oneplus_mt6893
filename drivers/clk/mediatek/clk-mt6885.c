@@ -349,127 +349,132 @@ void mtk_ccf_cam_debug(const char *str1, const char *str2,
 #define MDP_CG1		0x13FF
 #define MDP_CG2		0x303
 
-#define INFRA_CG0	0x032F8000	/* pwm: 21~15, uart:24,25 */
+#ifdef OPLUS_FEATURE_CHG_BASIC
+#define INFRA_CG0	0x03AF8000	/* pwm: 21~15, uart:24,25 */
+#else
+#define INFRA_CG0	0x032F8000
+#endif
+
 #define INFRA_CG1	0x00000800	/* cpum: 11 */
 #define INFRA_CG2	0x0
 #define INFRA_CG3	0x0
 
 static const struct mtk_fixed_clk fixed_clks[] __initconst = {
-	FIXED_CLK(TOP_CLK26M, "f26m_sel", "clk26m", 26000000),
+	FIXED_CLK_IGN(TOP_CLK26M, "f26m_sel", "clk26m", 26000000),
 };
 
 static const struct mtk_fixed_factor top_divs[] __initconst = {
-	FACTOR(TOP_CLK13M, "clk13m", "clk26m", 1, 2),
-	FACTOR(TOP_F26M_CK_D2, "csw_f26m_ck_d2", "clk26m", 1, 2),
+	FACTOR_IGN(TOP_CLK13M, "clk13m", "clk26m", 1, 2),
+	FACTOR_IGN(TOP_F26M_CK_D2, "csw_f26m_ck_d2", "clk26m", 1, 2),
 
-	FACTOR(TOP_MAINPLL_CK, "mainpll_ck", "mainpll", 1, 1),
-	FACTOR(TOP_MAINPLL_D2, "mainpll_d2", "mainpll", 1, 2),
-	FACTOR(TOP_MAINPLL_D3, "mainpll_d3", "mainpll", 1, 3),
-	FACTOR(TOP_MAINPLL_D4, "mainpll_d4", "mainpll", 1, 4),
-	FACTOR(TOP_MAINPLL_D4_D2, "mainpll_d4_d2", "mainpll", 1, 8),
-	FACTOR(TOP_MAINPLL_D4_D4, "mainpll_d4_d4", "mainpll", 1, 16),
-	FACTOR(TOP_MAINPLL_D4_D8, "mainpll_d4_d8", "mainpll", 1, 32),
-	FACTOR(TOP_MAINPLL_D4_D16, "mainpll_d4_d16", "mainpll", 1, 64),
-	FACTOR(TOP_MAINPLL_D5, "mainpll_d5", "mainpll", 1, 5),
-	FACTOR(TOP_MAINPLL_D5_D2, "mainpll_d5_d2", "mainpll", 1, 10),
-	FACTOR(TOP_MAINPLL_D5_D4, "mainpll_d5_d4", "mainpll", 1, 20),
-	FACTOR(TOP_MAINPLL_D5_D8, "mainpll_d5_d8", "mainpll", 1, 40),
-	FACTOR(TOP_MAINPLL_D6, "mainpll_d6", "mainpll", 1, 6),
-	FACTOR(TOP_MAINPLL_D6_D2, "mainpll_d6_d2", "mainpll", 1, 12),
-	FACTOR(TOP_MAINPLL_D6_D4, "mainpll_d6_d4", "mainpll", 1, 24),
-	FACTOR(TOP_MAINPLL_D6_D8, "mainpll_d6_d8", "mainpll", 1, 48),
-	FACTOR(TOP_MAINPLL_D7, "mainpll_d7", "mainpll", 1, 7),
-	FACTOR(TOP_MAINPLL_D7_D2, "mainpll_d7_d2", "mainpll", 1, 14),
-	FACTOR(TOP_MAINPLL_D7_D4, "mainpll_d7_d4", "mainpll", 1, 28),
-	FACTOR(TOP_MAINPLL_D7_D8, "mainpll_d7_d8", "mainpll", 1, 56),
-	FACTOR(TOP_MAINPLL_D9, "mainpll_d9", "mainpll", 1, 9),
+	FACTOR_IGN(TOP_MAINPLL_CK, "mainpll_ck", "mainpll", 1, 1),
+	FACTOR_IGN(TOP_MAINPLL_D2, "mainpll_d2", "mainpll", 1, 2),
+	FACTOR_IGN(TOP_MAINPLL_D3, "mainpll_d3", "mainpll", 1, 3),
+	FACTOR_IGN(TOP_MAINPLL_D4, "mainpll_d4", "mainpll", 1, 4),
+	FACTOR_IGN(TOP_MAINPLL_D4_D2, "mainpll_d4_d2", "mainpll", 1, 8),
+	FACTOR_IGN(TOP_MAINPLL_D4_D4, "mainpll_d4_d4", "mainpll", 1, 16),
+	FACTOR_IGN(TOP_MAINPLL_D4_D8, "mainpll_d4_d8", "mainpll", 1, 32),
+	FACTOR_IGN(TOP_MAINPLL_D4_D16, "mainpll_d4_d16", "mainpll", 1, 64),
+	FACTOR_IGN(TOP_MAINPLL_D5, "mainpll_d5", "mainpll", 1, 5),
+	FACTOR_IGN(TOP_MAINPLL_D5_D2, "mainpll_d5_d2", "mainpll", 1, 10),
+	FACTOR_IGN(TOP_MAINPLL_D5_D4, "mainpll_d5_d4", "mainpll", 1, 20),
+	FACTOR_IGN(TOP_MAINPLL_D5_D8, "mainpll_d5_d8", "mainpll", 1, 40),
+	FACTOR_IGN(TOP_MAINPLL_D6, "mainpll_d6", "mainpll", 1, 6),
+	FACTOR_IGN(TOP_MAINPLL_D6_D2, "mainpll_d6_d2", "mainpll", 1, 12),
+	FACTOR_IGN(TOP_MAINPLL_D6_D4, "mainpll_d6_d4", "mainpll", 1, 24),
+	FACTOR_IGN(TOP_MAINPLL_D6_D8, "mainpll_d6_d8", "mainpll", 1, 48),
+	FACTOR_IGN(TOP_MAINPLL_D7, "mainpll_d7", "mainpll", 1, 7),
+	FACTOR_IGN(TOP_MAINPLL_D7_D2, "mainpll_d7_d2", "mainpll", 1, 14),
+	FACTOR_IGN(TOP_MAINPLL_D7_D4, "mainpll_d7_d4", "mainpll", 1, 28),
+	FACTOR_IGN(TOP_MAINPLL_D7_D8, "mainpll_d7_d8", "mainpll", 1, 56),
+	FACTOR_IGN(TOP_MAINPLL_D9, "mainpll_d9", "mainpll", 1, 9),
 
-	FACTOR(TOP_UNIVPLL_CK, "univpll_ck", "univpll", 1, 1),
-	FACTOR(TOP_UNIVPLL_D2, "univpll_d2", "univpll", 1, 2),
-	FACTOR(TOP_UNIVPLL_D3, "univpll_d3", "univpll", 1, 3),
-	FACTOR(TOP_UNIVPLL_D4, "univpll_d4", "univpll", 1, 4),
-	FACTOR(TOP_UNIVPLL_D4_D2, "univpll_d4_d2", "univpll", 1, 8),
-	FACTOR(TOP_UNIVPLL_D4_D4, "univpll_d4_d4", "univpll", 1, 16),
-	FACTOR(TOP_UNIVPLL_D4_D8, "univpll_d4_d8", "univpll", 1, 32),
-	FACTOR(TOP_UNIVPLL_D5, "univpll_d5", "univpll", 1, 5),
-	FACTOR(TOP_UNIVPLL_D5_D2, "univpll_d5_d2", "univpll", 1, 10),
-	FACTOR(TOP_UNIVPLL_D5_D4, "univpll_d5_d4", "univpll", 1, 20),
-	FACTOR(TOP_UNIVPLL_D5_D8, "univpll_d5_d8", "univpll", 1, 40),
-	FACTOR(TOP_UNIVPLL_D5_D16, "univpll_d5_d16", "univpll", 1, 80),
-	FACTOR(TOP_UNIVPLL_D6, "univpll_d6", "univpll", 1, 6),
-	FACTOR(TOP_UNIVPLL_D6_D2, "univpll_d6_d2", "univpll", 1, 12),
-	FACTOR(TOP_UNIVPLL_D6_D4, "univpll_d6_d4", "univpll", 1, 24),
-	FACTOR(TOP_UNIVPLL_D6_D8, "univpll_d6_d8", "univpll", 1, 48),
-	FACTOR(TOP_UNIVPLL_D6_D16, "univpll_d6_d16", "univpll", 1, 96),
-	FACTOR(TOP_UNIVPLL_D7, "univpll_d7", "univpll", 1, 7),
-	FACTOR(TOP_UNIVPLL_D7_D2, "univpll_d7_d2", "univpll", 1, 14),
+	FACTOR_IGN(TOP_UNIVPLL_CK, "univpll_ck", "univpll", 1, 1),
+	FACTOR_IGN(TOP_UNIVPLL_D2, "univpll_d2", "univpll", 1, 2),
+	FACTOR_IGN(TOP_UNIVPLL_D3, "univpll_d3", "univpll", 1, 3),
+	FACTOR_IGN(TOP_UNIVPLL_D4, "univpll_d4", "univpll", 1, 4),
+	FACTOR_IGN(TOP_UNIVPLL_D4_D2, "univpll_d4_d2", "univpll", 1, 8),
+	FACTOR_IGN(TOP_UNIVPLL_D4_D4, "univpll_d4_d4", "univpll", 1, 16),
+	FACTOR_IGN(TOP_UNIVPLL_D4_D8, "univpll_d4_d8", "univpll", 1, 32),
+	FACTOR_IGN(TOP_UNIVPLL_D5, "univpll_d5", "univpll", 1, 5),
+	FACTOR_IGN(TOP_UNIVPLL_D5_D2, "univpll_d5_d2", "univpll", 1, 10),
+	FACTOR_IGN(TOP_UNIVPLL_D5_D4, "univpll_d5_d4", "univpll", 1, 20),
+	FACTOR_IGN(TOP_UNIVPLL_D5_D8, "univpll_d5_d8", "univpll", 1, 40),
+	FACTOR_IGN(TOP_UNIVPLL_D5_D16, "univpll_d5_d16", "univpll", 1, 80),
+	FACTOR_IGN(TOP_UNIVPLL_D6, "univpll_d6", "univpll", 1, 6),
+	FACTOR_IGN(TOP_UNIVPLL_D6_D2, "univpll_d6_d2", "univpll", 1, 12),
+	FACTOR_IGN(TOP_UNIVPLL_D6_D4, "univpll_d6_d4", "univpll", 1, 24),
+	FACTOR_IGN(TOP_UNIVPLL_D6_D8, "univpll_d6_d8", "univpll", 1, 48),
+	FACTOR_IGN(TOP_UNIVPLL_D6_D16, "univpll_d6_d16", "univpll", 1, 96),
+	FACTOR_IGN(TOP_UNIVPLL_D7, "univpll_d7", "univpll", 1, 7),
+	FACTOR_IGN(TOP_UNIVPLL_D7_D2, "univpll_d7_d2", "univpll", 1, 14),
 
-	FACTOR(TOP_UNIVP_192M_CK, "univpll_192m_ck", "univpll", 1,
+	FACTOR_IGN(TOP_UNIVP_192M_CK, "univpll_192m_ck", "univpll", 1,
 		13),
-	FACTOR(TOP_UNIVP_192M_D2, "univpll_192m_d2", "univpll_192m_ck", 1,
+	FACTOR_IGN(TOP_UNIVP_192M_D2, "univpll_192m_d2", "univpll_192m_ck", 1,
 		2),
-	FACTOR(TOP_UNIVP_192M_D4, "univpll_192m_d4", "univpll_192m_ck", 1,
+	FACTOR_IGN(TOP_UNIVP_192M_D4, "univpll_192m_d4", "univpll_192m_ck", 1,
 		4),
-	FACTOR(TOP_UNIVP_192M_D8, "univpll_192m_d8", "univpll_192m_ck", 1,
+	FACTOR_IGN(TOP_UNIVP_192M_D8, "univpll_192m_d8", "univpll_192m_ck", 1,
 		8),
-	FACTOR(TOP_UNIVP_192M_D16, "univpll_192m_d16", "univpll_192m_ck", 1,
+	FACTOR_IGN(TOP_UNIVP_192M_D16, "univpll_192m_d16", "univpll_192m_ck", 1,
 		16),
-	FACTOR(TOP_UNIVP_192M_D32, "univpll_192m_d32", "univpll_192m_ck", 1,
+	FACTOR_IGN(TOP_UNIVP_192M_D32, "univpll_192m_d32", "univpll_192m_ck", 1,
 		32),
 
-	FACTOR(TOP_APLL1_CK, "apll1_ck", "apll1", 1, 1),
-	FACTOR(TOP_APLL1_D2, "apll1_d2", "apll1", 1, 2),
-	FACTOR(TOP_APLL1_D4, "apll1_d4", "apll1", 1, 4),
-	FACTOR(TOP_APLL1_D8, "apll1_d8", "apll1", 1, 8),
+	FACTOR_IGN(TOP_APLL1_CK, "apll1_ck", "apll1", 1, 1),
+	FACTOR_IGN(TOP_APLL1_D2, "apll1_d2", "apll1", 1, 2),
+	FACTOR_IGN(TOP_APLL1_D4, "apll1_d4", "apll1", 1, 4),
+	FACTOR_IGN(TOP_APLL1_D8, "apll1_d8", "apll1", 1, 8),
 
-	FACTOR(TOP_APLL2_CK, "apll2_ck", "apll2", 1, 1),
-	FACTOR(TOP_APLL2_D2, "apll2_d2", "apll2", 1, 2),
-	FACTOR(TOP_APLL2_D4, "apll2_d4", "apll2", 1, 4),
-	FACTOR(TOP_APLL2_D8, "apll2_d8", "apll2", 1, 8),
+	FACTOR_IGN(TOP_APLL2_CK, "apll2_ck", "apll2", 1, 1),
+	FACTOR_IGN(TOP_APLL2_D2, "apll2_d2", "apll2", 1, 2),
+	FACTOR_IGN(TOP_APLL2_D4, "apll2_d4", "apll2", 1, 4),
+	FACTOR_IGN(TOP_APLL2_D8, "apll2_d8", "apll2", 1, 8),
 
-	FACTOR(TOP_MMPLL_D3, "mmpll_d3", "mmpll", 1, 3),
-	FACTOR(TOP_MMPLL_D4, "mmpll_d4", "mmpll", 1, 4),
-	FACTOR(TOP_MMPLL_D4_D2, "mmpll_d4_d2", "mmpll", 1, 8),
-	FACTOR(TOP_MMPLL_D4_D4, "mmpll_d4_d4", "mmpll", 1, 16),
-	FACTOR(TOP_MMPLL_D5, "mmpll_d5", "mmpll", 1, 5),
-	FACTOR(TOP_MMPLL_D5_D2, "mmpll_d5_d2", "mmpll", 1, 10),
-	FACTOR(TOP_MMPLL_D5_D4, "mmpll_d5_d4", "mmpll", 1, 20),
-	FACTOR(TOP_MMPLL_D6, "mmpll_d6", "mmpll", 1, 6),
-	FACTOR(TOP_MMPLL_D6_D2, "mmpll_d6_d2", "mmpll", 1, 12),
-	FACTOR(TOP_MMPLL_D7, "mmpll_d7", "mmpll", 1, 7),
-	FACTOR(TOP_MMPLL_D9, "mmpll_d9", "mmpll", 1, 9),
-	FACTOR(TOP_APUPLL_CK, "apupll_ck", "apupll", 1, 2),
-	FACTOR(TOP_TVDPLL_CK, "tvdpll_ck", "tvdpll", 1, 1),
-	FACTOR(TOP_TVDPLL_D2, "tvdpll_d2", "tvdpll", 1, 2),
-	FACTOR(TOP_TVDPLL_D4, "tvdpll_d4", "tvdpll", 1, 4),
-	FACTOR(TOP_TVDPLL_D8, "tvdpll_d8", "tvdpll", 1, 8),
-	FACTOR(TOP_TVDPLL_D16, "tvdpll_d16", "tvdpll", 1, 16),
-
-	/* missing in clk table*/
-	FACTOR(TOP_MFGPLL_CK, "mfgpll_ck", "mfgpll", 1,	1),
+	FACTOR_IGN(TOP_MMPLL_D3, "mmpll_d3", "mmpll", 1, 3),
+	FACTOR_IGN(TOP_MMPLL_D4, "mmpll_d4", "mmpll", 1, 4),
+	FACTOR_IGN(TOP_MMPLL_D4_D2, "mmpll_d4_d2", "mmpll", 1, 8),
+	FACTOR_IGN(TOP_MMPLL_D4_D4, "mmpll_d4_d4", "mmpll", 1, 16),
+	FACTOR_IGN(TOP_MMPLL_D5, "mmpll_d5", "mmpll", 1, 5),
+	FACTOR_IGN(TOP_MMPLL_D5_D2, "mmpll_d5_d2", "mmpll", 1, 10),
+	FACTOR_IGN(TOP_MMPLL_D5_D4, "mmpll_d5_d4", "mmpll", 1, 20),
+	FACTOR_IGN(TOP_MMPLL_D6, "mmpll_d6", "mmpll", 1, 6),
+	FACTOR_IGN(TOP_MMPLL_D6_D2, "mmpll_d6_d2", "mmpll", 1, 12),
+	FACTOR_IGN(TOP_MMPLL_D7, "mmpll_d7", "mmpll", 1, 7),
+	FACTOR_IGN(TOP_MMPLL_D9, "mmpll_d9", "mmpll", 1, 9),
+	FACTOR_IGN(TOP_APUPLL_CK, "apupll_ck", "apupll", 1, 2),
+	FACTOR_IGN(TOP_TVDPLL_CK, "tvdpll_ck", "tvdpll", 1, 1),
+	FACTOR_IGN(TOP_TVDPLL_D2, "tvdpll_d2", "tvdpll", 1, 2),
+	FACTOR_IGN(TOP_TVDPLL_D4, "tvdpll_d4", "tvdpll", 1, 4),
+	FACTOR_IGN(TOP_TVDPLL_D8, "tvdpll_d8", "tvdpll", 1, 8),
+	FACTOR_IGN(TOP_TVDPLL_D16, "tvdpll_d16", "tvdpll", 1, 16),
 
 	/* missing in clk table*/
-	FACTOR(TOP_ADSPPLL_CK, "adsppll_ck", "adsppll", 1, 1),
+	FACTOR_IGN(TOP_MFGPLL_CK, "mfgpll_ck", "mfgpll", 1,	1),
 
-	FACTOR(TOP_MSDCPLL_CK, "msdcpll_ck", "msdcpll", 1, 1),
-	FACTOR(TOP_MSDCPLL_D2, "msdcpll_d2", "msdcpll", 1, 2),
-	FACTOR(TOP_MSDCPLL_D4, "msdcpll_d4", "msdcpll", 1, 4),
-	FACTOR(TOP_MSDCPLL_D8, "msdcpll_d8", "msdcpll", 1, 8),
-	FACTOR(TOP_MSDCPLL_D16, "msdcpll_d16", "msdcpll", 1, 16),
+	/* missing in clk table*/
+	FACTOR_IGN(TOP_ADSPPLL_CK, "adsppll_ck", "adsppll", 1, 1),
+
+	FACTOR_IGN(TOP_MSDCPLL_CK, "msdcpll_ck", "msdcpll", 1, 1),
+	FACTOR_IGN(TOP_MSDCPLL_D2, "msdcpll_d2", "msdcpll", 1, 2),
+	FACTOR_IGN(TOP_MSDCPLL_D4, "msdcpll_d4", "msdcpll", 1, 4),
+	FACTOR_IGN(TOP_MSDCPLL_D8, "msdcpll_d8", "msdcpll", 1, 8),
+	FACTOR_IGN(TOP_MSDCPLL_D16, "msdcpll_d16", "msdcpll", 1, 16),
 
 	/* MT6885: "ulposc" not found in clktable*/
-	FACTOR(TOP_AD_OSC_CK, "ad_osc_ck", "ulposc", 1, 1),
-	FACTOR(TOP_OSC_D2, "osc_d2", "ulposc", 1, 2),
-	FACTOR(TOP_OSC_D4, "osc_d4", "ulposc", 1, 4),
-	FACTOR(TOP_OSC_D8, "osc_d8", "ulposc", 1, 8),
-	FACTOR(TOP_OSC_D16, "osc_d16", "ulposc", 1, 16),
-	FACTOR(TOP_OSC_D10, "osc_d10", "ulposc", 1, 10),
-	FACTOR(TOP_OSC_D20, "osc_d20", "ulposc", 1, 20),
-	FACTOR(TOP_AD_OSC_CK_2, "ad_osc_ck_2", "ulposc", 1, 1),
-	FACTOR(TOP_OSC2_D2, "osc2_d2", "ulposc", 1, 2),
-	FACTOR(TOP_OSC2_D3, "osc2_d3", "ulposc", 1, 3),
+	FACTOR_IGN(TOP_AD_OSC_CK, "ad_osc_ck", "ulposc", 1, 1),
+	FACTOR_IGN(TOP_OSC_D2, "osc_d2", "ulposc", 1, 2),
+	FACTOR_IGN(TOP_OSC_D4, "osc_d4", "ulposc", 1, 4),
+	FACTOR_IGN(TOP_OSC_D8, "osc_d8", "ulposc", 1, 8),
+	FACTOR_IGN(TOP_OSC_D16, "osc_d16", "ulposc", 1, 16),
+	FACTOR_IGN(TOP_OSC_D10, "osc_d10", "ulposc", 1, 10),
+	FACTOR_IGN(TOP_OSC_D20, "osc_d20", "ulposc", 1, 20),
+	FACTOR_IGN(TOP_AD_OSC_CK_2, "ad_osc_ck_2", "ulposc", 1, 1),
+	FACTOR_IGN(TOP_OSC2_D2, "osc2_d2", "ulposc", 1, 2),
+	FACTOR_IGN(TOP_OSC2_D3, "osc2_d3", "ulposc", 1, 3),
 
-	FACTOR(TOP_TVDPLL_MAINPLL_D2_CK, "tvdpll_mainpll_d2_ck",
+	FACTOR_IGN(TOP_TVDPLL_MAINPLL_D2_CK, "tvdpll_mainpll_d2_ck",
 		"tvdpll", 1, 2),
 };
 
@@ -1535,228 +1540,228 @@ static const struct mtk_mux top_muxes[] __initconst = {
 		8, 1, INV_MUX_GATE, INV_UPD_REG, INV_UPD_SHF),
 #else
 	/* CLK_CFG_0 */
-	MUX_CLR_SET_UPD(TOP_MUX_AXI, "axi_sel", axi_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_AXI, "axi_sel", axi_parents,
 		CLK_CFG_0, CLK_CFG_0_SET, CLK_CFG_0_CLR,
 		0, 3, INV_MUX_GATE, INV_UPD_REG, INV_UPD_SHF),
-	MUX_CLR_SET_UPD(TOP_MUX_SPM, "spm_sel", spm_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_SPM, "spm_sel", spm_parents,
 		CLK_CFG_0, CLK_CFG_0_SET, CLK_CFG_0_CLR,
 		8, 2, 15, CLK_CFG_UPDATE, TOP_MUX_SPM_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_SCP, "scp_sel", scp_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_SCP, "scp_sel", scp_parents,
 		CLK_CFG_0, CLK_CFG_0_SET, CLK_CFG_0_CLR,
 		16, 3, 23 /* INV_MUX_GATE */, CLK_CFG_UPDATE,
 		TOP_MUX_SCP_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_BUS_AXIMEM, "bus_aximem_sel",
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_BUS_AXIMEM, "bus_aximem_sel",
 		bus_aximem_parents,
 		CLK_CFG_0, CLK_CFG_0_SET, CLK_CFG_0_CLR,
 		24, 3, 31, CLK_CFG_UPDATE, TOP_MUX_BUS_AXIMEM_UPD_SHIFT),
 	/* CLK_CFG_1 */
-	MUX_CLR_SET_UPD(TOP_MUX_DISP, "disp_sel", disp_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_DISP, "disp_sel", disp_parents,
 		CLK_CFG_1, CLK_CFG_1_SET, CLK_CFG_1_CLR,
 		0, 4, 7, CLK_CFG_UPDATE, TOP_MUX_DISP_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_MDP, "mdp_sel", mdp_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_MDP, "mdp_sel", mdp_parents,
 		CLK_CFG_1, CLK_CFG_1_SET, CLK_CFG_1_CLR,
 		8, 4, 15, CLK_CFG_UPDATE, TOP_MUX_MDP_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_IMG1, "img1_sel", img1_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_IMG1, "img1_sel", img1_parents,
 		CLK_CFG_1, CLK_CFG_1_SET, CLK_CFG_1_CLR,
 		16, 4, 23, CLK_CFG_UPDATE, TOP_MUX_IMG1_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_IMG2, "img2_sel", img2_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_IMG2, "img2_sel", img2_parents,
 		CLK_CFG_1, CLK_CFG_1_SET, CLK_CFG_1_CLR,
 		24, 4, 31, CLK_CFG_UPDATE, TOP_MUX_IMG2_UPD_SHIFT),
 	/* CLK_CFG_2 */
-	MUX_CLR_SET_UPD(TOP_MUX_IPE, "ipe_sel", ipe_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_IPE, "ipe_sel", ipe_parents,
 		CLK_CFG_2, CLK_CFG_2_SET, CLK_CFG_2_CLR,
 		0, 4, 7, CLK_CFG_UPDATE, TOP_MUX_IPE_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_DPE, "dpe_sel", dpe_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_DPE, "dpe_sel", dpe_parents,
 		CLK_CFG_2, CLK_CFG_2_SET, CLK_CFG_2_CLR,
 		8, 3, 15, CLK_CFG_UPDATE, TOP_MUX_DPE_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_CAM, "cam_sel", cam_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_CAM, "cam_sel", cam_parents,
 		CLK_CFG_2, CLK_CFG_2_SET, CLK_CFG_2_CLR,
 		16, 4, 23, CLK_CFG_UPDATE, TOP_MUX_CAM_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_CCU, "ccu_sel", ccu_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_CCU, "ccu_sel", ccu_parents,
 		CLK_CFG_2, CLK_CFG_2_SET, CLK_CFG_2_CLR,
 		24, 4, 31, CLK_CFG_UPDATE, TOP_MUX_CCU_UPD_SHIFT),
 	/* CLK_CFG_3 */
-	MUX_CLR_SET_UPD(TOP_MUX_DSP, "dsp_sel", dsp_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_DSP, "dsp_sel", dsp_parents,
 		CLK_CFG_3, CLK_CFG_3_SET, CLK_CFG_3_CLR,
 		0, 4, 7, CLK_CFG_UPDATE, TOP_MUX_DSP_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_DSP1, "dsp1_sel", dsp1_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_DSP1, "dsp1_sel", dsp1_parents,
 		CLK_CFG_3, CLK_CFG_3_SET, CLK_CFG_3_CLR,
 		8, 4, 15, CLK_CFG_UPDATE, TOP_MUX_DSP1_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_DSP2, "dsp2_sel", dsp2_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_DSP2, "dsp2_sel", dsp2_parents,
 		CLK_CFG_3, CLK_CFG_3_SET, CLK_CFG_3_CLR,
 		16, 4, 23, CLK_CFG_UPDATE, TOP_MUX_DSP2_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_DSP3, "dsp3_sel", dsp3_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_DSP3, "dsp3_sel", dsp3_parents,
 		CLK_CFG_3, CLK_CFG_3_SET, CLK_CFG_3_CLR,
 		24, 4, 31, CLK_CFG_UPDATE, TOP_MUX_DSP3_UPD_SHIFT),
 	/* CLK_CFG_4 */
-	MUX_CLR_SET_UPD(TOP_MUX_DSP4, "dsp4_sel", dsp4_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_DSP4, "dsp4_sel", dsp4_parents,
 		CLK_CFG_4, CLK_CFG_4_SET, CLK_CFG_4_CLR,
 		0, 4, 7, CLK_CFG_UPDATE, TOP_MUX_DSP4_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_DSP5, "dsp5_sel", dsp5_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_DSP5, "dsp5_sel", dsp5_parents,
 		CLK_CFG_4, CLK_CFG_4_SET, CLK_CFG_4_CLR,
 		8, 4, 15, CLK_CFG_UPDATE, TOP_MUX_DSP5_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_DSP6, "dsp6_sel", dsp6_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_DSP6, "dsp6_sel", dsp6_parents,
 		CLK_CFG_4, CLK_CFG_4_SET, CLK_CFG_4_CLR,
 		16, 4, 23, CLK_CFG_UPDATE, TOP_MUX_DSP6_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_DSP7, "dsp7_sel", dsp7_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_DSP7, "dsp7_sel", dsp7_parents,
 		CLK_CFG_4, CLK_CFG_4_SET, CLK_CFG_4_CLR,
 		24, 4, 31, CLK_CFG_UPDATE, TOP_MUX_DSP7_UPD_SHIFT),
 	/* CLK_CFG_5 */
-	MUX_CLR_SET_UPD(TOP_MUX_IPU_IF, "ipu_if_sel", ipu_if_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_IPU_IF, "ipu_if_sel", ipu_if_parents,
 		CLK_CFG_5, CLK_CFG_5_SET, CLK_CFG_5_CLR,
 		0, 4, 7, CLK_CFG_UPDATE, TOP_MUX_IPU_IF_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_MFG, "mfg_sel", mfg_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_MFG, "mfg_sel", mfg_parents,
 		CLK_CFG_5, CLK_CFG_5_SET, CLK_CFG_5_CLR,
 		8, 2, 15, CLK_CFG_UPDATE, TOP_MUX_MFG_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_CAMTG, "camtg_sel", camtg_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_CAMTG, "camtg_sel", camtg_parents,
 		CLK_CFG_5, CLK_CFG_5_SET, CLK_CFG_5_CLR,
 		16, 3, 23, CLK_CFG_UPDATE, TOP_MUX_CAMTG_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_CAMTG2, "camtg2_sel", camtg2_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_CAMTG2, "camtg2_sel", camtg2_parents,
 		CLK_CFG_5, CLK_CFG_5_SET, CLK_CFG_5_CLR,
 		24, 3, 31, CLK_CFG_UPDATE, TOP_MUX_CAMTG2_UPD_SHIFT),
 	/* CLK_CFG_6 */
-	MUX_CLR_SET_UPD(TOP_MUX_CAMTG3, "camtg3_sel", camtg3_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_CAMTG3, "camtg3_sel", camtg3_parents,
 		CLK_CFG_6, CLK_CFG_6_SET, CLK_CFG_6_CLR,
 		0, 3, 7, CLK_CFG_UPDATE, TOP_MUX_CAMTG3_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_CAMTG4, "camtg4_sel", camtg4_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_CAMTG4, "camtg4_sel", camtg4_parents,
 		CLK_CFG_6, CLK_CFG_6_SET, CLK_CFG_6_CLR,
 		8, 3, 15, CLK_CFG_UPDATE, TOP_MUX_CAMTG4_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_UART, "uart_sel", uart_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_UART, "uart_sel", uart_parents,
 		CLK_CFG_6, CLK_CFG_6_SET, CLK_CFG_6_CLR,
 		16, 1, 23, CLK_CFG_UPDATE, TOP_MUX_UART_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_SPI, "spi_sel", spi_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_SPI, "spi_sel", spi_parents,
 		CLK_CFG_6, CLK_CFG_6_SET, CLK_CFG_6_CLR,
 		24, 2, 31, CLK_CFG_UPDATE, TOP_MUX_SPI_UPD_SHIFT),
 	/* CLK_CFG_7 */
-	MUX_CLR_SET_UPD(TOP_MUX_MSDC50_0_HCLK, "msdc50_0_hclk_sel",
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_MSDC50_0_HCLK, "msdc50_0_hclk_sel",
 		msdc50_0_hclk_parents,
 		CLK_CFG_7, CLK_CFG_7_SET, CLK_CFG_7_CLR,
 		0, 2, 7, CLK_CFG_UPDATE, TOP_MUX_MSDC50_0_HCLK_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_MSDC50_0, "msdc50_0_sel", msdc50_0_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_MSDC50_0, "msdc50_0_sel", msdc50_0_parents,
 		CLK_CFG_7, CLK_CFG_7_SET, CLK_CFG_7_CLR,
 		8, 3, 15, CLK_CFG_UPDATE, TOP_MUX_MSDC50_0_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_MSDC30_1, "msdc30_1_sel", msdc30_1_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_MSDC30_1, "msdc30_1_sel", msdc30_1_parents,
 		CLK_CFG_7, CLK_CFG_7_SET, CLK_CFG_7_CLR,
 		16, 3, 23, CLK_CFG_UPDATE, TOP_MUX_MSDC30_1_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_AUDIO, "audio_sel", audio_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_AUDIO, "audio_sel", audio_parents,
 		CLK_CFG_7, CLK_CFG_7_SET, CLK_CFG_7_CLR,
 		24, 2, 31, CLK_CFG_UPDATE1, TOP_MUX_AUDIO_UPD_SHIFT),
 	/* CLK_CFG_8 */
-	MUX_CLR_SET_UPD(TOP_MUX_AUD_INTBUS, "aud_intbus_sel",
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_AUD_INTBUS, "aud_intbus_sel",
 		aud_intbus_parents,
 		CLK_CFG_8, CLK_CFG_8_SET, CLK_CFG_8_CLR,
 		0, 2, 7, CLK_CFG_UPDATE1, TOP_MUX_AUD_INTBUS_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_PWRAP_ULPOSC, "pwrap_ulposc_sel",
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_PWRAP_ULPOSC, "pwrap_ulposc_sel",
 		pwrap_ulposc_parents,
 		CLK_CFG_8, CLK_CFG_8_SET, CLK_CFG_8_CLR,
 		8, 3, 15, CLK_CFG_UPDATE1, TOP_MUX_PWRAP_ULPOSC_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_ATB, "atb_sel", atb_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_ATB, "atb_sel", atb_parents,
 		CLK_CFG_8, CLK_CFG_8_SET, CLK_CFG_8_CLR,
 		16, 2, 23, CLK_CFG_UPDATE1, TOP_MUX_ATB_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_SSPM, "sspm_sel", sspm_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_SSPM, "sspm_sel", sspm_parents,
 		CLK_CFG_8, CLK_CFG_8_SET, CLK_CFG_8_CLR,
 		24, 3, 31, CLK_CFG_UPDATE1, TOP_MUX_SSPM_UPD_SHIFT),
 	/* CLK_CFG_9 */
-	MUX_CLR_SET_UPD(TOP_MUX_DP, "dp_sel", dp_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_DP, "dp_sel", dp_parents,
 		CLK_CFG_9, CLK_CFG_9_SET, CLK_CFG_9_CLR,
 		0, 3, 7, CLK_CFG_UPDATE1, TOP_MUX_DP_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_SCAM, "scam_sel", scam_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_SCAM, "scam_sel", scam_parents,
 		CLK_CFG_9, CLK_CFG_9_SET, CLK_CFG_9_CLR,
 		8, 1, 15, CLK_CFG_UPDATE1, TOP_MUX_SCAM_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_DISP_PWM, "disp_pwm_sel", disp_pwm_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_DISP_PWM, "disp_pwm_sel", disp_pwm_parents,
 		CLK_CFG_9, CLK_CFG_9_SET, CLK_CFG_9_CLR,
 		16, 3, 23, CLK_CFG_UPDATE1, TOP_MUX_DISP_PWM_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_USB_TOP, "usb_top_sel", usb_top_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_USB_TOP, "usb_top_sel", usb_top_parents,
 		CLK_CFG_9, CLK_CFG_9_SET, CLK_CFG_9_CLR,
 		24, 2, 31, CLK_CFG_UPDATE1, TOP_MUX_USB_TOP_UPD_SHIFT),
 	/* CLK_CFG_10 */
-	MUX_CLR_SET_UPD(TOP_MUX_SSUSB_XHCI, "ssusb_xhci_sel",
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_SSUSB_XHCI, "ssusb_xhci_sel",
 		ssusb_xhci_parents,
 		CLK_CFG_10, CLK_CFG_10_SET, CLK_CFG_10_CLR,
 		0, 2, 7, CLK_CFG_UPDATE1, TOP_MUX_SSUSB_XHCI_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_I2C, "i2c_sel", i2c_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_I2C, "i2c_sel", i2c_parents,
 		CLK_CFG_10, CLK_CFG_10_SET, CLK_CFG_10_CLR,
 		8, 2, 15, CLK_CFG_UPDATE1, TOP_MUX_I2C_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_SENINF, "seninf_sel", seninf_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_SENINF, "seninf_sel", seninf_parents,
 		CLK_CFG_10, CLK_CFG_10_SET, CLK_CFG_10_CLR,
 		16, 3, 23, CLK_CFG_UPDATE1, TOP_MUX_SENINF_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_SENINF1, "seninf1_sel", seninf1_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_SENINF1, "seninf1_sel", seninf1_parents,
 		CLK_CFG_10, CLK_CFG_10_SET, CLK_CFG_10_CLR,
 		24, 3, 31, CLK_CFG_UPDATE1, TOP_MUX_SENINF1_UPD_SHIFT),
 	/* CLK_CFG_11 */
-	MUX_CLR_SET_UPD(TOP_MUX_SENINF2, "seninf2_sel", seninf2_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_SENINF2, "seninf2_sel", seninf2_parents,
 		CLK_CFG_11, CLK_CFG_11_SET, CLK_CFG_11_CLR,
 		0, 3, 7, CLK_CFG_UPDATE1, TOP_MUX_SENINF2_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_SENINF3, "seninf3_sel", seninf3_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_SENINF3, "seninf3_sel", seninf3_parents,
 		CLK_CFG_11, CLK_CFG_11_SET, CLK_CFG_11_CLR,
 		8, 3, 15, CLK_CFG_UPDATE1, TOP_MUX_SENINF3_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_DXCC, "dxcc_sel", dxcc_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_DXCC, "dxcc_sel", dxcc_parents,
 		CLK_CFG_11, CLK_CFG_11_SET, CLK_CFG_11_CLR,
 		16, 2, 23, CLK_CFG_UPDATE1, TOP_MUX_DXCC_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_AUD_ENGEN1, "aud_engen1_sel",
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_AUD_ENGEN1, "aud_engen1_sel",
 		aud_engen1_parents,
 		CLK_CFG_11, CLK_CFG_11_SET, CLK_CFG_11_CLR,
 		24, 2, 31, CLK_CFG_UPDATE1, TOP_MUX_AUD_ENGEN1_UPD_SHIFT),
 	/* CLK_CFG_12 */
-	MUX_CLR_SET_UPD(TOP_MUX_AUD_ENGEN2, "aud_engen2_sel",
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_AUD_ENGEN2, "aud_engen2_sel",
 		aud_engen2_parents,
 		CLK_CFG_12, CLK_CFG_12_SET, CLK_CFG_12_CLR,
 		0, 2, 7, CLK_CFG_UPDATE1, TOP_MUX_AUD_ENGEN2_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_AES_UFSFDE, "aes_ufsfde_sel",
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_AES_UFSFDE, "aes_ufsfde_sel",
 		aes_ufsfde_parents,
 		CLK_CFG_12, CLK_CFG_12_SET, CLK_CFG_12_CLR,
 		8, 3, 15, CLK_CFG_UPDATE1, TOP_MUX_AES_UFSFDE_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_UFS, "ufs_sel", ufs_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_UFS, "ufs_sel", ufs_parents,
 		CLK_CFG_12, CLK_CFG_12_SET, CLK_CFG_12_CLR,
 		16, 3, 23, CLK_CFG_UPDATE1, TOP_MUX_UFS_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_AUD_1, "aud_1_sel", aud_1_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_AUD_1, "aud_1_sel", aud_1_parents,
 		CLK_CFG_12, CLK_CFG_12_SET, CLK_CFG_12_CLR,
 		24, 1, 31, CLK_CFG_UPDATE1, TOP_MUX_AUD_1_UPD_SHIFT),
 	/* CLK_CFG_13 */
-	MUX_CLR_SET_UPD(TOP_MUX_AUD_2, "aud_2_sel", aud_2_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_AUD_2, "aud_2_sel", aud_2_parents,
 		CLK_CFG_13, CLK_CFG_13_SET, CLK_CFG_13_CLR,
 		0, 1, 7, CLK_CFG_UPDATE1, TOP_MUX_AUD_2_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_ADSP, "adsp_sel", adsp_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_ADSP, "adsp_sel", adsp_parents,
 		CLK_CFG_13, CLK_CFG_13_SET, CLK_CFG_13_CLR,
 		8, 3, 15, CLK_CFG_UPDATE1, TOP_MUX_ADSP_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_DPMAIF_MAIN, "dpmaif_main_sel",
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_DPMAIF_MAIN, "dpmaif_main_sel",
 		dpmaif_main_parents,
 		CLK_CFG_13, CLK_CFG_13_SET, CLK_CFG_13_CLR,
 		16, 3, 23, CLK_CFG_UPDATE1, TOP_MUX_DPMAIF_MAIN_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_VENC, "venc_sel", venc_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_VENC, "venc_sel", venc_parents,
 		CLK_CFG_13, CLK_CFG_13_SET, CLK_CFG_13_CLR,
 		24, 4, 31, CLK_CFG_UPDATE1, TOP_MUX_VENC_UPD_SHIFT),
 	/* CLK_CFG_14 */
-	MUX_CLR_SET_UPD(TOP_MUX_VDEC, "vdec_sel", vdec_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_VDEC, "vdec_sel", vdec_parents,
 		CLK_CFG_14, CLK_CFG_14_SET, CLK_CFG_14_CLR,
 		0, 4, 7, CLK_CFG_UPDATE1, TOP_MUX_VDEC_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_VDEC_LAT, "vdec_lat_sel", vdec_lat_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_VDEC_LAT, "vdec_lat_sel", vdec_lat_parents,
 		CLK_CFG_14, CLK_CFG_14_SET, CLK_CFG_14_CLR,
 		8, 4, 15, CLK_CFG_UPDATE1, TOP_MUX_VDEC_LAT_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_CAMTM, "camtm_sel", camtm_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_CAMTM, "camtm_sel", camtm_parents,
 		CLK_CFG_14, CLK_CFG_14_SET, CLK_CFG_14_CLR,
 		16, 2, 23, CLK_CFG_UPDATE1, TOP_MUX_CAMTM_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_PWM, "pwm_sel", pwm_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_PWM, "pwm_sel", pwm_parents,
 		CLK_CFG_14, CLK_CFG_14_SET, CLK_CFG_14_CLR,
 		24, 1, 31, CLK_CFG_UPDATE1, TOP_MUX_PWM_UPD_SHIFT),
 	/* CLK_CFG_15 */
-	MUX_CLR_SET_UPD(TOP_MUX_AUDIO_H, "audio_h_sel", audio_h_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_AUDIO_H, "audio_h_sel", audio_h_parents,
 		CLK_CFG_15, CLK_CFG_15_SET, CLK_CFG_15_CLR,
 		0, 2, 7, CLK_CFG_UPDATE1, TOP_MUX_AUDIO_H_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_CAMTG5, "camtg5_sel", camtg5_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_CAMTG5, "camtg5_sel", camtg5_parents,
 		CLK_CFG_15, CLK_CFG_15_SET, CLK_CFG_15_CLR,
 		8, 3, 15, CLK_CFG_UPDATE2, TOP_MUX_CAMTG5_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_CAMTG6, "camtg6_sel", camtg6_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_CAMTG6, "camtg6_sel", camtg6_parents,
 		CLK_CFG_15, CLK_CFG_15_SET, CLK_CFG_15_CLR,
 		16, 3, 23, CLK_CFG_UPDATE2, TOP_MUX_CAMTG6_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_MCUPM, "mcupm_sel", mcupm_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_MCUPM, "mcupm_sel", mcupm_parents,
 		CLK_CFG_15, CLK_CFG_15_SET, CLK_CFG_15_CLR,
 		24, 2, 31, CLK_CFG_UPDATE2, TOP_MUX_MCUPM_UPD_SHIFT),
 	/* CLK_CFG_16 */
-	MUX_CLR_SET_UPD(TOP_MUX_SPMI_MST, "spmi_mst_sel", spmi_mst_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_SPMI_MST, "spmi_mst_sel", spmi_mst_parents,
 		CLK_CFG_16, CLK_CFG_16_SET, CLK_CFG_16_CLR,
 		0, 3, 7, CLK_CFG_UPDATE2, TOP_MUX_SPMI_MST_UPD_SHIFT),
-	MUX_CLR_SET_UPD(TOP_MUX_DVFSRC, "dvfsrc_sel", dvfsrc_parents,
+	MUX_CLR_SET_UPD_IGN(TOP_MUX_DVFSRC, "dvfsrc_sel", dvfsrc_parents,
 		CLK_CFG_16, CLK_CFG_16_SET, CLK_CFG_16_CLR,
 		8, 1, 15, CLK_CFG_UPDATE2, TOP_MUX_DVFSRC_UPD_SHIFT),
 #endif
@@ -1764,39 +1769,39 @@ static const struct mtk_mux top_muxes[] __initconst = {
 
 
 static const struct mtk_composite top_audmuxes[] __initconst = {
-	MUX(TOP_I2S0_M_SEL, "i2s0_m_ck_sel", i2s0_m_ck_parents, 0x320, 8, 1),
-	MUX(TOP_I2S1_M_SEL, "i2s1_m_ck_sel", i2s1_m_ck_parents, 0x320, 9, 1),
-	MUX(TOP_I2S2_M_SEL, "i2s2_m_ck_sel", i2s2_m_ck_parents, 0x320, 10, 1),
-	MUX(TOP_I2S3_M_SEL, "i2s3_m_ck_sel", i2s3_m_ck_parents, 0x320, 11, 1),
-	MUX(TOP_I2S4_M_SEL, "i2s4_m_ck_sel", i2s4_m_ck_parents, 0x320, 12, 1),
-	MUX(TOP_I2S5_M_SEL, "i2s5_m_ck_sel", i2s5_m_ck_parents, 0x328, 20, 1),
-	MUX(TOP_I2S6_M_SEL, "i2s6_m_ck_sel", i2s6_m_ck_parents, 0x334, 28, 1),
-	MUX(TOP_I2S7_M_SEL, "i2s7_m_ck_sel", i2s7_m_ck_parents, 0x334, 29, 1),
-	MUX(TOP_I2S8_M_SEL, "i2s8_m_ck_sel", i2s8_m_ck_parents, 0x334, 30, 1),
-	MUX(TOP_I2S9_M_SEL, "i2s9_m_ck_sel", i2s9_m_ck_parents, 0x334, 31, 1),
+	MUX_IGN(TOP_I2S0_M_SEL, "i2s0_m_ck_sel", i2s0_m_ck_parents, 0x320, 8, 1),
+	MUX_IGN(TOP_I2S1_M_SEL, "i2s1_m_ck_sel", i2s1_m_ck_parents, 0x320, 9, 1),
+	MUX_IGN(TOP_I2S2_M_SEL, "i2s2_m_ck_sel", i2s2_m_ck_parents, 0x320, 10, 1),
+	MUX_IGN(TOP_I2S3_M_SEL, "i2s3_m_ck_sel", i2s3_m_ck_parents, 0x320, 11, 1),
+	MUX_IGN(TOP_I2S4_M_SEL, "i2s4_m_ck_sel", i2s4_m_ck_parents, 0x320, 12, 1),
+	MUX_IGN(TOP_I2S5_M_SEL, "i2s5_m_ck_sel", i2s5_m_ck_parents, 0x328, 20, 1),
+	MUX_IGN(TOP_I2S6_M_SEL, "i2s6_m_ck_sel", i2s6_m_ck_parents, 0x334, 28, 1),
+	MUX_IGN(TOP_I2S7_M_SEL, "i2s7_m_ck_sel", i2s7_m_ck_parents, 0x334, 29, 1),
+	MUX_IGN(TOP_I2S8_M_SEL, "i2s8_m_ck_sel", i2s8_m_ck_parents, 0x334, 30, 1),
+	MUX_IGN(TOP_I2S9_M_SEL, "i2s9_m_ck_sel", i2s9_m_ck_parents, 0x334, 31, 1),
 
-	DIV_GATE(TOP_APLL12_DIV0, "apll12_div0", "i2s0_m_ck_sel",
+	DIV_GATE_IGN(TOP_APLL12_DIV0, "apll12_div0", "i2s0_m_ck_sel",
 		0x320, 2, 0x324, 8, 0),
-	DIV_GATE(TOP_APLL12_DIV1, "apll12_div1", "i2s1_m_ck_sel",
+	DIV_GATE_IGN(TOP_APLL12_DIV1, "apll12_div1", "i2s1_m_ck_sel",
 		0x320, 3, 0x324, 8, 8),
-	DIV_GATE(TOP_APLL12_DIV2, "apll12_div2", "i2s2_m_ck_sel",
+	DIV_GATE_IGN(TOP_APLL12_DIV2, "apll12_div2", "i2s2_m_ck_sel",
 		0x320, 4, 0x324, 8, 16),
-	DIV_GATE(TOP_APLL12_DIV3, "apll12_div3", "i2s3_m_ck_sel",
+	DIV_GATE_IGN(TOP_APLL12_DIV3, "apll12_div3", "i2s3_m_ck_sel",
 		0x320, 5, 0x324, 8, 24),
-	DIV_GATE(TOP_APLL12_DIV4, "apll12_div4", "i2s4_m_ck_sel",
+	DIV_GATE_IGN(TOP_APLL12_DIV4, "apll12_div4", "i2s4_m_ck_sel",
 		0x320, 6, 0x328, 8, 0),
-	DIV_GATE(TOP_APLL12_DIVB, "apll12_divb", "apll12_div4",
+	DIV_GATE_IGN(TOP_APLL12_DIVB, "apll12_divb", "apll12_div4",
 		0x320, 7, 0x328, 8, 8),
-	DIV_GATE(TOP_APLL12_DIV5, "apll12_div5", "i2s5_m_ck_sel",
+	DIV_GATE_IGN(TOP_APLL12_DIV5, "apll12_div5", "i2s5_m_ck_sel",
 		0x328, 16, 0x328, 4, 28), /* MT6885 FIXME: only 4bits here. */
 
-	DIV_GATE(TOP_APLL12_DIV6, "apll12_div6", "i2s6_m_ck_sel",
+	DIV_GATE_IGN(TOP_APLL12_DIV6, "apll12_div6", "i2s6_m_ck_sel",
 		0x334, 20, 0x338, 8, 0),
-	DIV_GATE(TOP_APLL12_DIV7, "apll12_div7", "i2s7_m_ck_sel",
+	DIV_GATE_IGN(TOP_APLL12_DIV7, "apll12_div7", "i2s7_m_ck_sel",
 		0x334, 21, 0x338, 8, 8),
-	DIV_GATE(TOP_APLL12_DIV8, "apll12_div8", "i2s8_m_ck_sel",
+	DIV_GATE_IGN(TOP_APLL12_DIV8, "apll12_div8", "i2s8_m_ck_sel",
 		0x334, 22, 0x338, 8, 16),
-	DIV_GATE(TOP_APLL12_DIV9, "apll12_div9", "i2s9_m_ck_sel",
+	DIV_GATE_IGN(TOP_APLL12_DIV9, "apll12_div9", "i2s9_m_ck_sel",
 		0x334, 23, 0x338, 8, 24),
 };
 
@@ -1925,7 +1930,7 @@ const struct clk_ops mtk_clk_gate_ops_no_setclr_inv_dummy = {
 		.parent_name = _parent,				\
 		.regs = &_regs,					\
 		.shift = _shift,				\
-		.flags = _flags,				\
+		.flags = _flags | CLK_IGNORE_UNUSED,		\
 		.ops = &mtk_clk_gate_ops_setclr,		\
 	}
 #define GATE_INV(_id, _name, _parent, _regs, _shift, _flags) {  \
@@ -1934,7 +1939,7 @@ const struct clk_ops mtk_clk_gate_ops_no_setclr_inv_dummy = {
 		.parent_name = _parent,				\
 		.regs = &_regs,					\
 		.shift = _shift,				\
-		.flags = _flags,				\
+		.flags = _flags | CLK_IGNORE_UNUSED,		\
 		.ops = &mtk_clk_gate_ops_setclr_inv,		\
 	}
 
@@ -1944,7 +1949,7 @@ const struct clk_ops mtk_clk_gate_ops_no_setclr_inv_dummy = {
 		.parent_name = _parent,				\
 		.regs = &_regs,					\
 		.shift = _shift,				\
-		.flags = _flags,				\
+		.flags = _flags | CLK_IGNORE_UNUSED,		\
 		.ops = &mtk_clk_gate_ops_no_setclr,		\
 	}
 #define GATE_STA_INV(_id, _name, _parent, _regs, _shift, _flags) {\
@@ -1953,7 +1958,7 @@ const struct clk_ops mtk_clk_gate_ops_no_setclr_inv_dummy = {
 		.parent_name = _parent,				\
 		.regs = &_regs,					\
 		.shift = _shift,				\
-		.flags = _flags,				\
+		.flags = _flags | CLK_IGNORE_UNUSED,		\
 		.ops = &mtk_clk_gate_ops_no_setclr_inv,		\
 	}
 
@@ -1965,7 +1970,7 @@ const struct clk_ops mtk_clk_gate_ops_no_setclr_inv_dummy = {
 		.parent_name = _parent,				\
 		.regs = &_regs,					\
 		.shift = _shift,				\
-		.flags = _flags,				\
+		.flags = _flags | CLK_IGNORE_UNUSED,			\
 		.ops = &mtk_clk_gate_ops_setclr_dummy,		\
 	}
 #define GATE_INV_DUMMY(_id, _name, _parent, _regs, _shift, _flags) {\
@@ -1974,7 +1979,7 @@ const struct clk_ops mtk_clk_gate_ops_no_setclr_inv_dummy = {
 		.parent_name = _parent,				\
 		.regs = &_regs,					\
 		.shift = _shift,				\
-		.flags = _flags,				\
+		.flags = _flags | CLK_IGNORE_UNUSED,			\
 		.ops = &mtk_clk_gate_ops_setclr_inv_dummy,	\
 	}
 #define GATE_STA_DUMMY(_id, _name, _parent, _regs, _shift, _flags) {\
@@ -1983,7 +1988,7 @@ const struct clk_ops mtk_clk_gate_ops_no_setclr_inv_dummy = {
 		.parent_name = _parent,				\
 		.regs = &_regs,					\
 		.shift = _shift,				\
-		.flags = _flags,				\
+		.flags = _flags | CLK_IGNORE_UNUSED,			\
 		.ops = &mtk_clk_gate_ops_no_setclr_dummy,	\
 	}
 #define GATE_STA_INV_DUMMY(_id, _name, _parent, _regs, _shift, _flags) {\
@@ -1992,7 +1997,7 @@ const struct clk_ops mtk_clk_gate_ops_no_setclr_inv_dummy = {
 		.parent_name = _parent,				\
 		.regs = &_regs,					\
 		.shift = _shift,				\
-		.flags = _flags,				\
+		.flags = _flags | CLK_IGNORE_UNUSED,			\
 		.ops = &mtk_clk_gate_ops_no_setclr_inv_dummy,	\
 	}
 
@@ -3921,7 +3926,7 @@ static const struct mtk_gate apmixed_clks[] __initconst = {
 		.reg = _reg,						\
 		.pwr_reg = _pwr_reg,					\
 		.en_mask = _en_mask,					\
-		.flags = _flags,					\
+		.flags = _flags | CLK_IGNORE_UNUSED,			\
 		.rst_bar_mask = _rst_bar_mask,				\
 		.fmax = MT6885_PLL_FMAX,				\
 		.fmin = MT6885_PLL_FMIN,				\
@@ -3975,11 +3980,11 @@ static const struct mtk_pll_data plls[] = {
 
 	PLL(APMIXED_APLL1, "apll1", 0x0318 /*con0*/, 0x0328 /*con4*/,
 		BIT(0)/*enmask*/, PLL_CFLAGS, 0/*rstb*/, 32/*pcwbits*/,
-		0x031C, 24/* pd */, 0, 0xc, 0/* tuner*/, 0x0320, 0/* pcw */),
+		0x031C, 24/* pd */, 0x40, 0xc, 0/* tuner*/, 0x0320, 0/* pcw */),
 
 	PLL(APMIXED_APLL2, "apll2", 0x032c /*con0*/, 0x033c /*con4*/,
 		BIT(0)/*enmsk*/, PLL_CFLAGS, 0/*rstb*/, 32/*pcwbits*/,
-		0x0330, 24/* pd */, 0, 0, 0/* tuner*/, 0x0334, 0/* pcw */),
+		0x0330, 24/* pd */, 0x44, 0xc, 5/* tuner*/, 0x0334, 0/* pcw */),
 };
 
 static void __iomem *apmixed_base;

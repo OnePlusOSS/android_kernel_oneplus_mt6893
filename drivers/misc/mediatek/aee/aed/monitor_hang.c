@@ -26,6 +26,7 @@
 #include <linux/sched.h>
 #include <linux/sched/clock.h>
 #include <linux/sched/debug.h>
+#include <linux/sched/mm.h>
 #include <linux/sched/rt.h>
 #include <linux/sched/task.h>
 #include <uapi/linux/sched/types.h>
@@ -95,19 +96,17 @@ static bool Hang_Detect_first;
 #define HD_INTER 30
 
 static int hd_detect_enabled;
+static bool hd_zygote_stopped;
 static int hd_timeout = 0x7fffffff;
 static int hang_detect_counter = 0x7fffffff;
 static int dump_bt_done;
-#ifdef CONFIG_MTK_ENG_BUILD
-static int hang_aee_warn = 2;
-#else
-static int hang_aee_warn;
-#endif
-static int system_server_pid;
 static bool watchdog_thread_exist;
+static bool system_server_exist;
 static bool reboot_flag;
+static struct name_list *white_list;
 DECLARE_WAIT_QUEUE_HEAD(dump_bt_start_wait);
 DECLARE_WAIT_QUEUE_HEAD(dump_bt_done_wait);
+DEFINE_RAW_SPINLOCK(white_list_lock);
 
 /* bleow code is added by QHQ  for hang detect */
 /* For the condition, where kernel is still alive,
@@ -118,6 +117,84 @@ static void reset_hang_info(void);
 
 static long monitor_hang_ioctl(struct file *file, unsigned int cmd,
 		unsigned long arg);
+
+int add_white_list(char *name)
+{
+	struct name_list *new_thread = NULL;
+	struct name_list *pList = NULL;
+
+	raw_spin_lock(&white_list_lock);
+
+	if (!white_list) {
+		new_thread = kmalloc(sizeof(struct name_list), GFP_KERNEL);
+		if (!new_thread) {
+			raw_spin_unlock(&white_list_lock);
+			return -1;
+		}
+		strncpy(new_thread->name, name, TASK_COMM_LEN);
+		new_thread->name[TASK_COMM_LEN - 1] = 0;
+		new_thread->next = NULL;
+		white_list = new_thread;
+		raw_spin_unlock(&white_list_lock);
+		return 0;
+	}
+
+	pList = white_list;
+	while (pList) {
+		/*find same thread name*/
+		if (strncmp(pList->name, name, TASK_COMM_LEN) == 0) {
+			raw_spin_unlock(&white_list_lock);
+			return 0;
+		}
+		pList = pList->next;
+	}
+
+	/*add new thread name*/
+	new_thread = kmalloc(sizeof(struct name_list), GFP_KERNEL);
+	if (!new_thread) {
+		raw_spin_unlock(&white_list_lock);
+		return -1;
+	}
+	strncpy(new_thread->name, name, TASK_COMM_LEN);
+	new_thread->next = white_list;
+	white_list = new_thread;
+	raw_spin_unlock(&white_list_lock);
+	return 0;
+}
+
+int del_white_list(char *name)
+{
+	struct name_list *pList = NULL;
+	struct name_list *pList_old = NULL;
+
+	if (!white_list)
+		return 0;
+
+
+	raw_spin_lock(&white_list_lock);
+	pList = pList_old = white_list;
+	while (pList) {
+		/*find same thread name*/
+		if (strncmp(pList->name, name, TASK_COMM_LEN) == 0) {
+			if (pList == white_list) {
+				white_list = pList->next;
+				kfree(pList);
+				raw_spin_unlock(&white_list_lock);
+				return 0;
+			}
+
+			pList_old->next = pList->next;
+			kfree(pList);
+			raw_spin_unlock(&white_list_lock);
+			return 0;
+		}
+		pList_old = pList;
+		pList = pList->next;
+	}
+	raw_spin_unlock(&white_list_lock);
+	return 0;
+}
+
 #ifdef CONFIG_MTK_ENG_BUILD
 static int monit_hang_flag = 1;
 #define SEQ_printf(m, x...) \
@@ -176,12 +253,6 @@ static ssize_t monitor_hang_proc_write(struct file *filp, const char *ubuf,
 	} else if (val == 3) {
 		reset_hang_info();
 		ShowStatus(1);
-	} else if (val == 4) {
-		hang_aee_warn = 0;
-		pr_info("[hang_detect] disable coredump.\n");
-	} else if (val == 5) {
-		hang_aee_warn = 2;
-		pr_info("[hang_detect] denable coredump.\n");
 	} else if (val > 10) {
 		show_native_bt_by_pid((int)val);
 	}
@@ -230,11 +301,44 @@ static ssize_t monitor_hang_read(struct file *filp, char __user *buf,
 static ssize_t monitor_hang_write(struct file *filp, const char __user *buf,
 		size_t count, loff_t *f_pos)
 {
+	char msg[8] = {0};
 
-	/* LOGV("%s\n", __func__); */
-	return 0;
+	if (count > 2) {
+		pr_info("hang_detect: invalid input\n");
+		return -EINVAL;
+	}
+
+	if (!buf) {
+		pr_info("hang_detect: invalid user buf\n");
+		return -EINVAL;
+	}
+
+	if (copy_from_user(msg, buf, count)) {
+		pr_info("hang_detect: failed to copy from user\n");
+		return -EFAULT;
+	}
+
+	if (strncmp(current->comm, "init", 4))
+		return  -EINVAL;
+
+	if (msg[0] == '0') {
+		hd_detect_enabled = 0;
+		hd_zygote_stopped = true;
+		pr_info("hang_detect: disable by stop cmd\n");
+	} else if (msg[0] == '1') {
+		if (hd_zygote_stopped) {
+			hd_detect_enabled = 1;
+			hd_zygote_stopped = false;
+			pr_info("hang_detect: enable by start cmd\n");
+		} else {
+			pr_info("hang_detect: zygote running\n");
+		}
+	} else {
+		pr_info("hang_detect: invalid control msg\n");
+	}
+
+	return count;
 }
-
 
 
 /*
@@ -246,6 +350,8 @@ static long monitor_hang_ioctl(struct file *file, unsigned int cmd,
 {
 	int ret = 0;
 	static long long monitor_status;
+	void __user *argp = (void __user *)arg;
+	char name[TASK_COMM_LEN] = {0};
 
 	/* QHQ RT Monitor */
 	if (cmd == AEEIOCTL_RT_MON_Kick) {
@@ -269,30 +375,31 @@ static long monitor_hang_ioctl(struct file *file, unsigned int cmd,
 		return ret;
 	}
 
-	if ((cmd == AEEIOCTL_SET_HANG_FLAG) &&
-		(!strncmp(current->comm, "aee_aed", 7))) {
-		const struct cred *cred = current_cred();
-
-		if (!uid_eq(cred->euid, GLOBAL_ROOT_UID))
-			return -EACCES;
-
-		if ((int)arg == 1) {
-			hang_aee_warn = 2;
-			pr_info("hang_detect: aee enable system_server coredump.\n");
-		}
-		return ret;
-	}
-
 	if (cmd == AEEIOCTL_SET_HANG_REBOOT &&
 		(!strncmp(current->comm, "init", 4))) {
 		reboot_flag = true;
-#ifdef CONFIG_MTK_ENG_BUILD
-		hang_detect_counter = 3;
-#else
-		hang_detect_counter = 1;
-#endif
-		hd_timeout = 3;
+		hd_detect_enabled = 1;
+		hang_detect_counter = 5;
+		hd_timeout = 5;
 		pr_info("hang_detect: %s set reboot command.\n", current->comm);
+		return ret;
+	}
+
+	if (cmd == HANG_ADD_WHITE_LIST) {
+		if (copy_from_user(name, argp, TASK_COMM_LEN - 1))
+			ret = -EFAULT;
+		ret = add_white_list(name);
+		pr_info("hang_detect: add white list %s status %d.\n",
+			name, ret);
+		return ret;
+	}
+
+	if (cmd == HANG_DEL_WHITE_LIST) {
+		if (copy_from_user(name, argp, TASK_COMM_LEN - 1))
+			ret = -EFAULT;
+		ret = del_white_list(name);
+		pr_info("hang_detect: del white list %s status %d.\n",
+			name, ret);
 		return ret;
 	}
 
@@ -339,6 +446,10 @@ static int __init monitor_hang_init(void)
 #ifdef CONFIG_MTK_ENG_BUILD
 	struct proc_dir_entry *pe;
 #endif
+
+	if (!aee_is_enable())
+		return err;
+
 	/* bleow code is added by QHQ  for hang detect */
 	err = misc_register(&aed_wdt_RT_Monitor_dev);
 	if (unlikely(err)) {
@@ -358,6 +469,9 @@ static int __init monitor_hang_init(void)
 
 static void __exit monitor_hang_exit(void)
 {
+	if (!aee_is_enable())
+		return;
+
 	misc_deregister(&aed_wdt_RT_Monitor_dev);
 }
 
@@ -670,6 +784,8 @@ void show_thread_info(struct task_struct *p, bool dump_bt)
 
 	if (strcmp(p->comm, "watchdog") == 0)
 		watchdog_thread_exist = true;
+	if (!strcmp(p->comm, "system_server"))
+		system_server_exist = true;
 
 	if (dump_bt || ((p->state == TASK_RUNNING ||
 			p->state & TASK_UNINTERRUPTIBLE) &&
@@ -700,13 +816,12 @@ static int DumpThreadNativeMaps_log(pid_t pid, struct task_struct *current_task)
 		return -1;
 	}
 
-	if (current_task->mm == NULL) {
-		pr_info(" %s,%d:%s: current_task->mm == NULL",
-			__func__, pid, current_task->comm);
+	if (!get_task_mm(current_task)) {
+		pr_info(" %s,%d:%s: current_task->mm == NULL", __func__, pid,
+				current_task->comm);
 		return -1;
 	}
 
-	down_read(&current_task->mm->mmap_sem);
 	vma = current_task->mm->mmap;
 	pr_info("Dump native maps files:\n");
 	while (vma && (mapcount < current_task->mm->map_count)) {
@@ -754,7 +869,9 @@ static int DumpThreadNativeMaps_log(pid_t pid, struct task_struct *current_task)
 		vma = vma->vm_next;
 		mapcount++;
 	}
-	up_read(&current_task->mm->mmap_sem);
+	++oops_in_progress; /* sleeping function warn */
+	mmput(current_task->mm);
+	--oops_in_progress;
 
 	return 0;
 }
@@ -777,12 +894,11 @@ static int DumpThreadNativeInfo_By_tid_log(pid_t tid,
 		return ret;
 	}
 
-	if (current_task->mm == NULL) {
-		pr_info(" %s,%d:%s, current_task->mm == NULL",
-			__func__, tid, current_task->comm);
-		return ret;
+	if (!get_task_mm(current_task)) {
+		pr_info(" %s,%d:%s: current_task->mm == NULL", __func__, tid,
+				current_task->comm);
+		return -1;
 	}
-
 #ifndef __aarch64__		/* 32bit */
 {
 	unsigned int tmpfp, tmp, tmpLR;
@@ -807,7 +923,6 @@ static int DumpThreadNativeInfo_By_tid_log(pid_t tid,
 
 	userstack_start = (unsigned long)user_ret->ARM_sp;
 
-	down_read(&current_task->mm->mmap_sem);
 	vma = current_task->mm->mmap;
 	while (vma != NULL) {
 		if (vma->vm_start <= userstack_start &&
@@ -819,7 +934,9 @@ static int DumpThreadNativeInfo_By_tid_log(pid_t tid,
 		if (vma == current_task->mm->mmap)
 			break;
 	}
-	up_read(&current_task->mm->mmap_sem);
+	++oops_in_progress; /* sleeping function warn */
+	mmput(current_task->mm);
+	--oops_in_progress;
 
 	if (userstack_end == 0) {
 		pr_info(" %s,%d:%s,userstack_end == 0",
@@ -905,7 +1022,7 @@ static int DumpThreadNativeInfo_By_tid_log(pid_t tid,
 		    (long)(user_ret->user_regs.regs[1]),
 		    (long)(user_ret->user_regs.regs[0]));
 		userstack_start = (unsigned long)user_ret->user_regs.regs[13];
-		down_read(&current_task->mm->mmap_sem);
+
 		vma = current_task->mm->mmap;
 		while (vma != NULL) {
 			if (vma->vm_start <= userstack_start &&
@@ -917,7 +1034,9 @@ static int DumpThreadNativeInfo_By_tid_log(pid_t tid,
 			if (vma == current_task->mm->mmap)
 				break;
 		}
-		up_read(&current_task->mm->mmap_sem);
+		++oops_in_progress; /* sleeping function warn */
+		mmput(current_task->mm);
+		--oops_in_progress;
 
 		if (userstack_end == 0) {
 			pr_info("Dump native stack failed:\n");
@@ -985,7 +1104,6 @@ static int DumpThreadNativeInfo_By_tid_log(pid_t tid,
 
 		userstack_start = (unsigned long)user_ret->user_regs.sp;
 
-		down_read(&current_task->mm->mmap_sem);
 		vma = current_task->mm->mmap;
 		while (vma != NULL) {
 			if (vma->vm_start <= userstack_start &&
@@ -997,7 +1115,9 @@ static int DumpThreadNativeInfo_By_tid_log(pid_t tid,
 			if (vma == current_task->mm->mmap)
 				break;
 		}
-		up_read(&current_task->mm->mmap_sem);
+		++oops_in_progress; /* sleeping function warn */
+		mmput(current_task->mm);
+		--oops_in_progress;
 		if (userstack_end == 0) {
 			pr_info("Dump native stack failed:\n");
 			return ret;
@@ -1058,10 +1178,11 @@ void show_native_bt_by_pid(int task_pid)
 		/* change send ptrace_stop to send signal stop */
 		do_send_sig_info(SIGSTOP, SEND_SIG_FORCED, p, true);
 		do {
-			if (t && try_get_task_stack(t)) {
+			if (!t)
+				break;
+			get_task_struct(t);
+			if (try_get_task_stack(t)) {
 				pid_t tid = 0;
-
-				get_task_struct(t);
 				tid = task_pid_vnr(t);
 				state = t->state ? __ffs(t->state) + 1 : 0;
 				pr_info("%s sysTid=%d, pid=%d\n",
@@ -1069,23 +1190,20 @@ void show_native_bt_by_pid(int task_pid)
 				DumpThreadNativeInfo_By_tid_log(tid, t);
 				/* catch user-space bt */
 				put_task_stack(t);
-				put_task_struct(t);
 			}
+			put_task_struct(t);
 			if ((++count) % 5 == 4)
 				msleep(20);
 		} while_each_thread(p, t);
 		/* change send ptrace_stop to send signal stop */
 		if (stat_nam[state] != 'T')
 			do_send_sig_info(SIGCONT, SEND_SIG_FORCED, p, true);
-		put_task_stack(p);
+		put_task_stack(t);
 		put_task_struct(p);
-	} else if (p != NULL)
-		put_task_struct(p);
+	}
 	put_pid(pid);
 }
 EXPORT_SYMBOL(show_native_bt_by_pid);
-
-
 
 static int DumpThreadNativeMaps(pid_t pid, struct task_struct *current_task)
 {
@@ -1098,8 +1216,9 @@ static int DumpThreadNativeMaps(pid_t pid, struct task_struct *current_task)
 	char tpath[512];
 	char *path_p = NULL;
 	struct path base_path;
+	unsigned long long pgoff = 0;
 
-	if (current_task == NULL)
+	if (!current_task)
 		return -ESRCH;
 	user_ret = task_pt_regs(current_task);
 
@@ -1109,18 +1228,18 @@ static int DumpThreadNativeMaps(pid_t pid, struct task_struct *current_task)
 		return -1;
 	}
 
-	if (current_task->mm == NULL) {
+	if (!get_task_mm(current_task)) {
 		pr_info(" %s,%d:%s: current_task->mm == NULL", __func__, pid,
 				current_task->comm);
 		return -1;
 	}
 
-	down_read(&current_task->mm->mmap_sem);
 	vma = current_task->mm->mmap;
 	Log2HangInfo("Dump native maps files:\n");
 	while (vma && (mapcount < current_task->mm->map_count)) {
 		file = vma->vm_file;
 		flags = vma->vm_flags;
+		pgoff = ((loff_t)vma->vm_pgoff) << PAGE_SHIFT;
 		if (file) {	/* !!!!!!!!only dump 1st mmaps!!!!!!!!!!!! */
 			if (flags & VM_EXEC) {
 				/* we only catch code section for reduce
@@ -1128,17 +1247,16 @@ static int DumpThreadNativeMaps(pid_t pid, struct task_struct *current_task)
 				 */
 				base_path = file->f_path;
 				path_p = d_path(&base_path, tpath, 512);
-				Log2HangInfo("%08lx-%08lx %c%c%c%c    %s\n",
+				Log2HangInfo("%08lx-%08lx %c%c%c%c %08llx %s\n",
 					vma->vm_start, vma->vm_end,
 					flags & VM_READ ? 'r' : '-',
 					flags & VM_WRITE ? 'w' : '-',
 					flags & VM_EXEC ? 'x' : '-',
 					flags & VM_MAYSHARE ? 's' : 'p',
-					path_p);
+					pgoff, path_p);
 			}
 		} else {
 			const char *name = arch_vma_name(vma);
-
 			mm = vma->vm_mm;
 			if (!name) {
 				if (mm) {
@@ -1157,23 +1275,23 @@ static int DumpThreadNativeMaps(pid_t pid, struct task_struct *current_task)
 			}
 
 			if (flags & VM_EXEC) {
-				Log2HangInfo("%08lx-%08lx %c%c%c%c %s\n",
+				Log2HangInfo("%08lx-%08lx %c%c%c%c %08llx %s\n",
 					vma->vm_start, vma->vm_end,
 					flags & VM_READ ? 'r' : '-',
 					flags & VM_WRITE ? 'w' : '-',
 					flags & VM_EXEC ? 'x' : '-',
-					flags & VM_MAYSHARE ? 's' : 'p', name);
+					flags & VM_MAYSHARE ? 's' : 'p', pgoff, name);
 			}
 		}
 		vma = vma->vm_next;
 		mapcount++;
 	}
-	up_read(&current_task->mm->mmap_sem);
+	++oops_in_progress; /* sleeping function warn */
+	mmput(current_task->mm);
+	--oops_in_progress;
 
 	return 0;
 }
-
-
 
 static int DumpThreadNativeInfo_By_tid(pid_t tid,
 	struct task_struct *current_task)
@@ -1200,22 +1318,21 @@ static int DumpThreadNativeInfo_By_tid(pid_t tid,
 		return ret;
 	}
 #ifndef __aarch64__		/* 32bit */
-	Log2HangInfo(" pc/lr/sp 0x%08lx/0x%08lx/0x%08lx\n", user_ret->ARM_pc,
+	Log2HangInfo(" pc/lr/sp 0x%08x/0x%08x/0x%08x\n", user_ret->ARM_pc,
 			user_ret->ARM_lr, user_ret->ARM_sp);
-	Log2HangInfo("r12-r0 0x%lx/0x%x/0x%lx/0x%lx\n",
+	Log2HangInfo("r12-r0 0x%08x/0x%08x/0x%08x/0x%08x\n",
 		(long)(user_ret->ARM_ip), (long)(user_ret->ARM_fp),
 		(long)(user_ret->ARM_r10), (long)(user_ret->ARM_r9));
-	Log2HangInfo("0x%lx/0x%lx/0x%lx/0x%lx/0x%lx\n",
+	Log2HangInfo("0x%08x/0x%08x/0x%08x/0x%08x/0x%08x\n",
 		(long)(user_ret->ARM_r8), (long)(user_ret->ARM_r7),
 		(long)(user_ret->ARM_r6), (long)(user_ret->ARM_r5),
 		(long)(user_ret->ARM_r4));
-	Log2HangInfo("0x%lx/0x%lx/0x%lx/0x%lx\n",
+	Log2HangInfo("0x%08x/0x%08x/0x%08x/0x%08x\n",
 		(long)(user_ret->ARM_r3), (long)(user_ret->ARM_r2),
 		(long)(user_ret->ARM_r1), (long)(user_ret->ARM_r0));
 
 	userstack_start = (unsigned long)user_ret->ARM_sp;
 
-	down_read(&current_task->mm->mmap_sem);
 	vma = current_task->mm->mmap;
 	while (vma != NULL) {
 		if (vma->vm_start <= userstack_start &&
@@ -1227,7 +1344,6 @@ static int DumpThreadNativeInfo_By_tid(pid_t tid,
 		if (vma == current_task->mm->mmap)
 			break;
 	}
-	up_read(&current_task->mm->mmap_sem);
 
 	if (userstack_end == 0) {
 		pr_info(" %s,%d:%s,userstack_end == 0", __func__,
@@ -1244,13 +1360,15 @@ static int DumpThreadNativeInfo_By_tid(pid_t tid,
 
 		SPStart = userstack_start;
 		SPEnd = SPStart + length;
-		Log2HangInfo("UserSP_start:%x,Length:%x,End:%x\n",
+		Log2HangInfo("UserSP_start:%08x,Length:%x,End:%08x\n",
 				SPStart, length, SPEnd);
 		while (SPStart < SPEnd) {
+			++oops_in_progress; /* sleeping function warn */
 			copied =
 			    access_process_vm(current_task, SPStart,
 					&tempSpContent, sizeof(tempSpContent),
 					0);
+			--oops_in_progress;
 			if (copied != sizeof(tempSpContent)) {
 				pr_info(
 				  "access_process_vm  SPStart error,sizeof(tempSpContent)=%x\n"
@@ -1261,7 +1379,7 @@ static int DumpThreadNativeInfo_By_tid(pid_t tid,
 				tempSpContent[1] != 0 ||
 				tempSpContent[2] != 0 ||
 				tempSpContent[3] != 0) {
-				Log2HangInfo("%08x:%x %x %x %x\n", SPStart,
+				Log2HangInfo("%08x:%08x %08x %08x %08x\n", SPStart,
 						tempSpContent[0],
 						tempSpContent[1],
 						tempSpContent[2],
@@ -1294,7 +1412,6 @@ static int DumpThreadNativeInfo_By_tid(pid_t tid,
 			(long)(user_ret->user_regs.regs[1]),
 			(long)(user_ret->user_regs.regs[0]));
 		userstack_start = (unsigned long)user_ret->user_regs.regs[13];
-		down_read(&current_task->mm->mmap_sem);
 		vma = current_task->mm->mmap;
 		while (vma != NULL) {
 			if (vma->vm_start <= userstack_start &&
@@ -1306,7 +1423,6 @@ static int DumpThreadNativeInfo_By_tid(pid_t tid,
 			if (vma == current_task->mm->mmap)
 				break;
 		}
-		up_read(&current_task->mm->mmap_sem);
 
 		if (userstack_end == 0) {
 			pr_info("Dump native stack failed:\n");
@@ -1325,9 +1441,11 @@ static int DumpThreadNativeInfo_By_tid(pid_t tid,
 			Log2HangInfo("UserSP_start:%x,Length:%x,End:%x\n",
 				SPStart, length, SPEnd);
 			while (SPStart < SPEnd) {
+				++oops_in_progress; /* sleeping function warn */
 				copied = access_process_vm(current_task,
 						SPStart, &tempSpContent,
 						sizeof(tempSpContent), 0);
+				--oops_in_progress;
 				if (copied != sizeof(tempSpContent)) {
 					pr_info(
 					  "access_process_vm  SPStart error,sizeof(tempSpContent)=%x\n",
@@ -1351,7 +1469,6 @@ static int DumpThreadNativeInfo_By_tid(pid_t tid,
 	} else {		/*K64+U64 */
 		userstack_start = (unsigned long)user_ret->user_regs.sp;
 
-		down_read(&current_task->mm->mmap_sem);
 		vma = current_task->mm->mmap;
 		while (vma != NULL) {
 			if (vma->vm_start <= userstack_start &&
@@ -1363,7 +1480,6 @@ static int DumpThreadNativeInfo_By_tid(pid_t tid,
 			if (vma == current_task->mm->mmap)
 				break;
 		}
-		up_read(&current_task->mm->mmap_sem);
 		if (userstack_end == 0) {
 			pr_info("Dump native stack failed:\n");
 			return ret;
@@ -1380,18 +1496,22 @@ static int DumpThreadNativeInfo_By_tid(pid_t tid,
 			frames = 2;
 			while (tmpfp < userstack_end &&
 					tmpfp > userstack_start) {
+				++oops_in_progress; /* sleeping function warn */
 				copied =
 				    access_process_vm(current_task,
 						    (unsigned long)tmpfp, &tmp,
 						      sizeof(tmp), 0);
+				--oops_in_progress;
 				if (copied != sizeof(tmp)) {
 					pr_info("access_process_vm  fp error\n");
 					return -EIO;
 				}
+				++oops_in_progress; /* sleeping function warn */
 				copied =
 				    access_process_vm(current_task,
 						    (unsigned long)tmpfp + 0x08,
 						      &tmpLR, sizeof(tmpLR), 0);
+				--oops_in_progress;
 				if (copied != sizeof(tmpLR)) {
 					pr_info("access_process_vm  pc error\n");
 					return -EIO;
@@ -1470,10 +1590,13 @@ static void show_bt_by_pid(int task_pid)
 		}
 
 		do {
-			if (t && try_get_task_stack(t)) {
+			if (!t)
+				break;
+
+			get_task_struct(t);
+			if (try_get_task_stack(t)) {
 				pid_t tid = 0;
 
-				get_task_struct(t);
 				tid = task_pid_vnr(t);
 				/* catch kernel bt */
 				show_thread_info(t, true);
@@ -1484,8 +1607,8 @@ static void show_bt_by_pid(int task_pid)
 				if (dump_native == 1)
 					DumpThreadNativeInfo_By_tid(tid, t);
 				put_task_stack(t);
-				put_task_struct(t);
 			}
+			put_task_struct(t);
 			if ((++count) % 5 == 4)
 				msleep(20);
 			Log2HangInfo("-\n");
@@ -1495,15 +1618,37 @@ static void show_bt_by_pid(int task_pid)
 	put_pid(pid);
 }
 
+static int show_white_list_bt(struct task_struct *p)
+{
+	struct name_list *pList = NULL;
+
+	if (!white_list)
+		return -1;
+	raw_spin_lock(&white_list_lock);
+	pList = white_list;
+	while (pList) {
+		if (!strcmp(p->comm, pList->name)) {
+			raw_spin_unlock(&white_list_lock);
+			show_bt_by_pid(p->pid);
+			return 0;
+		}
+		pList = pList->next;
+	}
+	raw_spin_unlock(&white_list_lock);
+	return -1;
+}
+
 static void hang_dump_backtrace(void)
 {
 	struct task_struct *p, *t, *system_server_task = NULL;
 	struct task_struct *monkey_task = NULL;
+	struct task_struct *aee_aed_task = NULL;
 
 	watchdog_thread_exist = false;
+	system_server_exist = false;
 	Log2HangInfo("dump backtrace start: %llu\n", local_clock());
 
-	read_lock(&tasklist_lock);
+	rcu_read_lock();
 	for_each_process(p) {
 		get_task_struct(p);
 		if (Hang_Detect_first == false) {
@@ -1511,6 +1656,8 @@ static void hang_dump_backtrace(void)
 				system_server_task = p;
 			if (strstr(p->comm, "monkey") != NULL)
 				monkey_task = p;
+			if (!strcmp(p->comm, "aee_aed"))
+				aee_aed_task = p;
 		}
 		/* specify process, need dump maps file and native backtrace */
 		if ((strcmp(p->comm, "surfaceflinger") == 0) ||
@@ -1522,23 +1669,28 @@ static void hang_dump_backtrace(void)
 			(strcmp(p->comm, "vdc") == 0) ||
 			(strcmp(p->comm, "vold") == 0) ||
 			(strcmp(p->comm, "debuggerd") == 0)) {
-			read_unlock(&tasklist_lock);
 			show_bt_by_pid(p->pid);
-			read_lock(&tasklist_lock);
+			put_task_struct(p);
+			continue;
+		}
+		//test if there's any process need dump
+		if (!show_white_list_bt(p)) {
 			put_task_struct(p);
 			continue;
 		}
 		for_each_thread(p, t) {
-			if (try_get_task_stack(t)) {
+			if (t) {
 				get_task_struct(t);
-				show_thread_info(t, false);
-				put_task_stack(t);
+				if (try_get_task_stack(t)) {
+					show_thread_info(t, false);
+					put_task_stack(t);
+				}
 				put_task_struct(t);
 			}
 		}
 		put_task_struct(p);
 	}
-	read_unlock(&tasklist_lock);
+	rcu_read_unlock();
 	Log2HangInfo("dump backtrace end.\n");
 
 	if (Hang_Detect_first == false) {
@@ -1548,6 +1700,9 @@ static void hang_dump_backtrace(void)
 		if (monkey_task != NULL)
 			do_send_sig_info(SIGQUIT, SEND_SIG_FORCED,
 				monkey_task, true);
+		if (aee_aed_task)
+			do_send_sig_info(SIGUSR1, SEND_SIG_FORCED,
+				aee_aed_task, true);
 	}
 }
 
@@ -1582,35 +1737,6 @@ static void ShowStatus(int flag)
 static void reset_hang_info(void)
 {
 	Hang_Detect_first = false;
-	memset(Hang_Info, 0, MaxHangInfoSize);
-	Hang_Info_Size = 0;
-}
-
-static int hang_detect_warn_thread(void *arg)
-{
-
-	/* unsigned long flags; */
-	struct sched_param param = {
-		.sched_priority = 99
-	};
-
-	char string_tmp[30];
-
-	sched_setscheduler(current, SCHED_FIFO, &param);
-	snprintf(string_tmp, 30, "hang_detect:[pid:%d]\n", system_server_pid);
-	pr_notice("hang_detect create warning api: %s.", string_tmp);
-#ifdef __aarch64__
-		aee_kernel_warning_api(__FILE__, __LINE__,
-		DB_OPT_PROCESS_COREDUMP | DB_OPT_AARCH64 | DB_OPT_FTRACE,
-		"maybe have other hang_detect KE DB, please send together!!\n",
-		string_tmp);
-#else
-		aee_kernel_warning_api(__FILE__, __LINE__,
-		DB_OPT_PROCESS_COREDUMP | DB_OPT_FTRACE,
-		"maybe have other hang_detect KE DB, please send together!!\n",
-		string_tmp);
-#endif
-	return 0;
 }
 
 static int dump_last_thread(void *arg)
@@ -1629,9 +1755,6 @@ static int dump_last_thread(void *arg)
 
 static int hang_detect_dump_thread(void *arg)
 {
-	struct task_struct *hd_thread;
-
-
 	/* unsigned long flags; */
 	struct sched_param param = {
 		.sched_priority = 99
@@ -1642,14 +1765,7 @@ static int hang_detect_dump_thread(void *arg)
 	dump_bt_done = 1;
 	while (1) {
 		wait_event_interruptible(dump_bt_start_wait, dump_bt_done == 0);
-		if (hang_aee_warn == 1) {
-			hd_thread = kthread_create(hang_detect_warn_thread,
-				NULL, "hang_detect2");
-			if (hd_thread != NULL)
-				wake_up_process(hd_thread);
-		} else
-			ShowStatus(0);
-
+		ShowStatus(0);
 		dump_bt_done = 1;
 		wake_up_interruptible(&dump_bt_done_wait);
 	}
@@ -1664,6 +1780,28 @@ void wake_up_dump(void)
 	if (dump_bt_done != 1)
 		wait_event_interruptible_timeout(dump_bt_done_wait,
 			dump_bt_done == 1, HZ*10);
+}
+
+bool CheckWhiteList(void)
+{
+	struct name_list *pList = NULL;
+
+	if (!white_list)
+		return true;
+
+
+	raw_spin_lock(&white_list_lock);
+	pList = white_list;
+	while (pList) {
+		if (FindTaskByName(pList->name) < 0) {
+			/* not fond the Task */
+			raw_spin_unlock(&white_list_lock);
+			return false;
+		}
+		pList = pList->next;
+	}
+	raw_spin_unlock(&white_list_lock);
+	return true;
 }
 
 static int hang_detect_thread(void *arg)
@@ -1691,29 +1829,23 @@ static int hang_detect_thread(void *arg)
 			"[Hang_Detect] hang_detect thread counts down %d:%d, status %d.\n",
 			hang_detect_counter, hd_timeout, hd_detect_enabled);
 #ifdef BOOT_UP_HANG
-		if (reboot_flag || (hd_detect_enabled == 1))
+		if (hd_detect_enabled)
 #else
-		system_server_pid = FindTaskByName("system_server");
-		if (reboot_flag || ((hd_detect_enabled == 1) &&
-			(system_server_pid != -1)))
+		if (hd_detect_enabled && CheckWhiteList())
 #endif
 		{
 #ifdef CONFIG_MTK_RAM_CONSOLE
 			aee_rr_rec_hang_detect_timeout_count(hd_timeout);
 #endif
 
-			if (hang_detect_counter == 1 && hang_aee_warn == 2
-				&& hd_timeout != 11 && reboot_flag == false) {
-				hang_detect_counter = hd_timeout / 2;
-				hang_aee_warn = 1;
-				wake_up_dump();
-				hang_aee_warn = 0;
-			}
-
 			if (hang_detect_counter <= 0) {
 				Log2HangInfo(
 					"[Hang_detect]Dump the %d time process bt.\n",
 					Hang_Detect_first ? 2 : 1);
+				if (!Hang_Detect_first) {
+					memset(Hang_Info, 0, MaxHangInfoSize);
+					Hang_Info_Size = 0;
+				}
 				if (Hang_Detect_first == true
 					&& dump_bt_done != 1) {
 		/* some time dump thread will block in dumping native bt */
@@ -1734,10 +1866,11 @@ static int hang_detect_thread(void *arg)
 				if (Hang_Detect_first == true) {
 					pr_notice(
 						"[Hang_Detect] aee mode is %d, we should triger KE...\n",
-						aee_mode);
+						aee_get_mode());
 #ifdef CONFIG_MTK_RAM_CONSOLE
-	if (watchdog_thread_exist == false && reboot_flag == false)
-		aee_rr_rec_hang_detect_timeout_count(COUNT_ANDROID_REBOOT);
+		if ((!watchdog_thread_exist & system_server_exist)
+			&& reboot_flag == false)
+			aee_rr_rec_hang_detect_timeout_count(COUNT_ANDROID_REBOOT);
 #endif
 #ifdef CONFIG_MTK_ENG_BUILD
 					if (monit_hang_flag == 1) {
@@ -1774,20 +1907,12 @@ static int hang_detect_thread(void *arg)
 				hang_detect_counter = hd_timeout + 4;
 				hd_detect_enabled = 0;
 			}
-			reset_hang_info();
 		}
 
 		msleep((HD_INTER) * 1000);
 	}
 	return 0;
 }
-
-void hd_test(void)
-{
-	hang_detect_counter = 0;
-	hd_timeout = 0;
-}
-
 
 void aee_kernel_RT_Monitor_api(int lParam)
 {

@@ -41,6 +41,7 @@ struct vm_area_struct;
 #define ___GFP_WRITE		0x800000u
 #define ___GFP_KSWAPD_RECLAIM	0x1000000u
 #define ___GFP_CMA		0x2000000u
+#define ___GFP_HIGH_ATOMIC_ZRAM 0x2000000u
 #ifdef CONFIG_LOCKDEP
 #define ___GFP_NOLOCKDEP	0x4000000u
 #else
@@ -221,7 +222,7 @@ struct vm_area_struct;
 #define __GFP_CMA ((__force gfp_t)___GFP_CMA)
 
 /* Room for N __GFP_FOO bits */
-#define __GFP_BITS_SHIFT (26 + IS_ENABLED(CONFIG_LOCKDEP))
+#define __GFP_BITS_SHIFT (27 + IS_ENABLED(CONFIG_LOCKDEP))
 #define __GFP_BITS_MASK ((__force gfp_t)((1 << __GFP_BITS_SHIFT) - 1))
 
 /*

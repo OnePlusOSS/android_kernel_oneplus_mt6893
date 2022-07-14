@@ -64,7 +64,7 @@ static irqreturn_t devmpu_irq_handler_emi(unsigned int emi_id,
 
 #ifdef CONFIG_MTK_ENABLE_GENIEZONE
 	if ((wr_vio == 2) && (wr_oo_vio == 0) &&
-	    ((port_id == 0) || (port_id == 1)))
+		((port_id == 0) || (port_id == 1)))
 		return IRQ_HANDLED;
 #endif
 

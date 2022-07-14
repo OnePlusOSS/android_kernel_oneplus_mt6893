@@ -116,48 +116,6 @@ enum{
 	/* _MLSCI_R1_EN_  = (1L<<4), */
 } ENUM_DMA2_EN;
 
-
-/* debug_data port sequence */
-enum{
-	BPCI_R1_DEBUG   = 0,
-	LSCI_R1_DEBUG,
-	RAWI_R2_DEBUG,
-	IMGO_R1_DEBUG,
-	RRZO_R1_DEBUG,
-	AAO_R1_DEBUG,
-	AFO_R1_DEBUG,
-	LCESO_R1_DEBUG,
-	UFEO_R1_DEBUG,
-	PDO_R1_DEBUG,
-	rsv_0_DEBUG,
-	TSFSO_R1_DEBUG,
-	PDI_R1_DEBUG,
-	LMVO_R1_DEBUG,
-	FLKO_R1_DEBUG,
-	RSSO_R1_DEBUG,
-	UFGO_R1_DEBUG,
-	RAWI_R3_DEBUG,
-	CQI_R1_DEBUG,
-	CQI_R2_DEBUG,
-	BPCI_R2_DEBUG,
-	BPCI_R3_DEBUG,
-	rsv_1_DEBUG,
-	UFDI_R2_DEBUG,
-	rsv_2_DEBUG,
-	rsv_3_DEBUG,
-	LTMSO_R1_DEBUG,
-	LCESHO_R1_DEBUG,
-	rsv_4_DEBUG,
-	RSSO_R2_DEBUG,
-	CRZO_R1_DEBUG,
-	CRZBO_R1_DEBUG,
-	CRZO_R2_DEBUG,
-	rsv_5_DEBUG,
-	YUVO_R1_DEBUG,
-	YUVBO_R1_DEBUG,
-	YUVCO_R1_DEBUG,
-} DEBUG_DATA;
-
 /**
  *    CAMSV_DMA_SOFT_RSTSTAT
  */
@@ -760,6 +718,9 @@ enum{
 #define CAM_REG_DMA_SOFT_RSTSTAT1(module)       (isp_devs[module].regs + 0x4000)
 #define CAM_REG_DMA_SOFT_RESET1(module)         (isp_devs[module].regs + 0x4010)
 #define CAM_REG_DMA_ERR_CTRL1(module)           (isp_devs[module].regs + 0x401C)
+
+#define CAM_REG_DMA_MAGIC_NUM(module)           (isp_devs[module].regs + 0x40A4)
+
 
 /* MRAW */
 /* MRAW WDMA */

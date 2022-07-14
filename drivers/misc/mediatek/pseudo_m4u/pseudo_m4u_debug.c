@@ -33,6 +33,9 @@
 #elif defined(CONFIG_MTK_SECURE_MEM_SUPPORT)
 #include "trusted_mem_api.h"
 #endif
+#ifdef M4U_GZ_SERVICE_ENABLE
+#include "tz_m4u.h"
+#endif
 
 #if IS_ENABLED(CONFIG_DEBUG_FS) || IS_ENABLED(CONFIG_PROC_FS)
 #define M4U_MAGIC_KEY	(0x14045a)
@@ -524,6 +527,50 @@ static int dma_buf_test_alloc_dealloc(int port, struct sg_table *table,
 }
 #endif
 
+#ifdef M4U_GZ_SERVICE_ENABLE
+static int m4u_test_gz_sec_init(int iommu_sec_id)
+{
+	struct ion_client *ion_client = NULL;
+	struct ion_handle *ion_handle = NULL;
+	unsigned int heap_id_mask;
+	int ret = 0;
+
+	if (iommu_sec_id == SEC_ID_SEC_CAM) {
+		heap_id_mask = ION_HEAP_MULTIMEDIA_PROT_MASK;
+	} else if (iommu_sec_id == SEC_ID_SVP) {
+		heap_id_mask = ION_HEAP_MULTIMEDIA_SEC_MASK;
+	} else if (iommu_sec_id == SEC_ID_WFD) {
+		heap_id_mask = ION_HEAP_MULTIMEDIA_WFD_MASK;
+	}  else {
+		M4U_MSG("[%s] invalid sec_id:%d\n", __func__, iommu_sec_id);
+		return -1;
+	}
+
+	if (g_ion_device)
+		ion_client = ion_client_create(g_ion_device, "m4u_gz_test");
+	if (IS_ERR_OR_NULL(ion_client)) {
+		M4U_MSG("[%s] create client fail, client:%p, sec_id:%d\n",
+			__func__, ion_client, iommu_sec_id);
+		return -1;
+	}
+
+	ion_handle = ion_alloc(ion_client, 0x1000, 0, heap_id_mask, 0);
+	if (IS_ERR_OR_NULL(ion_handle)) {
+		M4U_MSG("[%s] ion alloc fail, handle:%p, sec_id:%d\n",
+			__func__, ion_handle, iommu_sec_id);
+	}
+
+	ret = m4u_gz_sec_init(iommu_sec_id);
+	M4U_MSG("[%s] secure init ret:%d, sec_id:%d\n",
+		__func__, ret, iommu_sec_id);
+
+	if (!IS_ERR_OR_NULL(ion_handle))
+		ion_free(ion_client, ion_handle);
+	ion_client_destroy(ion_client);
+	return ret;
+}
+#endif
+
 static int m4u_debug_set(void *data, u64 val)
 {
 	u64 value;
@@ -548,6 +595,10 @@ static int m4u_debug_set(void *data, u64 val)
 		unsigned long size = page_num * PAGE_SIZE;
 
 		page = alloc_pages(GFP_KERNEL, get_order(page_num));
+		if (!page) {
+			M4U_MSG("alloc_pages failed.\n");
+			break;
+		}
 		sg_alloc_table(sg_table, page_num, GFP_KERNEL);
 		for_each_sg(sg_table->sgl, sg, sg_table->nents, i)
 			sg_set_page(sg, page + i, PAGE_SIZE, 0);
@@ -671,6 +722,10 @@ static int m4u_debug_set(void *data, u64 val)
 		unsigned long size = page_num * PAGE_SIZE;
 
 		page = alloc_pages(GFP_KERNEL, get_order(page_num));
+		if (!page) {
+			M4U_MSG("alloc_pages failed.\n");
+			break;
+		}
 		sg_alloc_table(sg_table, page_num, GFP_KERNEL);
 		for_each_sg(sg_table->sgl, sg, sg_table->nents, i)
 			sg_set_page(sg, page + i, PAGE_SIZE, 0);
@@ -693,6 +748,10 @@ static int m4u_debug_set(void *data, u64 val)
 		unsigned long size = page_num * PAGE_SIZE;
 
 		page = alloc_pages(GFP_KERNEL, get_order(page_num));
+		if (!page) {
+			M4U_MSG("alloc_pages failed.\n");
+			break;
+		}
 		sg_alloc_table(sg_table, page_num, GFP_KERNEL);
 		for_each_sg(sg_table->sgl, sg, sg_table->nents, i)
 			sg_set_page(sg, page + i, PAGE_SIZE, 0);
@@ -805,29 +864,50 @@ static int m4u_debug_set(void *data, u64 val)
 
 #if (CONFIG_MTK_IOMMU_PGTABLE_EXT > 32)
 		pr_notice(" >> boundary 0 top 5 user\n");
+#if BITS_PER_LONG == 32
+		m4u_find_max_port_size(0, (1ULL << 32) - 1,
+					&err_port, &err_size);
+#else
 		m4u_find_max_port_size(0, (1UL << 32) - 1,
 					&err_port, &err_size);
+#endif
 		report_custom_iommu_leakage(
 					    iommu_get_port_name(err_port),
 					    err_size);
 
 		pr_notice(" >> boundary 1 top 5 user\n");
+#if BITS_PER_LONG == 32
+		m4u_find_max_port_size(1ULL << 32, (2ULL << 32) - 1,
+					&err_port, &err_size);
+#else
 		m4u_find_max_port_size(1UL << 32, (2UL << 32) - 1,
 					&err_port, &err_size);
+#endif
+
 		report_custom_iommu_leakage(
 					    iommu_get_port_name(err_port),
 					    err_size);
 
 		pr_notice(" >> boundary 2 top 5 user\n");
+#if BITS_PER_LONG == 32
+		m4u_find_max_port_size(2ULL << 32, (3ULL << 32) - 1,
+					&err_port, &err_size);
+#else
 		m4u_find_max_port_size(2UL << 32, (3UL << 32) - 1,
 					&err_port, &err_size);
+#endif
 		report_custom_iommu_leakage(
 					    iommu_get_port_name(err_port),
 					    err_size);
 
 		pr_notice(" >> boundary 3 top 5 user\n");
+#if BITS_PER_LONG == 32
+		m4u_find_max_port_size(3ULL << 32, (4ULL << 32) - 1,
+					&err_port, &err_size);
+#else
 		m4u_find_max_port_size(3UL << 32, (4UL << 32) - 1,
 					&err_port, &err_size);
+#endif
 		report_custom_iommu_leakage(
 					    iommu_get_port_name(err_port),
 					    err_size);
@@ -841,8 +921,13 @@ static int m4u_debug_set(void *data, u64 val)
 					    err_size);
 #else
 		pr_notice(" >> boundary 0 top 5 user\n");
+#if BITS_PER_LONG == 32
+		m4u_find_max_port_size(0, (1ULL << 32) - 1,
+					&err_port, &err_size);
+#else
 		m4u_find_max_port_size(0, (1UL << 32) - 1,
 					&err_port, &err_size);
+#endif
 		report_custom_iommu_leakage(
 					    iommu_get_port_name(err_port),
 					    err_size);
@@ -898,6 +983,7 @@ static int m4u_debug_set(void *data, u64 val)
 			pseudo_dealloc_mva(client, M4U_PORT_OVL_DEBUG, mva);
 		mtk_iommu_iova_to_pa(dev, mva, &pa);
 		M4U_MSG("(2) mva:0x%lx pa:0x%lx\n", mva, pa);
+		vfree(pSrc);
 	}
 	break;
 	case 25:
@@ -1070,17 +1156,18 @@ static int m4u_debug_set(void *data, u64 val)
 	break;
 #ifdef M4U_GZ_SERVICE_ENABLE
 	case 52:
-	{
-		int ret = 0;
-
-		ret = m4u_gz_sec_init(0);
-		pr_notice("%s, %d, genie zone secure init, ret:%d\n",
-			  __func__, __LINE__, ret);
-	}
-	break;
+		m4u_test_gz_sec_init(SEC_ID_SEC_CAM);
+		break;
+	case 53:
+		m4u_test_gz_sec_init(SEC_ID_SVP);
+		break;
+	case 54:
+		m4u_test_gz_sec_init(SEC_ID_WFD);
+		break;
 #endif
 	default:
 		M4U_MSG("%s error,val=%llu\n", __func__, val);
+		break;
 	}
 
 	return 0;

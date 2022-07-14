@@ -43,7 +43,11 @@ static int tcpc_otg_enable(void)
 	return 0;
 }
 
-static int tcpc_otg_disable(void)
+
+int tcpc_otg_disable(void)
+/*ELSE OPLUS_FEATURE_CHG_BASIC*/
+//static int tcpc_otg_disable(void)
+/*END OPLUS_FEATURE_CHG_BASIC*/
 {
 	if (usbc_otg_attached) {
 		mt_usbhost_disconnect();
@@ -51,8 +55,14 @@ static int tcpc_otg_disable(void)
 	}
 	return 0;
 }
+EXPORT_SYMBOL(tcpc_otg_disable);
+/*END OPLUS_FEATURE_CHG_BASIC*/
 
-static void tcpc_power_work_call(bool enable)
+/*OPLUS_FEATURE_CHG_BASIC*/
+void tcpc_power_work_call(bool enable)
+/*ELSE*/
+//static void tcpc_power_work_call(bool enable)
+/*END OPLUS_FEATURE_CHG_BASIC*/
 {
 	if (enable) {
 		if (!tcpc_boost_on) {
@@ -66,12 +76,14 @@ static void tcpc_power_work_call(bool enable)
 		}
 	}
 }
+EXPORT_SYMBOL(tcpc_power_work_call);
+/*END OPLUS_FEATURE_CHG_BASIC*/
 
 static int otg_tcp_notifier_call(struct notifier_block *nb,
 		unsigned long event, void *data)
 {
 	struct tcp_notify *noti = data;
-	bool otg_power_enable, otg_on;
+	bool otg_power_enable, otg_on, support_u3;
 
 	mutex_lock(&tcpc_otg_lock);
 	otg_on = usbc_otg_attached;
@@ -92,12 +104,17 @@ static int otg_tcp_notifier_call(struct notifier_block *nb,
 		if (noti->typec_state.old_state == TYPEC_UNATTACHED &&
 			noti->typec_state.new_state == TYPEC_ATTACHED_SRC) {
 			pr_info("%s OTG Plug in\n", __func__);
+			//oplus_wake_up_usbtemp_thread();
+			printk(KERN_ERR "!!!!! otg_tcp_notifier_call: [1]\n");
+/*END OPLUS_FEATURE_CHG_BASIC*/
 			tcpc_otg_enable();
 		} else if ((noti->typec_state.old_state == TYPEC_ATTACHED_SRC ||
 			noti->typec_state.old_state == TYPEC_ATTACHED_SNK) &&
 			noti->typec_state.new_state == TYPEC_UNATTACHED) {
 			if (otg_on) {
 				pr_info("%s OTG Plug out\n", __func__);
+			printk(KERN_ERR "!!!!! otg_tcp_notifier_call: [0]\n");
+/*END OPLUS_FEATURE_CHG_BASIC*/
 				tcpc_otg_disable();
 			} else {
 				pr_info("%s USB Plug out\n", __func__);
@@ -115,10 +132,18 @@ static int otg_tcp_notifier_call(struct notifier_block *nb,
 				usb3_switch_ctrl_sel(CC2_SIDE);
 		} else if (noti->typec_state.new_state == TYPEC_ATTACHED_SRC) {
 			usb3_switch_dps_en(false);
-			if (noti->typec_state.polarity == 0)
-				usb3_switch_ctrl_sel(CC2_SIDE);
-			else
-				usb3_switch_ctrl_sel(CC1_SIDE);
+			support_u3 = tcpc_is_support_u3();
+			if (support_u3) {
+				if (noti->typec_state.polarity == 0)
+					usb3_switch_ctrl_sel(CC1_SIDE);
+				else
+					usb3_switch_ctrl_sel(CC2_SIDE);
+			} else {
+				if (noti->typec_state.polarity == 0)
+					usb3_switch_ctrl_sel(CC2_SIDE);
+				else
+					usb3_switch_ctrl_sel(CC1_SIDE);
+			}
 		} else if (noti->typec_state.new_state == TYPEC_UNATTACHED) {
 			usb3_switch_dps_en(true);
 		}

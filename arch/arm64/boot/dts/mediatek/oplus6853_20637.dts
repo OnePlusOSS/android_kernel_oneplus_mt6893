@@ -1,0 +1,1984 @@
+/*
+ * Mediatek's mt6853 SoC device tree source
+ *
+ * Copyright (C) 2016 MediaTek Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See http://www.gnu.org/licenses/gpl-2.0.html for more details.
+ */
+/dts-v1/;
+/plugin/;
+#include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/pinctrl/mt6853-pinfunc.h>
+
+&reserved_memory {
+};
+
+/* chosen */
+&chosen {
+
+	atag,videolfb-fb_base_l = <0x7e605000>;
+	atag,videolfb-fb_base_h = <0x0>;
+	atag,videolfb-islcmfound = <1>;
+	atag,videolfb-islcm_inited = <0>;
+	atag,videolfb-fps= <6000>;
+	atag,videolfb-vramSize= <0x1be0000>;
+	atag,videolfb-lcmname=
+		"nt35595_fhd_dsi_cmd_truly_nt50358_drv";
+};
+
+&msdc1 {
+	status = "disable";
+};
+
+&disp_leds {
+	compatible = "mediatek,disp-leds";
+	backlight {
+		label = "lcd-backlight";
+		max-brightness = <4095>;
+		led-bits = <12>;
+		trans-bits = <12>;
+		default-state = "on";
+	};
+};
+
+&odm {
+	led0:led@0 {
+		compatible = "mediatek,red";
+		led_mode = <0>;
+		data = <1>;
+		pwm_config = <0 0 0 0 0>;
+	};
+	led1:led@1 {
+		compatible = "mediatek,green";
+		led_mode = <0>;
+		data = <1>;
+		pwm_config = <0 0 0 0 0>;
+	};
+	led2:led@2 {
+		compatible = "mediatek,blue";
+		led_mode = <0>;
+		data = <1>;
+		pwm_config = <0 0 0 0 0>;
+	};
+	led3:led@3 {
+		compatible = "mediatek,jogball-backlight";
+		led_mode = <0>;
+		data = <1>;
+		pwm_config = <0 0 0 0 0>;
+	};
+	led4:led@4 {
+		compatible = "mediatek,keyboard-backlight";
+		led_mode = <0>;
+		data = <1>;
+		pwm_config = <0 0 0 0 0>;
+	};
+	led5:led@5 {
+		compatible = "mediatek,button-backlight";
+		led_mode = <0>;
+		data = <1>;
+		pwm_config = <0 0 0 0 0>;
+	};
+	led6:led@6 {
+		compatible = "mediatek,lcd-backlight";
+		led_mode = <4>;
+		data = <1>;
+		pwm_config = <0 1 0 0 0>;
+	};
+		/*
+	enum {
+		LIS3DH,
+		LSM6DS3,
+		BMI160,
+		LIS2HH12,
+		LSM6DSM,
+		BMI2XY,
+	};
+	*/
+	gsensor_1: gsensor_1 {
+		status = "okay";
+		sensor_name = <2>;//BMI160
+		i2c_num = <2>;
+		i2c_addr = <0>;
+		direction = <3>;
+		eint_num = <3>;
+		step_count_7_en = <1>;
+		config_miso = <1>;
+		correct_y_bias = <1>;
+		cali_nv_adapt_q_flag = <1>; // just for oplus MTK5G q projects
+		direction_adpt = <6 7 0 3 0 3 0 3>;
+	};
+
+	gsensor_2: gsensor_2 {
+		status = "okay";
+		sensor_name = <4>;//LSM6DSM
+		i2c_num = <2>;
+		i2c_addr = <0>;
+		direction = <0>;
+		eint_num = <3>;
+		step_count_7_en = <1>;
+		config_miso = <1>;
+		correct_y_bias = <1>;
+		cali_nv_adapt_q_flag = <1>; // just for oplus MTK5G q projects
+		direction_adpt = <2 7 4 7 5 7 0 0>;
+	};
+	/*
+	enum {
+		AKM09911,
+		MMC3530,
+		MMC5603,
+		MXG4300,
+	};
+	*/
+	msensor_1: msensor_1 {
+		status = "okay";
+		sensor_name = <0>;//AKM09911
+		i2c_num = <0>;
+		i2c_addr = <12>;
+		direction = <2>;
+  		eint_num = <0>;
+ 		parameter-number= <18>;
+ 		soft-mag-parameter = <9263 0 322 1 140 1 48 0 10701 0 125 1 103 0 140 0 10726 0>;
+	};
+	msensor_2: msensor_2 {
+		status = "okay";
+		sensor_name = <2>;//MMC5603
+		i2c_num = <0>;
+		i2c_addr = <48>;
+		direction = <0>;
+		eint_num = <0>;
+ 		parameter-number= <18>;
+		soft-mag-parameter = <9993 0 145 1 311 1 169 0 9171 0 542 0 223 0 246 1 10812 0>;
+	};
+	/*
+	enum {
+		TMD2725,
+		APSD9922,
+		STK3335,
+		STK3331,
+		STK2232,
+		TCS3701,
+		STK32600,
+	};
+	*/
+	proximity_1: proximity_1 {
+		status = "okay";
+		sensor_name = <6>;//STK32600
+		i2c_num = <0>;
+		i2c_addr = <72>;
+		direction = <4>;
+		eint_num = <11>;
+		low_step = <300>;
+		high_step = <400>;
+		low_limit = <650>;
+		high_limit = <1050>;
+		dirty_low_step = <300>;
+		dirty_high_step = <400>;
+		ps_dirty_limit = <1800>;
+		ps_ir_limit = <2000>;
+		ps_adjust_min = <0>;
+		ps_adjust_max = <1850>;
+		sampling_count = <5>;
+		step_max = <400>;
+		step_min = <100>;
+		step_div = <2000>;
+		anti_shake_delta = <70>;
+		dynamic_cali_max = <2000>;
+		raw2offset_radio = <1000>;
+		offset_max = <60000>;
+		offset_range_min = <0>;
+		offset_range_max = <65534>;
+		force_cali_limit = <2000>;
+		cali_jitter_limit = <20>;
+		cal_offset_margin = <3000>;
+	};
+	proximity_2: proximity_2 {
+		status = "okay";
+		sensor_name = <5>;//TCS3701
+		i2c_num = <0>;
+		i2c_addr = <57>;
+		direction = <4>;
+		eint_num = <4>;
+		low_step = <300>;
+		high_step = <400>;
+		low_limit = <400>;
+		high_limit = <600>;
+		dirty_low_step = <180>;
+		dirty_high_step = <250>;
+		ps_dirty_limit = <1023>;
+		ps_ir_limit = <500>;
+		ps_adjust_min = <0>;
+		ps_adjust_max = <600>;
+		sampling_count = <5>;
+		step_max = <400>;
+		step_min = <110>;
+		step_div = <1500>;
+		anti_shake_delta = <80>;
+		dynamic_cali_max = <1024>;
+		raw2offset_radio = <20800>;
+		offset_max = <250>;
+		offset_range_min = <255>;
+		offset_range_max = <255>;
+		force_cali_limit = <2000>;
+		cali_jitter_limit = <30>;
+		cal_offset_margin = <120>;
+	};
+	light_1: light_1 {
+		status = "okay";
+		sensor_name = <6>;//STK32600
+		i2c_num = <0>;
+		i2c_addr = <72>;
+		direction = <4>;
+		eint_num = <11>;
+		als_buffer_length =<8>;
+		als_ratio = <110>;
+		device_name = "stk32600";
+	};
+	light_2: light_2 {
+		status = "okay";
+		sensor_name = <5>;//TCS3701
+		i2c_num = <0>;
+		i2c_addr = <57>;
+		direction = <4>;
+		eint_num = <11>;
+		als_buffer_length = <10>;
+		als_ratio = <110>;
+		device_name = "tcs3701";
+	};
+	alsps_arch: alsps_arch {
+		status = "okay";
+		new-arch-supported = <1>;
+	};
+	cali_nv_adapt_q: cali_nv_adapt_q {
+		status = "okay";
+		cali_nv_adapt_q = <1>;
+	};
+	vibrator0:vibrator@0 {
+		compatible = "mediatek,vibrator";
+		vib_timer = <30>;
+		vib_limit = <0>;
+		//#else
+		//vib_timer = <25>;
+		//vib_limit = <9>;
+		vib_vol= <11>;
+	};
+//	usb_c_pinctrl:usb_c_pinctrl {
+//		compatible = "mediatek,usb_c_pinctrl";
+//	};
+
+	kpd_volume_up:kpd_volume_up {
+		compatible = "mediatek, VOLUME_UP-eint";
+		interrupt-parent = <&pio>;
+		interrupts = <1 IRQ_TYPE_EDGE_FALLING 1 0>;
+		debounce = <32000>;
+		status = "okay";
+	};
+
+	kpd_volume_down:kpd_volume_down {
+		compatible = "mediatek, VOLUME_DOWN-eint";
+		interrupt-parent = <&pio>;
+		interrupts = <80 IRQ_TYPE_EDGE_FALLING 80 0>;
+		debounce = <32000>;
+		status = "okay";
+	};
+
+
+	oplus_boardid:oplus_boardid {
+		compatible = "oplus,oplus_boardid";
+		oplus_boardid,dtsino="20637";//only one u32
+		oplus_boardid,pcbmask="0xffff";//all mask 0xffff
+	};
+
+
+	oplus_project:oplus_project {
+		compatible = "oplus,oplus_project";
+	};
+
+	oplus_devinfo:oplus_devinfo {
+		compatible = "oplus-devinfo";
+
+		main-sub {
+			compatible = "hw-match, main-sub";
+			aboard-patterns = <0 0 0>;
+			/*main board*/
+			match-projects = <20638 20639 0x206B7>;
+		};
+	};
+
+	vooc_ap_data:vooc_ap_data {
+		compatible = "mediatek, VOOC_AP_DATA-eint";
+		interrupts = <63 IRQ_TYPE_EDGE_FALLING 63 0>;
+	};
+	vooc_ap_data_new_function:vooc_ap_data_new_function {
+		compatible = "mediatek, VOOC_EINT_NEW_FUNCTION";
+	};
+	cp_low_current:cp_low_current {
+		compatible = "mediatek, CP_LOW_CURRENT-eint";
+		interrupts = <18 IRQ_TYPE_EDGE_FALLING 18 0>;
+	};
+	cp_low_current_new_function:cp_low_current_new_function {
+		compatible = "mediatek,  CP_LOW_CURRENT_EINT_NEW_FUNCTION";
+	};
+	optiga {
+		compatible = "oplus-optiga";
+		status = "disable";
+		pinctrl-names = "optiga_active";
+		pinctrl-0 = <&optiga_active>;
+		data-gpio = <&pio 19 0x00>;
+		cpu-id = <7>;
+	};
+
+};
+
+
+&bat_gm30 {
+	FUELGAGUE_APPLY = <(1)>;
+	IS_GET_TBAT_SUPPORT = <(1)>;
+	ENABLE_IS_FORCE_FULL = <1>;
+	R_FG_VALUE = <(5)>;
+	/*zcv table*/
+	#include "mediatek/bat_setting/mt6853_battery_table_AthensD_ext.dtsi"
+	#include "mediatek/bat_setting/mt6853_battery_prop_AthensD_dim2_ext.dtsi"
+	/*The resistance of PCB*/
+	CAR_TUNE_VALUE = <(100)>;
+/*	Pseudo 100% percentage at T0*/
+	g_FG_PSEUDO100_T1 = <(96)>;
+/*	Pseudo 100% percentage at T1*/
+	g_FG_PSEUDO100_T2 = <(96)>;
+/*	Pseudo 100% percentage at T2*/
+	g_FG_PSEUDO100_T3 = <(93)>;
+};
+
+&phy_tuning {
+	compatible = "mediatek,phy_tuning";
+	u2_vrt_ref = <7>;
+	u2_term_ref = <7>;
+	u2_enhance = <3>;
+
+	host_u2_vrt_ref = <6>;
+	host_u2_term_ref = <6>;
+	host_u2_enhance = <2>;
+};
+
+&keypad {
+	keypad,volume-up	= <&pio 1 0x00>;
+	keypad,volume-down	= <&pio 80 0x00>;
+	pinctrl-names = "volume_up_as_int", "volume_down_as_int";
+	pinctrl-0 = <&volume_up_gpio_eint>;
+	pinctrl-1 = <&volume_down_gpio_eint>;
+	status = "okay";
+};
+&pio {
+	volume_up_gpio_eint:volume_up@0{
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO1__FUNC_GPIO1>;
+			slew-rate = <0>;  /*direction 0:in, 1:out*/
+			input-enable;
+		};
+	};
+
+	volume_down_gpio_eint:volume_down@0{
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO80__FUNC_GPIO80>;
+			slew-rate = <0>;  /*direction 0:in, 1:out*/
+			input-enable;
+		};
+	};
+};
+
+&oplus_devinfo {
+	Hw,sim_det = <&pio 77 0x00>;
+};
+
+/*
+&snd_audio_dsp {
+	compatible = "mediatek,snd_audio_dsp";
+	mtk_dsp_voip = <0x1f 0x1 0xffffffff 0xffffffff 0x30000>;
+	mtk_dsp_primary = <0x1f 0x0 0xffffffff 0xffffffff 0x30000>;
+	mtk_dsp_offload = <0x0 0x6 0xffffffff 0xffffffff 0x400000>;
+	mtk_dsp_deep = <0x5 0x3 0xffffffff 0xffffffff 0x30000>;
+	mtk_dsp_playback = <0x1 0x4 0x10 0x14 0x30000>;
+	mtk_dsp_music = <0x1 0xffffffff 0xffffffff 0xffffffff 0x0>;
+	mtk_dsp_capture1 = <0x1 0xffffffff 0xd 0x13 0x20000>;
+	mtk_dsp_a2dp = <0x0 0xffffffff 0xffffffff 0xffffffff 0x40000>;
+	mtk_dsp_dataprovider = <0x0 0xffffffff 0xf 0xffffffff 0x30000>;
+	mtk_dsp_call_final = <0x1 0x4 0x10 0x14 0x18000>;
+	mtk_dsp_fast = <0x5 0x2 0xffffffff 0xffffffff 0x5000>;
+	mtk_dsp_ktv = <0x1 0x8 0x12 0xffffffff 0x10000>;
+	mtk_dsp_ver = <0x1>;
+	swdsp_smartpa_process_enable = <0x1 0x40000>;
+};
+*/
+
+/* #ifdef OPLUS_ARCH_EXTENDS */
+#include "mediatek/oplus6853/common/oplus6853_20637_audio_extend.dtsi"
+/* #endif OPLUS_ARCH_EXTENDS */
+
+/* Charging Start */
+
+&mt6360_pmu {
+	mt6360,intr_gpio_num = <10>; /* direct defined GPIO num */
+	mt6360,intr_gpio = <&pio 10 0x0>;
+};
+
+&mt6360_pmic {
+	pwr_off_seq = [04 00 00 02];
+};
+
+&mt6360_typec {
+	mt6360pd,intr_gpio_num = <9>; /* direct defined GPIO num */
+	mt6360pd,intr_gpio = <&pio 9 0x0>;
+	//mt6360pd,pcb_gpio = <&pio 57 0x0>;
+	//mt6360pd,pcb_gpio_num = <57>;
+	mt-tcpc,role_def = <4>;
+};
+
+&mt6360_pmu {
+	chg {
+		compatible = "mediatek,mt6360_pmu_chg";
+		interrupt-parent = <&mt6360_pmu>;
+		interrupts = <4 0>, <6 0>, <7 0>, <9 0>,
+				<12 0>, <13 0>, <14 0>, <15 0>,
+				<27 0>, <29 0>, <30 0>, <32 0>,
+				<35 0>, <40 0>, <48 0>, <60 0>,
+				<53 0>;
+		interrupt-names = "chg_treg_evt", "chg_mivr_evt",
+				"pwr_rdy_evt", "chg_batsysuv_evt",
+				"chg_vsysuv_evt", "chg_vsysov_evt",
+				"chg_vbatov_evt", "chg_vbusov_evt",
+				"chg_tmri", "chg_adpbadi",
+				"chg_rvpi",  "chg_aiccmeasl",
+				"wdtmri", "pumpx_donei",
+				"attachi", "chrdet_ext_evt",
+				"hvdcp_det";
+		io-channels = <&adc 0>, <&adc 1>, <&adc 3>, <&adc 4>,
+				<&adc 5>, <&adc 6>, <&adc 8>, <&adc 10>;
+		io-channel-names = "USBID", "VBUSDIV5", "VSYS", "VBAT",
+				"IBUS", "IBAT", "TEMP_JC", "TS";
+		chg_name = "primary_chg";
+		ichg = <2000000>;               /* uA */
+		aicr = <500000>;                /* uA */
+		mivr = <4400000>;               /* uV */
+		cv = <4350000>;                 /* uA */
+		ieoc = <150000>;                /* uA */
+		safety_timer = <12>;            /* hour */
+		ircmp_resistor = <25000>;       /* uohm */
+		ircmp_vclamp = <32000>;         /* uV */
+		en_te = <1>;
+		en_wdt = <1>;
+		aicc_once = <1>;
+		post_aicc = <1>;
+		batoc_notify = <0>;
+	};
+};
+&lk_charger{
+	/*support_tuv_authentication;*/
+};
+&charger {
+	io-channels =  <&auxadc 3>,<&auxadc 4>,
+		<&auxadc 5>;
+	io-channel-names = "auxadc3-subboard_temp","auxadc4-usb_temp_v_l",
+		"auxadc5-usb_temp_v_r";
+
+	pinctrl-names = "default", "dischg_enable", "dischg_disable" ,"charger_gpio_as_output_low", "charger_gpio_as_output_high",
+	"chgvin_enable", "chgvin_disable","ship_sleep", "ship_active",
+	"ccdetect_active","ccdetect_sleep";
+	pinctrl-0 = <&charger_pins_default>;
+	pinctrl-1 = <&dischg_enable>;
+	pinctrl-2 = <&dischg_disable>;
+	pinctrl-3 = <&charger_pins_eint_output0>;      //USB_ON -> USB_SWITCH:(UART && USB)
+	pinctrl-4 = <&charger_pins_eint_output1>;
+	pinctrl-5 = <&chgvin_enable>;
+	pinctrl-6 = <&chgvin_disable>;
+	pinctrl-7 = <&ship_sleep_gpio>;
+	pinctrl-8 = <&ship_active_gpio>;
+	pinctrl-9 = <&ccdetect_active>;
+	pinctrl-10 = <&ccdetect_sleep>;
+	qcom,smart_charging_screenoff;
+	qcom,chargerid_support;
+	qcom,input_current_charger_ma = <2000>;
+	qcom,pd_input_current_charger_ma = <2000>;
+	qcom,qc_input_current_charger_ma = <2000>;
+	qcom,input_current_usb_ma = <500>;
+	qcom,ui_soc_decimal_speedmin = <20>;//2A
+
+	qcom,vooc_show_ui_soc_decimal;
+
+	qcom,input_current_cdp_ma = <1500>;
+	qcom,input_current_led_ma = <1200>;
+	qcom,input_current_led_ma_high = <1200>;
+	qcom,input_current_led_ma_warm = <1500>;
+	qcom,input_current_led_ma_normal = <2000>;
+	qcom,led_warm_bat_decidegc = <350>;
+	qcom,led_high_bat_decidegc = <370>;
+
+	qcom,input_current_camera_ma = <1200>;
+
+
+	qcom,chg_ctrl_by_calling;
+	qcom,input_current_calling_ma = <1500>;
+
+	qcom,overtemp_bat_decidegc = <350>;
+	qcom,iterm_disabled = <0>;
+	qcom,iterm_ma = <225>;
+	qcom,recharge-mv = <100>;
+	qcom,batt_capacity_mah = <4300>;/*typical capacity*/
+
+	qcom,removed_bat_decidegc = <190>;  /*<-19C*/
+
+	qcom,cold_bat_decidegc = <20>;  /*-2C~0C*/
+	qcom,temp_cold_vfloat_mv = <3980>;
+	qcom,temp_cold_fastchg_current_ma = <314>;
+
+	qcom,little_cold_bat_decidegc = <0>;    /*0C~5C*/
+	qcom,temp_little_cold_vfloat_mv = <4435>;
+	qcom,temp_little_cold_fastchg_current_ma_high = <2200>;
+	qcom,temp_little_cold_fastchg_current_ma_low = <2200>;
+
+	qcom,pd_temp_little_cold_fastchg_current_ma_high = <3000>;
+	qcom,pd_temp_little_cold_fastchg_current_ma_low = <2742>;
+	qcom,temp_little_cold_fastchg_current_ma = <1076>;
+	qcom,qc_temp_little_cold_fastchg_current_ma_high = <3000>;
+	qcom,qc_temp_little_cold_fastchg_current_ma_low = <2742>;
+
+	qcom,cool_bat_decidegc = <50>;  /*5C~12C*/
+	qcom,temp_cool_vfloat_mv = <4435>;
+	qcom,temp_cool_fastchg_current_ma_high = <2200>;
+	qcom,temp_cool_fastchg_current_ma_low = <2200>;
+	qcom,pd_temp_cool_fastchg_current_ma_high = <3000>;
+	qcom,pd_temp_cool_fastchg_current_ma_low = <3000>;
+	qcom,qc_temp_cool_fastchg_current_ma_high = <3000>;
+	qcom,qc_temp_cool_fastchg_current_ma_low = <3000>;
+
+	qcom,little_cool_bat_decidegc = <120>;  /*12C~16C*/
+	qcom,temp_little_cool_vfloat_mv = <4435>;
+	qcom,temp_little_cool_fastchg_current_ma = <2200>;
+	qcom,pd_temp_little_cool_fastchg_current_ma = <3000>;
+	qcom,qc_temp_little_cool_fastchg_current_ma = <3000>;
+
+	qcom,normal_bat_decidegc = <160>;       /*16C~44C*/
+	qcom,temp_normal_fastchg_current_ma = <2200>;
+	qcom,temp_normal_vfloat_mv = <4435>;
+	qcom,pd_temp_normal_fastchg_current_ma = <3000>;
+	qcom,qc_temp_normal_fastchg_current_ma = <3000>;
+
+	qcom,warm_bat_decidegc = <450>;         /*45C~53C*/ /*8pin Bat Vooc project need add 3 degree C*/
+	qcom,temp_warm_vfloat_mv = <4130>;
+	qcom,temp_warm_fastchg_current_ma = <1200>;
+	qcom,pd_temp_warm_fastchg_current_ma = <1200>;
+	qcom,qc_temp_warm_fastchg_current_ma = <1200>;
+	qcom,temp_warm_fastchg_current_ma_led_on = <500>;
+
+	qcom,hot_bat_decidegc = <530>;
+
+	qcom,non_standard_vfloat_mv = <3980>;
+	qcom,non_standard_fastchg_current_ma = <512>;
+
+	qcom,short_c_bat_cv_mv = <4330>;
+	qcom,short_c_bat_vfloat_mv = <3800>;
+	qcom,short_c_bat_fastchg_current_ma = <512>;
+
+	qcom,cold_vfloat_sw_limit = <3930>;
+	qcom,little_cold_vfloat_sw_limit = <4385>;
+	qcom,cool_vfloat_sw_limit = <4385>;
+	qcom,little_cool_vfloat_sw_limit = <4385>;
+	qcom,normal_vfloat_sw_limit = <4385>;
+	qcom,warm_vfloat_sw_limit = <4080>;
+	qcom,non_standard_vfloat_sw_limit = <3930>;
+	qcom,short_c_bat_vfloat_sw_limit = <3750>;
+
+	qcom,max_chg_time_sec = <50200>;
+	qcom,charger_hv_thr = <11000>;
+	qcom,charger_recv_thr = <9700>;
+	qcom,charger_lv_thr = <3400>;
+	qcom,vbatt_full_thr = <4435>;
+	qcom,vbatt_hv_thr = <4600>;
+	qcom,vfloat_step_mv = <16>;
+	qcom,non_standard_vfloat_over_sw_limit = <3990>;
+	qcom,cold_vfloat_over_sw_limit = <3990>;
+	qcom,little_cold_vfloat_over_sw_limit = <4445>;
+	qcom,cool_vfloat_over_sw_limit = <4445>;
+	qcom,little_cool_vfloat_over_sw_limit = <4445>;
+	qcom,normal_vfloat_over_sw_limit = <4445>;
+	qcom,warm_vfloat_over_sw_limit = <4140>;
+
+	qcom,vbatt_power_off = <3300>;
+	qcom,vbatt_soc_1 = <3310>;
+	qcom,vooc_project = <3>;
+	qcom,vbatt_num = <1>;
+	qcom,new_ui_warning_support;
+	qcom,internal_gauge_with_asic = <1>;
+	qcom,ffc_support;
+
+	//recharge_after_full;
+	qcom,hv_flashled_support;
+	qcom,normal_vterm_hw_inc = <18>;
+	qcom,non_normal_vterm_hw_inc = <18>;
+
+	//qcom,dual_ffc;
+	qcom,ffc2_temp_low_decidegc = <160>;/*16c*/
+	qcom,ffc2_temp_warm_decidegc = <350>;/*35C*/
+	qcom,ffc2_temp_high_decidegc = <400>;/*40c*/
+
+	qcom,ff1_normal_fastchg_ma = <1650>;
+	qcom,ff1_warm_fastchg_ma = <1750>;
+	qcom,ffc2_normal_fastchg_ma = <1650>;/*12C~35c*/
+	qcom,ffc2_warm_fastchg_ma = <1750>;
+
+	qcom,ffc2_exit_step_ma = <200>;
+	qcom,ff1_exit_step_ma = <200>;
+	qcom,ff1_warm_exit_step_ma = <200>;
+	qcom,ffc2_warm_exit_step_ma = <200>;
+
+	qcom,ffc_normal_vfloat_sw_limit = <4500>;//exit volt
+	qcom,ffc_warm_vfloat_sw_limit = <4500>;//exit volt
+
+	qcom,ffc2_normal_vfloat_sw_limit = <4500>;//exit volt
+	qcom,ffc2_warm_vfloat_sw_limit = <4500>;//exit volt
+
+	qcom,ffc_temp_normal_vfloat_mv = <4550>;
+	qcom,ffc1_temp_normal_vfloat_mv = <4550>;
+	qcom,ffc2_temp_normal_vfloat_mv = <4550>;
+
+	qcom,ffc_normal_vfloat_over_sw_limit = <4550>;
+	qcom,ffc1_normal_vfloat_over_sw_limit = <4550>;
+	qcom,ffc2_normal_vfloat_over_sw_limit = <4550>;
+
+	qcom,default_iterm_ma = <225>;
+	qcom,default_temp_normal_fastchg_current_ma = <2200>;
+	qcom,default_normal_vfloat_sw_limit = <4385>;
+	qcom,default_temp_normal_vfloat_mv = <4435>;
+	qcom,default_normal_vfloat_over_sw_limit = <4445>;
+
+	qcom,default_temp_little_cool_fastchg_current_ma = <2200>;
+	qcom,default_little_cool_vfloat_sw_limit = <4385>;
+	qcom,default_temp_little_cool_vfloat_mv = <4435>;
+	qcom,default_little_cool_vfloat_over_sw_limit = <4445>;
+	qcom,vbatt_pdqc_to_5v_thr = <4500>;
+	qcom,vbatt_pdqc_to_9v_thr = <4500>;
+	qcom,smart_charge_version = <1>;
+
+	qcom,qc_not_support = <1>;
+
+	qcom,check_batt_full_by_sw;
+	//qcom,external_gauge;
+	//qcom,external_authenticate;
+	qcom,chg_ctrl_by_lcd;
+	//qcom,chg_ctrl_by_vooc;
+	qcom,chg_ctrl_by_camera;
+	qcom,sw_vfloat_over_protect_enable;
+	qcom,lpd-disable;
+
+	qcom,usbtemp_batttemp_gap = <10>;
+	//GPIO config:
+	qcom,chargerid_switch-gpio = <&pio 40 0x00>;//USB_ON
+	qcom,ship-gpio = <&pio 16 0x00>;
+	qcom,dischg-gpio = <&pio 39 0x00>;//VBUS_SHORT
+	qcom,chgvin = <&pio 38 0x00>;
+	qcom,pmic_chgfunc = <&pio 135 0x00>;
+	qcom,ccdetect-gpio = <&pio 92 0x00>;//USB_ACC_INT
+};
+&mt_pmic_vio28_ldo_reg {
+	regulator-name = "vio28";
+	regulator-min-microvolt = <3000000>;
+	regulator-max-microvolt = <3000000>;
+	regulator-enable-ramp-delay = <240>;
+};
+
+&pio {
+	charger_pins_default: eint0default {
+	};
+
+	charger_pins_eint_output0: charger_gpio_as_output_low {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO40__FUNC_GPIO40>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+
+	charger_pins_eint_output1: charger_gpio_as_output_high {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO40__FUNC_GPIO40>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+
+	ship_sleep_gpio: ship_sleep {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO16__FUNC_GPIO16>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+
+	ship_active_gpio: ship_active {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO16__FUNC_GPIO16>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+	dischg_enable: dischg_enable {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO39__FUNC_GPIO39>;
+			slew-rate = <1>;//0:input direction 1:output direction
+			bias-pull-up;
+			output-high;
+		};
+	};
+
+	dischg_disable: dischg_disable {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO39__FUNC_GPIO39>;
+			slew-rate = <1>;
+			bias-pull-down;
+			output-low;
+		};
+	};
+	chgvin_enable: chgvin_enable {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO38__FUNC_GPIO38>;
+			slew-rate = <1>;//0:input direction 1:output direction
+			bias-pull-up = <00>;
+			output-low;
+		};
+	};
+	chgvin_disable: chgvin_disable {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO38__FUNC_GPIO38>;
+			slew-rate = <1>;
+			bias-pull-down = <00>;
+			output-high;
+		};
+	};
+
+	ccdetect_active: ccdetect_active {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO92__FUNC_GPIO92>;
+			input-enable;
+			slew-rate = <0>;
+			bias-disable;
+		};
+	};
+
+	ccdetect_sleep: ccdetect_sleep {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO92__FUNC_GPIO92>;
+			input-enable;
+			slew-rate = <0>;
+			bias-disable;
+		};
+	};
+	optiga_active: optiga_active {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO19__FUNC_GPIO19>;
+			slew-rate = <1>;
+			output-low;/*modify for leakage*/
+		};
+	};
+
+    fsa_hs_det_low: fsa_hs_det_low {
+        pins_cmd_dat {
+            pinmux = <PINMUX_GPIO128__FUNC_GPIO128>;
+            slew-rate = <1>;  /*direction 0:in, 1:out*/
+            output-low;
+        };
+    };
+
+    fsa_hs_det_high: fsa_hs_det_high {
+        pins_cmd_dat {
+            pinmux = <PINMUX_GPIO128__FUNC_GPIO128>;
+            slew-rate = <1>;  /*direction 0:in, 1:out*/
+            output-high;
+        };
+    };
+};
+
+&apuart0 {
+	pinctrl-names = "uart0_rx_gpio",
+			"uart0_tx_gpio";
+	pinctrl-0 = <&uart0_rx_gpio_input>;
+	pinctrl-1 = <&uart0_tx_gpio_input>;
+	status = "okay";
+};
+
+&pio {
+	uart0_rx_gpio_input:uart0_rx_gpio@gpio61 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO61__FUNC_GPIO61>;
+			input-enable;
+			slew-rate = <0>;
+			//bias-disable;
+			bias-pull-down = <00>;
+		};
+	};
+	uart0_tx_gpio_input:uart0_tx_gpio@gpio62 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO62__FUNC_GPIO62>;
+			input-enable;
+			slew-rate = <0>;
+			//bias-disable;
+			bias-pull-down = <00>;
+		};
+	};
+};
+
+
+&i2c7 {
+	status = "okay";
+	clock-frequency = <100000>;
+
+	bq2597x-standalone@65 {
+		status = "okay";
+		compatible = "oplus,bq2597x-standalone";
+		reg = <0x65>;
+		chip-name = "BQ25970";
+		qcom,cp_low_current = <&pio 18 0x00>;
+	};
+	rt5125-fastcg@0e{
+		status = "okay";
+		compatible = "oplus,rt5125-fastcg";
+		reg = <0x0e>;
+		qcom,vooc_reply_mcu_bits = <7>;
+		qcom,vooc-low-temp = <0>;
+		qcom,oplus_batt_4400mv;
+		qcom,vooc-high-soc = <90>;
+
+		qcom,vooc_cool_bat_volt = <3650>;
+		qcom,vooc_little_cool_bat_volt = <3550>;
+		qcom,vooc_normal_bat_volt = <3450>;
+		qcom,vooc_warm_bat_volt = <3350>;
+
+		qcom,vooc_cool_bat_suspend_volt = <3650>;
+		qcom,vooc_little_cool_bat_suspend_volt = <3550>;
+		qcom,vooc_normal_bat_suspend_volt = <3450>;
+		qcom,vooc_warm_bat_suspend_volt = <3350>;
+
+		qcom,vooc-high-temp = <430>;
+		qcom,vooc_batt_over_high_temp = <440>;
+//		qcom,vooc_fw_update_newmethod;
+		qcom,vooc-fw-type = <9>;
+		qcom,support-single-batt-svooc;
+		qcom,vooc_is_platform_gauge;
+		qcom,vooc_multistep_adjust_current_support;
+		qcom,vooc_multistep_initial_batt_temp = <1000>;
+		qcom,vooc_strategy_normal_current = <0x09>;
+
+		qcom,vooc_strategy1_batt_high_temp0 = <375>;
+		qcom,vooc_strategy1_batt_high_temp1 = <385>;
+		qcom,vooc_strategy1_batt_high_temp2 = <420>;
+		qcom,vooc_strategy1_batt_low_temp2 = <410>;
+		qcom,vooc_strategy1_batt_low_temp1 = <375>;
+		qcom,vooc_strategy1_batt_low_temp0 = <365>;
+
+		qcom,vooc_strategy1_high_current0 = <0x07>;
+		qcom,vooc_strategy1_high_current1 = <0x05>;
+		qcom,vooc_strategy1_high_current2 = <0x01>;
+		qcom,vooc_strategy1_low_current2 = <0x03>;
+		qcom,vooc_strategy1_low_current1 = <0x07>;
+		qcom,vooc_strategy1_low_current0 = <0x09>;
+		qcom,parse_fw_from_dt;
+		vooc,firmware_data =[
+			90 06 00 20 a1 00 00 00 a9 00 00 00 ab 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+			00 00 00 00 00 00 00 00 00 00 00 00 ad 00 00 00 00 00 00 00 00 00 00 00 af 00 00 00 b1 00 00 00 
+			65 09 00 00 95 0e 00 00 f5 0c 00 00 b3 00 00 00 79 0e 00 00 d1 08 00 00 75 0d 00 00 89 0d 00 00 
+			69 0e 00 00 09 0d 00 00 19 0d 00 00 51 08 00 00 e1 0b 00 00 f1 0b 00 00 01 0c 00 00 b3 00 00 00 
+			1d 0c 00 00 b3 00 00 00 29 0d 00 00 03 48 85 46 00 f0 a0 fb 00 48 00 47 f9 26 00 00 90 06 00 20 
+			04 48 80 47 04 48 00 47 fe e7 fe e7 fe e7 fe e7 fe e7 fe e7 71 0d 00 00 8d 00 00 00 70 b5 00 24 
+			25 46 00 28 01 da 01 24 40 42 00 29 01 da 01 25 49 42 00 f0 95 fa ac 42 00 d0 40 42 00 2c 00 d0 
+			49 42 70 bd f8 b5 02 46 4a 40 d4 0f 42 00 4b 00 52 08 5b 08 9a 42 02 d2 02 46 08 46 11 46 4a 00 
+			23 d0 c3 0d 4a 00 dd b2 12 0e ad 1a 20 2d 35 da 49 02 01 26 49 0a f6 05 8a 19 00 2c 00 d0 52 42 
+			20 21 4f 1b 11 46 b9 40 2a 41 10 18 c2 0d 9a 42 21 d0 00 2c 17 d0 01 2d 08 dc da 05 80 1a d2 0f 
+			80 19 d2 07 db b2 00 f0 ad fa f8 bd da 05 80 1a 01 23 40 00 1b 06 c0 18 80 18 5a 42 80 18 ca 0f 
+			10 43 49 00 07 e0 49 08 c2 07 11 43 da 05 80 1a 80 19 40 08 80 18 00 f0 8d fa f8 bd 61 00 01 22 
+			51 1a 00 1b f7 e7 01 22 d2 07 51 40 aa e7 01 22 d2 07 50 40 a6 e7 02 46 70 b5 4a 40 d3 0f db 07 
+			40 00 2d d0 4a 00 2a d0 01 0e 14 0e 00 02 12 02 09 19 40 0a 52 0a 84 18 e5 01 04 46 54 43 00 0a 
+			12 0a 2e 04 50 43 a4 19 42 19 20 0c c5 43 aa 18 12 0c 01 25 ad 03 52 1c 52 19 12 04 7f 39 24 04 
+			00 d0 52 1c 10 43 01 d4 40 00 49 1e c2 b2 0c 06 c0 09 20 18 40 1c 40 08 80 2a 02 d0 03 e0 00 20 
+			70 bd 40 08 40 00 00 29 00 da 00 20 18 43 70 bd 70 b5 02 46 4a 40 d5 0f 40 00 4a 00 ed 07 40 08 
+			52 08 00 28 14 d0 00 2a 12 d0 c4 0d d3 0d 41 02 01 20 c0 05 52 02 49 0a 52 0a e4 1a 09 18 12 18 
+			7d 34 91 42 01 d3 64 1c 00 e0 49 00 00 2c 01 da 00 20 70 bd 00 23 91 42 01 d3 89 1a 03 43 40 08 
+			49 00 00 28 f7 d1 00 29 0a d0 91 42 02 d1 01 21 c9 07 05 e0 91 42 01 d2 01 21 01 e0 01 21 c9 43 
+			e0 05 c0 18 40 19 00 f0 05 fa 70 bd 42 00 05 d0 42 00 12 0e 52 42 8a 42 01 db 00 20 70 47 c9 05 
+			08 18 70 47 f0 b5 07 46 08 46 58 40 87 b0 c0 0f 04 90 48 00 0e 46 59 00 40 08 49 08 bc 1a 88 41 
+			05 d2 38 46 31 46 1e 46 17 46 0b 46 02 46 58 00 40 08 10 43 4c d0 30 0d 03 90 40 05 59 00 40 0d 
+			49 0d 05 90 40 1a 02 90 40 28 72 da 18 03 01 21 00 0b 09 05 08 43 01 90 04 98 00 92 00 28 05 d0 
+			01 99 52 42 00 20 88 41 00 92 01 90 02 98 40 21 0a 1a 01 99 00 98 00 f0 89 f9 05 46 0c 46 6b 46 
+			07 cb 00 f0 a4 f9 c0 19 71 41 03 9a 0e 0d 00 23 d7 17 56 40 1a 46 7a 40 16 43 44 d0 04 9a 00 2a 
+			2d d0 02 9a 01 2a 03 9a 15 dc 12 05 c0 1a 91 41 01 26 36 05 00 1c 71 41 d2 0f 05 9e d2 07 00 93 
+			01 92 02 96 2a 46 23 46 00 f0 e2 f9 07 b0 f0 bd 38 46 31 46 fa e7 16 05 22 4a 0f 46 b2 18 c0 1a 
+			b7 41 01 21 09 05 00 1c 4f 41 00 18 7f 41 11 46 18 18 79 41 e2 0f 10 43 6d 19 64 41 13 e0 e2 07 
+			6d 08 15 43 64 08 c2 07 14 43 03 9a 01 26 12 05 c0 1a 91 41 36 05 00 1c 71 41 ce 07 40 08 30 43 
+			49 08 c0 18 51 41 2a 46 23 46 00 f0 a4 f9 cd e7 ff e7 04 98 01 22 40 00 c1 17 12 1a 00 23 8b 41 
+			04 98 31 46 c4 17 38 1a a1 41 ee e7 30 b4 01 24 e4 07 63 40 30 bc 55 e7 30 b4 01 24 e4 07 61 40 
+			30 bc 4f e7 00 00 e0 ff f0 b5 1f b4 88 b0 0b 99 09 98 00 24 48 40 09 99 c0 0f 49 00 49 08 09 91 
+			c0 07 0b 99 00 90 49 00 49 08 0b 91 09 99 08 98 a6 46 08 43 1c d0 0b 99 0a 98 08 43 18 d0 09 98 
+			01 24 40 00 42 0d 48 00 41 0d 09 98 24 05 00 03 00 0b 20 43 09 90 0b 98 00 03 00 0b 20 43 0b 90 
+			50 18 1c 49 40 18 00 22 01 90 14 46 10 46 05 e0 00 20 01 46 0d b0 f0 bd 03 28 01 da 03 46 00 e0 
+			03 23 9c 46 c1 1a 0a ae 0a e0 5f 00 08 ad ed 5b 4f 00 f7 5b 7d 43 00 27 aa 18 7c 41 49 1c 5b 1e 
+			61 45 f2 dd 41 00 04 ab 5a 52 21 04 12 0c 0a 43 24 0c 40 1c 08 28 df db 01 98 02 90 00 99 70 46 
+			01 91 00 90 05 9b 04 9a 07 99 06 98 00 f0 30 f9 d0 e7 00 00 0d fc ff ff c2 17 c1 0f 50 40 10 b5 
+			40 18 ca 07 96 23 00 21 00 f0 dc f8 10 bd 00 00 0e b5 c2 17 c1 0f 50 40 ca 07 40 18 00 21 05 4b 
+			02 93 01 92 00 91 0a 46 0b 46 00 f0 11 f9 03 b0 00 bd 00 00 33 04 00 00 0e b5 05 49 02 91 00 21 
+			00 91 0a 46 0b 46 01 91 00 f0 02 f9 03 b0 00 bd 33 04 00 00 c2 0f 41 00 40 02 01 23 40 0a db 05 
+			d2 07 09 0e c0 18 7f 29 01 da 00 20 70 47 96 29 03 dc 96 23 59 1a c8 40 01 e0 96 39 88 40 00 2a 
+			f4 d0 40 42 70 47 00 00 70 b5 cd 0f 4a 00 09 03 01 23 09 0b 1b 05 19 43 0b 4b ed 07 00 24 52 0d 
+			9a 42 01 da 00 20 70 bd 07 4b 34 33 9a 42 03 dc 9a 1a 00 f0 5b f8 02 e0 04 49 51 18 88 40 2c 43 
+			f1 d0 40 42 70 bd 00 00 ff 03 00 00 cd fb ff ff c2 0f d2 07 40 00 40 08 0b d0 c1 0d 07 23 db 01 
+			c9 18 40 02 09 05 40 0a 11 43 c2 08 40 07 11 43 70 47 00 20 01 46 70 47 10 b5 00 29 04 db 01 24 
+			e4 07 40 42 8c 41 21 46 00 2b 04 db 1c 46 01 23 db 07 52 42 a3 41 8b 42 00 d1 82 42 10 bd 00 00 
+			30 b5 0b 46 01 46 00 20 20 22 01 24 09 e0 0d 46 d5 40 9d 42 05 d3 1d 46 95 40 49 1b 25 46 95 40 
+			40 19 15 46 52 1e 00 2d f1 dc 30 bd 10 b5 20 2a 04 db 01 46 20 3a 91 40 00 20 10 bd 91 40 20 23 
+			9c 1a 03 46 e3 40 19 43 90 40 10 bd 10 b5 20 2a 04 db 08 46 20 3a d0 40 00 21 10 bd 0b 46 d3 40 
+			d0 40 20 24 a2 1a 91 40 08 43 19 46 10 bd 10 b5 20 2a 06 db cb 17 08 46 20 3a 10 41 c1 17 0b 43 
+			06 e0 0b 46 13 41 d0 40 20 24 a2 1a 91 40 08 43 19 46 10 bd 00 29 04 da 40 1c 49 00 01 d1 40 08 
+			40 00 70 47 70 b4 00 24 05 0c 05 d1 10 24 00 04 02 d1 00 29 21 d0 11 24 05 0e 01 d1 00 02 08 34 
+			05 0f 01 d1 00 01 24 1d 85 0f 01 d1 80 00 a4 1c 00 28 01 db 40 00 64 1c 00 29 08 d0 20 25 2e 1b 
+			0d 46 f5 40 a1 40 00 d0 01 21 29 43 08 43 01 06 1b 1b 00 0a db 1d 02 d5 00 20 70 bc 70 47 db 05 
+			18 18 80 18 00 29 f8 da 40 1c 49 00 f5 d1 70 bc 40 08 40 00 70 47 10 b5 00 2b 08 da 00 24 40 1c 
+			61 41 92 18 5b 41 1a 43 01 d1 40 08 40 00 10 bd f0 b5 1f b4 82 b0 05 46 0c 00 03 d0 08 46 00 f0 
+			b3 fb 02 e0 00 f0 b0 fb 20 30 02 46 00 90 21 46 28 46 ff f7 6b ff 04 9b 05 9a 04 46 0f 46 18 43 
+			11 43 08 43 14 d0 18 46 10 43 1b d0 00 98 40 21 0a 1a 18 46 05 99 ff f7 69 ff 05 46 0e 46 00 9a 
+			05 99 04 98 ff f7 52 ff 08 43 05 d0 01 20 04 e0 20 46 39 46 07 b0 f0 bd 00 20 c1 17 05 43 0e 43 
+			2c 43 37 43 00 99 0e 98 63 05 40 1a 79 05 e4 0a 00 22 0c 43 fd 0a 0a 30 02 d5 00 20 01 46 e9 e7 
+			01 05 10 19 69 41 0c 9c 0d 9d 00 19 69 41 ff f7 a2 ff df e7 06 4c 01 25 06 4e 05 e0 e3 68 07 cc 
+			2b 43 0c 3c 98 47 10 34 b4 42 f7 d3 ff f7 52 fc 18 30 00 00 38 30 00 00 70 b5 8c 18 05 78 40 1c 
+			6b 07 5b 0f 01 d1 03 78 40 1c 2a 11 06 d1 02 78 40 1c 03 e0 06 78 0e 70 40 1c 49 1c 5b 1e f9 d1 
+			2b 07 05 d4 00 23 52 1e 0d d4 0b 70 49 1c fa e7 03 78 40 1c cb 1a 92 1c 03 e0 1d 78 0d 70 49 1c 
+			5b 1c 52 1e f9 d5 a1 42 d8 d3 00 20 70 bd 00 00 02 48 01 68 82 14 91 43 01 60 70 47 00 70 00 40 
+			10 b5 0c 4c 01 20 e0 62 06 20 00 f0 e1 f8 00 20 00 f0 62 fa 60 68 01 28 0a d0 01 21 06 20 00 f0 
+			d7 f8 00 20 a0 62 06 20 00 f0 d2 f8 08 46 10 bd 00 21 f3 e7 00 03 0a 42 00 b5 00 23 0b 49 01 22 
+			00 28 01 d0 cb 62 00 e0 ca 62 8a 62 06 20 00 f0 bf f8 06 20 00 f0 bc f8 06 20 00 f0 b9 f8 8b 62 
+			06 20 00 f0 b5 f8 ca 62 00 bd 00 00 00 03 0a 42 05 48 c0 69 05 49 c8 70 05 48 01 68 01 22 92 04 
+			91 43 01 60 70 47 00 00 00 30 00 40 85 02 00 20 00 70 00 40 f0 b5 07 46 0e 46 14 46 00 25 00 f0 
+			29 f9 ca 20 00 f0 4e f9 01 28 07 d0 6d 1c ed b2 01 20 00 f0 19 f9 0a 2d f1 d9 f0 bd 38 46 00 f0 
+			41 f9 01 28 03 d0 01 20 00 f0 0e f9 f0 bd 00 f0 11 f9 cb 20 00 f0 36 f9 01 28 0a d0 01 20 00 f0 
+			03 f9 f0 bd 01 20 00 f0 d3 f8 20 70 64 1c 76 1e f6 b2 01 2e f6 d8 00 20 00 f0 ca f8 20 70 00 f0 
+			0d f9 f0 bd 70 b5 2e 48 01 68 01 22 d2 05 91 43 01 60 2c 4b 98 69 c0 b2 14 21 06 46 2a 4a 0e 40 
+			d1 1c 02 25 29 4c 00 2e 0f d0 10 78 56 78 80 19 40 5c 99 68 09 0a 09 02 01 43 99 60 50 78 40 1c 
+			50 70 20 68 28 43 20 60 70 bd 06 07 12 d5 20 68 c0 07 08 d0 d8 68 13 78 94 78 1b 19 58 54 90 78 
+			40 1c 90 70 70 bd d8 68 10 70 20 68 01 21 08 43 20 60 70 bd c6 07 13 d0 20 68 80 07 f9 d4 10 78 
+			00 28 f6 d1 90 78 02 28 f3 d3 10 78 40 5c 12 78 0d 49 09 1d 51 5c 09 02 08 43 00 f0 4d f8 70 bd 
+			80 07 0b d5 00 20 10 70 90 70 50 70 20 68 40 08 40 00 20 60 20 68 a8 43 20 60 70 bd d8 68 70 bd 
+			00 70 00 40 00 30 00 40 85 01 00 20 70 01 00 20 00 e0 40 1e 00 28 fc d1 70 47 f0 b5 07 46 0d 46 
+			16 46 00 24 00 f0 86 f8 ca 20 00 f0 ab f8 01 28 07 d0 64 1c e4 b2 01 20 00 f0 76 f8 0a 2c f1 d9 
+			f0 bd 38 46 00 f0 9e f8 01 28 0f d0 01 20 00 f0 6b f8 f0 bd 30 78 76 1c 00 f0 94 f8 01 28 03 d0 
+			01 20 00 f0 61 f8 f0 bd 6d 1e ed b2 00 2d f1 d1 00 f0 74 f8 f0 bd 00 00 10 b5 04 24 11 4a 08 23 
+			11 49 03 28 0b d0 04 28 10 d0 10 49 05 28 14 d0 06 28 03 d1 08 78 40 08 40 00 08 70 10 bd 10 68 
+			18 43 10 60 08 69 20 43 08 61 10 bd 10 68 98 43 10 60 08 69 a0 43 08 61 10 bd 08 78 01 22 10 43 
+			08 70 10 bd 70 01 00 20 00 ed 00 e0 6d 01 00 20 7c b5 06 46 00 25 01 95 08 20 00 90 11 4c 16 e0 
+			6a 46 10 79 40 00 01 90 00 20 00 f0 15 f9 06 20 ff f7 8e ff 61 68 6a 46 10 79 01 43 01 91 a5 62 
+			04 20 ff f7 85 ff 6a 46 10 78 40 1e 00 90 68 46 00 78 00 28 e4 d1 30 46 ff f7 ae fe 68 46 00 79 
+			7c bd 00 00 00 03 0a 42 00 b5 00 28 01 d0 00 f0 15 f8 00 bd 00 b5 01 20 00 f0 ee f8 00 20 00 f0 
+			eb f8 0c 20 ff f7 64 ff 03 49 00 22 ca 62 0c 20 ff f7 5e ff 8a 62 00 bd 00 03 0a 42 00 b5 08 48 
+			00 21 81 62 c1 62 06 20 ff f7 52 ff 00 20 00 f0 d3 f8 06 20 ff f7 4c ff 01 20 00 f0 cd f8 00 bd 
+			00 03 0a 42 f0 b5 05 46 08 24 0c 4e 00 27 e8 09 f0 62 06 20 ff f7 3c ff 00 20 00 f0 bd f8 06 20 
+			ff f7 36 ff 00 bf 68 06 05 0e b7 62 64 1e e4 b2 00 2c ec d1 b7 62 ff f7 43 fe f0 bd 00 03 0a 42 
+			02 48 01 68 c2 14 91 43 01 60 70 47 00 70 00 40 02 48 01 68 02 15 91 43 01 60 70 47 00 70 00 40 
+			04 48 01 68 42 15 91 43 01 60 03 49 01 20 08 70 70 47 00 00 00 70 00 40 0a 00 00 20 10 b5 0e 49 
+			08 68 80 22 90 43 08 60 0c 49 08 68 00 28 08 d1 0b 4a 13 68 01 20 03 43 13 60 0a 4b 00 22 1a 70 
+			08 60 09 48 00 78 02 28 02 d0 00 f0 49 fb 10 bd 00 f0 5e f9 10 bd 00 00 00 70 00 40 68 01 00 20 
+			00 10 00 40 26 00 00 20 2f 00 00 20 83 07 ff 22 db 0e 9a 40 89 07 09 0e 99 40 00 28 0b da 00 07 
+			00 0f 08 38 83 08 08 48 9b 00 18 18 c3 69 93 43 0b 43 c3 61 70 47 83 08 04 48 9b 00 18 18 03 68 
+			93 43 0b 43 03 60 70 47 00 ed 00 e0 00 e4 00 e0 83 07 ff 22 db 0e 9a 40 89 07 09 0e 99 40 00 28 
+			0b da 00 07 00 0f 08 38 83 08 08 48 9b 00 18 18 c3 69 93 43 0b 43 c3 61 70 47 83 08 04 48 9b 00 
+			18 18 03 68 93 43 0b 43 03 60 70 47 00 ed 00 e0 00 e4 00 e0 03 48 01 68 01 22 52 05 91 43 01 60 
+			70 47 00 00 00 70 00 40 02 48 01 68 02 14 91 43 01 60 70 47 00 70 00 40 02 48 01 68 42 14 91 43 
+			01 60 70 47 00 70 00 40 02 48 01 68 20 22 91 43 01 60 70 47 00 70 00 40 10 b5 00 21 01 24 0a 4b 
+			0a 4a 00 28 04 d0 0b e0 94 62 49 1c 99 42 02 d8 10 68 00 28 f8 d0 10 bd d4 62 49 1c 99 42 fa d8 
+			50 68 00 28 f8 d0 10 bd 50 c3 00 00 00 03 0a 42 70 47 00 00 03 48 01 68 01 22 52 04 91 43 01 60 
+			70 47 00 00 00 70 00 40 70 b5 2a 48 01 68 01 22 12 04 91 43 01 60 28 49 08 88 00 28 02 d0 40 1e 
+			08 80 0e e0 7d 20 c0 00 08 80 24 49 08 88 00 28 01 d0 40 1e 08 80 22 49 08 88 00 28 01 d0 40 1e 
+			08 80 20 49 08 68 00 28 01 d0 40 1e 08 60 1e 49 08 68 00 28 01 d0 40 1e 08 60 1c 49 08 68 00 28 
+			01 d0 40 1e 08 60 1a 49 08 78 00 28 01 d0 40 1e 08 70 18 49 08 68 00 28 01 d0 40 1e 08 60 16 49 
+			08 68 00 28 01 d0 40 1e 08 60 14 49 08 78 40 1c c0 b2 08 70 c8 28 0c d9 00 20 08 70 10 4c 01 25 
+			20 78 00 28 04 d0 00 20 01 f0 f2 fb 0d 48 05 70 25 70 70 bd 00 70 00 40 64 01 00 20 38 00 00 20 
+			3a 00 00 20 68 00 00 20 6c 00 00 20 70 00 00 20 27 00 00 20 74 00 00 20 78 00 00 20 26 00 00 20 
+			11 00 00 20 09 00 00 20 02 48 01 68 c2 13 91 43 01 60 70 47 00 70 00 40 04 49 0f 20 c8 60 04 48 
+			01 68 01 22 d2 04 91 43 01 60 70 47 00 60 00 40 00 70 00 40 03 48 01 68 01 22 92 05 91 43 01 60 
+			70 47 00 00 00 70 00 40 20 21 02 0c 01 d0 10 21 10 46 02 0a 01 d0 10 46 08 39 02 09 01 d0 10 46 
+			09 1f 82 08 01 d0 10 46 89 1e 42 08 01 d0 88 1e 70 47 08 1a 70 47 30 b4 74 46 64 1e 25 78 64 1c 
+			ab 42 00 d2 1d 46 63 5d 5b 00 e3 18 30 bc 18 47 02 e0 08 c8 12 1f 08 c1 00 2a fa d1 70 47 70 47 
+			00 20 01 e0 01 c1 12 1f 00 2a fb d1 70 47 00 00 f8 b5 f0 4f b8 7b 08 28 08 d2 01 f0 99 fb 3a 46 
+			b9 7b 7c 32 50 54 49 1c b9 73 f8 bd e9 4c 01 26 e9 4d 20 34 08 28 66 d1 09 20 b8 73 01 f0 52 fe 
+			20 46 5c 30 01 78 01 29 05 d1 42 78 00 2a 02 d1 82 78 01 2a 03 d0 02 23 01 29 15 d0 1a e0 c2 78 
+			81 79 d2 00 11 43 02 79 40 79 92 00 40 00 02 43 11 43 39 74 20 7c 00 28 45 d1 28 70 6e 70 ae 70 
+			03 20 20 74 e6 73 3e e0 41 78 00 29 02 d1 81 78 00 29 03 d0 41 78 01 29 0f d0 14 e0 c2 78 81 79 
+			d2 00 11 43 02 79 40 79 92 00 40 00 02 43 11 43 39 74 00 20 20 74 e3 73 25 e0 82 78 00 2a 02 d1 
+			c2 78 01 2a 02 d0 01 29 15 d0 1a e0 02 79 c1 79 d2 00 11 43 42 79 80 79 92 00 40 00 02 43 11 43 
+			39 74 20 7c 00 28 a0 d1 28 70 6e 70 ae 70 03 20 20 74 e6 73 f8 bd 81 78 00 29 02 d1 c1 78 00 29 
+			05 d0 01 f0 73 fe f8 7b 00 28 0f d0 25 e1 02 79 c1 79 d2 00 11 43 42 79 80 79 92 00 40 00 02 43 
+			11 43 39 74 00 20 20 74 e3 73 f8 bd 00 21 e9 70 29 71 69 71 a9 71 e9 71 29 72 69 72 38 7e 02 28 
+			24 d0 01 28 27 d0 f8 7e 05 28 2a d0 04 28 37 d0 03 28 3a d0 02 28 3f d0 01 28 44 d0 38 7f 00 28 
+			4e d0 40 1e c1 00 9b 4a 08 1a 84 32 11 5c e9 70 80 18 41 78 29 71 81 78 69 71 c1 78 a9 71 01 79 
+			e9 71 41 79 29 72 80 79 68 72 e6 e0 38 7c 00 01 78 76 6e 71 e1 e0 78 7e 39 7c 08 43 78 76 6e 71 
+			db e0 a8 7a e8 70 e8 7a 28 71 28 7b 68 71 68 7b a8 71 a8 7b e8 71 e8 7b 28 72 28 7c 68 72 cc e0 
+			38 7c 00 03 b8 86 6e 71 c7 e0 38 7c b9 8e 00 02 08 43 b8 86 6e 71 c0 e0 38 7c b9 8e 00 01 08 43 
+			b8 86 6e 71 b9 e0 b8 8e 39 7c 08 43 b8 86 00 f0 67 fc 6e 71 f8 8e b9 8e 88 42 00 d1 be 77 ac e0 
+			38 7c 09 28 0c d0 39 76 f9 76 03 00 ff f7 e3 fe 0e 0f 12 50 60 7e 8a a5 a5 a5 a5 a5 a5 8f 9f a5 
+			39 76 f9 76 00 20 01 f0 73 fa 7e 73 f8 bd 01 f0 dd fd f8 bd 60 79 00 28 0b d0 a0 7b 00 28 03 d0 
+			ae 71 c0 43 a0 73 88 e0 ee 70 2e 71 2e 72 6e 72 f7 e7 20 7a 00 28 09 d0 ee 70 2e 71 6e 71 ae 71 
+			ee 71 2e 72 6e 72 40 1e 20 72 76 e0 5b 49 38 6e 88 42 01 da 00 20 05 e0 58 4a 0a 21 52 42 80 18 
+			fe f7 9c ff 41 06 c9 0f e9 70 81 06 c9 0f 29 71 c1 06 c9 0f 69 71 01 07 c9 0f a9 71 41 07 c9 0f 
+			e9 71 81 07 c9 0f 29 72 c0 07 c0 0f 68 72 54 e0 09 21 08 20 01 f0 fe fe 38 71 02 28 03 d0 01 28 
+			03 d0 6e 71 49 e0 2e 71 47 e0 2e 71 6e 71 44 e0 60 7a 40 06 c0 0f e8 70 60 7a 80 06 c0 0f 28 71 
+			60 7a c0 06 c0 0f 68 71 60 7a 00 07 c0 0f a8 71 60 7a 40 07 c0 0f e8 71 60 7a 80 07 c0 0f 28 72 
+			60 7a c0 07 c0 0f 68 72 21 72 26 e0 3e 70 20 7c 00 28 02 d0 39 73 40 1e 20 74 38 7b e8 70 2e 71 
+			6e 71 1a e0 03 20 38 76 2e 71 ae 71 15 e0 b8 7e 00 28 12 d0 a1 78 00 29 0f d0 40 1e b8 76 06 20 
+			f8 76 01 f0 29 fa 20 71 00 f0 60 fb 05 e0 07 20 38 77 08 20 78 77 6e 71 ae 71 f8 7b 28 5c 01 f0 
+			d1 fc f8 7b 40 1c c0 b2 f8 73 09 28 00 d8 60 e7 04 20 00 f0 fb fe 01 f0 a5 fc 00 20 f8 73 b8 73 
+			78 74 38 7e 00 28 02 d0 40 1e 38 76 f8 bd f8 7e 00 28 02 d0 40 1e f8 76 f8 bd 38 7f 00 28 05 d0 
+			40 1e 38 77 78 7f 40 1e 78 77 f8 bd 38 7c 02 28 06 d0 04 28 f9 d1 a6 70 01 f0 ee f9 e0 70 f8 bd 
+			38 79 01 28 fb d1 f8 7f 01 28 f8 d1 01 f0 a0 f9 f8 bd 00 00 00 00 00 20 74 01 00 20 4c 0d 00 00 
+			f8 b5 fe 4d a8 7b 08 28 08 d2 01 f0 b1 f9 2a 46 a9 7b 7c 32 50 54 49 1c a9 73 f8 bd f7 4c 01 26 
+			00 27 20 34 08 28 5c d1 01 f0 6c fc 21 46 5c 31 0a 78 09 20 01 2a 05 d1 4b 78 00 2b 02 d1 8b 78 
+			01 2b 02 d0 00 2a 11 d0 16 e0 cb 78 8a 79 db 00 1a 43 0b 79 49 79 9b 00 49 00 0b 43 1a 43 2a 74 
+			a8 73 20 7c 00 28 3c d1 e7 73 3a e0 4a 78 01 2a 02 d1 8a 78 01 2a 03 d0 4a 78 01 2a 0f d0 14 e0 
+			cb 78 8a 79 db 00 1a 43 0b 79 49 79 9b 00 49 00 0b 43 1a 43 2a 74 a8 73 27 74 e6 73 21 e0 8b 78 
+			00 2b 02 d1 cb 78 01 2b 02 d0 00 2a 11 d0 16 e0 0b 79 ca 79 db 00 1a 43 4b 79 89 79 9b 00 49 00 
+			0b 43 1a 43 2a 74 a8 73 20 7c 00 28 a5 d1 e7 73 f8 bd 8a 78 01 2a 02 d1 ca 78 01 2a 07 d0 01 f0 
+			95 fc c6 48 c6 4d c0 7b 00 28 0f d0 37 e2 0b 79 ca 79 db 00 1a 43 4b 79 89 79 9b 00 49 00 0b 43 
+			1a 43 2a 74 a8 73 27 74 e6 73 f8 bd ef 70 2f 71 6f 71 af 71 ef 71 2f 72 6f 72 b8 48 01 7e 02 29 
+			27 d0 01 29 2a d0 c1 7e 05 29 2d d0 04 29 3a d0 03 29 3d d0 02 29 42 d0 01 29 47 d0 01 7f 00 29 
+			7e d0 80 6d 10 28 53 db 49 1e c8 00 ab 4a 40 1a ae 32 11 5c e9 70 80 18 41 78 29 71 81 78 69 71 
+			c1 78 a9 71 01 79 e9 71 41 79 29 72 80 79 68 72 f5 e1 01 7c 09 01 41 76 6e 71 f0 e1 41 7e 02 7c 
+			11 43 41 76 6e 71 ea e1 a8 7a e8 70 e8 7a 28 71 28 7b 68 71 68 7b a8 71 a8 7b e8 71 e8 7b 28 72 
+			28 7c 68 72 db e1 01 7c 09 03 81 86 6e 71 d6 e1 01 7c 82 8e 09 02 11 43 81 86 6e 71 cf e1 01 7c 
+			82 8e 09 01 11 43 81 86 6e 71 c8 e1 8b 48 8b 49 80 8e 09 7c 08 43 89 49 88 86 00 f0 81 fa 6e 71 
+			86 48 c1 8e 80 8e 81 42 c2 d1 84 48 86 77 b6 e1 0c 28 14 db 49 1e c8 00 80 4a 40 1a d8 32 11 5c 
+			e9 70 80 18 41 78 29 71 81 78 69 71 c1 78 a9 71 01 79 e9 71 41 79 29 72 80 79 68 72 9f e1 05 28 
+			15 db 49 1e c8 00 77 4a 40 1a 11 5c e9 70 80 18 41 78 29 71 81 78 69 71 c1 78 a9 71 01 79 00 e0 
+			1c e0 e9 71 41 79 29 72 80 79 68 72 87 e1 00 28 8e db 49 1e c8 00 6b 4a 40 1a 2a 32 11 5c e9 70 
+			80 18 41 78 29 71 81 78 69 71 c1 78 a9 71 01 79 e9 71 41 79 29 72 80 79 68 72 70 e1 01 7c 09 29 
+			0d d0 5e 48 07 76 c7 76 0b 00 ff f7 b4 fc 0e 10 13 ce e8 fe fd 1e 1e 1e 1e 1e 1e fc fb 1e 04 46 
+			07 76 e7 76 00 20 01 f0 43 f8 66 73 f8 bd 01 f0 ad fb f8 bd e0 7b 00 28 08 d0 60 79 00 28 77 d0 
+			a0 7b 00 28 6e d0 ae 71 a7 73 48 e1 a0 7c 01 28 01 d0 01 f0 9b fb 49 4a 10 7b e8 70 50 78 00 28 
+			02 d0 90 79 00 28 13 d0 47 49 50 6e 88 42 52 dd 49 1c 40 1a c1 17 09 0f 08 18 00 11 3d 28 00 dd 
+			3d 20 d1 78 00 29 10 d0 d1 79 00 29 08 d0 0c e0 2e 71 6e 71 ae 71 ef 71 2e 72 6f 72 96 71 1e e1 
+			3a 28 02 da 3a 20 d6 71 09 e0 91 78 00 29 06 d0 11 7a 00 29 03 d1 39 28 01 da 39 20 16 72 81 06 
+			c9 0f 29 71 c1 06 c9 0f 69 71 01 07 c9 0f a9 71 41 07 c9 0f e9 71 81 07 c9 0f 29 72 c0 07 c0 0f 
+			68 72 60 79 00 28 0d d0 00 20 00 f0 e1 ff 66 71 a0 7b 00 28 07 d0 2f 71 6f 71 af 71 ee 71 2f 72 
+			6e 72 a7 73 eb e0 2e 71 6e 71 ae 71 ee 71 2e 72 6f 72 a6 73 e3 e0 1d 49 88 42 00 da ef 70 de e0 
+			06 e0 ff e7 ee 70 2e 71 2e 72 6e 72 a6 73 d6 e0 20 7a 00 28 09 d0 ee 70 2e 71 6e 71 ae 71 ee 71 
+			2e 72 6e 72 40 1e 20 72 c9 e0 0c 48 0e 49 40 6e 0d 31 88 42 01 da 00 20 04 e0 0d 4a 0a 21 80 18 
+			fe f7 fc fc 41 06 c9 0f e9 70 81 06 c9 0f 29 71 c1 06 c9 0f 69 71 01 07 c9 0f 0b e0 00 00 00 20 
+			74 01 00 20 02 01 00 20 3f 0d 00 00 b8 0b 00 00 b4 f2 ff ff a9 71 41 07 c9 0f e9 71 81 07 c9 0f 
+			29 72 c0 07 c0 0f 68 72 99 e0 e0 7b 00 28 05 d1 a0 7c 02 28 01 d0 01 f0 e9 fa ee 70 09 21 08 20 
+			01 f0 48 fc 77 49 48 71 02 28 03 d0 01 28 03 d0 6e 71 84 e0 2e 71 82 e0 2e 71 6e 71 7f e0 e0 7b 
+			00 28 1e d0 60 7a 80 06 c0 0f 28 71 60 7a c0 06 c0 0f 68 71 60 7a 00 07 c0 0f a8 71 60 7a 40 07 
+			c0 0f 03 e0 64 e0 52 e0 4b e0 27 e0 e8 71 60 7a 80 07 c0 0f 28 72 60 7a c0 07 c0 0f 68 72 27 72 
+			5d e0 a0 7c 03 28 01 d0 01 f0 b0 fa 5d 48 40 78 00 28 04 d0 af 71 ef 71 2f 72 6f 72 4f e0 e0 7c 
+			02 28 4c d0 01 28 04 d0 af 71 ef 71 2e 72 6e 72 45 e0 af 71 ef 71 2e 72 6f 72 40 e0 51 48 06 70 
+			20 7c 00 28 04 d0 4f 49 0f 73 40 1e 20 74 14 e0 e0 7b 01 28 0e d0 a0 7c 04 28 01 d0 01 f0 86 fa 
+			2e 70 6f 70 ae 70 47 48 00 7b e8 70 6e 71 2e 72 6e 72 24 e0 43 48 00 7b e8 70 6e 71 2e 72 6e 72 
+			1d e0 40 48 03 21 01 76 2e 71 ae 71 17 e0 3d 49 88 7e 00 28 13 d0 a2 78 00 2a 10 d0 40 1e 88 76 
+			06 20 c8 76 00 f0 38 ff 20 71 00 f0 6f f8 06 e0 34 48 07 21 01 77 08 21 41 77 6e 71 ae 71 31 4d 
+			31 48 e9 7b 40 5c 01 f0 dd f9 e8 7b 40 1c c0 b2 e8 73 09 28 00 d8 9c e6 04 20 00 f0 07 fc 01 f0 
+			b1 f9 ef 73 af 73 6f 74 6f 72 28 7e 00 28 02 d0 40 1e 28 76 f8 bd e8 7e 00 28 02 d0 40 1e e8 76 
+			f8 bd 28 7f 00 28 05 d0 40 1e 28 77 68 7f 40 1e 68 77 f8 bd 28 7c 01 28 2a d0 02 28 09 d0 03 28 
+			2b d0 04 21 04 28 13 d0 e0 7b 00 28 f1 d1 a1 74 f8 bd 68 79 01 28 fb d1 e8 7f 01 28 01 d1 00 f0 
+			a7 fe 6f 71 e0 7b 00 28 f2 d1 03 20 a0 74 f8 bd e0 7b 00 28 07 d1 0c 48 c0 78 00 28 02 d0 02 20 
+			a0 74 00 e0 a1 74 a6 70 00 f0 d6 fe e0 70 f8 bd e0 7b 00 28 fb d1 a6 74 f8 bd e0 7b 00 28 fb d1 
+			a6 74 f8 bd 00 00 00 20 74 01 00 20 28 48 00 78 40 02 28 49 09 78 49 00 08 43 27 49 08 80 24 48 
+			00 78 40 06 c0 0f 25 49 48 71 21 48 00 78 80 06 c0 0f c8 72 1e 48 00 78 c0 06 c0 0f 08 72 1c 48 
+			00 78 00 07 c0 0f 08 74 19 48 00 78 40 07 c0 0f 88 73 17 48 00 78 80 07 c0 0f 48 73 14 48 00 78 
+			c0 07 c0 0f c8 71 13 48 00 78 40 06 c0 0f c8 70 10 48 00 78 80 06 c0 0f 08 73 0e 48 00 78 c0 06 
+			c0 0f 08 71 0b 48 00 78 00 07 c0 0f 88 72 09 48 00 78 40 07 c0 0f 48 72 06 48 00 78 80 07 c0 0f 
+			c8 73 04 48 00 78 c0 07 c0 0f 88 71 70 47 00 00 23 00 00 20 24 00 00 20 36 00 00 20 74 01 00 20 
+			03 48 00 88 03 49 08 40 01 49 08 80 70 47 00 00 34 00 00 20 fe fe 00 00 10 b5 01 22 20 4b d1 02 
+			19 60 0b 01 1f 49 02 28 2a d0 0c 68 9c 43 0c 60 01 23 9b 03 03 28 27 d0 0c 68 9c 43 0c 60 01 23 
+			5b 03 04 28 24 d0 0c 68 9c 43 0c 60 01 23 1b 03 05 28 21 d0 0c 68 9c 43 0c 60 0b 68 f0 24 00 07 
+			a3 43 00 0e 03 43 0b 60 08 68 02 23 18 43 08 60 08 68 10 43 08 60 08 68 c0 07 fc d1 48 68 10 bd 
+			0c 68 1c 43 0c 60 d3 e7 0c 68 1c 43 0c 60 d6 e7 0c 68 1c 43 0c 60 d9 e7 0c 68 1c 43 0c 60 dc e7 
+			00 e1 00 e0 00 40 00 40 70 47 70 47 1c b5 16 a0 00 68 01 90 00 20 00 90 01 aa 01 21 0f 20 fe f7 
+			dc ff 12 20 00 f0 f2 fa 6a 46 01 21 0f 20 fe f7 31 ff 00 24 68 46 00 78 c0 06 0f d4 2d 20 00 f0 
+			e5 fa 01 aa 01 21 0f 20 fe f7 c7 ff 12 20 00 f0 dd fa 6a 46 01 21 0f 20 fe f7 1c ff 64 1c e4 b2 
+			0f 2c e7 d3 1c bd 00 00 12 00 00 00 1c b5 16 a0 00 68 01 90 00 20 00 90 01 aa 01 21 0f 20 fe f7 
+			ac ff 12 20 00 f0 c2 fa 6a 46 01 21 0f 20 fe f7 01 ff 00 24 68 46 00 78 c0 06 0f d4 2d 20 00 f0 
+			b5 fa 01 aa 01 21 0f 20 fe f7 97 ff 12 20 00 f0 ad fa 6a 46 01 21 0f 20 fe f7 ec fe 64 1c e4 b2 
+			0f 2c e7 d3 1c bd 00 00 1a 00 00 00 02 48 c1 68 02 22 11 43 c1 60 70 47 00 50 00 40 fe b5 01 46 
+			00 20 2f 4d 04 29 0a d0 10 29 35 d0 02 29 51 d0 1c 29 03 d1 e8 7a 29 7b 09 02 08 43 fe bd 00 20 
+			ff f7 3a ff 0a 21 fe f7 a9 fa 26 49 88 42 19 da 00 24 6e 46 00 20 ff f7 2f ff 0a 21 fe f7 9e fa 
+			a1 00 70 50 64 1c e4 b2 03 2c f3 d3 01 99 00 98 40 18 02 99 40 18 fe f7 9f fc 1b 49 fe f7 38 fb 
+			fe f7 c8 fc 19 49 08 60 e8 70 01 12 29 71 14 4a 20 32 d0 70 11 71 fe bd 01 20 ff f7 0d ff fe f7 
+			8b fc 13 49 fe f7 e7 fa 04 46 20 46 fe f7 b2 fc 10 49 08 60 68 71 01 12 a9 71 01 14 e9 71 00 0e 
+			28 72 0d 49 20 46 fe f7 13 fb fe f7 a3 fc 0b 49 08 60 fe bd 68 7a a9 7a 09 02 08 43 fe bd 00 00 
+			85 01 00 20 b8 0b 00 00 00 00 40 40 5c 01 00 20 00 00 48 43 60 01 00 20 00 00 7a 44 5c 00 00 20 
+			30 b5 03 20 ff f7 d8 fe 0d 4d 0e 4c a8 42 09 db 04 20 ff f7 d1 fe a8 42 04 db 02 20 ff f7 cc fe 
+			a8 42 03 da 20 78 40 1c 20 70 01 e0 00 20 20 70 20 78 09 28 01 d9 01 20 30 bd 00 20 30 bd 00 00 
+			41 08 00 00 2d 00 00 20 10 b5 04 46 00 2c 02 d0 00 20 00 f0 1b ff 01 21 10 20 ff f7 19 f8 01 22 
+			0f 49 10 04 08 60 0f 48 01 68 80 23 99 43 01 60 0d 49 08 69 10 43 08 61 08 69 04 22 90 43 08 61 
+			08 69 ff 22 81 32 90 43 80 30 08 61 08 69 4a 15 10 43 08 61 00 2c 02 d0 01 20 00 f0 f7 fe 10 bd 
+			00 e1 00 e0 00 70 00 40 00 50 00 40 70 b5 04 46 00 2c 02 d0 00 20 00 f0 e9 fe 01 21 0e 20 fe f7 
+			e7 ff 01 23 0f 49 98 03 08 60 0f 48 01 68 42 15 91 43 01 60 0d 49 08 68 04 25 a8 43 08 60 08 68 
+			18 43 08 60 08 68 ff 23 81 33 98 43 80 30 08 60 08 68 10 43 08 60 00 2c 02 d0 01 20 00 f0 c6 fe 
+			70 bd 00 00 00 e1 00 e0 00 70 00 40 00 50 00 40 f0 b5 8f b0 00 20 02 90 00 25 01 26 00 24 02 aa 
+			02 21 25 20 fe f7 d6 fd 69 46 08 7a 49 7a 00 02 08 43 fe f7 e1 fb 9b 4a 9b 4b fe f7 55 fb fe f7 
+			03 fc a7 00 0b a9 c8 51 00 f0 52 f9 14 20 00 f0 7d f9 0b a8 c1 59 0b 98 08 1a 00 d5 40 42 64 28 
+			0c dd 01 2e 0a d1 00 2c 08 d0 6d 1c ed b2 02 2d 02 d3 00 25 0b 91 00 26 64 1e e4 b2 64 1c e4 b2 
+			03 2c cc d3 0c 99 0b 98 40 18 0d 99 40 18 fe f7 93 fb 86 49 fe f7 2c fa fe f7 bc fb 05 46 84 48 
+			04 78 64 20 44 43 26 46 c8 3e 67 1b 00 d5 7f 42 a5 42 01 dd 25 46 60 e0 c8 2f 5e dd 20 46 fe f7 
+			87 fb 7c 4a 7c 4b fe f7 0f fb 00 90 01 91 38 46 fe f7 7e fb 01 9b 00 9a fe f7 ee fb 01 d8 35 46 
+			4b e0 76 49 76 48 8c 42 06 d1 01 68 7d 20 80 01 81 42 42 dd 35 46 40 e0 7d 21 49 01 71 4a 8c 42 
+			04 d1 00 68 90 42 38 dd 35 46 36 e0 6e 4b 9c 42 04 d1 00 68 90 42 30 dd 35 46 2e e0 6b 4a 94 42 
+			04 d1 00 68 88 42 28 dd 35 46 26 e0 68 4a 94 42 04 d1 00 68 88 42 20 dd 35 46 1e e0 4b 22 52 01 
+			94 42 04 d1 00 68 88 42 17 dd 35 46 15 e0 7d 20 00 01 84 42 01 d1 35 46 0f e0 5e 48 84 42 01 d1 
+			35 46 0a e0 af 20 c0 00 84 42 01 d1 35 46 04 e0 7d 20 c0 00 84 42 00 d1 35 46 00 26 01 27 01 24 
+			09 20 ff f7 99 fd 0a 21 fe f7 08 f9 a2 00 03 a9 88 50 4e 49 88 42 09 da 01 2f 07 d1 76 1c f6 b2 
+			02 2e 01 d3 00 26 00 27 64 1e e4 b2 64 1c e4 b2 04 2c e5 d3 00 26 01 27 01 24 07 20 ff f7 7c fd 
+			0a 21 fe f7 eb f8 a2 00 07 a9 88 50 3b 49 88 42 09 da 01 2f 07 d1 76 1c f6 b2 02 2e 01 d3 00 26 
+			00 27 64 1e e4 b2 64 1c e4 b2 04 2c e5 d3 09 99 08 98 40 18 0a 99 40 18 fe f7 de fa 2b 4c 21 46 
+			fe f7 76 f9 fe f7 06 fb 07 46 05 99 04 98 40 18 06 99 40 18 fe f7 d0 fa 21 46 fe f7 69 f9 fe f7 
+			f9 fa 06 46 2c 48 00 78 02 28 0e d1 28 48 86 42 02 db 40 00 87 42 08 da 28 48 29 49 00 78 09 78 
+			08 43 02 d1 54 20 00 f0 a7 fe 26 48 46 71 31 12 81 71 28 46 fe f7 b0 fa fe f7 1a fb 15 4a 22 4b 
+			fe f7 42 fa 04 46 21 48 0d 46 00 68 30 1a fe f7 a3 fa 01 21 c9 43 fe f7 79 f9 06 46 38 46 fe f7 
+			9b fa 00 21 c9 43 fe f7 71 f9 31 46 fe f7 eb f8 fe f7 fe fa 22 46 2b 46 fe f7 18 fa fe f7 d4 fa 
+			0f b0 f0 bd 1f 85 eb 51 b8 1e f1 3f 00 00 40 40 29 00 00 20 33 33 33 33 33 33 c3 3f 88 13 00 00 
+			5c 00 00 20 70 17 00 00 ac 0d 00 00 b8 0b 00 00 c4 09 00 00 dc 05 00 00 2f 00 00 20 25 00 00 20 
+			0d 00 00 20 a5 01 00 20 33 33 b3 3f 64 00 00 20 08 b5 0a 20 00 90 01 e0 00 f0 06 f8 00 98 41 1e 
+			00 91 f9 d2 08 bd 00 00 08 b5 04 48 00 90 00 e0 00 bf 00 98 41 1e 00 91 fa d2 08 bd ed 08 00 00 
+			08 b5 2c 20 00 90 00 e0 00 bf 00 98 41 1e 00 91 fa d2 08 bd 08 b5 04 48 00 90 00 e0 00 bf 00 98 
+			41 1e 00 91 fa d2 08 bd 37 02 00 00 00 b5 02 46 03 e0 ff f7 ef ff 52 1e d2 b2 00 2a f9 d1 00 bd 
+			70 47 00 00 88 b0 00 20 06 90 00 25 05 90 04 90 00 26 03 90 02 90 01 90 00 27 fe 4c e1 7b 20 46 
+			20 38 02 29 21 d0 e1 21 89 00 41 87 e1 21 49 01 01 87 f9 49 c1 66 41 67 00 f0 a4 ff f5 48 20 38 
+			00 6f 00 28 15 d0 f3 48 20 38 c1 6e 00 29 5f d0 81 6e 00 29 75 d0 41 6f 00 29 73 d0 80 6f 00 28 
+			71 d0 e0 79 00 28 6f d0 87 e2 c3 21 c9 00 41 87 dc e7 58 20 00 f0 44 fe 61 79 00 29 42 d1 1f 28 
+			14 d0 00 28 18 d0 0a 28 09 d0 0b 28 07 d0 09 28 05 d0 e0 49 e1 4a 20 39 09 8f 91 42 13 d9 e0 7b 
+			02 28 0c d0 3b 20 3b 21 61 70 15 e0 00 20 00 f0 6f fa 01 20 60 71 25 e0 00 f0 ce fd 22 e0 32 20 
+			32 21 61 70 08 e0 08 28 0a d0 e1 7b 02 29 0f d0 40 1c 0a 21 48 43 60 70 21 7a 00 29 0c d0 11 e0 
+			e0 7b 02 28 02 d0 50 20 60 70 f5 e7 28 20 fb e7 40 1c 81 00 40 18 ee e7 c1 b2 62 78 a0 7a 00 f0 
+			7f fd 20 72 7d 21 c3 48 09 01 20 38 01 67 34 e2 c0 48 20 38 c0 7c ff f7 d1 fc 07 90 60 79 00 28 
+			57 d1 7d 21 07 98 09 01 c8 42 0e da 05 98 40 1c c0 b2 05 90 05 98 03 28 09 d9 54 20 00 f0 7c fd 
+			05 e0 4c e0 a1 e1 df e1 fc e1 00 20 05 90 e0 7b 02 28 0b d0 b2 49 07 98 88 42 15 dd 76 1c f6 b2 
+			07 2e 12 d9 59 20 00 f0 67 fd 0e e0 ad 49 07 98 88 42 07 dd 76 1c f6 b2 07 2e 06 d9 59 20 00 f0 
+			5b fd 02 e0 00 26 00 e0 00 26 19 21 07 98 49 01 88 42 05 da 9f 48 20 38 41 6e a3 48 81 42 0b dc 
+			4b 21 07 98 09 01 88 42 11 da 9a 48 9e 49 20 38 40 6e 14 31 88 42 0a dd 03 98 40 1c c0 b2 03 90 
+			03 98 05 28 05 d9 5a 20 00 f0 36 fd 01 e0 00 20 03 90 7d 21 8f 48 c9 00 20 38 c1 66 cd e1 8d 48 
+			20 38 80 7c ff f7 6a fc 8a 49 20 39 48 66 08 46 c0 7c ff f7 63 fc ff f7 5b fd 86 49 20 39 08 66 
+			60 79 00 28 79 d1 e1 7b 02 29 05 d0 81 48 20 38 40 8f 00 28 1e d0 22 e0 7e 48 20 38 40 8f 00 28 
+			09 d0 69 22 d2 00 90 42 0b d2 a0 7a 1e 28 16 d9 1e 20 a0 72 13 e0 a0 7a 32 28 10 d9 32 20 a0 72 
+			0d e0 7a 4a 90 42 0a d2 a0 7a 28 28 07 d9 28 20 a0 72 04 e0 a0 7a 32 28 01 d9 32 20 a0 72 e0 7a 
+			00 28 14 d1 6b 48 70 4a 20 38 40 6e 90 42 05 dd a0 7a 32 28 0b d9 32 20 a0 72 08 e0 6a 4a fa 3a 
+			90 42 04 dd a0 7a 32 28 01 d9 32 20 a0 72 02 29 32 d1 60 49 20 39 88 6d 02 46 78 3a 28 2a 08 d2 
+			61 48 64 38 48 64 88 64 5f 48 19 30 c8 64 08 65 0d e0 02 46 32 3a 46 2a 05 d2 5d 48 c8 64 5a 48 
+			1e 38 08 65 03 e0 32 28 01 da 59 48 08 65 0b 46 48 6e c9 6b 88 42 11 dd 56 4a d9 6d 91 42 0d db 
+			55 4a 91 42 0a da 6d 1c ed b2 03 2d 6e d3 a0 7a 28 28 6b d9 28 20 a0 72 68 e0 be e0 19 6c 1a 46 
+			88 42 10 dd 4d 4b d1 6d 99 42 0c db 49 4b 99 42 09 da 6d 1c ed b2 03 2d 58 d3 a0 7a 1e 28 55 d9 
+			1e 20 a0 72 52 e0 51 6c 88 42 10 dd 44 4b d1 6d 99 42 0c db 41 4b 99 42 09 da 6d 1c ed b2 03 2d 
+			44 d3 a0 7a 19 28 41 d9 19 20 a0 72 3e e0 91 6c 88 42 11 dd 36 4b d1 6d 78 33 99 42 0c db 38 4b 
+			99 42 09 da 6d 1c ed b2 03 2d 2f d3 a0 7a 14 28 2c d9 14 20 a0 72 29 e0 d1 6c 88 42 11 dd 31 4b 
+			d1 6d 99 42 0d db 2a 4b 78 33 99 42 09 da 6d 1c ed b2 03 2d 1a d3 a1 7a 50 6d 81 42 16 dd a0 72 
+			14 e0 11 6d 88 42 10 dd 27 49 d0 6d 88 42 0c db 24 49 88 42 09 da 6d 1c ed b2 03 2d 06 d3 a0 7a 
+			0a 28 03 d9 0a 20 a0 72 00 e0 00 25 e0 7c 02 28 07 d1 10 48 16 49 20 38 42 6e 8a 42 01 dd 01 21 
+			c1 70 20 7a 00 28 05 d1 62 78 21 78 a0 7a 00 f0 07 fc 20 72 e0 7c 02 28 09 d1 06 48 0a 49 20 38 
+			40 6e 14 39 88 42 02 dd 5a 20 00 f0 15 fc 01 48 20 38 1b e0 20 00 00 20 20 4e 00 00 1e 1c 00 00 
+			4c 1d 00 00 ec 2c 00 00 62 11 00 00 ec 04 00 00 54 10 00 00 6c 20 00 00 04 29 00 00 9c 18 00 00 
+			b4 14 00 00 e4 0c 00 00 fc 08 00 00 40 6e 4d 49 88 42 02 dd 5a 20 00 f0 ef fb 4b 48 49 49 40 6e 
+			0a 39 88 42 0a dd 06 98 40 1c c0 b2 06 90 06 98 05 28 05 d9 5a 20 00 f0 df fb 01 e0 00 20 06 90 
+			ff 20 41 49 f5 30 88 66 77 e0 3f 48 40 7d ff f7 15 fb 61 79 00 29 32 d1 ff 21 b3 31 88 42 08 dd 
+			7f 1c ff b2 02 2f 19 d9 03 27 37 4a 01 21 d1 70 14 e0 ff 21 a5 31 88 42 0d dd 00 27 01 99 49 1c 
+			c9 b2 01 91 01 99 02 29 08 d9 03 21 01 91 2e 4a 01 21 91 70 02 e0 00 21 01 91 00 27 ff 21 c4 31 
+			88 42 0a d3 04 98 40 1c c0 b2 04 90 04 98 02 28 05 d9 5c 20 00 f0 a0 fb 01 e0 00 20 04 90 ff 20 
+			21 49 f5 30 48 67 38 e0 60 79 00 28 03 d0 02 98 00 28 0e d0 12 e0 ff f7 43 fb 00 28 04 d0 00 20 
+			00 f0 36 f8 01 20 60 71 19 20 17 49 40 01 88 67 23 e0 5d 20 00 f0 e4 fb 01 20 02 90 12 48 13 49 
+			81 67 1a e0 10 48 61 79 00 8f 08 43 02 d1 5a 20 00 f0 72 fb 0c 48 41 7b 00 29 03 d0 59 20 00 f0 
+			6b fb 08 e0 40 7a 00 28 02 d1 60 7c 01 28 02 d9 54 20 00 f0 61 fb 14 20 e0 71 2f 20 ff f7 36 fd 
+			5a e5 00 00 8f 11 00 00 00 00 00 20 10 27 00 00 00 28 03 d0 04 49 01 20 08 70 70 47 03 48 c1 68 
+			02 22 91 43 c1 60 70 47 0b 00 00 20 00 50 00 40 06 48 c1 68 02 22 91 43 c1 60 c1 68 49 08 49 00 
+			c1 60 c1 68 04 22 11 43 c1 60 70 47 00 50 00 40 02 48 40 69 40 06 c0 0f 70 47 00 00 00 50 00 40 
+			02 48 40 68 40 06 c0 0f 70 47 00 00 00 50 00 40 03 48 00 78 00 28 01 d0 00 20 70 47 01 20 70 47 
+			0b 00 00 20 00 b5 09 20 ff f7 a6 f9 01 49 08 60 00 bd 00 00 58 01 00 20 02 48 80 68 40 06 40 0e 
+			70 47 00 00 00 10 00 40 10 b5 10 48 41 69 80 23 99 43 41 61 81 69 81 61 0d 49 0a 68 1c 04 a2 43 
+			0a 60 0c 4a 01 21 11 60 01 68 fe 22 91 43 1c 31 01 60 41 69 20 22 11 43 41 61 41 69 10 22 11 43 
+			41 61 41 69 19 43 41 61 10 bd 00 00 00 30 00 40 00 70 00 40 00 e1 00 e0 00 f0 e8 f9 00 f0 22 fc 
+			00 f0 e5 f9 ff f7 d0 ff 00 20 ff f7 df fa 01 20 00 f0 cc f9 53 20 00 f0 a9 fb 01 07 09 0f 40 06 
+			40 0f 00 28 54 d0 01 28 54 d0 02 28 54 d0 03 28 54 d0 57 25 00 29 53 d0 01 29 53 d0 02 29 53 d0 
+			03 29 53 d0 04 29 53 d0 0a 20 d7 4e b0 65 00 f0 dd fa 00 f0 f3 fa 00 20 00 f0 a8 f9 00 21 08 46 
+			fe f7 84 fa 01 21 0b 20 fe f7 80 fa 01 21 05 20 fe f7 7c fa 01 21 07 20 fe f7 78 fa 00 20 ff f7 
+			73 fa 01 20 00 f0 92 f9 ff f7 7a fc 04 20 ff f7 d5 f9 10 20 ff f7 d2 f9 00 f0 a8 f9 ff f7 38 fc 
+			ff f7 36 fc ff f7 34 fc 00 f0 e2 fa 00 28 eb d0 00 f0 20 fc 34 46 00 27 20 34 00 f0 23 fc 70 7a 
+			00 28 01 d0 00 f0 88 fa b0 7f 01 28 13 d0 15 e0 0a 25 af e7 3c 25 ad e7 50 25 ab e7 57 25 a9 e7 
+			0a 20 b2 e7 3c 20 b0 e7 82 20 ae e7 aa 20 ac e7 ff 20 05 30 a9 e7 70 7f 01 28 15 d0 e0 7b 00 28 
+			12 d0 04 20 ff f7 9a f9 10 20 ff f7 97 f9 00 f0 6d f9 ff f7 fd fb ff f7 fb fb ff f7 f9 fb 30 78 
+			00 28 ca d1 a7 71 c8 e7 9f 49 01 20 c8 77 ff f7 1b f9 52 20 00 f0 a4 fa 06 46 ff f7 77 f9 01 20 
+			60 74 00 2e 01 d1 00 f0 47 fa 00 f0 db fb 5e 20 00 f0 96 fa 06 46 02 2e 01 d0 00 f0 3d fa 00 f0 
+			d1 fb ff f7 d5 fb 00 f0 cd fb e0 7b 00 28 04 d0 01 28 07 d0 02 28 0a d0 0d e0 13 20 00 f0 80 fa 
+			06 46 08 e0 19 20 00 f0 7b fa 06 46 03 e0 14 20 00 f0 76 fa 06 46 02 2e 01 d0 00 f0 1d fa 00 f0 
+			b1 fb 81 4e 04 20 b0 74 10 20 f0 74 1c 20 30 75 02 20 70 75 01 20 f0 75 00 f0 a4 fb b0 7c ff f7 
+			3d f9 70 66 30 66 ff f7 a3 fb 14 26 55 2d 0c d9 e0 7b 02 28 05 d0 66 72 a6 72 73 49 01 20 48 70 
+			23 e0 0a 20 60 72 a0 72 f7 e7 4b 2d 0a d9 e0 7b 02 28 03 d0 1e 20 60 72 a0 72 16 e0 0f 20 60 72 
+			a0 72 12 e0 32 2d 0a d9 e0 7b 02 28 03 d0 32 20 60 72 a0 72 09 e0 19 20 60 72 a0 72 05 e0 e0 7b 
+			02 28 02 d0 3b 20 60 72 a0 72 ff f7 71 fb 5e 48 40 7d ff f7 03 f9 5c 48 80 6d 32 28 24 da e7 72 
+			e0 7b 02 28 07 d0 32 2d 15 d9 a0 7a 14 28 18 d9 66 72 a6 72 15 e0 32 2d 06 d9 a0 7a 0a 28 10 d9 
+			0a 20 60 72 a0 72 0c e0 a0 7a 0e 28 09 d9 0e 20 60 72 a0 72 05 e0 a0 7a 1c 28 02 d9 1c 20 60 72 
+			a0 72 02 20 e0 74 6b e0 28 21 78 28 34 da e7 72 e0 7b 02 28 07 d0 4b 2d 1d d9 a0 7a 14 28 28 d9 
+			66 72 a6 72 25 e0 4b 2d 06 d9 a0 7a 0a 28 20 d9 0a 20 60 72 a0 72 1c e0 32 2d 06 d9 a0 7a 0f 28 
+			17 d9 0f 20 60 72 a0 72 13 e0 a0 7a 14 28 10 d9 66 72 a6 72 0d e0 32 2d 06 d9 a0 7a 1e 28 08 d9 
+			1e 20 60 72 a0 72 04 e0 a0 7a 28 28 01 d9 61 72 a1 72 02 20 e0 74 33 e0 a0 28 31 da e7 72 e0 7b 
+			02 28 07 d0 4b 2d 1d d9 a0 7a 14 28 28 d9 66 72 a6 72 25 e0 4b 2d 06 d9 a0 7a 0a 28 20 d9 0a 20 
+			60 72 a0 72 1c e0 32 2d 05 d9 a0 7a 14 28 17 d9 66 72 a6 72 14 e0 a0 7a 1e 28 11 d9 1e 20 60 72 
+			a0 72 0d e0 32 2d 05 d9 a0 7a 28 28 08 d9 61 72 a1 72 05 e0 a0 7a 3b 28 02 d9 3b 20 60 72 a0 72 
+			ff f7 10 fe 10 4d 01 20 28 73 0a e0 00 f0 ca fa 68 7a 00 28 02 d1 60 7c 01 28 02 d9 54 20 00 f0 
+			1b f9 ff f7 f5 fd 01 28 f0 d0 00 f0 bb fa e0 7b 02 28 05 d0 ff f7 1a f8 00 f0 b4 fa ff f7 f2 fa 
+			fe f7 e4 ff f8 e7 00 00 00 00 00 20 06 4a 00 28 11 78 01 d0 00 29 05 d0 00 28 02 d1 00 29 00 d0 
+			10 70 70 47 10 70 70 47 6c 01 00 20 70 47 00 b5 ff f7 ae fd 00 f0 a4 f8 00 f0 62 f8 00 f0 72 f8 
+			00 f0 30 f8 fe f7 c1 ff 00 bd 00 00 70 b5 08 20 fe f7 72 ff 0a 21 fd f7 e1 fa 04 46 09 20 fe f7 
+			6b ff 0a 21 fd f7 da fa 05 46 03 20 fe f7 64 ff 0a 21 fd f7 d3 fa 06 46 02 20 fe f7 5d ff 0a 21 
+			fd f7 cc fa 06 49 cc 71 22 12 0a 72 4d 72 2a 12 8a 72 ce 72 32 12 0a 73 48 73 00 12 88 73 70 bd 
+			a5 01 00 20 06 48 01 69 04 22 91 43 01 61 01 69 30 22 91 43 01 61 01 69 01 22 11 43 01 61 70 47 
+			00 50 00 40 06 48 01 69 49 08 49 00 01 61 01 69 04 22 11 43 01 61 01 69 02 22 91 43 01 61 70 47 
+			00 50 00 40 05 49 02 22 00 28 03 d0 08 69 10 43 08 61 70 47 08 69 90 43 08 61 70 47 00 50 00 40 
+			07 48 01 68 04 22 91 43 01 60 01 68 30 22 91 43 10 31 01 60 01 68 01 22 11 43 01 60 70 47 00 00 
+			00 50 00 40 06 48 41 69 04 22 91 43 41 61 41 69 30 22 91 43 41 61 41 69 01 22 11 43 41 61 70 47 
+			00 50 00 40 06 48 41 69 02 22 91 43 41 61 41 69 49 08 49 00 41 61 41 69 04 22 11 43 41 61 70 47 
+			00 50 00 40 05 49 02 22 00 28 03 d0 48 69 10 43 48 61 70 47 48 69 90 43 48 61 70 47 00 50 00 40 
+			07 48 41 68 04 22 91 43 41 60 41 68 30 22 91 43 20 31 41 60 41 68 01 22 11 43 41 60 70 47 00 00 
+			00 50 00 40 06 48 41 68 02 22 91 43 41 60 41 68 49 08 49 00 41 60 41 68 04 22 11 43 41 60 70 47 
+			00 50 00 40 05 49 02 22 00 28 03 d0 48 68 10 43 48 60 70 47 48 68 90 43 48 60 70 47 00 50 00 40 
+			30 b5 0c 4b 5c 7a 9d 7a 85 42 00 d9 98 72 19 70 5a 70 91 42 00 d2 0a 46 98 7a 90 42 01 d9 5a 72 
+			01 e0 98 7a 58 72 58 7a 84 42 01 d0 05 20 30 bd 00 20 30 bd 20 00 00 20 10 b5 04 46 00 f0 a2 f9 
+			00 20 ff f7 a5 fc ff f7 7d ff 20 46 00 f0 58 f8 00 f0 02 f8 10 bd 00 00 03 49 02 48 c8 60 bf f3 
+			4f 8f fe e7 04 00 fa 05 00 ed 00 e0 10 b5 06 49 48 7c 02 28 03 d0 01 28 02 d0 ff f7 ed ff 10 bd 
+			02 20 48 74 10 bd 00 00 20 00 00 20 10 b5 00 24 00 20 ff f7 cb fe ff f7 25 ff 00 20 ff f7 32 ff 
+			01 20 ff f7 a3 f9 01 20 ff f7 2c ff 03 20 ff f7 9d f9 64 1c e4 b2 1e 2c ef d3 10 bd 0a 49 80 20 
+			08 60 0a 48 41 68 7d 21 c9 01 41 60 01 68 40 22 11 43 01 60 01 68 20 22 11 43 01 60 01 68 49 08 
+			49 00 01 60 70 47 00 00 00 e1 00 e0 00 10 00 40 02 48 00 68 c0 07 c0 0f 70 47 00 00 00 10 00 40 
+			f8 b5 05 46 00 26 00 f0 3d f9 37 4f 00 20 b8 72 ff f7 58 ff ff f7 54 f9 00 20 ff f7 63 ff ff f7 
+			37 f9 01 20 ff f7 5e ff 00 24 78 7a 00 28 03 d0 58 2d 01 d1 ff f7 06 ff 00 f0 24 f9 b8 7a 00 28 
+			fc d0 00 f0 1f f9 06 20 01 1b 28 46 c8 40 c0 07 c0 0f ff f7 47 ff 00 20 b8 72 64 1c e4 b2 07 2c 
+			e3 d3 00 f0 0f f9 00 24 78 7a 00 28 03 d0 58 2d 01 d1 ff f7 e7 fe 00 f0 05 f9 b8 7a 00 28 fc d0 
+			00 f0 00 f9 00 2c 03 d1 ff f7 0a ff ff f7 18 f9 00 20 b8 72 ff f7 24 fc 06 2c 1f d0 00 2c 06 d0 
+			06 2c 04 d2 05 21 09 1b 88 40 30 43 c6 b2 64 1c e4 b2 07 2c d8 d3 00 f0 e5 f8 b8 7a 00 28 fc d0 
+			00 f0 e0 f8 ff f7 fe fe 00 20 b8 72 ff f7 e0 f8 ff f7 de f8 00 f0 d6 f8 30 46 f8 bd f9 7d 00 29 
+			e5 d1 b8 75 e3 e7 00 00 00 00 00 20 f8 b5 05 46 00 26 00 f0 c7 f8 32 48 00 27 87 72 ff f7 e2 fe 
+			ff f7 de f8 00 20 ff f7 ed fe ff f7 c1 f8 01 20 ff f7 e8 fe 00 24 2a 4f 78 7a 00 28 03 d0 58 2d 
+			01 d1 ff f7 8f fe 00 f0 ad f8 b8 7a 00 28 fc d0 00 f0 a8 f8 06 20 01 1b 28 46 c8 40 c0 07 c0 0f 
+			ff f7 d0 fe 00 20 b8 72 64 1c e4 b2 07 2c e3 d3 00 f0 98 f8 00 24 78 7a 00 28 03 d0 58 2d 01 d1 
+			ff f7 70 fe 00 f0 8e f8 b8 7a 00 28 fc d0 00 f0 89 f8 00 2c 03 d1 ff f7 93 fe ff f7 a1 f8 00 20 
+			b8 72 ff f7 ad fb 06 21 09 1b 88 40 30 43 c6 b2 64 1c e4 b2 07 2c de d3 00 f0 74 f8 b8 7a 00 28 
+			fc d0 00 f0 6f f8 ff f7 8d fe 00 20 b8 72 ff f7 6f f8 ff f7 6d f8 00 f0 65 f8 30 46 f8 bd 00 00 
+			00 00 00 20 30 b5 19 4a 00 21 51 72 11 73 51 73 91 73 17 48 01 24 04 70 41 70 81 70 d1 73 51 74 
+			d1 75 91 70 d1 70 11 76 51 76 03 25 95 76 d1 76 11 77 51 77 91 86 48 1e d0 86 91 77 d1 77 32 23 
+			10 46 20 30 03 70 43 70 81 70 41 71 01 72 43 72 83 72 c4 72 04 73 41 73 81 73 02 23 c3 73 05 74 
+			41 74 04 23 83 74 c1 74 d1 72 30 bd 00 00 00 20 74 01 00 20 30 b5 0d 46 fe f7 0e fd 04 46 28 46 
+			fe f7 0a fd 0a 49 0b 78 02 2b 07 d0 20 1a 7d 21 c9 00 4a 00 88 42 04 da 00 20 30 bd 21 1a 08 1a 
+			f5 e7 90 42 01 dd 02 20 30 bd 01 20 30 bd 00 00 2f 00 00 20 02 48 5a 21 01 61 80 21 01 61 70 47 
+			00 70 00 40 03 48 5a 21 01 61 01 69 40 22 11 43 01 61 70 47 00 70 00 40 38 30 00 00 00 00 00 20 
+			74 01 00 00 f8 07 00 00 90 30 00 00 74 01 00 20 1c 05 00 00 00 0f 00 00 01 3c 23 68 10 1a cc 04 
+			4b 62 11 04 5a 7b 04 32 0f 02 2c fa 1a 01 02 19 06 19 01 49 0f 29 10 79 0e 59 0c 49 0e 69 2a 29 
+			07 39 03 29 05 49 2f 59 42 29 0e 29 0d 59 2a 49 14 09 1b 2a 49 6b 39 1f 59 33 39 2a 49 29 f9 2a 
+			49 78 09 1f 2a 41 23 d8 0e 03 12 d0 07 00 00 00 00 02 00 06 03 08 05 00 06 34 55 34];
+		qcom,vooc_current_lvl = <2000
+									3000
+									4000
+									5000
+									6000
+									7000
+									8000
+									9000
+									10000>;
+
+		pinctrl-names = "switch1_act_switch2_act", "switch1_sleep_switch2_sleep",
+						"switch1_act_switch3_act", "switch1_sleep_switch3_sleep",
+						"switch1_act_switch2_sleep", "switch1_sleep_switch2_act",
+						"clock_active","clock_sleep",
+						"data_active","data_sleep",
+						"reset_active","reset_sleep",
+						"vooc_asic_id_active","vooc_asic_id_sleep";
+		pinctrl-0 = <&charging_switch1_active>;
+		pinctrl-1 = <&charging_switch1_sleep>;
+		pinctrl-2 = <&charging_switch1_active>;
+		pinctrl-3 = <&charging_switch1_sleep>;
+		pinctrl-4 = <&charging_switch1_active>;
+		pinctrl-5 = <&charging_switch1_sleep>;
+		pinctrl-6 = <&charging_clock_active>;
+		pinctrl-7 = <&charging_clock_sleep>;
+		pinctrl-8 = <&charging_data_active>;
+		pinctrl-9 = <&charging_data_sleep>;
+		pinctrl-10 = <&charging_reset_active>;
+		pinctrl-11 = <&charging_reset_sleep>;
+		pinctrl-12 = <&vooc_asic_id_active>;
+		pinctrl-13 = <&vooc_asic_id_sleep>;
+		qcom,charging_switch1-gpio 		= <&pio 137 0x00>;//USB_SW_CTRL1
+		//qcom,charging_switch1_ctr1-gpio 	= <&pio 136 0x00>;//USB_SW_CTRL2//must set a gpio
+
+
+		qcom,charging_reset-gpio 			= <&pio 132 0x00>;//MCU_EN
+		qcom,charging_clock-gpio 			= <&pio 64 0x00>;//AP_CLK
+		qcom,charging_data-gpio 			= <&pio 63 0x00>;//AP_DATA
+		qcom,vooc_asic_id-gpio				= <&pio 134 0x00>;
+	};
+};
+
+&pio {
+	charging_switch1_active: charging_switch1_active {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO137__FUNC_GPIO137>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+
+	charging_switch1_sleep: charging_switch1_sleep {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO137__FUNC_GPIO137>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+
+	charging_clock_active: charging_clock_active {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO64__FUNC_GPIO64>;
+			slew-rate = <0>;
+			bias-pull-up;
+		};
+	};
+
+	charging_clock_sleep: charging_clock_sleep {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO64__FUNC_GPIO64>;
+			slew-rate = <0>;
+			bias-pull-down;
+		};
+	};
+
+	charging_data_active: charging_data_active {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO63__FUNC_GPIO63>;
+			slew-rate = <0>;
+			bias-pull-down;
+		};
+	};
+
+	charging_data_sleep: charging_data_sleep {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO63__FUNC_GPIO63>;
+			slew-rate = <0>;
+			bias-pull-down;
+		};
+	};
+
+	charging_reset_active: charging_reset_active {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO132__FUNC_GPIO132>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+
+	charging_reset_sleep: charging_reset_sleep {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO132__FUNC_GPIO132>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+
+	charging_switch1_ctr1_active: charging_switch1_ctr1_active {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO136__FUNC_GPIO136>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+	charging_switch1_ctr1_sleep: charging_switch1_ctr1_sleep {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO136__FUNC_GPIO136>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+
+
+	vooc_asic_id_active: vooc_asic_id_active {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO134__FUNC_GPIO134>;
+			input-enable;
+			slew-rate = <0>;
+			bias-pull-up;
+		};
+	};
+	vooc_asic_id_sleep: vooc_asic_id_sleep {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO134__FUNC_GPIO134>;
+			input-enable;
+			slew-rate = <0>;
+			bias-pull-down;
+		};
+	};
+};
+
+/*#ifdef VENDOE_EDIT*/
+&i2c9 {
+       status = "okay";
+	   fan53870@35 {
+               compatible = "fan53870";
+               reg = <0x35>;
+               ldo1_min_vol = <800000>;  /*uV*/
+               ldo1_max_vol = <1504000>;
+               ldo1_step_vol = <8000>;
+       };
+};
+/*#endif*/
+
+//NFC GPIO start
+&spi1 {
+	st54spi@0 {
+		compatible = "st,st54spi";
+		reg = <0>;
+		spi-max-frequency = <1000000> ;
+		gpio-power = <8>;
+		gpio-power-std = <&pio 8 0x0>;
+		status = "okay";
+	};
+};
+//NFC GPIO end
+
+/* CONSYS GPIO standardization */
+&pio {
+	consys_pins_default: consys_default {
+	};
+	gpslna_pins_init: gpslna@0 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO87__FUNC_GPIO87>;
+			output-low;
+		};
+	};
+	gpslna_pins_oh: gpslna@1 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO87__FUNC_GPS_L1_ELNA_EN>;
+		};
+	};
+	gpslna_pins_ol: gpslna@2 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO87__FUNC_GPIO87>;
+			output-low;
+		};
+	};
+};
+
+&consys {
+	pinctrl-names = "default", "gps_lna_state_init",
+		"gps_lna_state_oh", "gps_lna_state_ol";
+	pinctrl-0 = <&consys_pins_default>;
+	pinctrl-1 = <&gpslna_pins_init>;
+	pinctrl-2 = <&gpslna_pins_oh>;
+	pinctrl-3 = <&gpslna_pins_ol>;
+	status = "okay";
+};
+
+&i2c0 {
+	status = "okay";
+        gt9886@5d{
+                compatible = "Goodix-gt9886";
+                reg = <0x5d>;
+                chip-name = "GT9886";
+
+                interrupt-parent = <&pio>;
+                interrupts = <14 IRQ_TYPE_EDGE_FALLING 14 0>;
+                irq-gpio = <&pio 14 0x2002>;
+                reset-gpio = <&pio 138 0>;
+                //bisa-gpio = <&pio 140 0>;
+
+                touchpanel,max-num-support = <10>;
+                touchpanel,tx-rx-num = <15 34>;
+                touchpanel,panel-coords = <1080 2400>;
+                touchpanel,display-coords = <1080 2400>;
+                touchpanel,touchmajor-limit = <0 54>;
+                vdd_2v8-supply  = <&mt_pmic_vtp_ldo_reg>;
+                /* SW Support Feature Control */
+                project_id = <20630>;
+                register-is-16bit;
+                black_gesture_support;
+                fw_edge_limit_support;
+                pressure_report_support;
+                charger_pump_support;
+                game_switch_support;
+                smart_gesture_support;
+                fw_update_app_support;
+                fingerprint_underscreen_support;
+                headset_pump_support;
+                esd_handle_support;
+                new_set_irq_wake_support;
+                irq_need_dev_resume_ok;
+                /*
+                 *Virtual Key Config:
+                 *1:touchpanel,button-type: <virtualkey_type  supportted_button-map>
+                 *virtualkey_type:
+                 *Type 1: using board_properties
+                 *Type 2: using same IC (button zone&& touch zone are seprate)
+                 *Type 3: using diffrent IC (button zone&& touch zone are seprate)
+                 *Type 4: No need of virtual key process
+                 *supportted_button-map:select|menu|home|back
+                 *
+                 *2:touchpanel,button-map
+                 *type (X1,Y1)(X2,Y2)(X3,Y3)(Width_X,Hight_Y)--Only when button-type is 0
+                 */
+                touchpanel,button-type = <4>;
+                touchpanel.button-TRx = <0 0>;
+        };
+	 Focaltech@38 {
+               compatible = "focaltech,fts";
+               reg = <0x38>;
+               chip-name = "FT3518";
+
+               /* Interrupt && Irq-gpio */
+               interrupt-parent = <&pio>;
+               interrupts = <14 IRQ_TYPE_EDGE_FALLING 14 0>;
+               irq-gpio = <&pio 14 0x2002>;
+               reset-gpio = <&pio 138 0>;
+               //bisa-gpio = <&pio 140 0>;
+               pinctrl-names = "default";
+
+               touchpanel,max-num-support = <10>;
+               touchpanel,tx-rx-num = <16 34>;
+               touchpanel,panel-coords = <1080 2400>;
+               touchpanel,display-coords = <1080 2400>;
+               touchpanel,touchmajor-limit = <0 54>;
+				vdd_2v8-supply  = <&mt_pmic_vtp_ldo_reg>;
+               /* SW Support Feature Control */
+               project_id = <20630>;
+	       irq_need_dev_resume_ok;
+               black_gesture_support;
+               fw_edge_limit_support;
+               pressure_report_support;
+               charger_pump_support;
+               game_switch_support;
+               smart_gesture_support;
+               headset_pump_support;
+               fw_update_app_support;
+               fingerprint_underscreen_support;
+               //esd_handle_support;
+               touchpanel,button-type = <4>;
+               touchpanel.button-TRx = <0 0>;
+               };
+};
+
+&pio {
+	ctp_ts_int_active: int_active {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO14__FUNC_GPIO14>;
+			slew-rate = <0>;
+			bias-pull-up = <11>;
+		};
+	};
+	ctp_ts_reset_active: reset_active {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO138__FUNC_GPIO138>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+	ctp_ts_int_suspend: int_suspend {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO14__FUNC_GPIO14>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+	ctp_ts_reset_suspend: reset_suspend {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO138__FUNC_GPIO138>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+	ctp_ts_i2c_mode: i2cmode_default {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO97__FUNC_SCL0>,
+				<PINMUX_GPIO98__FUNC_SDA0>;
+		};
+	};
+
+};
+//#endif Add Oplus Tp DTS
+/* TOUCH end */
+
+&swtp {
+    compatible = "mediatek, swtp-eint";
+    debounce = <512000>;
+};
+
+#include "mediatek/cust_mt6853_camera_20637.dtsi"
+#include <oplus6853_20637/cust.dtsi>
+/* DISPSYS GPIO standardization */
+
+#ifndef CONFIG_FPGA_EARLY_PORTING
+&pio {
+	mtkfb_pins_lcd_bias_enp1: lcd_bias_enp1_gpio {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO182__FUNC_GPIO182>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+
+	mtkfb_pins_lcd_bias_enp0: lcd_bias_enp0_gpio {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO182__FUNC_GPIO182>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+
+	mtkfb_pins_lcd_bias_enn1: lcd_bias_enn1_gpio {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO138__FUNC_GPIO138>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+
+	mtkfb_pins_lcd_bias_enn0: lcd_bias_enn0_gpio {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO138__FUNC_GPIO138>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+
+	mtkfb_pins_lcm_rst_out1_gpio: lcm_rst_out1_gpio {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO86__FUNC_GPIO86>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+
+	mtkfb_pins_lcm_rst_out0_gpio: lcm_rst_out0_gpio {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO86__FUNC_GPIO86>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+	mtkfb_pins_lcm_dsi_te: lcm_dsi_te {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO84__FUNC_DSI_TE>;
+		};
+	};
+};
+
+&dispsys_config {
+	pinctrl-names =
+		"lcm_rst_out1_gpio", "lcm_rst_out0_gpio",
+		"mode_te_te";
+	pinctrl-0 = <&mtkfb_pins_lcm_rst_out1_gpio>;
+	pinctrl-1 = <&mtkfb_pins_lcm_rst_out0_gpio>;
+	pinctrl-2 = <&mtkfb_pins_lcm_dsi_te>;
+	status = "okay";
+
+	helper-value = <0>, /*MTK_DRM_OPT_STAGE*/
+		<1>, /*MTK_DRM_OPT_USE_CMDQ*/
+		<1>, /*MTK_DRM_OPT_USE_M4U*/
+		<0>, /*MTK_DRM_OPT_SODI_SUPPORT*/
+		<1>, /*MTK_DRM_OPT_IDLE_MGR*/
+		<0>, /*MTK_DRM_OPT_IDLEMGR_SWTCH_DECOUPLE*/
+		<1>, /*MTK_DRM_OPT_IDLEMGR_BY_REPAINT*/
+		<0>, /*MTK_DRM_OPT_IDLEMGR_ENTER_ULPS*/
+		<0>, /*MTK_DRM_OPT_IDLEMGR_KEEP_LP11*/
+		<0>, /*MTK_DRM_OPT_DYNAMIC_RDMA_GOLDEN_SETTING*/
+		<1>, /*MTK_DRM_OPT_IDLEMGR_DISABLE_ROUTINE_IRQ*/
+		<0>, /*MTK_DRM_OPT_MET_LOG*/
+		<1>, /*MTK_DRM_OPT_USE_PQ*/
+		<1>, /*MTK_DRM_OPT_ESD_CHECK_RECOVERY*/
+		<1>, /*MTK_DRM_OPT_ESD_CHECK_SWITCH*/
+		<1>, /*MTK_DRM_OPT_PRESENT_FENCE*/
+		<0>, /*MTK_DRM_OPT_RDMA_UNDERFLOW_AEE*/
+		<1>, /*MTK_DRM_OPT_DSI_UNDERRUN_AEE*/
+		<1>, /*MTK_DRM_OPT_HRT*/
+		<1>, /*MTK_DRM_OPT_HRT_MODE*/
+		<0>, /*MTK_DRM_OPT_DELAYED_TRIGGER*/
+		<1>, /*MTK_DRM_OPT_OVL_EXT_LAYER*/
+		<0>, /*MTK_DRM_OPT_AOD*/
+		<1>, /*MTK_DRM_OPT_RPO*/
+		<0>, /*MTK_DRM_OPT_DUAL_PIPE*/
+		<0>, /*MTK_DRM_OPT_DC_BY_HRT*/
+		<0>, /*MTK_DRM_OPT_OVL_WCG*/
+		<0>, /*MTK_DRM_OPT_OVL_SBCH*/
+		<1>, /*MTK_DRM_OPT_COMMIT_NO_WAIT_VBLANK*/
+		<0>, /*MTK_DRM_OPT_MET*/
+		<0>, /*MTK_DRM_OPT_REG_PARSER_RAW_DUMP*/
+		<0>, /*MTK_DRM_OPT_VP_PQ*/
+		<0>, /*MTK_DRM_OPT_GAME_PQ*/
+		<0>, /*MTK_DRM_OPT_MMPATH*/
+		<1>, /*MTK_DRM_OPT_HBM*/
+		<1>, /*MTK_DRM_OPT_VDS_PATH_SWITCH*/
+		<0>, /*MTK_DRM_OPT_LAYER_REC*/
+		<1>, /*MTK_DRM_OPT_CLEAR_LAYER*/
+		<1>, /*MTK_DRM_OPT_LFR*/
+		<0>; /*MTK_DRM_OPT_SF_PF*/
+};
+
+&dsi0 {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	switch_fps = <0>;
+	panel14@0 {
+                compatible = "oplus20638,s68fc01,lcm";
+                reg = <0>;
+                pm-enable-gpios = <&pio 84 0>;
+                reset-gpios = <&pio 86 0>;
+                lcd-1p8-gpios = <&pio 140 0>;
+                ldo3-supply = <&mt_pmic_vmc_ldo_reg>;
+                ldo5-supply = <&mt_pmic_vmch_ldo_reg>;
+		pinctrl-names = "default";
+                port {
+                        panel_in14: endpoint {
+                                remote-endpoint = <&dsi_out>;
+                };
+                        };
+        };
+	ports {
+		port {
+			dsi_out: endpoint {
+				remote-endpoint = <&panel_in14>;
+			};
+		};
+	};
+};
+
+&mtkfb {
+	pinctrl-names = "lcd_bias_enp1_gpio", "lcd_bias_enp0_gpio",
+		"lcd_bias_enn1_gpio", "lcd_bias_enn0_gpio",
+		"lcm_rst_out1_gpio", "lcm_rst_out0_gpio",
+		"mode_te_te";
+	pinctrl-0 = <&mtkfb_pins_lcd_bias_enp1>;
+	pinctrl-1 = <&mtkfb_pins_lcd_bias_enp0>;
+	pinctrl-2 = <&mtkfb_pins_lcd_bias_enn1>;
+	pinctrl-3 = <&mtkfb_pins_lcd_bias_enn0>;
+	pinctrl-4 = <&mtkfb_pins_lcm_rst_out1_gpio>;
+	pinctrl-5 = <&mtkfb_pins_lcm_rst_out0_gpio>;
+	pinctrl-6 = <&mtkfb_pins_lcm_dsi_te>;
+	status = "okay";
+};
+
+/* accdet start */
+&accdet {
+	/* accdet micbias voltage: 0x09:2.85v 0x08:2.8v 0x07,
+	 * 2.7v;0x05,2.5v;0x02,1.9v
+	 */
+	accdet-mic-vol = <8>;
+	/* accdet pwm_width, pwm_thresh, fall_delay, rise_delay
+	 * debounce0, debounce1, debounce3, debounce4
+	 * eint pwm_width, eint pwm_thresh
+	 * eint deb(debounce0, debounce1, debounce2, debounce3), inv_debounce
+	 */
+	headset-mode-setting = <0x500 0x500 1 0x1f0
+				0x2000 0x800 0x2000 0x44
+				0x0 0x7
+				0x5 0x9 0x9 0xd 0xe>;
+	accdet-plugout-debounce = <1>;
+	/*1:ACC mode, 2:low cost without in bias, 6:low cost with in bias*/
+	accdet-mic-mode = <2>;
+	/*0--MD_MAX--UP_MAX--DW_MAX*/
+	headset-three-key-threshold = <0 82 170 306>;
+	headset-three-key-threshold-CDD = <0 121 192 600>;
+	/*0--MD_MAX--VOICE_MAX--UP_MAX--DW_MAX*/
+	headset-four-key-threshold = <0 58 121 192 400>;
+
+
+    /* moisture HW mode config start. Enable moisture detection or not
+    * default use HW mode for moisture detection
+    */
+    moisture_detect_enable = <1>;
+	/* select VTH to 2v and 500k, use internal resitance */
+	eint_use_ext_res = <0>;
+
+    /* enable eint detection mode, if moisture detection enable
+     * eint_detect_mode = moisture_detect_mode;otherwise, select
+      * eint_detect_mode = 4 as DEFAULT
+       */
+    eint_detect_mode = <5>;
+    /* enable moisture detection mode, if moisture detection enable
+     * eint_detect_mode = moisture_detect_mode
+     */
+    moisture_detect_mode = <5>;
+    /* select 0: 2.8V; 1: 2.4V; 2: 2V; 3: VTH=MVTH(VTH2) */
+    moisture_comp_vth = <2>;
+    /* vref2 voltage for different water impedance */
+    moisture_comp_vref2 = <0>;
+    /* moisture HW mode config end */
+
+    /* moisture SW mode config start, use external resister or not.
+     * DEFAULT NOT NEED
+     */
+    moisture_use_ext_res = <0>;
+    /* moisture external resister ohm, SW mode by auxadc */
+    moisture-external-r = <2000000>;
+    /* moisture internal resister ohm, SW mode by auxadc */
+    moisture-internal-r = <47000>;
+    /* moisture of water resister ohm, SW mode by auxadc*/
+    moisture-water-r = <10000>;
+    /* moisture SW mode config end */
+	status = "okay";
+};
+/* accdet end */
+
+/* IRTX GPIO Start */
+&irtx_pwm {
+	pinctrl-names = "irtx_gpio_led_default", "irtx_gpio_led_set";
+	pinctrl-0 = <&irtx_gpio_led_default>;
+	pinctrl-1 = <&irtx_gpio_led_set>;
+	status = "okay";
+};
+
+&pio {
+	/* IRTX GPIO Settings -Start */
+	/* default: GPIO0, output, high */
+	irtx_gpio_led_default:irtx_gpio_led_def@gpio57 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO57__FUNC_GPIO57>;
+			slew-rate = <1>;
+			bias-disable;
+			output-low;
+			input-schmitt-enable = <0>;
+		};
+	};
+
+	irtx_gpio_led_set:irtx_gpio_led_set@gpio57 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO57__FUNC_PWM_3>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+}; /* IRTX GPIO Settings -End */
+
+/* FINGERPRINT start */
+//ifdef OPLUS_FEATURE_FINGERPRINT
+&oplus_fp_common {
+    compatible = "oplus,fp_common"; //Manufacture, and Model
+    oplus,fp_gpio_num = <1>;
+    oplus,fp_gpio_0 = <&pio 41 0x00>;
+    pinctrl-names = "default", "gpio_id0_default";
+    pinctrl-0 = <&gpio_id0_default>;
+    goodix_optical {
+        oplus,fp-id = <1>; /* fp id mapping table */
+        vendor-chip = <11>; /* please refer to the struct fp_vendor_t in oplus_fp_commmon.n */
+        eng-menu = "-1,-1"; /* represents SNR, inclination test item in engineer menu, and 0/1 means off/on */
+        chip-name = "G_OPTICAL_G3";  /* /proc/fp_id, will be displayed in engineer menu  */
+	};
+};
+
+&pio{
+	gpio_id0_default: gpio_id0_default {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO41__FUNC_GPIO41>;
+			slew-rate = <0>;
+			bias-pull-up = <00>;
+			input-enable;
+		};
+	};
+};
+
+&goodix_fp {
+	goodix,gpio_irq = <&pio 7 0x00>;
+	goodix,gpio_reset = <&pio 6 0x00>;
+	goodix,gpio_cs = <&pio 29 0x00>;
+	pinctrl-names = "default", "gf_spi_drive_6mA", "gf_cs_func";
+	pinctrl-0 = <&gpio_goodix_irq_default>, <&gpio_goodix_reset_default>;
+	pinctrl-1 = <&gpio_goodix_clk_6mA>, <&gpio_goodix_mosi_6mA>, <&gpio_goodix_miso_6mA>, <&gpio_goodix_cs_6mA>;
+	pinctrl-2 = <&gpio_goodix_cs_func>;
+	status = "okay";
+};
+
+&spi5 {
+#address-cells = <1>;
+#size-cells = <0>;
+status = "okay";
+oplus_fp: fingerprint@0 {
+		 compatible = "oplus,oplus_fp";
+		 reg = <0>;
+		 spi-max-frequency = <8000000>;
+		 spi-id = <5>;
+		 spi-irq = <39>;
+		 spi-reg = <11019000>;
+		 dvdd-supply = <&mt_pmic_vfp_ldo_reg>;
+		 dvdd-config = <3300000 3300000 150000>;
+		 pwr_gpio = <&pio 131 0x0>;
+		 power-num = <2>;
+		 status = "okay";
+		 power_source_1 {
+			 power-mode = <1>;
+			 power-name = "dvdd";
+			 power-config = "dvdd-config";
+			 delay-time = <0>;
+		 };
+		 power_source_2 {
+			 power-mode = <2>;
+			 power-name = "pwr_gpio";
+			 poweron-level = <0>;
+			 delay-time = <0>;
+		 };
+	 };
+};
+/* 1 = ldo power, refer to oplus_fp_common.h*/
+&pio{
+gpio_goodix_reset_default: gpio_goodix_reset_default {
+				   pins_cmd_dat {
+					   pinmux = <PINMUX_GPIO6__FUNC_GPIO6>;
+					   slew-rate = <1>;
+					   output-low;
+				   };
+			   };
+gpio_goodix_irq_default: gpio_goodix_irq_default {
+				 pins_cmd_dat {
+					 pinmux = <PINMUX_GPIO7__FUNC_GPIO7>;
+					 slew-rate = <0>;
+					 bias-pull-down;
+				 };
+			 };
+gpio_goodix_clk_6mA: gpio_goodix_clk_6mA {
+			     pins_cmd_dat {
+				     pinmux = <PINMUX_GPIO28__FUNC_SPI5_CLK>;
+				     drive-strength = <2>;
+			     };
+		     };
+gpio_goodix_mosi_6mA: gpio_goodix_mosi_6mA {
+			      pins_cmd_dat {
+				      pinmux = <PINMUX_GPIO30__FUNC_SPI5_MO>;
+				      drive-strength = <2>;
+			      };
+		      };
+gpio_goodix_miso_6mA: gpio_goodix_miso_6mA {
+			      pins_cmd_dat {
+				      pinmux = <PINMUX_GPIO31__FUNC_SPI5_MI>;
+				      drive-strength = <3>;
+			      };
+		      };
+gpio_goodix_cs_6mA: gpio_goodix_cs_6mA {
+			    pins_cmd_dat {
+				    pinmux = <PINMUX_GPIO29__FUNC_SPI5_CSB>;
+				    drive-strength = <2>;
+			    };
+		    };
+gpio_goodix_cs_func: gpio_goodix_cs_func {
+			     pins_cmd_dat {
+				     pinmux = <PINMUX_GPIO29__FUNC_SPI5_CSB>;
+				     drive-strength = <2>;
+			     };
+		     };
+};
+//#endif
+
+&odm{
+        power_helper {
+                compatible = "oplus,power-helper";
+        };
+};
+
+#endif
+/*End of this file, DO NOT ADD ANYTHING HERE*/
+

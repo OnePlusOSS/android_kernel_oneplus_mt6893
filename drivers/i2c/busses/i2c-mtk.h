@@ -95,11 +95,13 @@
 #define I2C_DMA_INT_FLAG_NONE	0x0000
 #define I2C_DMA_CLR_FLAG		0x0000
 #define I2C_DMA_WARM_RST		0x0001
+#define I2C_DMA_HARD_RST		0x0002
 #define I2C_DMA_4G_MODE		0x0001
 
 #define I2C_DMA_DIR_CHANGE              (0x1 << 9)
 #define I2C_DMA_SKIP_CONFIG             (0x1 << 4)
 #define I2C_DMA_ASYNC_MODE              (0x1 << 2)
+#define DMA_SIDE_BAND_RST		(0x1 << 2)
 
 #define I2C_DEFAUT_SPEED		100000/* hz */
 #define MAX_FS_MODE_SPEED		400000/* hz */
@@ -126,9 +128,10 @@
 #define I2C_CONTROL_WRAPPER		(0x1 << 0)
 #define I2C_MCU_INTR_EN			0x1
 #define I2C_CCU_INTR_EN			0x2
+#define I2C_SIDE_BAND_RST		(0x1 << 5)
 
 #define I2C_RECORD_LEN			10
-#define I2C_MAX_CHANNEL		10
+#define I2C_MAX_CHANNEL		12
 
 #define MAX_SCL_LOW_TIME		2/* unit: milli-second */
 #define LSAMPLE_MSK			0x1C0
@@ -142,6 +145,9 @@ enum {
 	DMA_HW_VERSION1 = 1,
 	MDA_SUPPORT_8G  = 2,
 	DMA_SUPPORT_64G = 3,
+	FIFO_SUPPORT_WIDTH_8BIT = 0, /* 0 : FIFO width 8bit supprot */
+	FIFO_SUPPORT_WIDTH_64BIT = 1, /* 1 : FIFO width 64bit support */
+	I2C_DMA_HANDSHAKE_RST = 2,
 };
 
 enum DMA_REGS_OFFSET {
@@ -204,7 +210,7 @@ enum mt_trans_op {
 
 enum I2C_REGS_OFFSET {
 	OFFSET_DATA_PORT = 0x0,
-	OFFSET_SLAVE_ADDR = 0x04,
+	OFFSET_SLAVE_ADDR = 0x04,/* only support for FIFO width 8bit */
 	OFFSET_INTR_MASK = 0x08,
 	OFFSET_INTR_STAT = 0x0c,
 	OFFSET_CONTROL = 0x10,
@@ -230,6 +236,7 @@ enum I2C_REGS_OFFSET {
 	OFFSET_CLOCK_DIV = 0x70,
 
 	/* v2 add */
+	OFFSET_SLAVE_ADDR1 = 0x94,/* only support for FIFO width 64bit */
 	OFFSET_HW_TIMEOUT = 0xfff,
 	OFFSET_MCU_INTR = 0xfff,
 	OFFSET_TRAFFIC = 0xfff,
@@ -253,6 +260,7 @@ enum I2C_REGS_OFFSET {
 enum I2C_REGS_OFFSET_V2 {
 	V2_OFFSET_DATA_PORT = 0x0,
 	V2_OFFSET_SLAVE_ADDR = 0x04,
+	V2_OFFSET_SLAVE_ADDR1 = 0x94,
 	V2_OFFSET_INTR_MASK = 0x08,
 	V2_OFFSET_INTR_STAT = 0x0c,
 	V2_OFFSET_CONTROL = 0x10,
@@ -340,6 +348,10 @@ struct mt_i2c_ext {
 struct mtk_i2c_compatible {
 	unsigned char dma_support;
 	/* 0 : original; 1: 4gb  support 2: 33bit support; 3: 36 bit support */
+	unsigned char fifo_support;
+	/* 0 : FIFO width 8bit supprot; 1 : FIFO width 64bit support */
+	unsigned char i2c_dma_handshake_rst;
+	/* 0 : no need side-band reset; 1 : need side-band reset */
 	unsigned char idvfs_i2c;
 	/* compatible before chip, set 1 if no TRANSFER_LEN_AUX */
 	unsigned char set_dt_div;/* use dt to set div */
@@ -430,6 +442,7 @@ struct mt_i2c {
 	u32 ch_offset_dma;
 	bool skip_scp_sema;
 	bool has_ccu;
+	u32 apdma_size;
 	u32 ccu_offset;
 	unsigned long main_clk;
 	struct mutex i2c_mutex;
@@ -437,6 +450,9 @@ struct mt_i2c {
 	const struct mtk_i2c_compatible *dev_comp;
 	struct mtk_i2c_pll *i2c_pll_info;
 	struct i2c_info rec_info[I2C_RECORD_LEN];
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	struct pinctrl *pctrl;
+#endif /*OPLUS_FEATURE_CHG_BASIC*/
 };
 
 #if defined(CONFIG_MTK_FPGA) || defined(CONFIG_FPGA_EARLY_PORTING)

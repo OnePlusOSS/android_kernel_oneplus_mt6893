@@ -395,9 +395,13 @@ int pe40_init_state(void)
 		chr_err("[pe40_i0] err:1 %d\n", ret);
 		goto retry;
 	}
-
 	/* disable charger */
-	charger_force_disable_powerpath(true);
+#ifdef OPLUS_FEATURE_CHG_BASIC
+    charger_enable_powerpath(false);
+#else
+    charger_force_disable_powerpath(true);
+#endif
+
 
 	msleep(500);
 
@@ -429,7 +433,11 @@ int pe40_init_state(void)
 		cap.output_ma);
 
 	/*enable charger*/
-	charger_force_disable_powerpath(false);
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	charger_enable_powerpath(true);
+#else
+    charger_force_disable_powerpath(false);
+#endif
 
 	msleep(100);
 

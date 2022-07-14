@@ -1936,7 +1936,11 @@ static void skhpb_init_lu_constant(struct skhpb_lu *hpb,
 	hpb->lu_num_blocks = lu_desc->lu_logblk_cnt;
 	entries_per_region = region_mem_size / SKHPB_ENTRY_SIZE;
 	hpb->entries_per_subregion = hpb->subregion_mem_size / SKHPB_ENTRY_SIZE;
+#if BITS_PER_LONG == 32
+	hpb->subregions_per_region = div_u64(region_mem_size, hpb->subregion_mem_size);
+#else
 	hpb->subregions_per_region = region_mem_size / hpb->subregion_mem_size;
+#endif
 
 	hpb->hpb_control_mode = func_desc->hpb_control_mode;
 #if defined(SKHPB_READ_LARGE_CHUNK_SUPPORT)
@@ -1954,12 +1958,21 @@ static void skhpb_init_lu_constant(struct skhpb_lu *hpb,
 	 * 2. regions_per_lu = lu_num_blocks / subregion_mem_size (is trik...)
 	 *    if SKHPB_ENTRY_SIZE != subregions_per_region, it is error.
 	 */
+#if BITS_PER_LONG == 32
+	hpb->regions_per_lu = div_u64((hpb->lu_num_blocks
+			+ (region_mem_size / SKHPB_ENTRY_SIZE) - 1),
+			(region_mem_size / SKHPB_ENTRY_SIZE));
+	hpb->subregions_per_lu = div_u64((hpb->lu_num_blocks
+			+ (hpb->subregion_mem_size / SKHPB_ENTRY_SIZE) - 1),
+			(hpb->subregion_mem_size / SKHPB_ENTRY_SIZE));
+#else
 	hpb->regions_per_lu = (hpb->lu_num_blocks
 			+ (region_mem_size / SKHPB_ENTRY_SIZE) - 1)
 			/ (region_mem_size / SKHPB_ENTRY_SIZE);
 	hpb->subregions_per_lu = (hpb->lu_num_blocks
 			+ (hpb->subregion_mem_size / SKHPB_ENTRY_SIZE) - 1)
 			/ (hpb->subregion_mem_size / SKHPB_ENTRY_SIZE);
+#endif
 
 	/*	mempool info	*/
 	hpb->mpage_bytes = PAGE_SIZE;
@@ -1999,6 +2012,8 @@ static void skhpb_init_lu_constant(struct skhpb_lu *hpb,
 	SKHPB_DRIVER_I("===================================\n");
 }
 
+extern int ufsplus_hpb_status;
+
 static int skhpb_lu_hpb_init(struct ufs_hba *hba, struct skhpb_lu *hpb,
 		struct skhpb_func_desc *func_desc,
 		struct skhpb_lu_desc *lu_desc, u8 lun,
@@ -2025,7 +2040,9 @@ static int skhpb_lu_hpb_init(struct ufs_hba *hba, struct skhpb_lu *hpb,
 	INIT_LIST_HEAD(&hpb->lh_map_ctx);
 
 	hpb->lu_hpb_enable = true;
-
+	ufsplus_hpb_status=1;
+	SKHPB_DRIVER_I("ufsplus_hpb_status = %d\n",
+	ufsplus_hpb_status);
 	skhpb_init_lu_constant(hpb, lu_desc, func_desc);
 
 	hpb->region_tbl = vzalloc(sizeof(struct skhpb_region) *	hpb->regions_per_lu);
@@ -2604,6 +2621,11 @@ void skhpb_suspend(struct ufs_hba *hba)
 
 			while (1) {
 				spin_lock_irqsave(&hpb->rsp_list_lock, flags);
+				/* break if lh_rsp_info list_head not init yet. */
+				if (!hpb->lh_rsp_info.next) {
+					spin_unlock_irqrestore(&hpb->rsp_list_lock, flags);
+					break;
+				}
 				rsp_info = list_first_entry_or_null(&hpb->lh_rsp_info,
 													struct skhpb_rsp_info, list_rsp_info);
 				if (!rsp_info) {
@@ -2617,6 +2639,11 @@ void skhpb_suspend(struct ufs_hba *hba)
 			}
 			while (1) {
 				spin_lock_irqsave(&hpb->map_list_lock, flags);
+				/* break if lh_map_req_retry list_head not init yet. */
+				if (!hpb->lh_map_req_retry.next) {
+					spin_unlock_irqrestore(&hpb->map_list_lock, flags);
+					break;
+				}
 				map_req = list_first_entry_or_null(&hpb->lh_map_req_retry,
 												   struct skhpb_map_req, list_map_req);
 				if (!map_req) {

@@ -89,6 +89,27 @@
 #define DEF_RESCUE_PERCENT 33
 #define DEF_RESCUE_NS_TH 0
 #define INVALID_NUM -1
+#define DEFAULT_QR_T2WNT_X 0
+#define DEFAULT_QR_T2WNT_Y_P 100
+#define DEFAULT_QR_T2WNT_Y_N 0
+#define DEFAULT_QR_HWUI_HINT 1
+#define DEFAULT_GCC_RESERVED_UP_QUOTA_PCT 100
+#define DEFAULT_GCC_RESERVED_DOWN_QUOTA_PCT 5
+#define DEFAULT_GCC_STD_FILTER 2
+#define DEFAULT_GCC_WINDOW_SIZE 60
+#define DEFAULT_GCC_UP_STEP 5
+#define DEFAULT_GCC_DOWN_STEP 10
+#define DEFAULT_GCC_FPS_MARGIN 0
+#define DEFAULT_GCC_UP_SEC_PCT 25
+#define DEFAULT_GCC_DOWN_SEC_PCT 100
+#define DEFAULT_GCC_GPU_BOUND_LOADING 80
+#define DEFAULT_GCC_GPU_BOUND_TIME 90
+#define DEFAULT_GCC_CPU_UNKNOWN_SLEEP 80
+#define DEFAULT_GCC_CHECK_UNDER_BOOST 0
+#define DEFAULT_GCC_ENQ_BOUND_THRS 20
+#define DEFAULT_GCC_ENQ_BOUND_QUOTA 6
+#define DEFAULT_GCC_DEQ_BOUND_THRS 20
+#define DEFAULT_GCC_DEQ_BOUND_QUOTA 6
 
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
@@ -130,10 +151,11 @@ struct fbt_syslimit {
 };
 
 enum FPSGO_JERK {
-	FPSGO_JERK_ONLY_CEILING = 0,
-	FPSGO_JERK_NEED = 1,
-	FPSGO_JERK_POSTPONE = 2,
-	FPSGO_JERK_DISAPPEAR = 3,
+	FPSGO_JERK_DISAPPEAR = 0,
+	FPSGO_JERK_ONLY_CEILING_WAIT_ENQ = 1,
+	FPSGO_JERK_ONLY_CEILING_WAIT_DEQ = 2,
+	FPSGO_JERK_NEED = 3,
+	FPSGO_JERK_POSTPONE = 4,
 };
 
 enum FPSGO_TASK_POLICY {
@@ -173,6 +195,7 @@ static struct kobject *fbt_kobj;
 
 static int bhr;
 static int bhr_opp;
+static int bhr_opp_l;
 static int rescue_opp_f;
 static int rescue_enhance_f;
 static int rescue_opp_c;
@@ -192,27 +215,49 @@ static int loading_adj_cnt;
 static int loading_debnc_cnt;
 static int loading_time_diff;
 static int adjust_loading;
-static int rescue_percent_90;
-static int rescue_percent_120;
 static int fps_level_range;
 static int check_running;
 static int uboost_enhance_f;
 static int boost_affinity;
-static int boost_affinity_90;
-static int boost_affinity_120;
 static int cm_big_cap;
-static int cm_big_cap_90;
-static int cm_big_cap_120;
 static int cm_tdiff;
-static int cm_tdiff_90;
-static int cm_tdiff_120;
 static int rescue_second_time;
 static int rescue_second_group;
 static int rescue_second_copp;
 static int rescue_second_enable;
+static int rescue_second_enhance_f;
+static int qr_enable;
+static int qr_t2wnt_x;
+static int qr_t2wnt_y_p;
+static int qr_t2wnt_y_n;
+static int qr_hwui_hint;
+static int qr_filter_outlier;
+static int qr_mod_frame;
+static int qr_debug;
+static int gcc_enable;
+static int gcc_reserved_up_quota_pct;
+static int gcc_reserved_down_quota_pct;
+static int gcc_window_size;
+static int gcc_std_filter;
+static int gcc_up_step;
+static int gcc_down_step;
+static int gcc_fps_margin;
+static int gcc_up_sec_pct;
+static int gcc_down_sec_pct;
+static int gcc_gpu_bound_loading;
+static int gcc_gpu_bound_time;
+static int gcc_cpu_unknown_sleep;
+static int gcc_check_under_boost;
+static int gcc_upper_clamp;
+static int gcc_enq_bound_thrs;
+static int gcc_enq_bound_quota;
+static int gcc_deq_bound_thrs;
+static int gcc_deq_bound_quota;
+static int gcc_positive_clamp;
 
 module_param(bhr, int, 0644);
 module_param(bhr_opp, int, 0644);
+module_param(bhr_opp_l, int, 0644);
 module_param(rescue_opp_f, int, 0644);
 module_param(rescue_enhance_f, int, 0644);
 module_param(rescue_opp_c, int, 0644);
@@ -232,23 +277,44 @@ module_param(loading_adj_cnt, int, 0644);
 module_param(loading_debnc_cnt, int, 0644);
 module_param(loading_time_diff, int, 0644);
 module_param(adjust_loading, int, 0644);
-module_param(rescue_percent_90, int, 0644);
-module_param(rescue_percent_120, int, 0644);
 module_param(fps_level_range, int, 0644);
 module_param(check_running, int, 0644);
 module_param(uboost_enhance_f, int, 0644);
 module_param(boost_affinity, int, 0644);
-module_param(boost_affinity_90, int, 0644);
-module_param(boost_affinity_120, int, 0644);
 module_param(cm_big_cap, int, 0644);
-module_param(cm_big_cap_90, int, 0644);
-module_param(cm_big_cap_120, int, 0644);
 module_param(cm_tdiff, int, 0644);
-module_param(cm_tdiff_90, int, 0644);
-module_param(cm_tdiff_120, int, 0644);
 module_param(rescue_second_time, int, 0644);
 module_param(rescue_second_group, int, 0644);
 module_param(rescue_second_enable, int, 0644);
+module_param(rescue_second_enhance_f, int, 0644);
+module_param(qr_enable, int, 0644);
+module_param(qr_t2wnt_x, int, 0644);
+module_param(qr_t2wnt_y_p, int, 0644);
+module_param(qr_t2wnt_y_n, int, 0644);
+module_param(qr_hwui_hint, int, 0644);
+module_param(qr_filter_outlier, int, 0644);
+module_param(qr_mod_frame, int, 0644);
+module_param(qr_debug, int, 0644);
+module_param(gcc_enable, int, 0644);
+module_param(gcc_reserved_up_quota_pct, int, 0644);
+module_param(gcc_reserved_down_quota_pct, int, 0644);
+module_param(gcc_window_size, int, 0644);
+module_param(gcc_std_filter, int, 0644);
+module_param(gcc_up_step, int, 0644);
+module_param(gcc_down_step, int, 0644);
+module_param(gcc_fps_margin, int, 0644);
+module_param(gcc_up_sec_pct, int, 0644);
+module_param(gcc_down_sec_pct, int, 0644);
+module_param(gcc_gpu_bound_loading, int, 0644);
+module_param(gcc_gpu_bound_time, int, 0644);
+module_param(gcc_cpu_unknown_sleep, int, 0644);
+module_param(gcc_check_under_boost, int, 0644);
+module_param(gcc_upper_clamp, int, 0644);
+module_param(gcc_enq_bound_thrs, int, 0644);
+module_param(gcc_enq_bound_quota, int, 0644);
+module_param(gcc_deq_bound_thrs, int, 0644);
+module_param(gcc_deq_bound_quota, int, 0644);
+module_param(gcc_positive_clamp, int, 0644);
 
 static DEFINE_SPINLOCK(freq_slock);
 static DEFINE_MUTEX(fbt_mlock);
@@ -279,6 +345,7 @@ static unsigned int cpu_max_freq;
 static struct fbt_cpu_dvfs_info *cpu_dvfs;
 static int max_cap_cluster, min_cap_cluster;
 static unsigned int def_capacity_margin;
+static int max_cl_core_num;
 
 static int limit_policy;
 static struct fbt_syslimit *limit_clus_ceil;
@@ -300,6 +367,9 @@ static unsigned int *clus_status;
 static unsigned int last_obv;
 
 static unsigned long long vsync_time;
+static unsigned long long vsync_duration_us_90;
+static unsigned long long vsync_duration_us_60;
+static unsigned long long vsync_duration_us_120;
 
 static int vsync_period;
 static int _gdfrc_fps_limit;
@@ -617,10 +687,20 @@ static void fbt_set_cap_margin_locked(int set)
 	fpsgo_systrace_c_fbt_gm(-100, 0, set?1024:def_capacity_margin,
 					"cap_margin");
 
+#if defined(OPLUS_FEATURE_SCHEDUTIL_USE_TL) && defined(CONFIG_SCHEDUTIL_USE_TL)
+	if (set)
+		set_capacity_margin_dvfs(1024);
+	else
+		set_capacity_margin_dvfs(def_capacity_margin);
+#if defined(CONFIG_SCHEDUTIL_USE_TL)
+	set_capacity_margin_dvfs_changed(!!set);
+#endif /* CONFIG_SCHEDUTIL_USE_TL */
+#else
 	if (set)
 		set_capacity_margin(1024);
 	else
 		set_capacity_margin(def_capacity_margin);
+#endif /* OPLUS_FEATURE_SCHEDUTIL_USE_TL */
 	set_cap_margin = set;
 }
 
@@ -722,8 +802,10 @@ static void fbt_set_hard_limit_locked(int input, struct ppm_limit_data *pld)
 {
 	int set_margin, set_ceiling, is_rescue;
 
-	if (limit_policy == FPSGO_LIMIT_NONE)
+	if (limit_policy == FPSGO_LIMIT_NONE) {
+		fbt_set_cap_margin_locked(0);
 		return;
+	}
 
 	fpsgo_main_trace("limit: %d", input);
 
@@ -1122,7 +1204,6 @@ static void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 	char *dep_str = NULL;
 	int ret;
 	int heavy_pid = 0;
-	int do_affinity = 0;
 
 	if (!thr)
 		return;
@@ -1147,24 +1228,10 @@ static void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 	if (!size || !thr->dep_arr)
 		return;
 
-	if (boost_affinity || boost_affinity_90 || boost_affinity_120) {
-		int tfps_level;
-
-		tfps_level = fbt_get_fps_level(thr->boost_info.target_fps);
-
-		if (tfps_level == fbt_fps_level[0])
-			do_affinity = boost_affinity;
-		else if (tfps_level == fbt_fps_level[1])
-			do_affinity = boost_affinity_90;
-		else
-			do_affinity = boost_affinity_120;
-	}
-
-	if (loading_th
-		|| (do_affinity && limit_policy == FPSGO_LIMIT_CAPACITY))
+	if (loading_th || boost_affinity)
 		fbt_query_dep_list_loading(thr);
 
-	if (do_affinity && limit_policy == FPSGO_LIMIT_CAPACITY)
+	if (boost_affinity)
 		heavy_pid = fbt_get_heavy_pid(thr->dep_valid_size, thr->dep_arr);
 
 	dep_str = kcalloc(size + 1, MAX_PID_DIGIT * sizeof(char),
@@ -1179,8 +1246,7 @@ static void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 		if (!fl->pid)
 			continue;
 
-		if (loading_th
-			|| (do_affinity && limit_policy == FPSGO_LIMIT_CAPACITY)) {
+		if (loading_th || boost_affinity) {
 			fpsgo_systrace_c_fbt_gm(fl->pid, thr->buffer_id,
 				fl->loading, "dep-loading");
 
@@ -1202,12 +1268,16 @@ static void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 			fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id,
 					heavy_pid, "heavy_pid");
 			fbt_set_per_task_min_cap(fl->pid, min_cap);
-			if (do_affinity)
+			if (boost_affinity)
 				fbt_set_task_policy(fl, FPSGO_TPOLICY_AFFINITY,
+						FPSGO_PREFER_BIG, 1);
+		} else if (boost_affinity && thr->pid == fl->pid && max_cl_core_num > 1) {
+			fbt_set_per_task_min_cap(fl->pid, min_cap);
+			fbt_set_task_policy(fl, FPSGO_TPOLICY_AFFINITY,
 						FPSGO_PREFER_BIG, 1);
 		} else {
 			fbt_set_per_task_min_cap(fl->pid, min_cap);
-			if (do_affinity && heavy_pid && heavy_pid != fl->pid)
+			if (boost_affinity && heavy_pid && heavy_pid != fl->pid)
 				fbt_set_task_policy(fl, FPSGO_TPOLICY_AFFINITY,
 						FPSGO_PREFER_L_M, 0);
 			else
@@ -1513,6 +1583,55 @@ EXIT:
 	return hit;
 }
 
+static int fbt_print_rescue_info(int pid, int buffer_id,
+	unsigned long long q_end_ts,
+	int quota, int scn, int num, int policy, int blc_wt, int last_blw)
+{
+	int blc_changed = 0;
+
+	switch (policy) {
+	case FPSGO_JERK_ONLY_CEILING_WAIT_ENQ:
+		fpsgo_systrace_c_fbt(pid, buffer_id, num, "wait_enqueue");
+		fpsgo_systrace_c_fbt(pid, buffer_id, 0, "wait_enqueue");
+		break;
+
+	case FPSGO_JERK_ONLY_CEILING_WAIT_DEQ:
+		fpsgo_systrace_c_fbt(pid, buffer_id, num, "wait_enqueue");
+		fpsgo_systrace_c_fbt(pid, buffer_id, 0, "wait_enqueue");
+		break;
+
+	case FPSGO_JERK_NEED:
+		fpsgo_systrace_c_fbt(pid, buffer_id, num, "jerk_need");
+		fpsgo_systrace_c_fbt(pid, buffer_id, 0, "jerk_need");
+		blc_changed = 1;
+		break;
+
+	case FPSGO_JERK_POSTPONE:
+		fpsgo_systrace_c_fbt(pid, buffer_id, num, "jerk_postpone");
+		fpsgo_systrace_c_fbt(pid, buffer_id, 0, "jerk_postpone");
+		return 0;
+
+	case FPSGO_JERK_DISAPPEAR:
+		fpsgo_systrace_c_fbt(pid, buffer_id, num, "not_running");
+		fpsgo_systrace_c_fbt(pid, buffer_id, 0, "not_running");
+		policy = 0;
+		break;
+
+	default:
+		break;
+	}
+
+	if (num > 1 || policy == FPSGO_JERK_NEED) /* perf idx is valid */
+		fpsgo_main_trace("rescue_info:%llu,%d,%d,%d,%d,%d,%d",
+			q_end_ts, pid, quota, scn, num, policy, blc_wt);
+	else
+		fpsgo_main_trace("rescue_info:%llu,%d,%d,%d,%d,%d,%d",
+			q_end_ts, pid, quota, scn, num, policy, last_blw);
+
+
+	return 0;
+}
+
 static int fbt_check_to_jerk(
 		unsigned long long enq_start, unsigned long long enq_end,
 		unsigned long long deq_start, unsigned long long deq_end,
@@ -1520,18 +1639,12 @@ static int fbt_check_to_jerk(
 		unsigned long long buffer_id, int tgid)
 {
 	/*not running*/
-	if (check_running && !fbt_query_state(pid, tgid)) {
-		fpsgo_systrace_c_fbt(pid, buffer_id, 1, "not_running");
-		fpsgo_systrace_c_fbt(pid, buffer_id, 0, "not_running");
+	if (check_running && !fbt_query_state(pid, tgid))
 		return FPSGO_JERK_DISAPPEAR;
-	}
 
 	/*during enqueue*/
-	if (enq_start >= enq_end) {
-		fpsgo_systrace_c_fbt(pid, buffer_id, 1, "wait_enqueue");
-		fpsgo_systrace_c_fbt(pid, buffer_id, 0, "wait_enqueue");
-		return FPSGO_JERK_ONLY_CEILING;
-	}
+	if (enq_start >= enq_end)
+		return FPSGO_JERK_ONLY_CEILING_WAIT_ENQ;
 
 	/*after enqueue before dequeue*/
 	if (enq_end > enq_start && enq_end >= deq_start)
@@ -1539,17 +1652,13 @@ static int fbt_check_to_jerk(
 
 	/*after dequeue before enqueue*/
 	if (deq_end >= deq_start && deq_start > enq_end) {
-		if (deq_len > deqtime_bound) {
-			fpsgo_systrace_c_fbt(pid, buffer_id, 1, "wait_dequeue");
-			fpsgo_systrace_c_fbt(pid, buffer_id, 0, "wait_dequeue");
-			return FPSGO_JERK_ONLY_CEILING;
-		} else
+		if (deq_len > deqtime_bound)
+			return FPSGO_JERK_ONLY_CEILING_WAIT_DEQ;
+		else
 			return FPSGO_JERK_NEED;
 	}
 
 	/*during dequeue*/
-	fpsgo_systrace_c_fbt(pid, buffer_id, 1, "jerk_postpone");
-	fpsgo_systrace_c_fbt(pid, buffer_id, 0, "jerk_postpone");
 	return FPSGO_JERK_POSTPONE;
 }
 
@@ -1600,8 +1709,9 @@ static void fbt_do_sjerk(struct work_struct *work)
 {
 	struct fbt_sjerk *jerk;
 	struct render_info *thr;
-	unsigned int blc_wt = 0U;
+	unsigned int blc_wt = 0U, last_blc = 0U;
 	struct ppm_limit_data *pld;
+	int do_jerk;
 
 	jerk = container_of(work, struct fbt_sjerk, work);
 
@@ -1631,10 +1741,12 @@ static void fbt_do_sjerk(struct work_struct *work)
 	if (!blc_wt || thr->linger != 0 || jerk->active_id != thr->boost_info.proc.active_jerk_id)
 		goto EXIT;
 
-	if (fbt_check_to_jerk(thr->t_enqueue_start,
+	do_jerk = fbt_check_to_jerk(thr->t_enqueue_start,
 		thr->t_enqueue_end, thr->t_dequeue_start,
 		thr->t_dequeue_end, thr->dequeue_length,
-		thr->pid, thr->buffer_id, thr->tgid) == FPSGO_JERK_DISAPPEAR)
+		thr->pid, thr->buffer_id, thr->tgid);
+
+	if (do_jerk == FPSGO_JERK_DISAPPEAR)
 		goto EXIT;
 
 	pld = kcalloc(cluster_num,
@@ -1643,7 +1755,7 @@ static void fbt_do_sjerk(struct work_struct *work)
 		goto EXIT;
 
 	blc_wt = fbt_get_new_base_blc(pld, thr->boost_info.last_blc,
-			rescue_enhance_f, rescue_second_copp);
+			rescue_second_enhance_f, rescue_second_copp);
 
 	thrm_aware_switch(0);
 	fbt_set_hard_limit_locked(FPSGO_HARD_NONE, pld);
@@ -1662,6 +1774,9 @@ static void fbt_do_sjerk(struct work_struct *work)
 
 EXIT:
 	jerk->jerking = 0;
+
+	fbt_print_rescue_info(thr->pid, thr->buffer_id, thr->t_enqueue_end,
+		0, 0, 2, do_jerk, blc_wt, last_blc);
 
 	mutex_unlock(&fbt_mlock);
 	fpsgo_thread_unlock(&(thr->thr_mlock));
@@ -1698,9 +1813,13 @@ static void fbt_do_jerk_locked(struct render_info *thr, struct fbt_jerk *jerk, i
 		fbt_set_sjerk(thr->pid, thr->identifier, jerk_id);
 
 	do_jerk = fbt_check_to_jerk(thr->t_enqueue_start, thr->t_enqueue_end,
-				thr->t_dequeue_start, thr->t_dequeue_end,
-				thr->dequeue_length,
-				thr->pid, thr->buffer_id, thr->tgid);
+		thr->t_dequeue_start, thr->t_dequeue_end,
+		thr->dequeue_length,
+		thr->pid, thr->buffer_id, thr->tgid);
+
+	fbt_print_rescue_info(thr->pid, thr->buffer_id, thr->t_enqueue_end,
+		thr->boost_info.quota_adj, 0, 1, do_jerk,
+		blc_wt, thr->boost_info.last_blc);
 
 	if (do_jerk == FPSGO_JERK_DISAPPEAR)
 		goto EXIT;
@@ -1860,8 +1979,7 @@ static unsigned long long fbt_get_next_vsync_locked(
 static void fbt_check_cm_limit(struct render_info *thread_info,
 		long long runtime)
 {
-	int last_blc = 0, tfps_level;
-	int big_cap, time_diff;
+	int last_blc = 0;
 
 	if (!thread_info || !runtime)
 		return;
@@ -1881,20 +1999,8 @@ static void fbt_check_cm_limit(struct render_info *thread_info,
 	if (!last_blc)
 		return;
 
-	tfps_level = fbt_get_fps_level(thread_info->boost_info.target_fps);
-	if (tfps_level == fbt_fps_level[0]) {
-		big_cap = cm_big_cap;
-		time_diff = cm_tdiff;
-	} else if (tfps_level == fbt_fps_level[1]) {
-		big_cap = cm_big_cap_90;
-		time_diff = cm_tdiff_90;
-	} else {
-		big_cap = cm_big_cap_120;
-		time_diff = cm_tdiff_120;
-	}
-
-	if (last_blc > big_cap &&
-		runtime > thread_info->boost_info.target_time + time_diff)
+	if (last_blc > cm_big_cap &&
+		runtime > thread_info->boost_info.target_time + cm_tdiff)
 		fbt_notify_CM_limit(1);
 	else
 		fbt_notify_CM_limit(0);
@@ -2040,7 +2146,6 @@ static void fbt_do_boost(unsigned int blc_wt, int pid,
 	struct ppm_limit_data *pld;
 	int *clus_opp;
 	unsigned int *clus_floor_freq;
-
 	int tgt_opp = 0;
 	unsigned int mbhr;
 	int mbhr_opp;
@@ -2082,7 +2187,11 @@ static void fbt_do_boost(unsigned int blc_wt, int pid,
 		clus_floor_freq[cluster] = cpu_dvfs[cluster].power[tgt_opp];
 		clus_opp[cluster] = tgt_opp;
 
-		mbhr_opp = max((clus_opp[cluster] - bhr_opp), 0);
+		if (cluster == min_cap_cluster
+			&& blc_wt <= cpu_dvfs[min_cap_cluster].power[0]) {
+			mbhr_opp = max((clus_opp[cluster] - MAX(bhr_opp, bhr_opp_l)), 0);
+		} else
+			mbhr_opp = max((clus_opp[cluster] - bhr_opp), 0);
 
 		mbhr = clus_floor_freq[cluster] * 100U;
 		mbhr = mbhr / cpu_max_freq;
@@ -2224,7 +2333,7 @@ EXIT:
 	}
 
 	max_blc = final_blc;
-	max_blc_cur = blc_wt;
+	max_blc_cur = final_blc;
 	max_blc_pid = final_blc_pid;
 	max_blc_buffer_id = final_blc_buffer_id;
 	max_blc_stage = FPSGO_JERK_INACTIVE;
@@ -2312,41 +2421,15 @@ static unsigned long long fbt_get_t2wnt(int target_fps,
 	unsigned long long next_vsync, queue_end, rescue_length;
 	unsigned long long t2wnt = 0ULL;
 	unsigned long long ts = fpsgo_get_time();
-	int fps_rescue_percent, fps_short_rescue_ns, fps_min_rescue_percent;
 	unsigned long long t_cpu_target;
-	int target_fps_level;
 
 	mutex_lock(&fbt_mlock);
 
 	target_fps = min_t(int, target_fps, TARGET_UNLIMITED_FPS);
 
-	target_fps_level = fbt_get_fps_level(target_fps);
-
 	t_cpu_target = (unsigned long long)FBTCPU_SEC_DIVIDER;
 	t_cpu_target = div64_u64(t_cpu_target,
 		(unsigned long long)target_fps);
-
-	if (target_fps_level == fbt_fps_level[0]) {
-		fps_rescue_percent = rescue_percent;
-		fps_short_rescue_ns = short_rescue_ns;
-		fps_min_rescue_percent = min_rescue_percent;
-	} else if (target_fps_level == fbt_fps_level[1]) {
-		fps_rescue_percent = rescue_percent_90;
-		fps_min_rescue_percent = rescue_percent_90;
-		fps_short_rescue_ns =
-			(rescue_percent_90 == DEF_RESCUE_PERCENT)
-			? DEF_RESCUE_NS_TH : vsync_period;
-	} else {
-		fps_rescue_percent = rescue_percent_120;
-		fps_min_rescue_percent = rescue_percent_120;
-		fps_short_rescue_ns =
-			(rescue_percent_120 == DEF_RESCUE_PERCENT)
-			? DEF_RESCUE_NS_TH : vsync_period;
-	}
-
-	xgf_trace("fps=%d, rescue@(%d, %d, %d)", target_fps_level,
-			fps_rescue_percent, fps_min_rescue_percent,
-			fps_short_rescue_ns);
 
 	queue_end = queue_start + t_cpu_target;
 	next_vsync = fbt_get_next_vsync_locked(queue_end);
@@ -2359,7 +2442,7 @@ static unsigned long long fbt_get_t2wnt(int target_fps,
 			ts, next_vsync, short_min_rescue_p);
 	else {
 		t2wnt = fbt_cal_t2wnt(t_cpu_target,
-				ts, next_vsync, fps_rescue_percent);
+				ts, next_vsync, rescue_percent);
 		if (t2wnt == 0ULL)
 			goto ERROR;
 
@@ -2367,10 +2450,10 @@ static unsigned long long fbt_get_t2wnt(int target_fps,
 			t2wnt = t_cpu_target;
 
 			rescue_length = next_vsync - t2wnt - queue_start;
-			if (rescue_length <= fps_short_rescue_ns)
+			if (rescue_length <= short_rescue_ns)
 				t2wnt = fbt_cal_t2wnt(t_cpu_target,
 					ts, next_vsync,
-					fps_min_rescue_percent);
+					min_rescue_percent);
 		}
 	}
 ERROR:
@@ -2406,10 +2489,329 @@ static int fbt_get_next_jerk(int cur_id)
 	return ret_id;
 }
 
+int update_quota(struct fbt_boost_info *boost_info, int target_fps,
+	unsigned long long t_Q2Q_ns, unsigned long long t_enq_len_ns,
+	unsigned long long t_deq_len_ns)
+{
+	int rm_idx, new_idx, first_idx;
+	long long target_time = div64_s64(100000000, target_fps * 100 + gcc_fps_margin);
+	int s32_t_Q2Q = nsec_to_usec(t_Q2Q_ns);
+	int s32_t_enq_len = nsec_to_usec(t_enq_len_ns);
+	int s32_t_deq_len = nsec_to_usec(t_deq_len_ns);
+	int avg = 0, std_square = 0, i, quota_adj = 0;
+	int s32_target_time;
+
+	if (!gcc_fps_margin && target_fps == 60)
+		target_time = max(target_time, (long long)vsync_duration_us_60);
+	if (!gcc_fps_margin && target_fps == 90)
+		target_time = max(target_time, (long long)vsync_duration_us_90);
+	if (!gcc_fps_margin && target_fps == 120)
+		target_time = max(target_time, (long long)vsync_duration_us_120);
+
+	s32_target_time = target_time;
+
+	if (target_fps != boost_info->quota_fps) {
+		boost_info->quota_cur_idx = -1;
+		boost_info->quota_cnt = 0;
+		boost_info->quota = 0;
+		boost_info->quota_fps = target_fps;
+		boost_info->enq_sum = 0;
+	}
+
+	if (boost_info->enq_avg * 100 > s32_target_time * gcc_enq_bound_thrs ||
+		s32_t_deq_len * 100 > s32_target_time * gcc_deq_bound_thrs) {
+		boost_info->quota_cur_idx = -1;
+		boost_info->quota_cnt = 0;
+		boost_info->quota = 0;
+		boost_info->enq_sum = 0;
+	}
+
+	new_idx = boost_info->quota_cur_idx + 1;
+
+	if (new_idx >= QUOTA_MAX_SIZE)
+		new_idx -= QUOTA_MAX_SIZE;
+
+	if (boost_info->enq_avg * 100 > s32_target_time * gcc_enq_bound_thrs)
+		boost_info->quota_raw[new_idx] = s32_target_time * gcc_enq_bound_quota / 100;
+	else if (s32_t_deq_len * 100 > s32_target_time * gcc_deq_bound_thrs)
+		boost_info->quota_raw[new_idx] = s32_target_time * gcc_deq_bound_quota / 100;
+	else
+		boost_info->quota_raw[new_idx] = target_time - s32_t_Q2Q;
+
+	boost_info->quota += boost_info->quota_raw[new_idx];
+
+	boost_info->enq_raw[new_idx] = s32_t_enq_len;
+	boost_info->enq_sum += boost_info->enq_raw[new_idx];
+
+	if (boost_info->quota_cnt >= gcc_window_size) {
+		rm_idx = new_idx - gcc_window_size;
+		if (rm_idx < 0)
+			rm_idx += QUOTA_MAX_SIZE;
+
+		first_idx = rm_idx + 1;
+		if (first_idx >= QUOTA_MAX_SIZE)
+			first_idx -= QUOTA_MAX_SIZE;
+
+		boost_info->quota -= boost_info->quota_raw[rm_idx];
+		boost_info->enq_sum -= boost_info->enq_raw[rm_idx];
+	} else {
+		first_idx = new_idx - boost_info->quota_cnt;
+		if (first_idx < 0)
+			first_idx += QUOTA_MAX_SIZE;
+
+		boost_info->quota_cnt += 1;
+	}
+	boost_info->quota_cur_idx = new_idx;
+
+	/* remove outlier */
+	avg = boost_info->quota / boost_info->quota_cnt;
+	boost_info->enq_avg = boost_info->enq_sum / boost_info->quota_cnt;
+
+
+	if (first_idx <= new_idx)
+		for (i = first_idx; i <= new_idx; i++)
+			std_square += (boost_info->quota_raw[i] - avg) *
+			(boost_info->quota_raw[i] - avg);
+	else {
+		for (i = first_idx; i < QUOTA_MAX_SIZE; i++)
+			std_square += (boost_info->quota_raw[i] - avg) *
+			(boost_info->quota_raw[i] - avg);
+		for (i = 0; i <= new_idx; i++)
+			std_square += (boost_info->quota_raw[i] - avg) *
+			(boost_info->quota_raw[i] - avg);
+	}
+	std_square = std_square / boost_info->quota_cnt;
+
+	if (first_idx <= new_idx) {
+		for (i = first_idx; i <= new_idx; i++) {
+			if ((boost_info->quota_raw[i] - avg) *
+				(boost_info->quota_raw[i] - avg) <
+				gcc_std_filter * gcc_std_filter * std_square ||
+				s32_t_Q2Q < 2 * target_time)
+				quota_adj += boost_info->quota_raw[i];
+		}
+	} else {
+		for (i = first_idx; i < QUOTA_MAX_SIZE ; i++) {
+			if ((boost_info->quota_raw[i] - avg) *
+				(boost_info->quota_raw[i] - avg) <
+				gcc_std_filter * gcc_std_filter * std_square ||
+				s32_t_Q2Q < 2 * target_time)
+				quota_adj += boost_info->quota_raw[i];
+		}
+		for (i = 0; i <= new_idx ; i++) {
+			if ((boost_info->quota_raw[i] - avg) *
+				(boost_info->quota_raw[i] - avg) <
+				gcc_std_filter * gcc_std_filter * std_square ||
+				s32_t_Q2Q < 2 * target_time)
+				quota_adj += boost_info->quota_raw[i];
+		}
+	}
+
+	boost_info->quota_adj = quota_adj;
+
+	/* default: clamp if quota < -target_time */
+	if (qr_mod_frame) /*  */
+		boost_info->quota_mod = (boost_info->quota < -s32_target_time) ?
+			-s32_target_time : boost_info->quota;
+	else if (qr_filter_outlier)
+		boost_info->quota_mod = boost_info->quota_adj;
+	else
+		boost_info->quota_mod = boost_info->quota;
+
+	fpsgo_main_trace(
+		"%s raw[%d]:%d raw[%d]:%d cnt:%d sum:%d avg:%d std_sqr:%d quota:%d mod:%d enq:%d enq_avg:%d",
+		__func__, first_idx, boost_info->quota_raw[first_idx],
+		new_idx, boost_info->quota_raw[new_idx], boost_info->quota_cnt,
+		boost_info->quota, avg, std_square, quota_adj, boost_info->quota_mod,
+		s32_t_enq_len, boost_info->enq_avg);
+
+	return s32_target_time;
+}
+
+
+int fbt_eva_gcc(struct fbt_boost_info *boost_info,
+		int target_fps, int fps_margin, unsigned long long t_Q2Q,
+		unsigned int gpu_loading, int pct, int blc_wt, long long t_cpu)
+{
+	long long target_time = div64_s64(100000000, target_fps * 100 + gcc_fps_margin);
+	int gcc_down_window, gcc_up_window;
+	int quota = INT_MAX;
+	unsigned long long ts = fpsgo_get_time();
+	int weight_t_gpu = boost_info->quantile_gpu_time > 0 ?
+		nsec_to_usec(boost_info->quantile_gpu_time) : -1;
+	int weight_t_cpu = boost_info->quantile_cpu_time > 0 ?
+		nsec_to_usec(boost_info->quantile_cpu_time) : -1;
+	int ret = 0;
+
+	if (!gcc_fps_margin && target_fps == 60)
+		target_time = vsync_duration_us_60;
+	if (!gcc_fps_margin && target_fps == 90)
+		target_time = vsync_duration_us_90;
+	if (!gcc_fps_margin && target_fps == 120)
+		target_time = vsync_duration_us_120;
+
+	gcc_down_window = target_fps * gcc_down_sec_pct;
+	gcc_down_window = gcc_down_window / 100;
+	gcc_up_window = target_fps * gcc_up_sec_pct;
+	gcc_up_window = gcc_up_window / 100;
+
+	if (ts - (boost_info->gcc_pct_reset_ts) > 60000000000) {
+		boost_info->gcc_pct_thrs = 1000;
+		boost_info->gcc_avg_pct = 0;
+		boost_info->gcc_pct_reset_ts = ts;
+	}
+
+
+	if (boost_info->gcc_target_fps != target_fps) {
+		boost_info->gcc_target_fps = target_fps;
+		boost_info->correction = 0;
+		boost_info->gcc_count = 1;
+		boost_info->gcc_pct_thrs = 1000;
+	} else {
+		boost_info->gcc_count++;
+	}
+
+	boost_info->gcc_avg_pct = (50 * pct + 50 * (boost_info->gcc_avg_pct)) / 100;
+
+	if ((boost_info->gcc_count) % gcc_up_window == 0 &&
+		(boost_info->gcc_count) % gcc_down_window == 0) {
+
+		ret = 100;
+
+		quota = boost_info->quota_adj;
+
+		if (quota * 100 >= target_time * gcc_reserved_down_quota_pct)
+			goto check_deboost;
+		if (quota * 100 + target_time * gcc_reserved_up_quota_pct <= 0)
+			goto check_boost;
+
+		goto done;
+	}
+
+check_deboost:
+	if ((boost_info->gcc_count) % gcc_down_window == 0) {
+		ret += 10;
+
+		quota = boost_info->quota_adj;
+
+		if (fps_margin > 0) {
+			ret += 1;
+			goto done;
+		}
+
+		if (quota * 100 < target_time * gcc_reserved_down_quota_pct) {
+			ret += 2;
+			goto done;
+		}
+
+		if (gcc_check_under_boost &&
+			(boost_info->gcc_avg_pct) > (boost_info->gcc_pct_thrs)) {
+			ret += 3;
+			goto done;
+		}
+
+		boost_info->correction -= gcc_down_step;
+
+		goto done;
+	}
+
+check_boost:
+	if ((boost_info->gcc_count) % gcc_up_window == 0) {
+		ret += 20;
+
+		quota = boost_info->quota_adj;
+
+		if (fps_margin > 0) {
+			ret += 1;
+			goto done;
+		}
+
+		if (quota * 100 + target_time * gcc_reserved_up_quota_pct > 0) {
+			ret += 2;
+			goto done;
+		}
+
+		if (boost_info->gcc_quota < quota) {
+			ret += 3;
+			goto done;
+		}
+
+		if (weight_t_gpu == -1 && gpu_loading > gcc_gpu_bound_loading) {
+			ret += 4;
+			boost_info->correction = boost_info->correction < 0 ?
+				0 : boost_info->correction;
+			goto done;
+		}
+
+		if (weight_t_gpu > 0 && weight_t_cpu > 0 &&
+				weight_t_gpu * 100 > target_time * gcc_gpu_bound_time &&
+				target_time * gcc_gpu_bound_time > weight_t_cpu * 100 &&
+				nsec_to_usec(t_cpu) * 100 < target_time * gcc_gpu_bound_time) {
+			ret += 5;
+			goto done;
+		}
+
+		if (nsec_to_usec(t_cpu) * 100 < target_time * gcc_cpu_unknown_sleep) {
+			ret += 6;
+			goto done;
+		}
+
+		boost_info->correction += gcc_up_step;
+		boost_info->gcc_pct_thrs = (boost_info->gcc_avg_pct);
+	}
+
+done:
+
+	if (quota != INT_MAX)
+		boost_info->gcc_quota = quota;
+
+	if ((boost_info->correction) + blc_wt > 100 + gcc_upper_clamp)
+		(boost_info->correction) = 100 + gcc_upper_clamp - blc_wt;
+	else if ((boost_info->correction) + blc_wt < 0)
+		(boost_info->correction) = -blc_wt;
+
+	return ret;
+}
+
+extern bool mtk_get_gpu_loading(unsigned int *pLoading);
+
+int fbt_get_max_dep_pct(struct render_info *thread_info)
+{
+	int pct = 0;
+	long long runtime = 0;
+	struct task_struct *p;
+
+	rcu_read_lock();
+	p = find_task_by_vpid(thread_info->pid);
+	if (!p) {
+		fpsgo_main_trace(" %5d not found to erase", thread_info->pid);
+		rcu_read_unlock();
+		return -ESRCH;
+	}
+	get_task_struct(p);
+	rcu_read_unlock();
+
+	runtime = (u64)task_sched_runtime(p);
+	put_task_struct(p);
+
+	if (!thread_info->last_sched_runtime) {
+		thread_info->last_sched_runtime = runtime;
+		return pct;
+	}
+
+	pct = (runtime - thread_info->last_sched_runtime);
+	pct = pct * thread_info->boost_info.gcc_target_fps;
+	pct = pct >> 20;
+	thread_info->last_sched_runtime = runtime;
+
+	return pct;
+}
+
 static int fbt_boost_policy(
 	long long t_cpu_cur,
 	long long target_time,
 	unsigned int target_fps,
+	unsigned int fps_margin,
 	struct render_info *thread_info,
 	unsigned long long ts,
 	long aa)
@@ -2417,17 +2819,21 @@ static int fbt_boost_policy(
 	unsigned int blc_wt = 0U;
 	unsigned long long temp_blc;
 	unsigned long long t1, t2, t_Q2Q;
+	unsigned long long cur_ts;
 	struct fbt_boost_info *boost_info;
 	int pid;
 	unsigned long long buffer_id;
 	struct hrtimer *timer;
 	u64 t2wnt = 0ULL;
 	int active_jerk_id = 0;
+	long long rescue_target_t, qr_quota_adj;
 
 	if (!thread_info) {
 		FPSGO_LOGE("ERROR %d\n", __LINE__);
 		return 0;
 	}
+
+	cur_ts = fpsgo_get_time();
 
 	pid = thread_info->pid;
 	buffer_id = thread_info->buffer_id;
@@ -2486,6 +2892,52 @@ static int fbt_boost_policy(
 
 	blc_wt = fbt_limit_capacity(blc_wt, 0);
 
+	/* update quota */
+	if (qr_enable || gcc_enable) {
+		int s32_target_time = update_quota(boost_info,
+				target_fps,
+				thread_info->Q2Q_time,
+				thread_info->enqueue_length,
+				thread_info->dequeue_length);
+
+		if (qr_debug)
+			fpsgo_systrace_c_fbt(pid, buffer_id, boost_info->quota, "quota");
+		fpsgo_systrace_c_fbt(pid, buffer_id, s32_target_time, "gcc_target_time");
+		fpsgo_systrace_c_fbt(pid, buffer_id, boost_info->quota_adj, "quota_adj");
+		fpsgo_systrace_c_fbt(pid, buffer_id, boost_info->quota_mod, "quota_mod");
+	}
+
+	if (gcc_enable) {
+		unsigned int gpu_loading;
+		int pct;
+		int gcc_boost;
+
+		mtk_get_gpu_loading(&gpu_loading);
+		pct = gcc_check_under_boost ? fbt_get_max_dep_pct(thread_info) : 1000;
+		gcc_boost = fbt_eva_gcc(
+				boost_info,
+				target_fps, fps_margin,
+				thread_info->Q2Q_time, gpu_loading, pct, blc_wt, t_cpu_cur);
+		fpsgo_systrace_c_fbt(pid, buffer_id, boost_info->gcc_count, "gcc_count");
+		fpsgo_systrace_c_fbt(pid, buffer_id, gcc_boost, "gcc_boost");
+		fpsgo_systrace_c_fbt(pid, buffer_id, boost_info->correction, "correction");
+		fpsgo_systrace_c_fbt(pid, buffer_id, blc_wt, "before correction");
+		if (!gcc_positive_clamp || boost_info->correction < 0)
+			blc_wt = clamp((int)blc_wt + boost_info->correction, 1, 100);
+		else
+			fpsgo_systrace_c_fbt(pid, buffer_id, 0, "correction");
+		fpsgo_systrace_c_fbt(pid, buffer_id, gpu_loading, "gpu_loading");
+		if (gcc_check_under_boost) {
+			fpsgo_systrace_c_fbt(pid, buffer_id,
+				pct, "pct");
+			fpsgo_systrace_c_fbt(pid, buffer_id,
+				boost_info->gcc_pct_thrs, "gcc_pct_thrs");
+			fpsgo_systrace_c_fbt(pid, buffer_id,
+				boost_info->gcc_avg_pct, "gcc_avg_pct");
+		}
+
+	}
+
 	fbt_set_limit(blc_wt, pid, buffer_id, thread_info, t_cpu_cur);
 
 	if (!boost_ta)
@@ -2506,9 +2958,53 @@ static int fbt_boost_policy(
 	boost_info->last_blc = blc_wt;
 
 	if (blc_wt) {
-		t2wnt = (u64) fbt_get_t2wnt(target_fps, ts,
-			fbt_is_always_running(t_cpu_cur, target_time));
-		fpsgo_systrace_c_fbt(pid, buffer_id, t2wnt, "t2wnt");
+		 /* ignore hwui hint || not hwui */
+		if (qr_enable && (!qr_hwui_hint || thread_info->ux != 1)) {
+			rescue_target_t = div64_s64(1000000, target_fps); /* unit:1us */
+
+			/* t2wnt = target_time * (1+x) + quota * y */
+			if (qr_debug)
+				fpsgo_systrace_c_fbt(pid, buffer_id,
+				rescue_target_t * 1000, "t2wnt");
+
+			/* rescue_target_t, unit: 1us */
+			rescue_target_t = (qr_t2wnt_x) ?
+				rescue_target_t * 10 * (100 + qr_t2wnt_x) :
+				rescue_target_t * 1000;
+
+			if (boost_info->quota_mod > 0) { /* qr_quota, unit: 1us */
+				/* qr_t2wnt_y_p: percentage */
+				qr_quota_adj = (qr_t2wnt_y_p != 100) ?
+					(long long)(boost_info->quota_mod) * 10 *
+					(long long)qr_t2wnt_y_p :
+					(long long)(boost_info->quota_mod) * 1000;
+			} else {
+				 /* qr_t2wnt_y_n: percentage */
+				qr_quota_adj = (qr_t2wnt_y_n != 0) ?
+					(long long)(boost_info->quota_mod) * 10 *
+					(long long)qr_t2wnt_y_n :
+					0;
+			}
+			t2wnt = (rescue_target_t + qr_quota_adj > 0)
+				? rescue_target_t + qr_quota_adj : 0;
+
+			if (cur_ts > ts) {
+				if (t2wnt > cur_ts - ts) {
+					if (qr_debug)
+						fpsgo_systrace_c_fbt(pid,
+						buffer_id, t2wnt, "t2wnt_before");
+					t2wnt -= (cur_ts - ts);
+				} else
+					t2wnt = 1;
+			}
+
+			t2wnt = MAX(1ULL, t2wnt);
+			fpsgo_systrace_c_fbt(pid, buffer_id, t2wnt, "t2wnt_adjust");
+		} else {
+			t2wnt = (u64) fbt_get_t2wnt(target_fps, ts,
+				fbt_is_always_running(t_cpu_cur, target_time));
+			fpsgo_systrace_c_fbt(pid, buffer_id, t2wnt, "t2wnt");
+		}
 
 		if (t2wnt) {
 			if (t2wnt == 1ULL) {
@@ -2520,6 +3016,8 @@ static int fbt_boost_policy(
 			}
 
 			if (t2wnt > FBTCPU_SEC_DIVIDER) {
+				fpsgo_main_trace("%s t2wnt:%lld > FBTCPU_SEC_DIVIDER",
+					__func__, t2wnt);
 				t2wnt = FBTCPU_SEC_DIVIDER;
 				fpsgo_systrace_c_fbt_gm(pid, buffer_id, t2wnt,
 					"t2wnt");
@@ -2878,10 +3376,11 @@ static void fbt_frame_start(struct render_info *thr, unsigned long long ts)
 {
 	struct fbt_boost_info *boost;
 	long long runtime;
-	int targettime, targetfps;
+	int targettime, targetfps, fps_margin;
 	unsigned int limited_cap = 0;
 	int blc_wt = 0;
 	long loading = 0L;
+	int q_c_time, q_g_time;
 
 	if (!thr)
 		return;
@@ -2892,7 +3391,10 @@ static void fbt_frame_start(struct render_info *thr, unsigned long long ts)
 	boost->frame_info[boost->f_iter].running_time = runtime;
 
 	fpsgo_fbt2fstb_query_fps(thr->pid, thr->buffer_id,
-		&targetfps, &targettime, thr->tgid, thr->mid);
+			&targetfps, &targettime, &fps_margin, thr->tgid, thr->mid,
+			&q_c_time, &q_g_time);
+	boost->quantile_cpu_time = q_c_time;
+	boost->quantile_gpu_time = q_g_time;
 	if (!targetfps)
 		targetfps = TARGET_UNLIMITED_FPS;
 
@@ -2912,7 +3414,7 @@ static void fbt_frame_start(struct render_info *thr, unsigned long long ts)
 	}
 
 	blc_wt = fbt_boost_policy(runtime,
-			targettime, targetfps,
+			targettime, targetfps, fps_margin,
 			thr, ts, loading);
 
 	limited_cap = fbt_get_max_userlimit_freq();
@@ -3036,12 +3538,66 @@ SKIP:
 
 void fpsgo_ctrl2fbt_vsync(unsigned long long ts)
 {
+	unsigned long long vsync_duration;
+	unsigned long long temp_duration;
+
 	if (!fbt_is_enable())
 		return;
 
 	mutex_lock(&fbt_mlock);
+
+	vsync_duration = nsec_to_usec(ts - vsync_time);
+
+	if (_gdfrc_fps_limit == 60) {
+		vsync_duration_us_90 = 0;
+		vsync_duration_us_120 = 0;
+		if (vsync_duration_us_60 == 0)
+			vsync_duration_us_60 = 1000000 / 60;
+		else {
+			temp_duration = vsync_duration * 3 + vsync_duration_us_60 * 7;
+			do_div(temp_duration, 10);
+			vsync_duration_us_60 =
+				vsync_duration < 1000000 / 60 * 15 / 10 &&
+				vsync_duration > 1000000 / 60 / 2 ?
+				temp_duration : vsync_duration_us_60;
+		}
+
+	} else if (_gdfrc_fps_limit == 90) {
+		vsync_duration_us_60 = 0;
+		vsync_duration_us_120 = 0;
+		if (vsync_duration_us_90 == 0)
+			vsync_duration_us_90 = 1000000 / 90;
+		else {
+			temp_duration = vsync_duration * 3 + vsync_duration_us_90 * 7;
+			do_div(temp_duration, 10);
+			vsync_duration_us_90 =
+				vsync_duration < 1000000 / 90 * 15 / 10 &&
+				vsync_duration > 1000000 / 90 / 2 ?
+				temp_duration : vsync_duration_us_90;
+		}
+	} else if (_gdfrc_fps_limit == 120) {
+		vsync_duration_us_60 = 0;
+		vsync_duration_us_90 = 0;
+		if (vsync_duration_us_120 == 0)
+			vsync_duration_us_120 = 1000000 / 120;
+		else {
+			temp_duration = vsync_duration * 3 + vsync_duration_us_120 * 7;
+			do_div(temp_duration, 10);
+			vsync_duration_us_120 =
+				vsync_duration < 1000000 / 120 * 15 / 10 &&
+				vsync_duration > 1000000 / 120 / 2 ?
+				temp_duration : vsync_duration_us_120;
+		}
+	}
+
 	vsync_time = ts;
-	xgf_trace("vsync_time=%llu", nsec_to_usec(vsync_time));
+	xgf_trace(
+		"vsync_time=%llu, vsync_duration=%llu, vsync_duration_60=%llu, vsync_duration_90=%llu, vsync_duration_120=%llu",
+		nsec_to_usec(vsync_time), vsync_duration,
+		vsync_duration_us_60,
+		vsync_duration_us_90,
+		vsync_duration_us_120);
+
 	mutex_unlock(&fbt_mlock);
 }
 
@@ -3414,6 +3970,17 @@ int fpsgo_base2fbt_is_finished(struct render_info *thr)
 	return 1;
 }
 
+void fpsgo_base2fbt_stop_boost(struct render_info *thr)
+{
+	if (!thr)
+		return;
+
+	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, 1, "stop_boost");
+	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, 0, "stop_boost");
+
+	fbt_reset_boost(thr);
+}
+
 static int fbt_get_opp_by_freq(int cluster, unsigned int freq)
 {
 	int opp;
@@ -3530,6 +4097,7 @@ static void fbt_update_pwd_tbl(void)
 {
 	int cluster, opp;
 	unsigned int max_cap = 0, min_cap = UINT_MAX;
+	struct cpumask max_cluster_cpu, online_cpu;
 
 	for (cluster = 0; cluster < cluster_num ; cluster++) {
 		struct cpumask cluster_cpus;
@@ -3585,6 +4153,10 @@ static void fbt_update_pwd_tbl(void)
 	max_cap_cluster = clamp(max_cap_cluster, 0, cluster_num - 1);
 	min_cap_cluster = clamp(min_cap_cluster, 0, cluster_num - 1);
 	fbt_set_cap_limit();
+
+	arch_get_cluster_cpus(&max_cluster_cpu, max_cap_cluster);
+	cpumask_and(&online_cpu, &max_cluster_cpu, cpu_online_mask);
+	max_cl_core_num = cpumask_weight(&online_cpu);
 
 	if (!cpu_max_freq) {
 		FPSGO_LOGE("NULL power table\n");
@@ -3743,6 +4315,7 @@ static ssize_t light_loading_policy_store(struct kobject *kobj,
 }
 
 static KOBJ_ATTR_RW(light_loading_policy);
+
 
 static ssize_t switch_idleprefer_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
@@ -4056,10 +4629,15 @@ static ssize_t enable_switch_cap_margin_show(struct kobject *kobj,
 		FPSGO_SYSFS_MAX_BUFF_SIZE - posi,
 		"set_cap_margin %d\n", set_cap_margin);
 	posi += length;
-
+#if defined(OPLUS_FEATURE_SCHEDUTIL_USE_TL) && defined(CONFIG_SCHEDUTIL_USE_TL)
+	length = scnprintf(temp + posi,
+		FPSGO_SYSFS_MAX_BUFF_SIZE - posi,
+		"get_cap_margin %d\n", get_capacity_margin_dvfs());
+#else
 	length = scnprintf(temp + posi,
 		FPSGO_SYSFS_MAX_BUFF_SIZE - posi,
 		"get_cap_margin %d\n", get_capacity_margin());
+#endif
 	posi += length;
 	mutex_unlock(&fbt_mlock);
 
@@ -4147,6 +4725,15 @@ static ssize_t ultra_rescue_store(struct kobject *kobj,
 
 static KOBJ_ATTR_RW(ultra_rescue);
 
+static void llf_switch_policy(struct work_struct *work)
+{
+	fpsgo_main_trace("fpsgo %s and clear_llf_cpu_policy",
+		__func__);
+	fpsgo_clear_llf_cpu_policy(0);
+}
+static DECLARE_WORK(llf_switch_policy_work,
+		(void *) llf_switch_policy);
+
 static ssize_t llf_task_policy_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		char *buf)
@@ -4160,14 +4747,6 @@ static ssize_t llf_task_policy_show(struct kobject *kobj,
 	return scnprintf(buf, PAGE_SIZE, "%d\n", val);
 }
 
-static void llf_switch_policy(struct work_struct *work)
-{
-	fpsgo_main_trace("fpsgo %s and clear_llf_cpu_policy",
-		__func__);
-	fpsgo_clear_llf_cpu_policy(0);
-}
-static DECLARE_WORK(llf_switch_policy_work,
-		(void *) llf_switch_policy);
 static ssize_t llf_task_policy_store(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		const char *buf, size_t count)
@@ -4256,7 +4835,7 @@ static ssize_t limit_cfreq_store(struct kobject *kobj,
 	}
 
 	mutex_lock(&fbt_mlock);
-	if (limit_policy != FPSGO_LIMIT_CAPACITY || !limit_clus_ceil)
+	if (!limit_clus_ceil)
 		goto EXIT;
 
 	cluster = max_cap_cluster;
@@ -4268,6 +4847,7 @@ static ssize_t limit_cfreq_store(struct kobject *kobj,
 	if (val == 0) {
 		limit->cfreq = 0;
 		limit->copp = INVALID_NUM;
+		limit_policy = FPSGO_LIMIT_NONE;
 		goto EXIT;
 	}
 
@@ -4279,6 +4859,7 @@ static ssize_t limit_cfreq_store(struct kobject *kobj,
 	limit->cfreq = cpu_dvfs[cluster].power[opp];
 	limit->copp = opp;
 	limit_cap = check_limit_cap(0);
+	limit_policy = FPSGO_LIMIT_CAPACITY;
 
 EXIT:
 	mutex_unlock(&fbt_mlock);
@@ -4562,13 +5143,12 @@ int __init fbt_cpu_init(void)
 {
 	bhr = 5;
 	bhr_opp = 1;
+	bhr_opp_l = fbt_get_l_min_bhropp();
 	rescue_opp_c = (NR_FREQ_CPU - 1);
 	rescue_opp_f = 5;
 	rescue_percent = DEF_RESCUE_PERCENT;
 	min_rescue_percent = 10;
 	short_rescue_ns = DEF_RESCUE_NS_TH;
-	rescue_percent_90 = DEF_RESCUE_PERCENT;
-	rescue_percent_120 = DEF_RESCUE_PERCENT;
 	short_min_rescue_p = 0;
 	run_time_percent = 50;
 	deqtime_bound = TIME_3MS;
@@ -4579,15 +5159,15 @@ int __init fbt_cpu_init(void)
 	loading_th = 0;
 	sampling_period_MS = 256;
 	rescue_enhance_f = 25;
-	loading_adj_cnt = 10;
+	rescue_second_enhance_f = 100;
+	loading_adj_cnt = fbt_get_default_adj_count();
 	loading_debnc_cnt = 30;
-	loading_time_diff = TIME_1MS;
-	llf_task_policy = FPSGO_TPOLICY_NONE;
+	loading_time_diff = fbt_get_default_adj_tdiff();
 	fps_level_range = 10;
 	check_running = 1;
-	uboost_enhance_f = 75;
-	cm_big_cap = cm_big_cap_90 = cm_big_cap_120 = 95;
-	cm_tdiff = cm_tdiff_90 = cm_tdiff_120 = TIME_1MS;
+	uboost_enhance_f = fbt_get_default_uboost();
+	cm_big_cap = 95;
+	cm_tdiff = TIME_1MS;
 	rescue_second_time = 2;
 	rescue_second_copp = NR_FREQ_CPU - 1;
 
@@ -4600,10 +5180,44 @@ int __init fbt_cpu_init(void)
 	fbt_down_throttle_enable = 1;
 	sync_flag = -1;
 	fbt_sync_flag_enable = 1;
+#if defined(OPLUS_FEATURE_SCHEDUTIL_USE_TL) && defined(CONFIG_SCHEDUTIL_USE_TL)
+	def_capacity_margin = get_capacity_margin_dvfs();
+#else
 	def_capacity_margin = get_capacity_margin();
+#endif
 	fbt_cap_margin_enable = 1;
 	boost_ta = fbt_get_default_boost_ta();
 	adjust_loading = fbt_get_default_adj_loading();
+
+	/* t2wnt = target_time * (1+x) + quota * y_p, if quota > 0 */
+	/* t2wnt = target_time * (1+x) + quota * y_n, if quota < 0 */
+	qr_enable = fbt_get_default_qr_enable();
+	qr_t2wnt_x = DEFAULT_QR_T2WNT_X;
+	qr_t2wnt_y_p = DEFAULT_QR_T2WNT_Y_P;
+	qr_t2wnt_y_n = DEFAULT_QR_T2WNT_Y_N;
+	qr_hwui_hint = DEFAULT_QR_HWUI_HINT;
+	qr_filter_outlier = 0;
+	qr_mod_frame = 1;
+	qr_debug = 0;
+
+	gcc_enable = fbt_get_default_gcc_enable();
+	gcc_reserved_up_quota_pct = DEFAULT_GCC_RESERVED_UP_QUOTA_PCT;
+	gcc_reserved_down_quota_pct = DEFAULT_GCC_RESERVED_DOWN_QUOTA_PCT;
+	gcc_window_size = DEFAULT_GCC_WINDOW_SIZE;
+	gcc_std_filter = DEFAULT_GCC_STD_FILTER;
+	gcc_up_step = DEFAULT_GCC_UP_STEP;
+	gcc_down_step = DEFAULT_GCC_DOWN_STEP;
+	gcc_fps_margin = DEFAULT_GCC_FPS_MARGIN;
+	gcc_up_sec_pct = DEFAULT_GCC_UP_SEC_PCT;
+	gcc_down_sec_pct = DEFAULT_GCC_DOWN_SEC_PCT;
+	gcc_gpu_bound_loading = DEFAULT_GCC_GPU_BOUND_LOADING;
+	gcc_gpu_bound_time = DEFAULT_GCC_GPU_BOUND_TIME;
+	gcc_cpu_unknown_sleep = DEFAULT_GCC_CPU_UNKNOWN_SLEEP;
+	gcc_check_under_boost = DEFAULT_GCC_CHECK_UNDER_BOOST;
+	gcc_enq_bound_thrs = DEFAULT_GCC_ENQ_BOUND_THRS;
+	gcc_enq_bound_quota = DEFAULT_GCC_ENQ_BOUND_QUOTA;
+	gcc_deq_bound_thrs = DEFAULT_GCC_DEQ_BOUND_THRS;
+	gcc_deq_bound_quota = DEFAULT_GCC_DEQ_BOUND_QUOTA;
 
 	cluster_num = arch_get_nr_clusters();
 

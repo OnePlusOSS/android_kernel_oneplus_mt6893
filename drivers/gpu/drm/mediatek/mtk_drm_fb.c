@@ -21,6 +21,9 @@
 #include "mtk_drm_drv.h"
 #include "mtk_drm_fb.h"
 #include "mtk_drm_gem.h"
+#ifdef OPLUS_BUG_STABILITY
+#include <soc/oplus/system/oplus_mm_kevent_fb.h>
+#endif
 
 /*
  * mtk specific framebuffer structure.
@@ -71,6 +74,21 @@ dma_addr_t mtk_fb_get_dma(struct drm_framebuffer *fb)
 		return 0;
 
 	return mtk_gem->dma_addr;
+}
+
+int mtk_fb_get_sec_id(struct drm_framebuffer *fb)
+{
+	struct mtk_drm_fb *mtk_fb = to_mtk_fb(fb);
+	struct mtk_drm_gem_obj *mtk_gem = NULL;
+
+	if (!mtk_fb->gem_obj)
+		return -1;
+
+	mtk_gem = to_mtk_gem_obj(mtk_fb->gem_obj);
+	if (!mtk_gem)
+		return -1;
+
+	return mtk_gem->sec_id;
 }
 
 bool mtk_drm_fb_is_secure(struct drm_framebuffer *fb)
@@ -179,6 +197,9 @@ int mtk_fb_wait(struct drm_framebuffer *fb)
 		DDPAEE("%s:%d, invalid ret:%ld\n",
 			__func__, __LINE__,
 			ret);
+		#ifdef OPLUS_BUG_STABILITY
+		mm_fb_display_kevent("DisplayDriverID@@505$$", MM_FB_KEY_RATELIMIT_1H, "mtk_fb_wait invalid ret:%ld", ret);
+		#endif
 		return ret;
 	}
 

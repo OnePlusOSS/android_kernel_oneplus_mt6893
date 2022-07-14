@@ -700,7 +700,7 @@ static int rt9458_charger_dump_registers(struct charger_device *chg_dev)
 	dev_info(ri->dev,
 		"%s: CV = %dmV, vmreg = %dmV, CHG_EN = %d, CHG_STATUS = %s\n",
 		__func__, voreg / 1000, pdata->vmreg / 1000, chg_en,
-		rt9458_chg_stat_name[chg_stat]);
+		rt9458_chg_stat_name[(unsigned int)chg_stat]);
 	return 0;
 }
 
@@ -923,9 +923,10 @@ static irqreturn_t rt9458_intr_handler(int irq, void *dev_id)
 		if (!event[i])
 			continue;
 		for (j = 0; j < 8; j++) {
-			if (!(event[i] & (1 << j)))
-				continue;
 			id = i * 8 + j;
+			if (!(event[i] & (1 << j)) ||
+				(id >= ARRAY_SIZE(rt9458_irq_desc)))
+				continue;
 			if (!rt9458_irq_desc[id]) {
 				dev_warn(ri->dev, "no %d irq_handler", id);
 				continue;

@@ -46,6 +46,7 @@ enum TASK_STATE_ENUM {
 
 /* max count of input */
 #define CMDQ_MAX_COMMAND_SIZE		(0x80000000)
+#define CMDQ_MAX_SIMULATE_COMMAND_SIZE	(0x80000)
 #define CMDQ_MAX_DUMP_REG_COUNT		(2048)
 #define CMDQ_MAX_WRITE_ADDR_COUNT	(PAGE_SIZE / sizeof(u32))
 #define CMDQ_MAX_DBG_STR_LEN		(1024)
@@ -538,6 +539,7 @@ struct WriteAddrStruct {
 	void *va;
 	dma_addr_t pa;
 	pid_t user;
+	bool pool;
 };
 
 /* resource unit between each module */
@@ -768,6 +770,9 @@ struct cmdqRecStruct {
 	void *sec_client_meta;
 	enum cmdq_sec_rec_meta_type sec_meta_type;
 	u32 sec_meta_size;
+
+	/* Readback slot protection */
+	s32 slot_ids[8];
 };
 
 /* TODO: add controller support */
@@ -855,9 +860,11 @@ s32 cmdq_core_save_first_dump(const char *string, ...);
 
 /* Allocate/Free HW use buffer, e.g. command buffer forCMDQ HW */
 void *cmdq_core_alloc_hw_buffer_clt(struct device *dev, size_t size,
-	dma_addr_t *dma_handle, const gfp_t flag, enum CMDQ_CLT_ENUM clt);
+	dma_addr_t *dma_handle, const gfp_t flag, enum CMDQ_CLT_ENUM clt,
+	bool *pool);
 void cmdq_core_free_hw_buffer_clt(struct device *dev, size_t size,
-	void *cpu_addr, dma_addr_t dma_handle, enum CMDQ_CLT_ENUM clt);
+	void *cpu_addr, dma_addr_t dma_handle, enum CMDQ_CLT_ENUM clt,
+	bool pool);
 void *cmdq_core_alloc_hw_buffer(struct device *dev,
 	size_t size, dma_addr_t *dma_handle, const gfp_t flag);
 void cmdq_core_free_hw_buffer(struct device *dev, size_t size,

@@ -516,7 +516,7 @@ static int rt5509_adap_coefficent_fix(struct snd_soc_codec *codec)
 	ret = snd_soc_read(codec, RT5509_REG_CALIB_DCR);
 	ret &= 0xffffff;
 	dev_info(codec->dev, "dcr otp -> 0x%08x\n", ret);
-	if (ret == 0xffffff)
+	if (ret == 0xffffff || ret == 0)
 		ret = 0x800000;
 	/* rspk otp value */
 	w = ret;
@@ -1609,7 +1609,7 @@ static const struct soc_enum rt5509_enum[] = {
 		rt5509_recvmodel_text),
 };
 static const struct snd_kcontrol_new rt5509_controls[] = {
-	SOC_SINGLE_EXT_TLV("DAC Volume", RT5509_REG_VOLUME, 0, 255, 1,
+	SOC_SINGLE_EXT_TLV("Volume_Ctrl", RT5509_REG_VOLUME, 0, 255, 1,
 		snd_soc_get_volsw, rt5509_put_spk_volsw, dacvol_tlv),
 	SOC_SINGLE_EXT("Speaker Protection", RT5509_REG_CHIPEN,
 		RT5509_SPKPROT_ENSHFT,
@@ -2216,4 +2216,8 @@ module_exit(rt5509_driver_exit);
 MODULE_AUTHOR("CY_Huang <cy_huang@richtek.com>");
 MODULE_DESCRIPTION("RT5509 SPKAMP Driver");
 MODULE_LICENSE("GPL");
-MODULE_VERSION(RT5509_DRV_VER);
+MODULE_VERSION("1.0.16_M");
+/*
+ * 1.0.16_M
+ *	fix div 0 issue
+ */

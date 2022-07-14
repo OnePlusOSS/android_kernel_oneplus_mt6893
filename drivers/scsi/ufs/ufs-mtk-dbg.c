@@ -180,10 +180,14 @@ void ufs_mtk_dbg_add_trace(struct ufs_hba *hba,
 			 * length(4KB)[23:16]
 			 * duration(ms)[15:0]
 			 */
-			ufshcd_update_reg_hist(&hba->ufs_stats.perf_warn,
+			ufshcd_update_evt_hist(hba, UFS_EVT_PERF_WARN,
 			    (u32) ((opcode << 24) |
 			    (((transfer_len >> 12) & 0xFF) << 16) |
+#if BITS_PER_LONG == 32
+			    (div_u64(ufs_cmd_hlist[ufs_cmd_ptr].duration, 1000000))));
+#else
 			    (ufs_cmd_hlist[ufs_cmd_ptr].duration / 1000000)));
+#endif
 		}
 	}
 
@@ -394,7 +398,7 @@ void ufs_mtk_dbg_hang_detect_dump(void)
 	ufs_mtk_dbg_dump_trace(NULL, NULL,
 		ufs_mtk_hba->nutrs + ufs_mtk_hba->nutrs / 2, NULL);
 
-	ufshcd_print_all_err_hist(ufs_mtk_hba, NULL, NULL, NULL);
+	ufshcd_print_all_evt_hist(ufs_mtk_hba, NULL, NULL, NULL);
 #endif
 }
 
@@ -415,7 +419,7 @@ void ufs_mtk_dbg_proc_dump(struct seq_file *m)
 	ufs_mtk_dbg_dump_trace(NULL, NULL,
 		MAX_UFS_CMD_HLIST_ENTRY_CNT, m);
 
-	ufshcd_print_all_err_hist(ufs_mtk_hba, m, NULL, NULL);
+	ufshcd_print_all_evt_hist(ufs_mtk_hba, m, NULL, NULL);
 #endif
 }
 
@@ -435,7 +439,7 @@ void get_ufs_aee_buffer(unsigned long *vaddr, unsigned long *size)
 	ufs_mtk_dbg_dump_trace(&buff, &free_size,
 		MAX_UFS_CMD_HLIST_ENTRY_CNT, NULL);
 
-	ufshcd_print_all_err_hist(ufs_mtk_hba,
+	ufshcd_print_all_evt_hist(ufs_mtk_hba,
 		NULL, &buff, &free_size);
 
 	/* retrun start location */
@@ -560,8 +564,9 @@ static ssize_t ufs_debug_proc_write(struct file *file, const char *buf,
 	size_t count, loff_t *data)
 {
 	unsigned long op = UFS_CMD_UNKNOWN;
-	bool handled = false;
+	bool handled = true;
 	struct ufs_hba *hba = ufs_mtk_hba;
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 
 	if (count == 0 || count > 255)
 		return -EINVAL;
@@ -582,11 +587,21 @@ static ssize_t ufs_debug_proc_write(struct file *file, const char *buf,
 	if (op == UFS_CMD_HIST_BEGIN) {
 		atomic_set(&cmd_hist_enabled, 1);
 		dev_info(hba->dev, "cmd history on\n");
-		handled = true;
 	} else if (op == UFS_CMD_HIST_STOP) {
 		atomic_set(&cmd_hist_enabled, 0);
 		dev_info(hba->dev, "cmd history off\n");
-		handled = true;
+	} else if (op == UFS_CMD_QOS_ON) {
+		if (host && host->qos_allowed) {
+			host->qos_enabled = true;
+			dev_info(hba->dev, "QoS on\n");
+		}
+	} else if (op == UFS_CMD_QOS_OFF) {
+		if (host && host->qos_allowed) {
+			host->qos_enabled = false;
+			dev_info(hba->dev, "QoS off\n");
+		}
+	} else {
+		handled = false;
 	}
 
 	ufs_mtk_dbg_add_trace(hba,

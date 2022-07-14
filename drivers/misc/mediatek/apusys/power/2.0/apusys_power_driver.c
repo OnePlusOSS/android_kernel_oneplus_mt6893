@@ -430,9 +430,14 @@ int apu_device_power_on(enum DVFS_USER user)
 
 	if (pwr_dev->is_power_on == 1) {
 		mutex_unlock(&power_ctl_mtx);
+#if !BYPASS_POWER_OFF
 		LOG_ERR("APUPWR_ON_FAIL, not allow user:%d to pwr on twice\n",
 									user);
 		return -ECANCELED;
+#else
+		LOG_WRN("%s by user:%d bypass\n", __func__, user);
+		return 0;
+#endif
 	}
 
 	LOG_DBG("%s for user:%d, cnt:%d\n", __func__,
@@ -800,6 +805,9 @@ static int apu_power_probe(struct platform_device *pdev)
 	#endif
 
 	apusys_power_debugfs_init();
+	#if defined(CONFIG_MACH_MT6877)
+	apusys_power_create_procfs();
+	#endif
 	#ifdef APUPWR_TAG_TP
 	apupwr_init_drv_tags();
 	#endif

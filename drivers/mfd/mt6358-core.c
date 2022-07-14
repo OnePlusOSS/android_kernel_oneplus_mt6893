@@ -39,6 +39,7 @@
 #define MT6357_CID_CODE		0x5700
 #define MT6358_CID_CODE		0x5800
 #define MT6359_CID_CODE		0x5900
+#define MT6366_CID_CODE		0x6600
 #define MT6390_CID_CODE		0x9000
 
 static const struct mfd_cell mt6357_devs[] = {
@@ -76,6 +77,9 @@ static const struct mfd_cell mt6358_devs[] = {
 	}, {
 		.name = "mt6358-misc",
 		.of_compatible = "mediatek,mt6358-misc",
+	}, {
+		.name = "pmic-oc-debug",
+		.of_compatible = "mediatek,pmic-oc-debug",
 	},
 };
 
@@ -184,6 +188,10 @@ static void mt6358_irq_sp_handler(struct mt6358_chip *chip,
 				sta_reg, sp_int_status,
 				pmic_irqs[hwirq].name, hwirq,
 				irq_get_trigger_type(virq));
+			if (!strncmp(pmic_irqs[hwirq].name, "chrdet_edge", 11)) {
+				regmap_write(chip->regmap, sta_reg, BIT(j));
+				sp_int_status &= ~BIT(j);
+			}
 			log_threaded_irq_wakeup_reason(virq, chip->irq);
 			if (virq)
 				handle_nested_irq(virq);
@@ -457,6 +465,7 @@ static int mt6358_probe(struct platform_device *pdev)
 					   0, chip->irq_domain);
 		break;
 	case MT6358_CID_CODE:
+	case MT6366_CID_CODE:
 		chip->top_int_status_reg = PMIC_INT_STATUS_TOP_RSV_ADDR;
 		ret = mt6358_irq_init(chip);
 		if (ret)

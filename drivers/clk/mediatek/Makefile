@@ -8,10 +8,11 @@ subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/
 subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/
 subdir-ccflags-y += -I$(srctree)/drivers/devfreq/
 
-obj-$(CONFIG_COMMON_CLK_MEDIATEK) += clk-fixup-div.o clk-mtk.o clk-pll.o clk-gate.o clk-apmixed.o clk-cpumux.o clk-mux.o
+obj-$(CONFIG_COMMON_CLK_MEDIATEK) += clk-fixup-div.o clk-mtk.o clk-pll.o clk-gate.o clk-apmixed.o clk-cpumux.o clk-mux.o clkchk.o
 obj-$(CONFIG_RESET_CONTROLLER) += reset.o
 ifneq ($(CONFIG_FPGA_EARLY_PORTING), y)
 obj-$(CONFIG_COMMON_CLK_MT6785) += clk-mt6785.o clk-mt6785-pg.o clk-mtk-v1.o clkdbg.o clkchk.o clkdbg-mt6785.o clkchk-mt6785.o
+obj-$(CONFIG_COMMON_CLK_MT6781) += clk-mt6781.o clk-mt6781-pg.o clk-mtk-v1.o clkdbg.o clkchk.o clkdbg-mt6781.o clkchk-mt6781.o
 obj-$(CONFIG_COMMON_CLK_MT6873) += clk-mt6873.o clk-mt6873-pg.o clk-mtk-v1.o clkdbg.o clkdbg-mt6873.o clkchk.o clkchk-mt6873.o clk-fmeter-mt6873.o
 obj-$(CONFIG_COMMON_CLK_MT6885) += clk-mt6885.o clk-mt6885-pg.o clk-mtk-v1.o clkdbg.o clkdbg-mt6885.o clkchk.o clkchk-mt6885.o clk-fmeter-mt6885.o
 obj-$(CONFIG_COMMON_CLK_MT6893) += clk-mt6885.o clk-mt6885-pg.o clk-mtk-v1.o clkdbg.o clkdbg-mt6885.o clkchk.o clkchk-mt6885.o clk-fmeter-mt6885.o
@@ -97,8 +98,23 @@ obj-$(CONFIG_COMMON_CLK_MT6853_MMSYS_CONFIG) += clk-mt6853-mm.o
 obj-$(CONFIG_COMMON_CLK_MT6853_SCP) += clk-mt6853-scp_par.o
 obj-$(CONFIG_COMMON_CLK_MT6853_VDEC_GCON) += clk-mt6853-vdec.o
 obj-$(CONFIG_COMMON_CLK_MT6853_VENC_GCON) += clk-mt6853-venc.o
+obj-$(CONFIG_COMMON_CLK_MT6877) += clk-mt6877.o clk-mt6877-pg.o clk-mtk-v1.o clk-bringup.o clkchk.o clkchk-mt6877.o clk-fmeter-mt6877.o
+obj-$(CONFIG_COMMON_CLK_MT6877_APU) += clk-mt6877-apu.o
+obj-$(CONFIG_COMMON_CLK_MT6877_AUDIOSYS) += clk-mt6877-audsys.o
+obj-$(CONFIG_COMMON_CLK_MT6877_CAM) += clk-mt6877-cam.o
+obj-$(CONFIG_COMMON_CLK_MT6877_IMG) += clk-mt6877-img.o
+obj-$(CONFIG_COMMON_CLK_MT6877_I2C) += clk-mt6877-i2c.o
+obj-$(CONFIG_COMMON_CLK_MT6877_IPESYS) += clk-mt6877-ipe.o
+obj-$(CONFIG_COMMON_CLK_MT6877_MDPSYS) += clk-mt6877-mdp.o
+obj-$(CONFIG_COMMON_CLK_MT6877_MFGCFG) += clk-mt6877-mfgcfg.o
+obj-$(CONFIG_COMMON_CLK_MT6877_DISPSYS) += clk-mt6877-mm.o
+obj-$(CONFIG_COMMON_CLK_MT6877_MSDC) += clk-mt6877-msdc.o
+obj-$(CONFIG_COMMON_CLK_MT6877_SCP_ADSP) += clk-mt6877-scp_par.o
+obj-$(CONFIG_COMMON_CLK_MT6877_VDE) += clk-mt6877-vde.o
+obj-$(CONFIG_COMMON_CLK_MT6877_VEN) += clk-mt6877-ven.o
 
 ifeq ($(CONFIG_DEBUG_FS), y)
+obj-$(CONFIG_COMMON_CLK_MT6877) += clkdbg.o clkdbg-mt6877.o
 obj-$(CONFIG_COMMON_CLK_MT6768) +=  clkchk-mt6768.o clkdbg-mt6768.o mt6768_clkmgr.o
 obj-$(CONFIG_COMMON_CLK_MT6765) += clkdbg_mt6765.o clkchk-mt6765.o
 endif

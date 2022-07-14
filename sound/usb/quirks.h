@@ -29,6 +29,7 @@ int snd_usb_is_big_endian_format(struct snd_usb_audio *chip,
 				 struct audioformat *fp);
 
 void snd_usb_endpoint_start_quirk(struct snd_usb_endpoint *ep);
+void snd_usb_endpoint_stop_quirk(struct snd_usb_endpoint *ep);
 
 void snd_usb_set_interface_quirk(struct usb_device *dev);
 void snd_usb_ctl_msg_quirk(struct usb_device *dev, unsigned int pipe,

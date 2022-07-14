@@ -849,7 +849,7 @@ void MFBQOS_Update(bool start, unsigned int scen, unsigned long bw)
 		LOG_DBG("MFB total: %ld", qos_total);
 		spin_lock(&(SpinLockMfbPmqos));
 		if (bw != 0)
-			qos_scen[scen] = bw;
+			qos_scen[scen] = qos_scen[scen] + bw;
 		qos_total = qos_total + bw;
 		if (qos_total > 600000000) {
 			spin_unlock(&(SpinLockMfbPmqos));
@@ -871,6 +871,7 @@ void MFBQOS_Update(bool start, unsigned int scen, unsigned long bw)
 		LOG_DBG("MFB total: %ld", qos_total);
 		spin_lock(&(SpinLockMfbPmqos));
 		qos_total = qos_total - qos_scen[scen];
+		qos_scen[scen] = 0;
 		if (qos_total > 600000000) {
 			spin_unlock(&(SpinLockMfbPmqos));
 			pm_qos_update_request(&mfb_pmqos_request,
@@ -3426,14 +3427,17 @@ static int compat_get_MFB_mss_enque_req_data(
 	struct compat_MFB_MSSRequest __user *data32,
 	struct MFB_MSSRequest __user *data)
 {
-	compat_uint_t count;
+	compat_uint_t num;
+	compat_uint_t exe;
 	compat_uptr_t uptr;
 	int err = 0;
 
 	err = get_user(uptr, &data32->m_pMssConfig);
 	err |= put_user(compat_ptr(uptr), &data->m_pMssConfig);
-	err |= get_user(count, &data32->m_ReqNum);
-	err |= put_user(count, &data->m_ReqNum);
+	err |= get_user(num, &data32->m_ReqNum);
+	err |= put_user(num, &data->m_ReqNum);
+	err |= get_user(exe, &data32->exec);
+	err |= put_user(exe, &data->exec);
 	return err;
 }
 
@@ -3442,14 +3446,17 @@ static int compat_put_MFB_mss_enque_req_data(
 	struct compat_MFB_MSSRequest __user *data32,
 	struct MFB_MSSRequest __user *data)
 {
-	compat_uint_t count;
+	compat_uint_t num;
+	compat_uint_t exe;
 	/*compat_uptr_t uptr;*/
 	int err = 0;
 	/* Assume data pointer is unchanged. */
 	/* err = get_user(compat_ptr(uptr), &data->m_pMssConfig); */
 	/* err |= put_user(uptr, &data32->m_pMssConfig); */
-	err |= get_user(count, &data->m_ReqNum);
-	err |= put_user(count, &data32->m_ReqNum);
+	err |= get_user(num, &data->m_ReqNum);
+	err |= put_user(num, &data32->m_ReqNum);
+	err |= get_user(exe, &data->exec);
+	err |= put_user(exe, &data32->exec);
 	return err;
 }
 
@@ -3458,14 +3465,17 @@ static int compat_get_MFB_mss_deque_req_data(
 	struct compat_MFB_MSSRequest __user *data32,
 	struct MFB_MSSRequest __user *data)
 {
-	compat_uint_t count;
+	compat_uint_t num;
+	compat_uint_t exe;
 	compat_uptr_t uptr;
 	int err = 0;
 
 	err = get_user(uptr, &data32->m_pMssConfig);
 	err |= put_user(compat_ptr(uptr), &data->m_pMssConfig);
-	err |= get_user(count, &data32->m_ReqNum);
-	err |= put_user(count, &data->m_ReqNum);
+	err |= get_user(num, &data32->m_ReqNum);
+	err |= put_user(num, &data->m_ReqNum);
+	err |= get_user(exe, &data32->exec);
+	err |= put_user(exe, &data->exec);
 	return err;
 }
 
@@ -3474,14 +3484,17 @@ static int compat_put_MFB_mss_deque_req_data(
 	struct compat_MFB_MSSRequest __user *data32,
 	struct MFB_MSSRequest __user *data)
 {
-	compat_uint_t count;
+	compat_uint_t num;
+	compat_uint_t exe;
 	/*compat_uptr_t uptr;*/
 	int err = 0;
 	/* Assume data pointer is unchanged. */
 	/* err = get_user(compat_ptr(uptr), &data->m_pMssConfig); */
 	/* err |= put_user(uptr, &data32->m_pMssConfig); */
-	err |= get_user(count, &data->m_ReqNum);
-	err |= put_user(count, &data32->m_ReqNum);
+	err |= get_user(num, &data->m_ReqNum);
+	err |= put_user(num, &data32->m_ReqNum);
+	err |= get_user(exe, &data->exec);
+	err |= put_user(exe, &data32->exec);
 	return err;
 }
 
@@ -3489,14 +3502,17 @@ static int compat_get_MFB_msf_enque_req_data(
 	struct compat_MFB_MSFRequest __user *data32,
 	struct MFB_MSFRequest __user *data)
 {
-	compat_uint_t count;
+	compat_uint_t num;
+	compat_uint_t exe;
 	compat_uptr_t uptr;
 	int err = 0;
 
 	err = get_user(uptr, &data32->m_pMsfConfig);
 	err |= put_user(compat_ptr(uptr), &data->m_pMsfConfig);
-	err |= get_user(count, &data32->m_ReqNum);
-	err |= put_user(count, &data->m_ReqNum);
+	err |= get_user(num, &data32->m_ReqNum);
+	err |= put_user(num, &data->m_ReqNum);
+	err |= get_user(exe, &data32->exec);
+	err |= put_user(exe, &data->exec);
 	return err;
 }
 
@@ -3505,14 +3521,17 @@ static int compat_put_MFB_msf_enque_req_data(
 	struct compat_MFB_MSFRequest __user *data32,
 	struct MFB_MSFRequest __user *data)
 {
-	compat_uint_t count;
+	compat_uint_t num;
+	compat_uint_t exe;
 	/*compat_uptr_t uptr;*/
 	int err = 0;
 	/* Assume data pointer is unchanged. */
 	/* err = get_user(compat_ptr(uptr), &data->m_pMsfConfig); */
 	/* err |= put_user(uptr, &data32->m_pMsfConfig); */
-	err |= get_user(count, &data->m_ReqNum);
-	err |= put_user(count, &data32->m_ReqNum);
+	err |= get_user(num, &data->m_ReqNum);
+	err |= put_user(num, &data32->m_ReqNum);
+	err |= get_user(exe, &data->exec);
+	err |= put_user(exe, &data32->exec);
 	return err;
 }
 
@@ -3521,14 +3540,17 @@ static int compat_get_MFB_msf_deque_req_data(
 	struct compat_MFB_MSFRequest __user *data32,
 	struct MFB_MSFRequest __user *data)
 {
-	compat_uint_t count;
+	compat_uint_t num;
+	compat_uint_t exe;
 	compat_uptr_t uptr;
 	int err = 0;
 
 	err = get_user(uptr, &data32->m_pMsfConfig);
 	err |= put_user(compat_ptr(uptr), &data->m_pMsfConfig);
-	err |= get_user(count, &data32->m_ReqNum);
-	err |= put_user(count, &data->m_ReqNum);
+	err |= get_user(num, &data32->m_ReqNum);
+	err |= put_user(num, &data->m_ReqNum);
+	err |= get_user(exe, &data32->exec);
+	err |= put_user(exe, &data->exec);
 	return err;
 }
 
@@ -3537,14 +3559,17 @@ static int compat_put_MFB_msf_deque_req_data(
 	struct compat_MFB_MSFRequest __user *data32,
 	struct MFB_MSFRequest __user *data)
 {
-	compat_uint_t count;
+	compat_uint_t num;
+	compat_uint_t exe;
 	/*compat_uptr_t uptr;*/
 	int err = 0;
 	/* Assume data pointer is unchanged. */
 	/* err = get_user(compat_ptr(uptr), &data->m_pMsfConfig); */
 	/* err |= put_user(uptr, &data32->m_pMsfConfig); */
-	err |= get_user(count, &data->m_ReqNum);
-	err |= put_user(count, &data32->m_ReqNum);
+	err |= get_user(num, &data->m_ReqNum);
+	err |= put_user(num, &data32->m_ReqNum);
+	err |= get_user(exe, &data->exec);
+	err |= put_user(exe, &data32->exec);
 	return err;
 }
 

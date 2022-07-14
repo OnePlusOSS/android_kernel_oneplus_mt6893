@@ -95,7 +95,7 @@ enum AVG_LOAD_ID {
 #ifdef CONFIG_MTK_CORE_CTL
 unsigned int get_overutil_threshold(int index)
 {
-	if (index >= 0 || index <= OVERUTIL_THRESHOLD_SIZE)
+	if (index >= 0 && index < OVERUTIL_THRESHOLD_SIZE)
 		return overutil_thres[index];
 	return 100;
 }
@@ -986,7 +986,7 @@ static ssize_t store_overutil(struct kobject *kobj,
 	int ret, i;
 
 	ret = sscanf(buf, "%u %u\n", &val[0], &val[1]);
-	if ( ret <= 0 || OVERUTIL_THRESHOLD_SIZE <= ret)
+	if (ret <= 0 || OVERUTIL_THRESHOLD_SIZE <= ret)
 		return -EINVAL;
 
 	if (ret == 1) {

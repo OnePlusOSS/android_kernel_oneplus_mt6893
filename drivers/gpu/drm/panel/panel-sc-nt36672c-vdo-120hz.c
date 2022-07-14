@@ -546,7 +546,6 @@ static struct mtk_panel_params ext_params = {
 	},
 	.lfr_enable = 1,
 	.lfr_minimum_fps = 60,
-
 };
 
 static struct mtk_panel_params ext_params_90hz = {
@@ -666,7 +665,6 @@ static struct mtk_panel_params ext_params_120hz = {
 	},
 	.lfr_enable = 1,
 	.lfr_minimum_fps = 60,
-
 };
 
 static int panel_ext_reset(struct drm_panel *panel, int on)
@@ -974,6 +972,7 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 #endif
 	check_is_need_fake_resolution(dev);
 	pr_info("%s-\n", __func__);
+
 	return ret;
 }
 

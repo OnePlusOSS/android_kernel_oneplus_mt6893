@@ -19,6 +19,25 @@
 
 /* Legacy design */
 struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence[] = {
+#if defined(IMX766_MIPI_RAW)
+	{
+		SENSOR_DRVNAME_IMX766_MIPI_RAW,
+		{
+			{PDN, Vol_Low, 0},
+			{RST, Vol_Low, 1},
+			{AVDD, Vol_2800, 3},
+#ifdef CONFIG_REGULATOR_RT5133
+			{AVDD1, Vol_1800, 0},
+#endif
+			{AFVDD, Vol_2800, 3},
+			{DVDD, Vol_1100, 4},
+			{DOVDD, Vol_1800, 1},
+			{SensorMCLK, Vol_High, 6},
+			{PDN, Vol_High, 0},
+			{RST, Vol_High, 5}
+		},
+	},
+#endif
 #if defined(S5KJD1_MIPI_RAW)
 	{
 		SENSOR_DRVNAME_S5KJD1_MIPI_RAW,
@@ -40,12 +59,43 @@ struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence[] = {
 		SENSOR_DRVNAME_IMX586_MIPI_RAW,
 		{
 			{RST, Vol_Low, 1},
-			{AVDD, Vol_2800, 0},
-			{AFVDD, Vol_2800, 0},
-			{DVDD, Vol_1100, 0},
 			{DOVDD, Vol_1800, 1},
+			{AVDD, Vol_2800, 0},
+#ifdef CONFIG_REGULATOR_RT5133
+			{AVDD1, Vol_1800, 0},
+#endif
+		//	{AFVDD, Vol_2800, 0},
+			{DVDD, Vol_1100, 0},
 			{SensorMCLK, Vol_High, 1},
 			{RST, Vol_High, 3}
+		},
+	},
+#endif
+#if defined(OV48B_MIPI_RAW)
+	{
+		SENSOR_DRVNAME_OV48B_MIPI_RAW,
+		{
+			{RST, Vol_Low, 1},
+			{SensorMCLK, Vol_High, 0},
+			{DOVDD, Vol_1800, 0},
+			{AVDD, Vol_2800, 0},
+			{DVDD, Vol_1200, 5},
+			//{AFVDD, Vol_2800, 2},
+			{RST, Vol_High, 5},
+		},
+	},
+#endif
+#if defined(S5K3P9SP_MIPI_RAW)
+	{
+		SENSOR_DRVNAME_S5K3P9SP_MIPI_RAW,
+		{
+			{RST, Vol_Low, 1},
+			{DVDD, Vol_1100, 1},
+			{AVDD, Vol_2800, 1},
+			{DOVDD, Vol_1800, 0},
+			{SensorMCLK, Vol_High, 0},
+			//{AFVDD, Vol_2800, 5},
+			{RST, Vol_High, 2},
 		},
 	},
 #endif
@@ -70,9 +120,9 @@ struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence[] = {
 		SENSOR_DRVNAME_S5K3M5SX_MIPI_RAW,
 		{
 			{RST, Vol_Low, 1},
-			{DVDD, Vol_1100, 0},
-			{AVDD, Vol_2800, 0},
-			{AFVDD, Vol_2800, 0},
+			{DVDD, Vol_1100, 1},
+			{AVDD, Vol_2800, 1},
+			//{AFVDD, Vol_2800, 0},
 			{DOVDD, Vol_1800, 1},
 			{RST, Vol_High, 2},
 			{SensorMCLK, Vol_High, 1}
@@ -146,10 +196,22 @@ struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence[] = {
 		{
 			{PDN, Vol_Low, 0},
 			{RST, Vol_Low, 0},
+#ifdef CONFIG_REGULATOR_RT5133
+			//To trigger ex-LDO output 2.8V
+			{AVDD, Vol_1800, 0},
+#else
+			// PMIC output 2.8V
 			{AVDD, Vol_2800, 0},
+#endif
 			{DOVDD, Vol_1800, 0},
+#ifdef CONFIG_REGULATOR_RT5133
+			//To trigger ex-LDO output 1.1V
+			{DVDD, Vol_1800, 0},
+#else
+			//PMIC output 1.1V
 			{DVDD, Vol_1100, 0},
-			{AFVDD, Vol_2800, 1},
+#endif
+//			{AFVDD, Vol_2800, 1},
 			{SensorMCLK, Vol_High, 1},
 			{PDN, Vol_High, 0},
 			{RST, Vol_High, 10}
@@ -946,6 +1008,32 @@ struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence[] = {
 			},
 		},
 #endif
+#if defined(IMX355_MIPI_RAW)
+	{
+		SENSOR_DRVNAME_IMX355_MIPI_RAW,
+		{
+			{RST, Vol_Low, 1},
+			{DOVDD, Vol_1800, 1},
+			{DVDD, Vol_1200, 1},
+			{AVDD, Vol_2800, 0},
+			{SensorMCLK, Vol_High, 1},
+			{RST, Vol_High, 2}
+		},
+	},
+#endif
+#if defined(OV13B10_MIPI_RAW)
+	{
+		SENSOR_DRVNAME_OV13B10_MIPI_RAW,
+		{
+			{RST, Vol_Low, 1},
+			{AVDD, Vol_2800, 0},
+			{DVDD, Vol_1200, 0},
+			{DOVDD, Vol_1800, 1},
+			{RST, Vol_High, 5},
+			{SensorMCLK, Vol_High, 1},
+		},
+	},
+#endif
 #if defined(OV48C_MIPI_RAW)
 		{
 			SENSOR_DRVNAME_OV48C_MIPI_RAW,
@@ -968,34 +1056,6 @@ struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence[] = {
 			{DVDD, Vol_1200, 0},
 			{DOVDD, Vol_1800, 1},
 			{SensorMCLK, Vol_High, 1},
-			{RST, Vol_High, 2},
-		},
-	},
-#endif
-#if defined(OV48B_MIPI_RAW)
-	{
-		SENSOR_DRVNAME_OV48B_MIPI_RAW,
-		{
-			{RST, Vol_Low, 1},
-			{SensorMCLK, Vol_High, 0},
-			{DOVDD, Vol_1800, 0},
-			{AVDD, Vol_2800, 0},
-			{DVDD, Vol_1200, 5},
-			//{AFVDD, Vol_2800, 2},
-			{RST, Vol_High, 5},
-		},
-	},
-#endif
-#if defined(S5K3P9SP_MIPI_RAW)
-	{
-		SENSOR_DRVNAME_S5K3P9SP_MIPI_RAW,
-		{
-			{SensorMCLK, Vol_High, 0},
-			{RST, Vol_Low, 1},
-			{DVDD, Vol_1100, 1},
-			{AVDD, Vol_2800, 1},
-			{DOVDD, Vol_1800, 0},
-			//{AFVDD, Vol_2800, 5},
 			{RST, Vol_High, 2},
 		},
 	},
@@ -1074,6 +1134,18 @@ struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence[] = {
 			{AVDD, Vol_2800, 0},
 			{SensorMCLK, Vol_High, 1},
 			{RST, Vol_High, 2}
+		},
+	},
+#endif
+#if defined(OV02B10_MIPI_RAW)
+	{
+		SENSOR_DRVNAME_OV02B10_MIPI_RAW,
+		{
+			{RST, Vol_Low, 1},
+			{DOVDD, Vol_1800, 1},
+			{SensorMCLK, Vol_High, 0},
+			{AVDD, Vol_2800, 9},
+			{RST, Vol_High, 1}
 		},
 	},
 #endif

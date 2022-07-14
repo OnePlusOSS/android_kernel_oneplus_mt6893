@@ -613,7 +613,8 @@ static inline int utilization(struct f2fs_sb_info *sbi)
  * F2FS_IPUT_DISABLE - disable IPU. (=default option in LFS mode)
  */
 #define DEF_MIN_IPU_UTIL	70
-#define DEF_MIN_FSYNC_BLOCKS	8
+#define DEF_MIN_FSYNC_BLOCKS	20
+/* #define DEF_MIN_FSYNC_BLOCKS	8 */
 #define DEF_MIN_HOT_BLOCKS	16
 
 #define SMALL_VOLUME_SEGMENTS	(16 * 512)	/* 16GB */
@@ -869,5 +870,16 @@ static inline void wake_up_discard_thread(struct f2fs_sb_info *sbi, bool force)
 		return;
 wake_up:
 	dcc->discard_wake = 1;
+	wake_up_interruptible_all(&dcc->discard_wait_queue);
+}
+static inline void wake_up_discard_thread_aggressive(struct f2fs_sb_info *sbi,
+						     int policy)
+{
+	struct discard_cmd_control *dcc = SM_I(sbi)->dcc_info;
+
+	if (!sbi->dc_opt_enable)
+		return;
+
+	dcc->discard_wake = policy;
 	wake_up_interruptible_all(&dcc->discard_wait_queue);
 }

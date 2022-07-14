@@ -237,33 +237,28 @@ void fpsgo_ctrl2comp_enqueue_start(int pid,
 	if (!f_render->api && identifier) {
 		ret = fpsgo_com_refetch_buffer(f_render, pid, identifier, 1);
 		if (!ret) {
-			fpsgo_render_tree_unlock(__func__);
-			fpsgo_thread_unlock(&f_render->thr_mlock);
+			goto exit;
 			return;
 		}
 
 		ret = fpsgo_com_update_render_api_info(f_render);
 		if (!ret) {
-			fpsgo_render_tree_unlock(__func__);
-			fpsgo_thread_unlock(&f_render->thr_mlock);
+			goto exit;
 			return;
 		}
 	} else if (identifier) {
 		ret = fpsgo_com_refetch_buffer(f_render, pid, identifier, 1);
 		if (!ret) {
-			fpsgo_render_tree_unlock(__func__);
-			fpsgo_thread_unlock(&f_render->thr_mlock);
+			goto exit;
 			return;
 		}
 	}
-
-	fpsgo_render_tree_unlock(__func__);
 
 	if (f_render->api == NATIVE_WINDOW_API_CAMERA)
 		fpsgo_comp2fstb_camera_active(pid);
 
 	if (!f_render->queue_SF) {
-		fpsgo_thread_unlock(&f_render->thr_mlock);
+		goto exit;
 		return;
 	}
 
@@ -292,7 +287,9 @@ void fpsgo_ctrl2comp_enqueue_start(int pid,
 			pid, f_render->frame_type);
 		break;
 	}
+exit:
 	fpsgo_thread_unlock(&f_render->thr_mlock);
+	fpsgo_render_tree_unlock(__func__);
 }
 
 void fpsgo_ctrl2comp_enqueue_end(int pid,
@@ -300,6 +297,7 @@ void fpsgo_ctrl2comp_enqueue_end(int pid,
 	unsigned long long identifier)
 {
 	struct render_info *f_render;
+	struct hwui_info *h_info;
 	int xgf_ret = 0;
 	int check_render;
 	unsigned long long running_time = 0;
@@ -329,15 +327,21 @@ void fpsgo_ctrl2comp_enqueue_end(int pid,
 
 	ret = fpsgo_com_refetch_buffer(f_render, pid, identifier, 0);
 	if (!ret) {
-		fpsgo_render_tree_unlock(__func__);
-		fpsgo_thread_unlock(&f_render->thr_mlock);
+		goto exit;
 		return;
 	}
 
-	fpsgo_render_tree_unlock(__func__);
+	/* hwui */
+	if (!f_render->hwui) {
+		h_info = fpsgo_search_and_add_hwui_info(f_render->pid, 0);
+		if (h_info)
+			f_render->hwui = RENDER_INFO_HWUI_TYPE;
+		else
+			f_render->hwui = RENDER_INFO_HWUI_NONE;
+	}
 
 	if (!f_render->queue_SF) {
-		fpsgo_thread_unlock(&f_render->thr_mlock);
+		goto exit;
 		return;
 	}
 
@@ -353,6 +357,7 @@ void fpsgo_ctrl2comp_enqueue_end(int pid,
 			"pid[%d] type[%d] enqueue_e:%llu enqueue_l:%llu",
 			pid, f_render->frame_type,
 			enqueue_end_time, f_render->enqueue_length);
+
 		xgf_ret =
 			fpsgo_comp2xgf_qudeq_notify(pid, f_render->buffer_id,
 					XGF_QUEUE_END, &running_time, &mid,
@@ -382,8 +387,9 @@ void fpsgo_ctrl2comp_enqueue_end(int pid,
 			pid, f_render->frame_type);
 		break;
 	}
+exit:
 	fpsgo_thread_unlock(&f_render->thr_mlock);
-
+	fpsgo_render_tree_unlock(__func__);
 }
 
 void fpsgo_ctrl2comp_dequeue_start(int pid,
@@ -434,15 +440,12 @@ void fpsgo_ctrl2comp_dequeue_start(int pid,
 
 	ret = fpsgo_com_refetch_buffer(f_render, pid, identifier, 0);
 	if (!ret) {
-		fpsgo_render_tree_unlock(__func__);
-		fpsgo_thread_unlock(&f_render->thr_mlock);
+		goto exit;
 		return;
 	}
 
-	fpsgo_render_tree_unlock(__func__);
-
 	if (!f_render->queue_SF) {
-		fpsgo_thread_unlock(&f_render->thr_mlock);
+		goto exit;
 		return;
 	}
 
@@ -463,7 +466,9 @@ void fpsgo_ctrl2comp_dequeue_start(int pid,
 			pid, f_render->frame_type);
 		break;
 	}
+exit:
 	fpsgo_thread_unlock(&f_render->thr_mlock);
+	fpsgo_render_tree_unlock(__func__);
 
 }
 
@@ -509,15 +514,12 @@ void fpsgo_ctrl2comp_dequeue_end(int pid,
 
 	ret = fpsgo_com_refetch_buffer(f_render, pid, identifier, 0);
 	if (!ret) {
-		fpsgo_render_tree_unlock(__func__);
-		fpsgo_thread_unlock(&f_render->thr_mlock);
+		goto exit;
 		return;
 	}
 
-	fpsgo_render_tree_unlock(__func__);
-
 	if (!f_render->queue_SF) {
-		fpsgo_thread_unlock(&f_render->thr_mlock);
+		goto exit;
 		return;
 	}
 
@@ -544,8 +546,9 @@ void fpsgo_ctrl2comp_dequeue_end(int pid,
 			pid, f_render->frame_type);
 		break;
 	}
+exit:
 	fpsgo_thread_unlock(&f_render->thr_mlock);
-
+	fpsgo_render_tree_unlock(__func__);
 }
 
 void fpsgo_ctrl2comp_connect_api(int pid, int api,
@@ -724,89 +727,8 @@ void fpsgo_fstb2comp_check_connect_api(void)
 
 }
 
-static ssize_t connect_api_info_show
-	(struct kobject *kobj,
-		struct kobj_attribute *attr,
-		char *buf)
-{
-	struct rb_node *n;
-	struct connect_api_info *iter;
-	struct task_struct *tsk;
-	struct render_info *pos, *next;
-	char temp[FPSGO_SYSFS_MAX_BUFF_SIZE] = "";
-	int posi = 0;
-	int length;
-
-	length = scnprintf(temp + posi, FPSGO_SYSFS_MAX_BUFF_SIZE - posi,
-			"=================================\n");
-	posi += length;
-
-	fpsgo_render_tree_lock(__func__);
-	rcu_read_lock();
-
-	for (n = rb_first(&connect_api_tree); n != NULL; n = rb_next(n)) {
-		iter = rb_entry(n, struct connect_api_info, rb_node);
-		tsk = find_task_by_vpid(iter->tgid);
-		if (tsk) {
-			get_task_struct(tsk);
-			length = scnprintf(temp + posi,
-				FPSGO_SYSFS_MAX_BUFF_SIZE - posi,
-				"PID  TGID  NAME    BufferID    API    Key\n");
-			posi += length;
-			length = scnprintf(temp + posi,
-				FPSGO_SYSFS_MAX_BUFF_SIZE - posi,
-				"%5d %5d %5s %4llu %5d %4llu\n",
-				iter->pid, iter->tgid, tsk->comm,
-				iter->buffer_id, iter->api, iter->buffer_key);
-			posi += length;
-			put_task_struct(tsk);
-		}
-
-		length = scnprintf(temp + posi,
-			FPSGO_SYSFS_MAX_BUFF_SIZE - posi,
-			"******render list******\n");
-		posi += length;
-
-		list_for_each_entry_safe(pos, next,
-				&iter->render_list, bufferid_list) {
-			fpsgo_thread_lock(&pos->thr_mlock);
-
-			length = scnprintf(temp + posi,
-					FPSGO_SYSFS_MAX_BUFF_SIZE - posi,
-					"  PID  TGID	 BufferID	API    TYPE\n");
-			posi += length;
-			length = scnprintf(temp + posi,
-					FPSGO_SYSFS_MAX_BUFF_SIZE - posi,
-					"%5d %5d %4llu %5d %5d\n",
-					pos->pid, pos->tgid, pos->buffer_id,
-					pos->api, pos->frame_type);
-			posi += length;
-
-
-		}
-
-		length = scnprintf(temp + posi,
-				FPSGO_SYSFS_MAX_BUFF_SIZE - posi,
-				"***********************\n");
-		posi += length;
-		length = scnprintf(temp + posi,
-				FPSGO_SYSFS_MAX_BUFF_SIZE - posi,
-				"=================================\n");
-		posi += length;
-	}
-
-	rcu_read_unlock();
-	fpsgo_render_tree_unlock(__func__);
-
-	return scnprintf(buf, PAGE_SIZE, "%s", temp);
-
-}
-
-static KOBJ_ATTR_RO(connect_api_info);
-
 void __exit fpsgo_composer_exit(void)
 {
-	fpsgo_sysfs_remove_file(comp_kobj, &kobj_attr_connect_api_info);
 
 	fpsgo_sysfs_remove_dir(&comp_kobj);
 }
@@ -816,8 +738,6 @@ int __init fpsgo_composer_init(void)
 	ui_pid_tree = RB_ROOT;
 	connect_api_tree = RB_ROOT;
 
-	if (!fpsgo_sysfs_create_dir(NULL, "composer", &comp_kobj))
-		fpsgo_sysfs_create_file(comp_kobj, &kobj_attr_connect_api_info);
 
 	return 0;
 }

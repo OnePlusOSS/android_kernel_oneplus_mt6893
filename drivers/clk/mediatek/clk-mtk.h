@@ -40,6 +40,7 @@ struct mtk_fixed_clk {
 	const char *name;
 	const char *parent;
 	unsigned long rate;
+	u32 flags;
 };
 
 #define FIXED_CLK(_id, _name, _parent, _rate) {		\
@@ -47,6 +48,14 @@ struct mtk_fixed_clk {
 		.name = _name,				\
 		.parent = _parent,			\
 		.rate = _rate,				\
+	}
+
+#define FIXED_CLK_IGN(_id, _name, _parent, _rate) {		\
+		.id = _id,				\
+		.name = _name,				\
+		.parent = _parent,			\
+		.rate = _rate,				\
+		.flags = CLK_IGNORE_UNUSED,			\
 	}
 
 void mtk_clk_register_fixed_clks(const struct mtk_fixed_clk *clks,
@@ -58,6 +67,7 @@ struct mtk_fixed_factor {
 	const char *parent_name;
 	int mult;
 	int div;
+	u32 flags;
 };
 
 struct mtk_fixed_factor_pdn {
@@ -76,6 +86,15 @@ struct mtk_fixed_factor_pdn {
 		.parent_name = _parent,			\
 		.mult = _mult,				\
 		.div = _div,				\
+	}
+
+#define FACTOR_IGN(_id, _name, _parent, _mult, _div) {	\
+		.id = _id,				\
+		.name = _name,				\
+		.parent_name = _parent,			\
+		.mult = _mult,				\
+		.div = _div,				\
+		.flags = CLK_IGNORE_UNUSED,			\
 	}
 
 #define FACTOR_PDN(_id, _name, _parent, _mult, _div, _shift, _pd_reg) {	\
@@ -167,6 +186,10 @@ struct mtk_composite {
 		.flags = _flags,					\
 	}
 
+#define MUX_IGN(_id, _name, _parents, _reg, _shift, _width)			\
+	MUX_FLAGS(_id, _name, _parents, _reg,				\
+		  _shift, _width, CLK_SET_RATE_PARENT | CLK_IGNORE_UNUSED)
+
 #define DIV_GATE(_id, _name, _parent, _gate_reg, _gate_shift, _div_reg,	\
 					_div_width, _div_shift) {	\
 		.id = _id,						\
@@ -181,12 +204,38 @@ struct mtk_composite {
 		.flags = 0,						\
 	}
 
+#define DIV_GATE_IGN(_id, _name, _parent, _gate_reg, _gate_shift, _div_reg,	\
+					_div_width, _div_shift) {	\
+		.id = _id,						\
+		.parent = _parent,					\
+		.name = _name,						\
+		.divider_reg = _div_reg,				\
+		.divider_shift = _div_shift,				\
+		.divider_width = _div_width,				\
+		.gate_reg = _gate_reg,					\
+		.gate_shift = _gate_shift,				\
+		.mux_shift = -1,					\
+		.flags = CLK_IGNORE_UNUSED,						\
+	}
+
 struct clk *mtk_clk_register_composite(const struct mtk_composite *mc,
 		void __iomem *base, spinlock_t *lock);
 
 void mtk_clk_register_composites(const struct mtk_composite *mcs,
 		int num, void __iomem *base, spinlock_t *lock,
 		struct clk_onecell_data *clk_data);
+
+/*
+ * define pwr status information.
+ * including offsets/mask.
+ */
+struct pwr_status {
+	s32 pwr_ofs;
+	s32 pwr2_ofs;
+	s32 other_ofs;
+	u32 mask;
+	u32 val;
+};
 
 struct mtk_gate_regs {
 	u32 sta_ofs;
@@ -278,6 +327,7 @@ struct mtk_pll_data {
 	int pcw_shift;
 	const struct mtk_pll_div_table *div_table;
 	const char *parent_name;
+	struct pwr_status *pwr_stat;
 };
 
 void mtk_clk_register_plls(struct device_node *node,

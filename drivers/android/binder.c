@@ -77,6 +77,15 @@
 #include "binder_alloc.h"
 #include "binder_internal.h"
 #include "binder_trace.h"
+
+#ifdef OPLUS_FEATURE_HANS_FREEZE
+#include <linux/hans.h>
+#endif /*OPLUS_FEATURE_HANS_FREEZE*/
+
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+#include <linux/sched_assist/sched_assist_binder.h>
+#endif /* OPLUS_FEATURE_SCHED_ASSIST */
+
 #ifdef CONFIG_MTK_TASK_TURBO
 #include <mt-plat/turbo_common.h>
 #endif
@@ -154,6 +163,39 @@ module_param_named(devices, binder_devices_param, charp, 0444);
 
 static DECLARE_WAIT_QUEUE_HEAD(binder_user_error_wait);
 static int binder_stop_on_user_error;
+
+#if defined(CONFIG_OPLUS_FEATURE_BINDER_STATS_ENABLE)
+
+#include <linux/notifier.h>
+
+#define OPLUS_MAX_SERVICE_NAME_LEN    32
+#define OPLUS_MAGIC_SERVICE_NAME_OFFSET 76
+
+struct binder_notify {
+	struct task_struct *caller_task;
+	struct task_struct *binder_task;
+	char service_name[OPLUS_MAX_SERVICE_NAME_LEN];
+	bool pending_async;
+};
+
+static ATOMIC_NOTIFIER_HEAD(binderevent_notif_chain);
+
+int register_binderevent_notifier(struct notifier_block *nb) {
+    return atomic_notifier_chain_register(&binderevent_notif_chain, nb);
+}
+EXPORT_SYMBOL_GPL(register_binderevent_notifier);
+
+int unregister_binderevent_notifier(struct notifier_block *nb) {
+	return atomic_notifier_chain_unregister(&binderevent_notif_chain, nb);
+}
+EXPORT_SYMBOL_GPL(unregister_binderevent_notifier);
+
+int call_binderevent_notifiers(unsigned long val, void *v) {
+	return atomic_notifier_call_chain(&binderevent_notif_chain, val, v);
+}
+EXPORT_SYMBOL_GPL(call_binderevent_notifiers);
+
+#endif // #if defined(CONFIG_OPLUS_FEATURE_BINDER_STATS_ENABLE)
 
 static int binder_set_stop_on_user_error(const char *val,
 					 const struct kernel_param *kp)
@@ -287,6 +329,9 @@ struct binder_work {
 		BINDER_WORK_DEAD_BINDER_AND_CLEAR,
 		BINDER_WORK_CLEAR_DEATH_NOTIFICATION,
 	} type;
+#ifdef CONFIG_OPLUS_BINDER_STRATEGY
+	u64 ob_begin;
+#endif
 };
 
 struct binder_error {
@@ -398,6 +443,9 @@ struct binder_node {
 #ifdef BINDER_WATCHDOG
 	char name[MAX_SERVICE_NAME_LEN];
 #endif
+#if defined(CONFIG_OPLUS_FEATURE_BINDER_STATS_ENABLE)
+	char service_name[OPLUS_MAX_SERVICE_NAME_LEN];
+#endif
 };
 
 struct binder_ref_death {
@@ -503,6 +551,9 @@ struct binder_priority {
  * @files                 files_struct for process
  *                        (protected by @files_lock)
  * @files_lock            mutex to protect @files
+ * @cred                  struct cred associated with the `struct file`
+ *                        in binder_open()
+ *                        (invariant after initialized)
  * @deferred_work_node:   element for binder_deferred_list
  *                        (protected by binder_deferred_lock)
  * @deferred_work:        bitmap of deferred work to perform
@@ -550,11 +601,20 @@ struct binder_proc {
 	struct task_struct *tsk;
 	struct files_struct *files;
 	struct mutex files_lock;
+	const struct cred *cred;
 	struct hlist_node deferred_work_node;
 	int deferred_work;
 	bool is_dead;
 
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+	int proc_type;
+#endif /* OPLUS_FEATURE_SCHED_ASSIST */
+
 	struct list_head todo;
+#ifdef CONFIG_OPLUS_BINDER_STRATEGY
+	struct list_head ux_todo;
+	uint32_t ux_count;
+#endif
 	struct binder_stats stats;
 	struct list_head delivered_death;
 	int max_threads;
@@ -577,6 +637,9 @@ enum {
 	BINDER_LOOPER_STATE_INVALID     = 0x08,
 	BINDER_LOOPER_STATE_WAITING     = 0x10,
 	BINDER_LOOPER_STATE_POLL        = 0x20,
+#ifdef CONFIG_OPLUS_BINDER_STRATEGY
+	BINDER_LOOPER_STATE_BACKGROUND	= 0x40,
+#endif
 };
 
 /**
@@ -1264,6 +1327,58 @@ struct binder_object {
 	};
 };
 
+#if defined(CONFIG_OPLUS_FEATURE_BINDER_STATS_ENABLE)
+
+static void oplus_parse_service_name(struct binder_transaction_data *tr,
+		struct binder_proc *proc,
+		char *name) {
+	unsigned int i, len = 0;
+	char *tmp;
+	char c;
+	char sname[OPLUS_MAX_SERVICE_NAME_LEN];
+
+	if (NULL != tr && tr->target.handle == 0 && NULL != proc && NULL != proc->context) {
+		if (!strcmp(proc->context->name, "hwbinder")) {
+			strcpy(sname, "hwbinderService");
+		} else {
+			for (i = 0; (2 * i) < tr->data_size; i++) {
+				if ((2 * i) < OPLUS_MAGIC_SERVICE_NAME_OFFSET) {
+					continue;
+				}
+				if (len >= (OPLUS_MAX_SERVICE_NAME_LEN - 1))
+					break;
+				tmp = (char *)(uintptr_t)(tr->data.ptr.buffer + (2*i));
+				get_user(c, tmp);
+				if (c >= 32 && c <= 126) { // visible character range [32, 126]
+					if (len < OPLUS_MAX_SERVICE_NAME_LEN - 1)
+						len += sprintf(sname + len, "%c", c);
+					else
+						break;
+				}
+				if ('\0' == c) {
+					break;
+				}
+			}
+			sname[len] = '\0';
+		}
+		pr_info("context.name[%s] tr.size:%lu service:%s\n",
+			proc->context->name, (unsigned long)tr->data_size, sname);
+	} else {
+		if (NULL != tr && 0 != tr->target.handle) {
+			sprintf(sname, "AnonymousCallback");
+		} else {
+			sprintf(sname, "unknown");
+		}
+	}
+
+	if (NULL != name){
+		strncpy(name, sname, OPLUS_MAX_SERVICE_NAME_LEN);
+		name[OPLUS_MAX_SERVICE_NAME_LEN-1] = '\0';
+	}
+}
+
+#endif // #if defined(CONFIG_OPLUS_FEATURE_BINDER_STATS_ENABLE)
+
 /**
  * binder_proc_lock() - Acquire outer lock for given binder_proc
  * @proc:         struct binder_proc to acquire
@@ -1562,6 +1677,444 @@ static void task_fd_install(
 	mutex_unlock(&proc->files_lock);
 }
 
+#ifdef CONFIG_OPLUS_BINDER_STRATEGY
+#include <soc/oplus/healthinfo.h>
+
+
+#define BINDER_LOOPER_STATE_BACKGROUND  0x40
+#define OBPROC_CHECK_CYCLE_NS 100000000
+#define OBWORK_TIMEOUT_NS 800000000
+#define BG_THREAD (2)
+#define SA_CGROUP_BACKGROUND (3)
+#define MAX_UX_WORK_CONTINUOUS (10)
+
+struct ob_struct ob_target;
+pid_t ob_pid;
+int ob_err;
+int sysctl_ob_control_enable = 1;
+int sysctl_binder_status_record = 1;
+
+static struct binder_buffer *binder_buffer_next(struct binder_buffer *buffer)
+{
+	return list_entry(buffer->entry.next, struct binder_buffer, entry);
+}
+
+static size_t binder_alloc_buffer_size(struct binder_alloc *alloc,
+				       struct binder_buffer *buffer)
+{
+	if (list_is_last(&buffer->entry, &alloc->buffers))
+		return alloc->buffer + alloc->buffer_size - buffer->user_data;
+	return binder_buffer_next(buffer)->user_data - buffer->user_data;
+}
+
+/*
+ * Check amount and size of buffers allocated for
+ * async and sync binder transactions.
+ * Warn if free_async_space low has been used lower than 1/5 * (alloc->buffer_size * 1/2).
+ * Warn if total_alloc_size_unoneway has been larger than 9 / 10 * alloc->buffer_size.
+ */
+void obinder_low_mem_check(struct binder_alloc *alloc)
+{
+	struct rb_node *n = alloc->free_buffers.rb_node;
+	struct binder_buffer *buffer;
+	size_t total_alloc_size_oneway = 0;
+	size_t total_alloc_size_unoneway = 0;
+	size_t oneway_buffers = 0;
+	size_t unoneway_buffers = 0;
+
+	if (alloc->pid != ob_target.pid)
+		return;
+	if (!sysctl_binder_status_record)
+		return;
+	mutex_lock(&alloc->mutex);
+	for (n = rb_first(&alloc->allocated_buffers); n != NULL;
+		n = rb_next(n)) {
+		buffer = rb_entry(n, struct binder_buffer, rb_node);
+		if (buffer->async_transaction) {
+			total_alloc_size_oneway += binder_alloc_buffer_size(alloc, buffer)
+			+ sizeof(struct binder_buffer);
+			oneway_buffers++;
+		} else {
+			total_alloc_size_unoneway += binder_alloc_buffer_size(alloc, buffer)
+			+ sizeof(struct binder_buffer);
+			unoneway_buffers++;
+		}
+	}
+	if (alloc->free_async_space < alloc->buffer_size / 10) {
+		system_server_proc_status.async_mem_over_low++;
+		if (alloc->free_async_space < alloc->buffer_size / 20)
+			system_server_proc_status.async_mem_over_high++;
+	}
+
+	if (total_alloc_size_unoneway > alloc->buffer_size * 70 / 100) {
+		system_server_proc_status.sync_mem_over_low++;
+		if (total_alloc_size_unoneway > alloc->buffer_size * 90 / 100)
+			system_server_proc_status.sync_mem_over_high++;
+	}
+	mutex_unlock(&alloc->mutex);
+	return;
+}
+
+/*
+ * Try to boost async which need large allocated buffer by list_add.
+*/
+void obset_async_boost_work(struct binder_buffer *buffer, struct binder_transaction *t,
+	struct binder_proc *proc, struct binder_alloc *alloc, bool is_async)
+{
+	size_t size, data_offsets_size;
+
+	data_offsets_size = ALIGN(buffer->data_size, sizeof(void *))
+			 +ALIGN(buffer->offsets_size, sizeof(void *));
+	size = data_offsets_size + ALIGN(buffer->extra_buffers_size, sizeof(void *));
+	if (ob_target.ob_proc != proc)
+		return;
+	obinder_low_mem_check(alloc);
+	if (!sysctl_ob_control_enable)
+		return;
+	if (!is_async)
+		return;
+	mutex_lock(&alloc->mutex);
+	if (size + sizeof(struct binder_buffer) > alloc->free_async_space / 100) {
+		if (!(t->flags & TF_ASYNC_BOOST)) {
+			t->flags |= TF_ASYNC_BOOST;
+		}
+	}
+	mutex_unlock(&alloc->mutex);
+	return;
+}
+
+noinline void ob_tracing_mark_write(const char *buf)
+{
+	trace_printk(buf);
+}
+
+void ob_sysctrace_c(struct binder_proc *proc, struct binder_thread *thread)
+{
+	char buf[256];
+
+	snprintf(buf, sizeof(buf), "C|%d|oplus_bt%s|%d", proc->pid, thread->task->comm, 1);
+	ob_tracing_mark_write(buf);
+}
+
+int get_task_cgroup_id(struct task_struct *task)
+{
+	struct cgroup_subsys_state *css = task_css(task, schedtune_cgrp_id);
+		return css ? css->id : -1;
+}
+
+bool test_task_bg(struct task_struct *task)
+{
+	return (SA_CGROUP_BACKGROUND == get_task_cgroup_id(task)) ? 1 : 0;
+}
+
+bool obtrans_is_from_background(struct binder_transaction *t)
+{
+	return test_task_bg(t->from->task);
+}
+
+bool obtrans_is_from_third_party(struct binder_transaction *t)
+{
+	return (from_kuid(current_user_ns(), t->sender_euid) % 100000) >= 10000;
+}
+
+bool obtrans_is_from_main(struct binder_transaction *t)
+{
+	return t->from->proc->pid == t->from->pid;
+}
+
+bool obwork_is_ux_boost(struct binder_transaction *t)
+{
+	if ((!t->from) || (!t->from->proc))
+		return false;
+	if (!test_task_ux(t->from->task))
+		return false;
+	else
+		return true;
+}
+
+bool obwork_is_async_boost(struct binder_transaction *t)
+{
+	if (!sysctl_ob_control_enable)
+		return false;
+	if (t->flags & TF_ASYNC_BOOST)
+		return true;
+	return false;
+}
+
+bool obwork_is_restrict(struct binder_transaction *t)
+{
+	if ((!t->from) || (!t->from->proc))
+		return false;
+#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
+	return obtrans_is_from_background(t) && obtrans_is_from_third_party(t) &&
+			!obtrans_is_from_main(t) && !test_task_ux(t->from->task);
+#else
+	return obtrans_is_from_background(t) && obtrans_is_from_third_party(t) &&
+			!obtrans_is_from_main(t);
+#endif
+}
+
+void obwork_check_restrict_off(struct binder_proc *proc)
+{
+	struct binder_work *w = NULL;
+	struct binder_work *tmp = NULL;
+	struct binder_transaction *t = NULL;
+	u64 now = sched_clock();
+	if (proc != ob_target.ob_proc || binder_worklist_empty_ilocked(&ob_target.ob_list) || (now - ob_target.ob_check_ts) < OBPROC_CHECK_CYCLE_NS)
+		return;
+	list_for_each_entry_safe(w, tmp, &ob_target.ob_list, entry) {
+		if (!w)
+			continue;
+		t = container_of(w, struct binder_transaction, work);
+		if ((now - w->ob_begin < OBWORK_TIMEOUT_NS))
+			break;
+		list_del_init(&w->entry);
+		binder_enqueue_work_ilocked(w, &proc->todo);
+	}
+	ob_target.ob_check_ts = sched_clock();
+}
+
+void obtrans_restrict_start(struct binder_proc *proc, struct binder_transaction *t)
+{
+	if (!sysctl_ob_control_enable)
+		return;
+	if (obwork_is_restrict(t))
+		t->work.ob_begin = sched_clock();
+	obwork_check_restrict_off(proc);
+}
+
+void oblist_dequeue_all(void)
+{
+	struct binder_work *w;
+	struct binder_work *w_tmp;
+
+	if (ob_target.ob_proc == NULL)
+		return;
+	binder_inner_proc_lock(ob_target.ob_proc);
+	if (binder_worklist_empty_ilocked(&ob_target.ob_list)) {
+		binder_inner_proc_unlock(ob_target.ob_proc);
+		return;
+	}
+	list_for_each_entry_safe(w, w_tmp, &ob_target.ob_list, entry) {
+		if (!w)
+			continue;
+		list_del_init(&w->entry);
+		binder_enqueue_work_ilocked(w, &ob_target.ob_proc->todo);
+	}
+	binder_inner_proc_unlock(ob_target.ob_proc);
+	return;
+}
+
+
+/*
+ * When top app changed, we need to check if it's binder had been pushed to ob list before
+ */
+void oblist_dequeue_topapp_change(uid_t topuid)
+{
+	struct binder_work *w;
+	struct binder_work *w_tmp;
+	struct binder_transaction *t;
+	if (ob_target.ob_proc == NULL)
+		return;
+	binder_inner_proc_lock(ob_target.ob_proc);
+	if (!binder_worklist_empty_ilocked(&ob_target.ob_list)) {
+		list_for_each_entry_safe(w, w_tmp, &ob_target.ob_list, entry) {
+			if (!w)
+				continue;
+			t = container_of(w, struct binder_transaction, work);
+			if (from_kuid(current_user_ns(), t->sender_euid) != topuid)
+				continue;
+			list_del_init(&w->entry);
+			binder_enqueue_work_ilocked(w, &ob_target.ob_proc->todo);
+		}
+	}
+	binder_inner_proc_unlock(ob_target.ob_proc);
+	return;
+}
+
+static inline int list_is_first(const struct list_head *list,
+					const struct list_head *head)
+{
+	return list->prev == head;
+}
+
+void obinder_enqueue_work_head_ilocked(struct binder_work *work, struct list_head *target_list)
+{
+	BUG_ON(target_list == NULL);
+	BUG_ON(work->entry.next && !list_empty(&work->entry));
+	list_add(&work->entry, target_list);
+}
+
+void obbinder_thread_check_status(struct binder_proc *proc)
+{
+
+	struct binder_thread *thread;
+	struct rb_node *n;
+	struct binder_transaction *tmp;
+	int doing_bg = 0;
+	int doing_fg = 0;
+
+	if (!sysctl_binder_status_record)
+		return;
+	if (!proc == ob_target.ob_proc)
+		return;
+	for (n = rb_first(&proc->threads); n != NULL; n = rb_next(n)) {
+		thread = rb_entry(n, struct binder_thread, rb_node);
+		if (thread && thread->looper & BINDER_LOOPER_STATE_REGISTERED) {
+			tmp = thread->transaction_stack;
+			if (tmp && !(tmp->flags & TF_ONE_WAY)) {
+				spin_lock(&tmp->lock);
+				if (!obwork_is_restrict(tmp))
+					doing_fg++;
+				else {
+					doing_bg++;
+				}
+				spin_unlock(&tmp->lock);
+			}
+		}
+	}
+	system_server_proc_status.warning++;
+	if (doing_bg > doing_fg) {
+		system_server_proc_status.warning_cg_bg++;
+	}
+}
+
+void obwork_restrict(struct binder_proc *proc, struct binder_transaction *t, bool pending_async)
+{
+	struct binder_node *node = t->buffer->target_node;
+
+	if (!pending_async) {
+		obbinder_thread_check_status(proc);
+		if (sysctl_ob_control_enable && obwork_is_ux_boost(t)) {
+			binder_enqueue_work_ilocked(&t->work, &proc->ux_todo);
+			return;
+		}
+		if (!sysctl_ob_control_enable || (proc != ob_target.ob_proc) || !obwork_is_restrict(t))
+			binder_enqueue_work_ilocked(&t->work, &proc->todo);
+		else
+			binder_enqueue_work_ilocked(&t->work, &ob_target.ob_list);
+	} else {
+		if (!sysctl_ob_control_enable || (proc != ob_target.ob_proc))
+			binder_enqueue_work_ilocked(&t->work, &node->async_todo);
+		else if (obwork_is_async_boost(t))
+			obinder_enqueue_work_head_ilocked(&t->work, &node->async_todo);
+		else
+			binder_enqueue_work_ilocked(&t->work, &node->async_todo);
+	}
+}
+
+
+void obtarget_init(struct binder_proc *proc)
+{
+	if (!proc->tsk || !proc->context || !proc->context->name)
+		return;
+	if (ob_target.init)
+		return;
+	if ((!strncmp(proc->tsk->comm, "system_server", TASK_COMM_LEN)) && !strcmp(proc->context->name, "binder")) {
+		ob_target.ob_proc = proc;
+		ob_target.ob_check_ts = sched_clock();
+		INIT_LIST_HEAD(&ob_target.ob_list);
+		ob_target.pid = proc->pid;
+		ob_target.init = true;
+	}
+}
+
+void obthread_init(struct binder_proc *proc, struct binder_thread *thread)
+{
+	if (proc != ob_target.ob_proc)
+		return;
+	if (proc->requested_threads_started == BG_THREAD) {
+		thread->looper |= BINDER_LOOPER_STATE_BACKGROUND;
+		ob_pid = thread->task->pid;
+	}
+}
+
+bool ob_ux_todo_has_work(struct binder_thread *thread)
+{
+	return !binder_worklist_empty_ilocked(&thread->proc->ux_todo);
+}
+
+bool check_ob_ux_todo_has_work(struct binder_thread *thread)
+{
+	if (!ob_ux_todo_has_work(thread)) {
+		thread->proc->ux_count = 0;
+		return false;
+	} else
+		return true;
+}
+
+bool obthread_has_work(struct binder_thread *thread)
+{
+	if (!sysctl_ob_control_enable || !(thread->looper & BINDER_LOOPER_STATE_BACKGROUND) || (thread->proc != ob_target.ob_proc))
+		return false;
+	return !binder_worklist_empty_ilocked(&ob_target.ob_list);
+}
+
+static void binder_wakeup_proc_ilocked(struct binder_proc *proc);
+void obproc_has_work(struct binder_proc *proc)
+{
+	struct binder_thread *thread = NULL;
+
+	if (!binder_worklist_empty_ilocked(&ob_target.ob_list)) {
+		list_for_each_entry(thread, &proc->waiting_threads, waiting_thread_node) {
+			if (thread && (thread->looper & BINDER_LOOPER_STATE_BACKGROUND)) {
+				list_del_init(&thread->waiting_thread_node);
+				wake_up_interruptible(&thread->wait);
+			}
+		}
+	}
+	if (!binder_worklist_empty_ilocked(&proc->ux_todo)) {
+		binder_wakeup_proc_ilocked(proc);
+	}
+	return;
+}
+
+void obproc_free(struct binder_proc *proc)
+{
+	if (proc == ob_target.ob_proc) {
+		BUG_ON(!list_empty(&ob_target.ob_list));
+		ob_target.ob_check_ts = 0;
+		ob_target.ob_proc = NULL;
+	}
+}
+
+void obprint_oblist(void)
+{
+	struct binder_work *w;
+	struct binder_work *w_tmp;
+	struct binder_transaction *t;
+	if (!sysctl_ob_control_enable)
+		return;
+	if (ob_target.ob_proc == NULL)
+		return;
+	if (binder_worklist_empty_ilocked(&ob_target.ob_list))
+		return;
+	list_for_each_entry_safe(w, w_tmp, &ob_target.ob_list, entry) {
+		if (!w)
+			continue;
+		t = container_of(w, struct binder_transaction, work);
+		if (!obwork_is_restrict(t))
+			ob_err++;
+	}
+}
+
+int sysctl_ob_control_handler(struct ctl_table *table, int write, void __user *buffer, size_t *lenp, loff_t *ppos)
+{
+	int ret;
+	if (write && *ppos)
+		*ppos = 0;
+	ret = proc_dointvec(table, write, buffer, lenp, ppos);
+	if (!write)
+		goto out;
+	if (!sysctl_ob_control_enable) {
+		pr_info("_%s dequeue all bg work", __func__);
+		oblist_dequeue_all();
+	}
+out:
+	return ret;
+}
+#endif
+
 /*
  * copied from sys_close
  */
@@ -1589,10 +2142,17 @@ err:
 static bool binder_has_work_ilocked(struct binder_thread *thread,
 				    bool do_proc_work)
 {
+#ifdef CONFIG_OPLUS_BINDER_STRATEGY
+	return thread->process_todo ||
+		thread->looper_need_return || (do_proc_work && obthread_has_work(thread)) || (do_proc_work && ob_ux_todo_has_work(thread)) ||
+		(do_proc_work &&
+		 !binder_worklist_empty_ilocked(&thread->proc->todo));
+#else
 	return thread->process_todo ||
 		thread->looper_need_return ||
 		(do_proc_work &&
 		 !binder_worklist_empty_ilocked(&thread->proc->todo));
+#endif
 }
 
 static bool binder_has_work(struct binder_thread *thread, bool do_proc_work)
@@ -1659,6 +2219,23 @@ binder_select_thread_ilocked(struct binder_proc *proc)
 
 	return thread;
 }
+
+#ifdef CONFIG_OPLUS_BINDER_STRATEGY
+struct binder_thread *obthread_get(struct binder_proc *proc, struct binder_transaction *t, bool oneway)
+{
+	struct binder_thread *thread = NULL;
+
+	if (sysctl_ob_control_enable &&  (proc == ob_target.ob_proc) && obwork_is_restrict(t)) {
+		list_for_each_entry(thread, &proc->waiting_threads, waiting_thread_node)
+			if (thread && (thread->looper & BINDER_LOOPER_STATE_BACKGROUND)) {
+				list_del_init(&thread->waiting_thread_node);
+				return thread;
+			}
+		return NULL;
+	}
+	return binder_select_thread_ilocked(proc);
+}
+#endif
 
 /**
  * binder_wakeup_thread_ilocked() - wakes up a thread for doing proc work.
@@ -1819,10 +2396,17 @@ static void binder_restore_priority(struct task_struct *task,
 	binder_do_set_priority(task, desired, /* verify = */ false);
 }
 
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+static void binder_transaction_priority(struct binder_thread *thread, struct task_struct *task,
+					struct binder_transaction *t,
+					struct binder_priority node_prio,
+					bool inherit_rt)
+#else
 static void binder_transaction_priority(struct task_struct *task,
 					struct binder_transaction *t,
 					struct binder_priority node_prio,
 					bool inherit_rt)
+#endif /* OPLUS_FEATURE_SCHED_ASSIST */
 {
 	struct binder_priority desired_prio = t->priority;
 
@@ -1832,6 +2416,14 @@ static void binder_transaction_priority(struct task_struct *task,
 	t->set_priority_called = true;
 	t->saved_priority.sched_policy = task->policy;
 	t->saved_priority.prio = task->normal_prio;
+
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+	//NOTE: if task is main thread, and doesn't join pool as a binder thread,
+	//DON'T actually change priority in binder transaction.
+	if ((task->tgid == task->pid) && !(thread->looper & BINDER_LOOPER_STATE_ENTERED)) {
+		return;
+	}
+#endif /* OPLUS_FEATURE_SCHED_ASSIST */
 
 	if (!inherit_rt && is_rt_policy(desired_prio.sched_policy)) {
 		desired_prio.prio = NICE_TO_PRIO(0);
@@ -3135,7 +3727,7 @@ static void binder_transaction_buffer_release(struct binder_proc *proc,
 		}
 	}
 }
-#ifdef BINDER_WATCHDOG
+#if defined(BINDER_WATCHDOG) || defined(CONFIG_OPLUS_FEATURE_BINDER_STATS_ENABLE)
 static int binder_translate_binder(struct binder_transaction_data *tr,
 				   struct flat_binder_object *fp,
 				   struct binder_transaction *t,
@@ -3160,6 +3752,9 @@ static int binder_translate_binder(struct flat_binder_object *fp,
 #ifdef BINDER_WATCHDOG
 		parse_service_name(tr, proc, node->name);
 #endif
+#if defined(CONFIG_OPLUS_FEATURE_BINDER_STATS_ENABLE)
+		oplus_parse_service_name(tr, proc, node->service_name);
+#endif
 	}
 	if (fp->cookie != node->cookie) {
 		binder_user_error("%d:%d sending u%016llx node %d, cookie mismatch %016llx != %016llx\n",
@@ -3169,7 +3764,7 @@ static int binder_translate_binder(struct flat_binder_object *fp,
 		ret = -EINVAL;
 		goto done;
 	}
-	if (security_binder_transfer_binder(proc->tsk, target_proc->tsk)) {
+	if (security_binder_transfer_binder(proc->cred, target_proc->cred)) {
 		ret = -EPERM;
 		goto done;
 	}
@@ -3215,7 +3810,7 @@ static int binder_translate_handle(struct flat_binder_object *fp,
 				  proc->pid, thread->pid, fp->handle);
 		return -EINVAL;
 	}
-	if (security_binder_transfer_binder(proc->tsk, target_proc->tsk)) {
+	if (security_binder_transfer_binder(proc->cred, target_proc->cred)) {
 		ret = -EPERM;
 		goto done;
 	}
@@ -3299,7 +3894,7 @@ static int binder_translate_fd(int fd,
 		ret = -EBADF;
 		goto err_fget;
 	}
-	ret = security_binder_transfer_file(proc->tsk, target_proc->tsk, file);
+	ret = security_binder_transfer_file(proc->cred, target_proc->cred, file);
 	if (ret < 0) {
 		ret = -EPERM;
 		goto err_security;
@@ -3450,6 +4045,14 @@ static int binder_fixup_parent(struct binder_transaction *t,
 	return 0;
 }
 
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+static inline bool is_binder_proc_sf(struct binder_proc *proc)
+{
+	return proc && proc->tsk && strstr(proc->tsk->comm, "surfaceflinger")
+		&& (task_uid(proc->tsk).val == 1000);
+}
+#endif /* OPLUS_FEATURE_SCHED_ASSIST */
+
 /**
  * binder_proc_transaction() - sends a transaction to a process and wakes it up
  * @t:		transaction to send
@@ -3475,6 +4078,9 @@ static bool binder_proc_transaction(struct binder_transaction *t,
 	struct binder_priority node_prio;
 	bool oneway = !!(t->flags & TF_ONE_WAY);
 	bool pending_async = false;
+#if defined(CONFIG_OPLUS_FEATURE_BINDER_STATS_ENABLE)
+	struct binder_notify binder_notify_obj;
+#endif
 
 	BUG_ON(!node);
 	binder_node_lock(node);
@@ -3497,23 +4103,79 @@ static bool binder_proc_transaction(struct binder_transaction *t,
 		binder_node_unlock(node);
 		return false;
 	}
-
+#ifdef CONFIG_OPLUS_BINDER_STRATEGY
+	obtrans_restrict_start(proc, t);
+	if (!thread && !pending_async) {
+		thread = obthread_get(proc, t, oneway);
+	}
+#else
 	if (!thread && !pending_async)
 		thread = binder_select_thread_ilocked(proc);
+#endif
+#if defined(CONFIG_OPLUS_FEATURE_BINDER_STATS_ENABLE)
+	if (NULL != node && NULL != proc->tsk) {
+		binder_notify_obj.caller_task = current;
+		strncpy(binder_notify_obj.service_name, node->service_name, OPLUS_MAX_SERVICE_NAME_LEN);
+		binder_notify_obj.service_name[OPLUS_MAX_SERVICE_NAME_LEN-1] = '\0';
+		binder_notify_obj.pending_async = pending_async;
+	}
+#endif
 
 	if (thread) {
+#if defined(CONFIG_OPLUS_FEATURE_BINDER_STATS_ENABLE)
+		binder_notify_obj.binder_task = thread->task;
+		call_binderevent_notifiers(0, (void *)&binder_notify_obj);
+#endif
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+		binder_transaction_priority(thread, thread->task, t, node_prio,
+					    node->inherit_rt);
+#else
 		binder_transaction_priority(thread->task, t, node_prio,
 					    node->inherit_rt);
+#endif /* OPLUS_FEATURE_SCHED_ASSIST */
 		binder_enqueue_thread_work_ilocked(thread, &t->work);
 #ifdef CONFIG_MTK_TASK_TURBO
 		if (binder_start_turbo_inherit(t->from ?
 				t->from->task : NULL, thread->task))
 			t->inherit_task = thread->task;
 #endif
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+		if (sysctl_sched_assist_enabled) {
+			if (!oneway || proc->proc_type)
+				binder_set_inherit_ux(thread->task, current);
+		}
+#endif /* OPLUS_FEATURE_SCHED_ASSIST */
 	} else if (!pending_async) {
+#if defined(CONFIG_OPLUS_FEATURE_BINDER_STATS_ENABLE)
+		if (NULL != proc && NULL != proc->tsk) {
+			binder_notify_obj.binder_task = proc->tsk;
+			call_binderevent_notifiers(0, (void *)&binder_notify_obj);
+		}
+#endif
+#ifdef CONFIG_OPLUS_BINDER_STRATEGY
+		obwork_restrict(proc, t, pending_async);
+#else
 		binder_enqueue_work_ilocked(&t->work, &proc->todo);
+#endif
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+		if (sysctl_sched_assist_enabled) {
+			if ((!oneway || proc->proc_type) && proc->max_threads == 0) {
+				binder_set_inherit_ux(proc->tsk, current);
+			}
+		}
+#endif /* OPLUS_FEATURE_SCHED_ASSIST */
 	} else {
+#if defined(CONFIG_OPLUS_FEATURE_BINDER_STATS_ENABLE)
+		if (NULL != proc && NULL != proc->tsk) {
+			binder_notify_obj.binder_task = proc->tsk;
+			call_binderevent_notifiers(0, (void *)&binder_notify_obj);
+		}
+#endif
+#ifdef CONFIG_OPLUS_BINDER_STRATEGY
+		obwork_restrict(proc, t, pending_async);
+#else
 		binder_enqueue_work_ilocked(&t->work, &node->async_todo);
+#endif
 	}
 
 	if (!pending_async)
@@ -3593,6 +4255,13 @@ static void binder_transaction(struct binder_proc *proc,
 	int t_debug_id = atomic_inc_return(&binder_last_id);
 	char *secctx = NULL;
 	u32 secctx_sz = 0;
+#ifdef OPLUS_FEATURE_HANS_FREEZE
+	char buf_data[INTERFACETOKEN_BUFF_SIZE];
+	size_t buf_data_size;
+	char buf[INTERFACETOKEN_BUFF_SIZE] = {0};
+	int i = 0;
+	int j = 0;
+#endif /*OPLUS_FEATURE_HANS_FREEZE*/
 #ifdef BINDER_WATCHDOG
 	struct binder_transaction_log_entry log_entry;
 	unsigned int log_idx = -1;
@@ -3740,12 +4409,31 @@ static void binder_transaction(struct binder_proc *proc,
 			return_error_line = __LINE__;
 			goto err_dead_binder;
 		}
+
+#ifdef OPLUS_FEATURE_HANS_FREEZE
+		if (!(tr->flags & TF_ONE_WAY) //report sync binder call
+			&& target_proc
+			&& (task_uid(target_proc->tsk).val > MIN_USERAPP_UID)
+			&& (proc->pid != target_proc->pid)
+			&& is_frozen_tg(target_proc->tsk)) {
+			hans_report(SYNC_BINDER, task_tgid_nr(proc->tsk), task_uid(proc->tsk).val, task_tgid_nr(target_proc->tsk), task_uid(target_proc->tsk).val, "SYNC_BINDER", -1);
+		}
+#endif /*OPLUS_FEATURE_HANS_FREEZE*/
+#if defined(CONFIG_CFS_BANDWIDTH)
+		if (!(tr->flags & TF_ONE_WAY) /*report sync binder call*/
+			&& target_proc
+			&& (task_uid(target_proc->tsk).val > MIN_USERAPP_UID || task_uid(target_proc->tsk).val == HANS_SYSTEM_UID) //uid >10000
+			&& is_belong_cpugrp(target_proc->tsk)) {
+			hans_report(SYNC_BINDER_CPUCTL, task_tgid_nr(proc->tsk), task_uid(proc->tsk).val, task_tgid_nr(target_proc->tsk), task_uid(target_proc->tsk).val, "SYNC_BINDER_CPUCTL", -1);
+		}
+#endif
+
 		e->to_node = target_node->debug_id;
 #ifdef BINDER_WATCHDOG
 		strncpy(e->service, target_node->name, MAX_SERVICE_NAME_LEN);
 #endif
-		if (security_binder_transaction(proc->tsk,
-						target_proc->tsk) < 0) {
+		if (security_binder_transaction(proc->cred,
+						target_proc->cred) < 0) {
 			return_error = BR_FAILED_REPLY;
 			return_error_param = -EPERM;
 			return_error_line = __LINE__;
@@ -3902,7 +4590,8 @@ static void binder_transaction(struct binder_proc *proc,
 #endif
 	t->buffer = binder_alloc_new_buf(&target_proc->alloc, tr->data_size,
 		tr->offsets_size, extra_buffers_size,
-		!reply && (t->flags & TF_ONE_WAY));
+		!reply && (t->flags & TF_ONE_WAY),
+		current->tgid);
 	if (IS_ERR(t->buffer)) {
 		/*
 		 * -ESRCH indicates VMA cleared. The target is dying.
@@ -3931,6 +4620,24 @@ static void binder_transaction(struct binder_proc *proc,
 	t->buffer->transaction = t;
 	t->buffer->target_node = target_node;
 	trace_binder_transaction_alloc_buf(t->buffer);
+#ifdef CONFIG_OPLUS_BINDER_STRATEGY
+	obset_async_boost_work(t->buffer, t, target_proc, &target_proc->alloc, !reply && t->flags & TF_ONE_WAY);
+#endif
+
+	//ifdef OPLUS_BUG_STABILITY
+	if (!(t->flags & TF_ONE_WAY)) {
+	size_t buffer_size = binder_alloc_buffer_size_locked(&target_proc->alloc,t->buffer);
+		if(buffer_size > 100 * SZ_1K) {
+			if (reply)
+		        binder_debug(BINDER_DEBUG_USER_ERROR,"%d:%d BC_REPLY -> %d:%d  alloc buffer %zd \n",
+			        proc->pid, thread->pid,target_proc->pid, target_thread->pid,buffer_size);
+			else
+		        binder_debug(BINDER_DEBUG_USER_ERROR,"%d:%d BC_TRANSACTION -> %d:%d  alloc buffer %zd \n",
+			        proc->pid, thread->pid,target_proc->pid, target_thread ? target_thread->pid : 0,buffer_size);
+		}
+	}
+	//endif /*OPLUS_BUG_STABILITY*/
+
 
 	if (binder_alloc_copy_user_to_buffer(
 				&target_proc->alloc,
@@ -3976,6 +4683,31 @@ static void binder_transaction(struct binder_proc *proc,
 		return_error_line = __LINE__;
 		goto err_bad_offset;
 	}
+#ifdef OPLUS_FEATURE_HANS_FREEZE
+	if ((tr->flags & TF_ONE_WAY) //report async binder call
+		&& target_proc
+		&& (task_uid(target_proc->tsk).val > MIN_USERAPP_UID)
+		&& (proc->pid != target_proc->pid)
+		&& is_frozen_tg(target_proc->tsk)) {
+		buf_data_size = tr->data_size>INTERFACETOKEN_BUFF_SIZE ?INTERFACETOKEN_BUFF_SIZE:tr->data_size;
+		if (!copy_from_user(buf_data, (char*)tr->data.ptr.buffer, buf_data_size)) {
+			//1.skip first PARCEL_OFFSET bytes (useless data)
+			//2.make sure the invalid address issue is not occuring(j =PARCEL_OFFSET+1, j+=2)
+			//3.java layer uses 2 bytes char. And only the first bytes has the data.(p+=2)
+			if (buf_data_size > PARCEL_OFFSET) {
+				char *p = (char *)(buf_data) + PARCEL_OFFSET;
+				j = PARCEL_OFFSET + 1;
+				while (i < INTERFACETOKEN_BUFF_SIZE && j < buf_data_size && *p != '\0') {
+					buf[i++] = *p;
+					j += 2;
+					p += 2;
+				}
+				if (i == INTERFACETOKEN_BUFF_SIZE) buf[i-1] = '\0';
+			}
+			hans_report(ASYNC_BINDER, task_tgid_nr(proc->tsk), task_uid(proc->tsk).val, task_tgid_nr(target_proc->tsk), task_uid(target_proc->tsk).val, buf, tr->code);
+		}
+	}
+#endif /*OPLUS_FEATURE_HANS_FREEZE*/
 	off_start_offset = ALIGN(tr->data_size, sizeof(void *));
 	buffer_offset = off_start_offset;
 	off_end_offset = off_start_offset + tr->offsets_size;
@@ -4017,7 +4749,7 @@ static void binder_transaction(struct binder_proc *proc,
 			struct flat_binder_object *fp;
 
 			fp = to_flat_binder_object(hdr);
-#ifdef BINDER_WATCHDOG
+#if defined(BINDER_WATCHDOG) || defined(CONFIG_OPLUS_FEATURE_BINDER_STATS_ENABLE)
 			ret = binder_translate_binder(tr, fp, t, thread);
 #else
 			ret = binder_translate_binder(fp, t, thread);
@@ -4202,6 +4934,16 @@ static void binder_transaction(struct binder_proc *proc,
 			in_reply_to->inherit_task = NULL;
 		}
 #endif
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+		if (sysctl_sched_assist_enabled && !proc->proc_type) {
+			binder_unset_inherit_ux(thread->task);
+		}
+#endif /* OPLUS_FEATURE_SCHED_ASSIST */
+#ifdef CONFIG_OPLUS_BINDER_STRATEGY
+		binder_inner_proc_lock(proc);
+		obwork_check_restrict_off(proc);
+		binder_inner_proc_unlock(proc);
+#endif
 		binder_restore_priority(current, in_reply_to->saved_priority);
 		binder_free_transaction(in_reply_to);
 	} else if (!(t->flags & TF_ONE_WAY)) {
@@ -4274,6 +5016,11 @@ err_alloc_tcomplete_failed:
 	binder_cancel_bwdog(t);
 #endif
 #ifdef BINDER_USER_TRACKING
+	if (t->code) {
+		binder_debug(BINDER_DEBUG_FAILED_TRANSACTION,
+			     "%d:%d transaction %d failed code: %x",
+			      proc->pid, thread->pid, t->debug_id, t->code);
+	}
 	binder_print_delay(t);
 #endif
 	kfree(t);
@@ -4518,6 +5265,17 @@ static int binder_thread_write(struct binder_proc *proc,
 				}
 				break;
 			}
+
+			//ifdef OPLUS_BUG_STABILITY
+			if(buffer != NULL) {
+				size_t buffer_size = binder_alloc_buffer_size_locked(&proc->alloc,buffer);
+				if(buffer_size > 100 * SZ_1K){
+					binder_debug(BINDER_DEBUG_USER_ERROR,
+					   "%d:%d BC_FREE_BUFFER free size %zd \n",
+					   proc->pid, thread->pid, buffer_size);
+				}
+			}
+			//endif /*OPLUS_BUG_STABILITY*/
 			binder_debug(BINDER_DEBUG_FREE_BUFFER,
 				     "%d:%d BC_FREE_BUFFER u%016llx found buffer %d for %s transaction\n",
 				     proc->pid, thread->pid, (u64)data_ptr,
@@ -4596,6 +5354,10 @@ static int binder_thread_write(struct binder_proc *proc,
 				proc->requested_threads_started++;
 			}
 			thread->looper |= BINDER_LOOPER_STATE_REGISTERED;
+#ifdef CONFIG_OPLUS_BINDER_STRATEGY
+			/* when thread calls BC_REGISTER_LOOPER, it become binder thread authentic*/
+			obthread_init(proc, thread);
+#endif
 			binder_inner_proc_unlock(proc);
 			break;
 		case BC_ENTER_LOOPER:
@@ -4855,11 +5617,29 @@ static int binder_wait_for_work(struct binder_thread *thread,
 		prepare_to_wait(&thread->wait, &wait, TASK_INTERRUPTIBLE);
 		if (binder_has_work_ilocked(thread, do_proc_work))
 			break;
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+		if (do_proc_work) {
+			list_add(&thread->waiting_thread_node,
+				 &proc->waiting_threads);
+
+			if (sysctl_sched_assist_enabled) {
+				binder_unset_inherit_ux(thread->task);
+			}
+		}
+#else /* OPLUS_FEATURE_SCHED_ASSIST */
 		if (do_proc_work)
 			list_add(&thread->waiting_thread_node,
 				 &proc->waiting_threads);
+#endif /* OPLUS_FEATURE_SCHED_ASSIST */
 		binder_inner_proc_unlock(proc);
+#if defined (OPLUS_FEATURE_HEALTHINFO) && defined (CONFIG_OPLUS_JANK_INFO)
+		if (!do_proc_work)
+			current->in_binder = 1;
+#endif /* OPLUS_FEATURE_HEALTHINFO */
 		schedule();
+#if defined (OPLUS_FEATURE_HEALTHINFO) && defined (CONFIG_OPLUS_JANK_INFO)
+		current->in_binder = 0;
+#endif /* OPLUS_FEATURE_HEALTHINFO */
 		binder_inner_proc_lock(proc);
 		list_del_init(&thread->waiting_thread_node);
 		if (signal_pending(current)) {
@@ -4941,6 +5721,26 @@ retry:
 		binder_inner_proc_lock(proc);
 		if (!binder_worklist_empty_ilocked(&thread->todo))
 			list = &thread->todo;
+#ifdef CONFIG_OPLUS_BINDER_STRATEGY
+		else if (obthread_has_work(thread) && wait_for_proc_work) {
+			list = &ob_target.ob_list;
+			obprint_oblist();
+		}
+		/* prevent normal work to be starved */
+		else if (check_ob_ux_todo_has_work(thread) && wait_for_proc_work) {
+			if (proc->ux_count >= MAX_UX_WORK_CONTINUOUS) {
+				if (!binder_worklist_empty_ilocked(&proc->todo)) {
+					list = &proc->todo;
+					proc->ux_count = 0;
+				}
+				else
+					list = &proc->ux_todo;
+			} else {
+				proc->ux_count++;
+				list = &proc->ux_todo;
+			}
+		}
+#endif
 		else if (!binder_worklist_empty_ilocked(&proc->todo) &&
 			   wait_for_proc_work)
 			list = &proc->todo;
@@ -5139,8 +5939,13 @@ retry:
 			trd->cookie =  target_node->cookie;
 			node_prio.sched_policy = target_node->sched_policy;
 			node_prio.prio = target_node->min_priority;
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+			binder_transaction_priority(thread, current, t, node_prio,
+						    target_node->inherit_rt);
+#else /* OPLUS_FEATURE_SCHED_ASSIST */
 			binder_transaction_priority(current, t, node_prio,
 						    target_node->inherit_rt);
+#endif /* OPLUS_FEATURE_SCHED_ASSIST */
 			cmd = BR_TRANSACTION;
 		} else {
 			trd->target.ptr = 0;
@@ -5164,7 +5969,11 @@ retry:
 							thread->task))
 				t->inherit_task = thread->task;
 #endif
-
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+			if (sysctl_sched_assist_enabled) {
+				binder_set_inherit_ux(thread->task, t_from->task);
+			}
+#endif /* OPLUS_FEATURE_SCHED_ASSIST */
 		} else {
 			trd->sender_pid = 0;
 		}
@@ -5403,6 +6212,9 @@ static void binder_free_proc(struct binder_proc *proc)
 
 	BUG_ON(!list_empty(&proc->todo));
 	BUG_ON(!list_empty(&proc->delivered_death));
+#ifdef CONFIG_OPLUS_BINDER_STRATEGY
+	obproc_free(proc);
+#endif
 	device = container_of(proc->context, struct binder_device, context);
 	if (refcount_dec_and_test(&device->ref)) {
 		kfree(proc->context->name);
@@ -5410,6 +6222,7 @@ static void binder_free_proc(struct binder_proc *proc)
 	}
 	binder_alloc_deferred_release(&proc->alloc);
 	put_task_struct(proc->tsk);
+	put_cred(proc->cred);
 	binder_stats_deleted(BINDER_STAT_PROC);
 	kfree(proc);
 }
@@ -5578,6 +6391,9 @@ static int binder_ioctl_write_read(struct file *filp,
 					 filp->f_flags & O_NONBLOCK);
 		trace_binder_read_done(ret);
 		binder_inner_proc_lock(proc);
+#ifdef CONFIG_OPLUS_BINDER_STRATEGY
+		obproc_has_work(proc);
+#endif
 		if (!binder_worklist_empty_ilocked(&proc->todo))
 			binder_wakeup_proc_ilocked(proc);
 		binder_inner_proc_unlock(proc);
@@ -5615,7 +6431,7 @@ static int binder_ioctl_set_ctx_mgr(struct file *filp,
 		ret = -EBUSY;
 		goto out;
 	}
-	ret = security_binder_set_context_mgr(proc->tsk);
+	ret = security_binder_set_context_mgr(proc->cred);
 	if (ret < 0)
 		goto out;
 	if (uid_valid(context->binder_context_mgr_uid)) {
@@ -5641,6 +6457,15 @@ static int binder_ioctl_set_ctx_mgr(struct file *filp,
 	new_node->has_strong_ref = 1;
 	new_node->has_weak_ref = 1;
 	context->binder_context_mgr_node = new_node;
+#if defined(CONFIG_OPLUS_FEATURE_BINDER_STATS_ENABLE)
+	if (NULL != context->binder_context_mgr_node &&
+			NULL != context->binder_context_mgr_node->proc &&
+			NULL != context->binder_context_mgr_node->proc->tsk) {
+		snprintf(context->binder_context_mgr_node->service_name, OPLUS_MAX_SERVICE_NAME_LEN,
+			"%s", context->binder_context_mgr_node->proc->tsk->comm);
+		context->binder_context_mgr_node->service_name[OPLUS_MAX_SERVICE_NAME_LEN-1] = '\0';
+	}
+#endif
 	binder_node_unlock(new_node);
 	binder_put_node(new_node);
 out:
@@ -5938,8 +6763,16 @@ static int binder_open(struct inode *nodp, struct file *filp)
 	spin_lock_init(&proc->outer_lock);
 	get_task_struct(current->group_leader);
 	proc->tsk = current->group_leader;
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+	proc->proc_type = is_binder_proc_sf(proc) ? 1 : 0;
+#endif /* OPLUS_FEATURE_SCHED_ASSIST */
 	mutex_init(&proc->files_lock);
+	proc->cred = get_cred(filp->f_cred);
 	INIT_LIST_HEAD(&proc->todo);
+#ifdef CONFIG_OPLUS_BINDER_STRATEGY
+	INIT_LIST_HEAD(&proc->ux_todo);
+	proc->ux_count = 0;
+#endif
 	if (binder_supported_policy(current->policy)) {
 		proc->default_priority.sched_policy = current->policy;
 		proc->default_priority.prio = current->normal_prio;
@@ -5966,6 +6799,9 @@ static int binder_open(struct inode *nodp, struct file *filp)
 	INIT_LIST_HEAD(&proc->delivered_death);
 	INIT_LIST_HEAD(&proc->waiting_threads);
 	filp->private_data = proc;
+#ifdef CONFIG_OPLUS_BINDER_STRATEGY
+	obtarget_init(proc);
+#endif
 
 	mutex_lock(&binder_procs_lock);
 	hlist_add_head(&proc->proc_node, &binder_procs);
@@ -6209,6 +7045,11 @@ static void binder_deferred_release(struct binder_proc *proc)
 
 	binder_release_work(proc, &proc->todo);
 	binder_release_work(proc, &proc->delivered_death);
+#ifdef CONFIG_OPLUS_BINDER_STRATEGY
+	binder_release_work(proc, &proc->ux_todo);
+	if (proc == ob_target.ob_proc)
+		binder_release_work(proc, &ob_target.ob_list);
+#endif
 
 	binder_debug(BINDER_DEBUG_OPEN_CLOSE,
 		     "%s: %d threads %d, nodes %d (ref %d), refs %d, active transactions %d\n",
@@ -6720,6 +7561,71 @@ int binder_state_show(struct seq_file *m, void *unused)
 
 	return 0;
 }
+
+#ifdef OPLUS_FEATURE_HANS_FREEZE
+static void hans_check_uid_proc_status(struct binder_proc *proc, enum message_type type)
+{
+	struct rb_node *n = NULL;
+	struct binder_thread *thread = NULL;
+	int uid = -1;
+	struct binder_transaction *btrans = NULL;
+	bool empty = true;
+
+	//check binder_thread/transaction_stack/binder_proc ongoing transaction
+	binder_inner_proc_lock(proc);
+	for (n = rb_first(&proc->threads); n != NULL; n = rb_next(n)) {
+		thread = rb_entry(n, struct binder_thread, rb_node);
+		empty = binder_worklist_empty_ilocked(&thread->todo);
+
+		if (thread->task != NULL) {
+			// has "todo" binder thread in worklist?
+			uid = task_uid(thread->task).val;
+			if (!empty) {
+				binder_inner_proc_unlock(proc);
+				hans_report(type, -1, -1, -1, uid, "FROZEN_TRANS_THREAD", -1);
+				return;
+			}
+
+			// has transcation in transaction_stack?
+			btrans = thread->transaction_stack;
+			if (btrans) {
+				spin_lock(&btrans->lock);
+				if (btrans->to_thread == thread) {
+					// only report incoming binder call
+					spin_unlock(&btrans->lock);
+					binder_inner_proc_unlock(proc);
+					hans_report(type, -1, -1, -1, uid, "FROZEN_TRANS_STACK", -1);
+					return;
+				}
+				spin_unlock(&btrans->lock);
+			}
+		}
+	}
+
+	// has "todo" binder proc in worklist
+	empty = binder_worklist_empty_ilocked(&proc->todo);
+	if (proc->tsk != NULL && !empty) {
+		uid = task_uid(proc->tsk).val;
+		binder_inner_proc_unlock(proc);
+		hans_report(type, -1, -1, -1, uid, "FROZEN_TRANS_PROC", -1);
+		return;
+	}
+	binder_inner_proc_unlock(proc);
+}
+
+void hans_check_frozen_transcation(uid_t uid, enum message_type type)
+{
+	struct binder_proc *proc;
+
+	mutex_lock(&binder_procs_lock);
+	hlist_for_each_entry(proc, &binder_procs, proc_node) {
+		if (proc != NULL && (task_uid(proc->tsk).val == uid)) {
+			hans_check_uid_proc_status(proc, type);
+		}
+	}
+	mutex_unlock(&binder_procs_lock);
+}
+#endif /*OPLUS_FEATURE_HANS_FREEZE*/
 
 int binder_stats_show(struct seq_file *m, void *unused)
 {

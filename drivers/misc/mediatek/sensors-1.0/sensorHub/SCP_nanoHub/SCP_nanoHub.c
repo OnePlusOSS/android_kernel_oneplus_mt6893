@@ -75,6 +75,9 @@
 #define SCP_sensorHub_DEV_NAME "SCP_sensorHub"
 
 #define CHRE_POWER_RESET_NOTIFY
+#ifdef OPLUS_FEATURE_SENSOR_ALGORITHM
+extern void oplus_init_sensor_state(struct SensorState *mSensorState);
+#endif /*OPLUS_FEATURE_SENSOR_ALGORITHM*/
 
 static int sensor_send_timestamp_to_hub(void);
 static int SCP_sensorHub_server_dispatch_data(uint32_t *currWp);
@@ -536,9 +539,13 @@ static void SCP_sensorHub_sync_time_func(unsigned long data)
 
 static int SCP_sensorHub_direct_push_work(void *data)
 {
+	int ret = 0;
+
 	for (;;) {
-		wait_event(chre_kthread_wait,
+		ret = wait_event_interruptible(chre_kthread_wait,
 			READ_ONCE(chre_kthread_wait_condition));
+		if (ret)
+			continue;
 		WRITE_ONCE(chre_kthread_wait_condition, false);
 		mark_timestamp(0, WORK_START, ktime_get_boot_ns(), 0);
 		SCP_sensorHub_read_wp_queue();
@@ -616,6 +623,15 @@ SCP_sensorHub_set_timestamp_cmd(union SCP_SENSOR_HUB_DATA *rsp,
 {
 	SCP_sensorHub_xcmd_putdata(rsp, rx_len);
 }
+#ifdef OPLUS_FEATURE_SENSOR
+static void
+SCP_sensorHub_set_oplus_cmd(union SCP_SENSOR_HUB_DATA *rsp,
+					int rx_len)
+{
+	SCP_sensorHub_xcmd_putdata(rsp, rx_len);
+}
+#endif
+
 static void SCP_sensorHub_moving_average(union SCP_SENSOR_HUB_DATA *rsp)
 {
 	uint64_t ap_now_time = 0, arch_counter = 0;
@@ -745,11 +761,21 @@ static void SCP_sensorHub_IPI_handler(int id,
 	/*pr_err("sensorType:%d, action=%d event:%d len:%d\n",
 	 * rsp->rsp.sensorType, rsp->rsp.action, rsp->notify_rsp.event, len);
 	 */
+	#ifndef OPLUS_FEATURE_SENSOR
 	cmd = SCP_sensorHub_find_cmd(rsp->rsp.action);
 	if (cmd != NULL)
 		cmd->handler(rsp, len);
 	else
 		pr_err("cannot find cmd!\n");
+	#else
+	cmd = SCP_sensorHub_find_cmd(rsp->rsp.action);
+	if (cmd != NULL)
+		cmd->handler(rsp, len);
+	else {
+		pr_err("cannot find cmd! try to find oplus cmd\n");
+		SCP_sensorHub_set_oplus_cmd(rsp,len);
+	}
+	#endif
 }
 
 static void SCP_sensorHub_init_sensor_state(void)
@@ -909,6 +935,9 @@ static void SCP_sensorHub_init_sensor_state(void)
 
 	mSensorState[SENSOR_TYPE_SAR].sensorType = SENSOR_TYPE_SAR;
 	mSensorState[SENSOR_TYPE_SAR].timestamp_filter = false;
+	#ifdef OPLUS_FEATURE_SENSOR_ALGORITHM
+	oplus_init_sensor_state(mSensorState);
+	#endif /*OPLUS_FEATURE_SENSOR_ALGORITHM*/
 }
 
 static void init_sensor_config_cmd(struct ConfigCmd *cmd,
@@ -2179,12 +2208,14 @@ static void restoring_enable_sensorHub_sensor(int handle)
 
 void sensorHub_power_up_loop(void *data)
 {
-	int handle = 0;
+	int ret = 0, handle = 0;
 	struct SCP_sensorHub_data *obj = obj_data;
 	unsigned long flags = 0;
 
-	wait_event(power_reset_wait,
+	ret = wait_event_interruptible(power_reset_wait,
 		READ_ONCE(scp_system_ready) && READ_ONCE(scp_chre_ready));
+	if (ret)
+		return;
 	spin_lock_irqsave(&scp_state_lock, flags);
 	WRITE_ONCE(scp_chre_ready, false);
 	WRITE_ONCE(scp_system_ready, false);

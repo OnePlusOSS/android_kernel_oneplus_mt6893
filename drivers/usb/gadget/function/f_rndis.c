@@ -77,7 +77,7 @@ module_param(rndis_dl_max_pkt_per_xfer, uint, 0644);
 MODULE_PARM_DESC(rndis_dl_max_pkt_per_xfer,
 	"Maximum packets per transfer for DL aggregation");
 
-static unsigned int rndis_ul_max_pkt_per_xfer = 1;
+static unsigned int rndis_ul_max_pkt_per_xfer = 10;
 module_param(rndis_ul_max_pkt_per_xfer, uint, 0644);
 MODULE_PARM_DESC(rndis_ul_max_pkt_per_xfer,
 	"Maximum packets per transfer for UL aggregation");
@@ -348,6 +348,7 @@ static struct usb_ss_ep_comp_descriptor ss_bulk_comp_desc = {
 	/* the following 2 values can be tweaked if necessary */
 	/* .bMaxBurst =		0, */
 	/* .bmAttributes =	0, */
+	.bMaxBurst =		4,
 };
 
 static struct usb_descriptor_header *eth_ss_function[] = {
@@ -554,8 +555,10 @@ static void rndis_command_complete(struct usb_ep *ep, struct usb_request *req)
 		if (buf->MaxTransferSize > 2048) {
 			rndis->port.multi_pkt_xfer = 1;
 			rndis->port.dl_max_transfer_len = buf->MaxTransferSize;
+			spin_unlock(&rndis_lock);
 			gether_update_dl_max_xfer_size(&rndis->port,
 					rndis->port.dl_max_transfer_len);
+			spin_lock(&rndis_lock);
 		} else
 			rndis->port.multi_pkt_xfer = 0;
 		pr_info("%s: MaxTransferSize: %d : Multi_pkt_txr: %s\n",
@@ -769,24 +772,30 @@ static void rndis_open(struct gether *geth)
 {
 	struct f_rndis		*rndis = func_to_rndis(&geth->func);
 	struct usb_composite_dev *cdev = geth->func.config->cdev;
+	unsigned long flags;
 
 	F_RNDIS_DBG("\n");
 	DBG(cdev, "%s\n", __func__);
 
+	spin_lock_irqsave(&rndis_lock, flags);
 	rndis_set_param_medium(rndis->params, RNDIS_MEDIUM_802_3,
 				bitrate(cdev->gadget) / 100);
 	rndis_signal_connect(rndis->params);
+	spin_unlock_irqrestore(&rndis_lock, flags);
 }
 
 static void rndis_close(struct gether *geth)
 {
 	struct f_rndis		*rndis = func_to_rndis(&geth->func);
+	unsigned long flags;
 
 	F_RNDIS_DBG("\n");
 	DBG(geth->func.config->cdev, "%s\n", __func__);
 
+	spin_lock_irqsave(&rndis_lock, flags);
 	rndis_set_param_medium(rndis->params, RNDIS_MEDIUM_802_3, 0);
 	rndis_signal_disconnect(rndis->params);
+	spin_unlock_irqrestore(&rndis_lock, flags);
 }
 
 /*-------------------------------------------------------------------------*/

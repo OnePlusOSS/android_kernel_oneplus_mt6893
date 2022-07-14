@@ -22,6 +22,7 @@
 
 #include "clkdbg.h"
 #include "clkdbg-mt6885.h"
+#include "clkchk.h"
 #include "clk-fmeter.h"
 #include <clk-mux.h>
 
@@ -657,24 +658,11 @@ subsys_initcall(clkdbg_mt6885_init);
 /*
  * MT6885: for mtcmos debug
  */
-static bool is_valid_reg(void __iomem *addr)
-{
-#ifdef CONFIG_64BIT
-	return ((u64)addr & 0xf0000000) != 0UL ||
-			(((u64)addr >> 32U) & 0xf0000000) != 0UL;
-#else
-	return ((u32)addr & 0xf0000000) != 0U;
-#endif
-}
-
 void print_subsys_reg(enum dbg_sys_id id)
 {
 	struct regbase *rb_dump;
 	const struct regname *rns = &rn[0];
 	int i;
-
-	if (rns == NULL)
-		return;
 
 	if (id >= dbg_sys_num || id < 0) {
 		pr_info("wrong id:%d\n", id);

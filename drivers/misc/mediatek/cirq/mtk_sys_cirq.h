@@ -43,6 +43,7 @@
 #define  CIRQ_CON_EN_BITS           (0)
 #define  CIRQ_CON_EDGE_ONLY_BITS    (1)
 #define  CIRQ_CON_FLUSH_BITS        (2)
+#define  CIRQ_CON_SW_RST_BITS       (20)
 #define  CIRQ_CON_EVENT_BITS        (31)
 #define  CIRQ_CON_BITS_MASK         (0x7)
 
@@ -52,6 +53,7 @@
 #define  CIRQ_CON_EN            (0x1)
 #define  CIRQ_CON_EDGE_ONLY     (0x1)
 #define  CIRQ_CON_FLUSH         (0x1)
+#define  CIRQ_SW_RESET		(0x1)
 
 /*
  * Define constant
@@ -79,6 +81,10 @@ extern void __iomem *INT_POL_CTL0;
 #ifndef GIC_PRIVATE_SIGNALS
 #define GIC_PRIVATE_SIGNALS     (32)
 #endif
+
+/* GIC sensitive */
+#define SENS_EDGE	(0x2)
+#define SENS_LEVEL	(0x0)
 
 /*
  * Define function prototypes.
@@ -111,6 +117,8 @@ struct cirq_events {
 	void __iomem *cirq_base;
 	struct list_head used_reg_head;
 };
+
+extern unsigned int mt_irq_get_sens(unsigned int irq);
 
 /*#define FAST_CIRQ_DEBUG*/
 /*#define LATENCY_CHECK*/

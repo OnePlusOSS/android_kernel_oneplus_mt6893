@@ -505,6 +505,7 @@ static struct page **__iommu_dma_alloc_pages(unsigned int count,
 	while (count) {
 		struct page *page = NULL;
 		unsigned int order_size;
+		gfp_t gfp_tmp;
 
 		/*
 		 * Higher-order allocations are a convenience rather
@@ -516,8 +517,11 @@ static struct page **__iommu_dma_alloc_pages(unsigned int count,
 			unsigned int order = __fls(order_mask);
 
 			order_size = 1U << order;
-			page = alloc_pages((order_mask - order_size) ?
-					   gfp | __GFP_NORETRY : gfp, order);
+			gfp_tmp = (order_mask - order_size) ? (gfp | __GFP_NORETRY) : gfp;
+			if (order > 3)
+				gfp_tmp &= ~__GFP_RECLAIM;
+
+			page = alloc_pages(gfp_tmp, order);
 			if (!page)
 				continue;
 			if (!order)
@@ -1256,17 +1260,17 @@ EXPORT_SYMBOL(iommu_dma_dump_iovad);
 int iommu_dma_get_iovad_info(struct device *dev,
 	unsigned long *base, unsigned long *max)
 {
-	struct iommu_domain *domain = iommu_get_domain_for_dev(dev);
+	struct iommu_domain *domain;
 	struct iommu_dma_cookie *cookie;
 	struct iova_domain *iovad;
 
-	if (!domain) {
-		pr_info("%s get domain is fail, dev:%s\n", __func__, dev_name(dev));
-		return -1;
-	}
+	domain = iommu_get_domain_for_dev(dev);
 
+	if (!domain)
+		return -EINVAL;
 	cookie = domain->iova_cookie;
 	iovad = &cookie->iovad;
+
 	*base = iovad->start_pfn << iova_shift(iovad);
 	*max = domain->geometry.aperture_end;
 

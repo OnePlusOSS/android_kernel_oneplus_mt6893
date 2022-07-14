@@ -129,8 +129,6 @@ enum ipi_id {
 	IPI_VDEC_VP9,
 	IPI_VDEC_MPEG4,
 	IPI_VDEC_H263,
-	IPI_VDEC_S263,
-	IPI_VDEC_XVID,
 	IPI_VDEC_MPEG12,
 	IPI_VDEC_WMV,
 	IPI_VDEC_RV30,
@@ -275,6 +273,8 @@ void vcu_get_task(struct task_struct **task, struct files_struct **f,
 		int reset);
 void vcu_get_file_lock(void);
 void vcu_put_file_lock(void);
+void vcu_get_gce_lock(struct platform_device *pdev, unsigned long codec_type);
+void vcu_put_gce_lock(struct platform_device *pdev, unsigned long codec_type);
 int vcu_get_sig_lock(unsigned long *flags);
 void vcu_put_sig_lock(unsigned long flags);
 int vcu_check_vpud_alive(void);
@@ -296,5 +296,8 @@ extern void venc_encode_pmqos_gce_begin(void *ctx_begin,
 		unsigned int core_id, int job_cnt);
 extern void venc_encode_pmqos_gce_end(void *ctx_end,
 		unsigned int core_id, int job_cnt);
+extern void vdec_check_release_lock(void *ctx_check);
 extern void mtk_vcodec_gce_timeout_dump(void *ctx);
+int vcu_set_log(const char *val);
+
 #endif /* _MTK_VCU_H */

@@ -125,12 +125,6 @@ static int vdec_init(struct mtk_vcodec_ctx *ctx, unsigned long *h_vdec)
 	case V4L2_PIX_FMT_H263:
 		inst->vcu.id = IPI_VDEC_H263;
 		break;
-	case V4L2_PIX_FMT_S263:
-		inst->vcu.id = IPI_VDEC_S263;
-		break;
-	case V4L2_PIX_FMT_XVID:
-		inst->vcu.id = IPI_VDEC_XVID;
-		break;
 	case V4L2_PIX_FMT_MPEG1:
 	case V4L2_PIX_FMT_MPEG2:
 		inst->vcu.id = IPI_VDEC_MPEG12;
@@ -631,7 +625,6 @@ static int vdec_set_param(unsigned long h_vdec,
 	case SET_PARAM_WAIT_KEY_FRAME:
 	case SET_PARAM_OPERATING_RATE:
 	case SET_PARAM_TOTAL_FRAME_BUFQ_COUNT:
-	case SET_PARAM_FORCE_RES_CHANGE:
 		vcu_dec_set_param(&inst->vcu, (unsigned int)type, in, 1U);
 		break;
 	case SET_PARAM_UFO_MODE:

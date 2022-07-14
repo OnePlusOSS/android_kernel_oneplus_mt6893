@@ -34,6 +34,7 @@
 #endif
 #include <mtk_ppm_api.h>
 #include <rq_stats.h>
+#include <core_ctl_internal.h>
 
 #define TAG "core_ctl"
 
@@ -82,7 +83,7 @@ struct cpu_data {
 #define AB_CLUSTER_ID	2
 #define CORE_OFF	true
 #define CORE_ON		false
-#define MAX_CLUSTERS 	3
+#define MAX_CLUSTERS	3
 #define MAX_CPUS_PER_CLUSTER	6
 #define MAX_NR_DOWN_THRESHOLD	4
 /* reference cpu_ctrl.h */
@@ -103,7 +104,7 @@ module_param_named(debug_enable, debug_enable, bool, 0600);
 
 #define core_ctl_debug(x...)		\
 	do {				\
-		if (debug_enable) 	\
+		if (debug_enable)	\
 			pr_info(x);	\
 	} while (0)
 
@@ -166,9 +167,9 @@ static bool demand_eval(struct cluster_data *cluster)
 
 	spin_lock_irqsave(&state_lock, flags);
 
-	if(cluster->boost || !cluster->enable) {
+	if (cluster->boost || !cluster->enable)
 		need_cpus = cluster->max_cpus;
-	} else
+	else
 		need_cpus = cluster->new_need_cpus;
 
 	new_need = apply_limits(cluster, need_cpus);
@@ -191,7 +192,7 @@ static bool demand_eval(struct cluster_data *cluster)
 		 * just update the next offline time.
 		 */
 		/* TODO: should consider that new_need == last_need ? */
-		if(new_need == cluster->active_cpus) {
+		if (new_need == cluster->active_cpus) {
 			cluster->next_offline_time = now;
 			cluster->need_cpus = new_need;
 			goto unlock;
@@ -257,8 +258,6 @@ void set_offline_throttle_ms(struct cluster_data *cluster, unsigned int val)
 	apply_demand(cluster);
 }
 
-extern void set_overutil_threshold(int index, int val);
-
 static inline
 void update_next_cluster_down_thresh(unsigned int index,
 				     unsigned int new_thresh)
@@ -289,7 +288,7 @@ static inline
 void set_not_preferred_locked(struct cluster_data *cluster, int cpu, bool enable)
 {
 	struct cpu_data *c;
-	bool changed;
+	bool changed = false;
 
 	c = &per_cpu(cpu_state, cpu);
 	if (enable) {
@@ -317,7 +316,7 @@ static void set_btask_up_thresh(struct cluster_data *cluster, unsigned int val)
 
 	spin_lock_irqsave(&state_lock, flags);
 	old_thresh = cluster->btask_up_thresh;
-	cluster->btask_up_thresh = cluster->btask_up_thresh;
+	cluster->btask_up_thresh = val;
 
 	if (old_thresh != cluster->btask_up_thresh) {
 		update_next_cluster_down_thresh(
@@ -335,7 +334,7 @@ void set_cpu_tj_degree(struct cluster_data *cluster, int degree)
 	unsigned long flags;
 
 	spin_lock_irqsave(&state_lock, flags);
-	cluster->cpu_tj_degree = cluster->cpu_tj_degree;
+	cluster->cpu_tj_degree = degree;
 	spin_unlock_irqrestore(&state_lock, flags);
 }
 
@@ -441,15 +440,14 @@ EXPORT_SYMBOL(core_ctl_set_offline_throttle_ms);
  */
 int core_ctl_set_boost(bool boost)
 {
-	int ret;
+	int ret = 0;
 	unsigned int index = 0;
 	unsigned long flags;
 	struct cluster_data *cluster;
 	bool changed = false;
 
 	spin_lock_irqsave(&state_lock, flags);
-	for_each_cluster(cluster, index)
-	{
+	for_each_cluster(cluster, index) {
 		if (boost) {
 			changed = !cluster->boost;
 			cluster->boost = 1;
@@ -607,7 +605,7 @@ static ssize_t store_offline_throttle_ms(struct cluster_data *state,
 static ssize_t show_offline_throttle_ms(const struct cluster_data *state,
 		char *buf)
 {
-	return snprintf(buf, PAGE_SIZE, "%u\n", state->offline_throttle_ms);
+	return snprintf(buf, PAGE_SIZE, "%lld\n", state->offline_throttle_ms);
 }
 
 static ssize_t store_btask_up_thresh(struct cluster_data *state,
@@ -780,7 +778,7 @@ static ssize_t store_core_ctl_boost(struct cluster_data *state,
 
 static ssize_t show_core_ctl_boost(const struct cluster_data *state, char *buf)
 {
-	return snprintf(buf, PAGE_SIZE, "%u\n", state->boost);;
+	return snprintf(buf, PAGE_SIZE, "%u\n", state->boost);
 }
 
 static ssize_t store_enable(struct cluster_data *state,
@@ -869,8 +867,8 @@ static ssize_t show_global_state(const struct cluster_data *state, char *buf)
 
 struct core_ctl_attr {
 	struct attribute attr;
-	ssize_t (*show)(const struct cluster_data *, char *);
-	ssize_t (*store)(struct cluster_data *, const char *, size_t count);
+	ssize_t (*show)(const struct cluster_data *state, char *buf);
+	ssize_t (*store)(struct cluster_data *state, const char *buf, size_t count);
 };
 
 #define core_ctl_attr_ro(_name)         \
@@ -954,20 +952,11 @@ static unsigned int btask_thresh = 230;
 
 /* ==================== algorithm of core control ======================== */
 
-extern int get_immediate_tslvts1_1_wrap(void); /* CPU7 TS */
-
-extern int sched_get_nr_overutil_avg(int cluster_id,
-				     int *l_avg,
-				     int *h_avg,
-				     int *sum_nr_overutil_l,
-				     int *sum_nr_overutil_h,
-				     int *max_nr);
-
 #define BIG_TASK_AVG_THRESHOLD 25
 /*
  * Rewrite from sched_big_task_nr()
  */
-void get_nr_running_big_task(struct cluster_data* cluster)
+void get_nr_running_big_task(struct cluster_data *cluster)
 {
 	int avg_down[MAX_CLUSTERS] = {0};
 	int avg_up[MAX_CLUSTERS] = {0};
@@ -1005,13 +994,12 @@ void get_nr_running_big_task(struct cluster_data* cluster)
 		 */
 		delta = nr_down[i] - nr_up[i];
 		if (nr_down[i] && delta > 0) {
-			if (((avg_down[i]-avg_up[i])/ delta)
+			if (((avg_down[i]-avg_up[i]) / delta)
 					> BIG_TASK_AVG_THRESHOLD)
 				cluster[i].nr_down = delta;
 			else
 				cluster[i].nr_down =
-					(avg_down[i]-avg_up[i])/
-					BIG_TASK_AVG_THRESHOLD > delta ?
+					(avg_down[i]-avg_up[i]) / BIG_TASK_AVG_THRESHOLD > delta ?
 					delta : (avg_down[i]-avg_up[i])/
 					BIG_TASK_AVG_THRESHOLD;
 		}
@@ -1118,7 +1106,7 @@ void core_ctl_tick(u64 wallclock)
 				thermal_btask_thresh;
 
 		if (!ab_cluster->new_need_cpus &&
-			max_util >btask_thresh) {
+			max_util > btask_thresh) {
 			/* assume max_cpus of ab_cluster is 1 */
 			ab_cluster->new_need_cpus = ab_cluster->max_cpus;
 			/*
@@ -1154,9 +1142,6 @@ static struct ppm_limit_data cpu_freq[] = {
 	{.min = -1, .max = -1},
 };
 static DEFINE_MUTEX(cpu_freq_lock);
-
-extern int update_userlimit_cpu_freq(int kicker, int num_cluster,
-		struct ppm_limit_data *freq_limit);
 
 static void check_cpu_freq(struct cluster_data *cluster, bool cluster_on)
 {
@@ -1226,14 +1211,13 @@ static void check_cpu_freq(struct cluster_data *cluster, bool cluster_on)
 	mutex_unlock(&cpu_freq_lock);
 }
 
-extern int _sched_isolate_cpu(int cpu);
 static void try_to_isolate(struct cluster_data *cluster, int need)
 {
 	unsigned long flags;
 	unsigned int num_cpus = cluster->num_cpus;
 	unsigned int nr_isolated = 0;
 	int cpu;
-	bool sucess;
+	bool success;
 	bool check_not_prefer = cluster->nr_not_preferred_cpus;
 
 again:
@@ -1242,7 +1226,7 @@ again:
 	for (cpu = nr_cpu_ids-1; cpu > -1; cpu--) {
 		struct cpu_data *c;
 
-		sucess = false;
+		success = false;
 		if (!cpumask_test_cpu(cpu, &cluster->cpu_mask))
 			continue;
 
@@ -1268,13 +1252,13 @@ again:
 
 		core_ctl_debug("%s: Trying to isolate CPU%u\n", TAG, c->cpu);
 		if (!_sched_isolate_cpu(c->cpu)) {
-			sucess = true;
+			success = true;
 			nr_isolated++;
 		} else {
 			core_ctl_debug("%s Unable to isolate CPU%u\n", TAG, c->cpu);
 		}
 		spin_lock_irqsave(&state_lock, flags);
-		if (sucess)
+		if (success)
 			c->iso_by_core_ctl = true;
 		cluster->active_cpus = get_active_cpu_count(cluster);
 	}
@@ -1295,7 +1279,6 @@ again:
 #endif
 }
 
-extern int _sched_deisolate_cpu(int cpu);
 static void try_to_unisolate(struct cluster_data *cluster, int need)
 {
 	unsigned long flags;
@@ -1352,7 +1335,7 @@ again:
 			cluster_on_possible = false;
 	}
 	cluster->nr_isolated_cpus -= nr_unisolated;
-        spin_unlock_irqrestore(&state_lock, flags);
+	spin_unlock_irqrestore(&state_lock, flags);
 	/*
 	 * After un-isolated the number of prefer CPUs
 	 * is not enough for need CPUs, then check
@@ -1385,7 +1368,7 @@ static void __ref do_core_ctl(struct cluster_data *cluster)
 		else if (cluster->active_cpus < need)
 			try_to_unisolate(cluster, need);
 	} else
-		core_ctl_debug("%s: failed to adjust group %u from %u to %u.  need_cpus=%u min_cpus=%u max_cpus=%u \n",
+		core_ctl_debug("%s: failed to adjust group %u from %u to %u.  need_cpus=%u min_cpus=%u max_cpus=%u\n",
 		TAG, cluster->first_cpu, cluster->active_cpus, need,
 		cluster->need_cpus, cluster->min_cpus, cluster->max_cpus);
 }
@@ -1478,8 +1461,6 @@ static struct cluster_data *find_cluster_by_first_cpu(unsigned int first_cpu)
 }
 
 /* ==================== init section ======================== */
-
-extern unsigned int get_overutil_threshold(int index);
 
 static int cluster_init(struct hmp_domain *domain)
 {

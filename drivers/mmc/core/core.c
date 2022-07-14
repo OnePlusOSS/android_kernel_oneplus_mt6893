@@ -55,6 +55,10 @@
 #include "mtk_mmc_block.h"
 #include "queue.h"
 
+#ifdef OPLUS_FEATURE_SDCARD_INFO
+#include "../host/sdInfo/sdinfo.h"
+#endif
+
 /* If the device is not responding */
 #define MMC_CORE_TIMEOUT_MS	(10 * 60 * 1000) /* 10 minute timeout */
 
@@ -86,6 +90,7 @@ static void mmc_enqueue_queue(struct mmc_host *host, struct mmc_request *mrq)
 		spin_unlock_irqrestore(&host->dat_que_lock, flags);
 	} else {
 		spin_lock_irqsave(&host->cmd_que_lock, flags);
+		atomic_inc(&host->areq_cnt);
 		if (mrq->flags)
 			list_add(&mrq->link, &host->cmd_que);
 		else
@@ -1224,9 +1229,11 @@ static int mmc_start_request(struct mmc_host *host, struct mmc_request *mrq)
 }
 
 #ifdef CONFIG_MTK_EMMC_HW_CQ
-static void mmc_start_cmdq_request(struct mmc_host *host,
+static int mmc_start_cmdq_request(struct mmc_host *host,
 				   struct mmc_request *mrq)
 {
+	int ret = 0;
+
 	if (mrq->data) {
 		pr_debug("%s: blksz %d blocks %d flags %08x tsac %lu ms nsac %d\n",
 			mmc_hostname(host), mrq->data->blksz,
@@ -1248,10 +1255,18 @@ static void mmc_start_cmdq_request(struct mmc_host *host,
 	}
 
 	if (likely(host->cmdq_ops->request))
-		host->cmdq_ops->request(host, mrq);
-	else
-		pr_notice("%s: %s: issue request failed\n", mmc_hostname(host),
-				__func__);
+		ret = host->cmdq_ops->request(host, mrq);
+	else {
+		ret = -ENOENT;
+		pr_notice("%s: %s: cmdq request host op is not available\n",
+			mmc_hostname(host), __func__);
+	}
+
+	if (ret)
+		pr_notice("%s: %s: issue request failed, err=%d\n",
+			mmc_hostname(host), __func__, ret);
+
+	return ret;
 }
 #endif
 
@@ -1267,6 +1282,19 @@ static void mmc_wait_data_done(struct mmc_request *mrq)
 
 	context_info->is_done_rcv = true;
 	wake_up_interruptible(&context_info->wait);
+
+#ifdef OPLUS_FEATURE_SDCARD_INFO
+	if (mrq->host && mrq->host->card && mmc_card_sd(mrq->host->card)) {
+		if ((mrq->cmd && (mrq->cmd->error == -ETIMEDOUT)) || (mrq->stop && (mrq->stop->error == -ETIMEDOUT)) || (mrq->sbc && (mrq->sbc->error == -ETIMEDOUT)))
+			sdinfo.cmd_timeout_count += 1;
+		else if ((mrq->cmd && (mrq->cmd->error == -EILSEQ)) || (mrq->stop && (mrq->stop->error == -EILSEQ)) || (mrq->sbc && (mrq->sbc->error == -EILSEQ)))
+			sdinfo.cmd_crc_err_count += 1;
+		else if (mrq->data && (mrq->data->error == -ETIMEDOUT))
+			sdinfo.data_timeout_int_count +=1;
+		else if (mrq->data && (mrq->data->error == -EILSEQ))
+			sdinfo.data_crc_err_count += 1;
+	}
+#endif
 }
 
 static void mmc_wait_done(struct mmc_request *mrq)
@@ -1369,6 +1397,19 @@ void mmc_wait_for_req_done(struct mmc_host *host, struct mmc_request *mrq)
 				       mmc_hostname(host), __func__);
 			}
 		}
+
+#ifdef OPLUS_FEATURE_SDCARD_INFO
+		if (host && host->card && mmc_card_sd(host->card)) {
+			if ((mrq->cmd && (mrq->cmd->error == -ETIMEDOUT)) || (mrq->stop && (mrq->stop->error == -ETIMEDOUT)) || (mrq->sbc && (mrq->sbc->error == -ETIMEDOUT)))
+				sdinfo.cmd_timeout_count += 1;
+			else if ((mrq->cmd && (mrq->cmd->error == -EILSEQ)) || (mrq->stop && (mrq->stop->error == -EILSEQ)) || (mrq->sbc && (mrq->sbc->error == -EILSEQ)))
+				sdinfo.cmd_crc_err_count += 1;
+			else if (mrq->data && (mrq->data->error == -ETIMEDOUT))
+				sdinfo.data_timeout_int_count +=1;
+			else if (mrq->data && (mrq->data->error == -EILSEQ))
+				sdinfo.data_crc_err_count += 1;
+		}
+#endif
 		if (!cmd->error || !cmd->retries ||
 		    mmc_card_removed(host->card))
 			break;
@@ -1525,8 +1566,8 @@ int mmc_cmdq_start_req(struct mmc_host *host, struct mmc_cmdq_req *cmdq_req)
 		mrq->cmd->error = -ENOMEDIUM;
 		return -ENOMEDIUM;
 	}
-	mmc_start_cmdq_request(host, mrq);
-	return 0;
+
+	return mmc_start_cmdq_request(host, mrq);
 }
 EXPORT_SYMBOL(mmc_cmdq_start_req);
 
@@ -1694,7 +1735,7 @@ struct mmc_async_req *mmc_start_areq(struct mmc_host *host,
 		start_err =
 			__mmc_start_data_req(host, mrq);
 		if (!cmdq_en)
-			mt_biolog_mmcqd_req_start(host);
+			mt_biolog_mmcqd_req_start(host, mrq);
 	}
 
 	/* Postprocess the old request at this point */
@@ -1728,6 +1769,9 @@ EXPORT_SYMBOL(mmc_start_areq);
  */
 void mmc_wait_for_req(struct mmc_host *host, struct mmc_request *mrq)
 {
+	if (mrq->cmd->retries == 0)
+		mrq->cmd->retries = 3;
+
 	__mmc_start_req(host, mrq);
 
 	if (!mrq->cap_cmd_during_tfr)
@@ -3101,7 +3145,7 @@ static int mmc_cmdq_send_erase_cmd(struct mmc_cmdq_req *cmdq_req,
 	if (err) {
 		pr_notice("%s: group start error %d, status %#x\n",
 				__func__, err, cmd->resp[0]);
-		return -EIO;
+		return (err == -EBADSLT) ? err : -EIO;
 	}
 	return 0;
 }
@@ -3152,7 +3196,8 @@ static int mmc_cmdq_do_erase(struct mmc_cmdq_req *cmdq_req,
 		if (err || (cmd->resp[0] & 0xFDF92000)) {
 			pr_notice("error %d requesting status %#x\n",
 				err, cmd->resp[0]);
-			err = -EIO;
+			if (err != -EBADSLT)
+				err = -EIO;
 			goto out;
 		}
 		/* Timeout if the device never becomes ready for data and

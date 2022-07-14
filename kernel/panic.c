@@ -32,6 +32,24 @@
 #define PANIC_TIMER_STEP 100
 #define PANIC_BLINK_SPD 18
 
+#ifdef OPLUS_FEATURE_PHOENIX
+#include "../drivers/soc/oplus/system/oplus_phoenix/oplus_phoenix.h"
+#include <linux/timer.h>
+#include <linux/timex.h>
+#include <linux/rtc.h>
+int kernel_panic_happened = 0;
+int hwt_happened = 0;
+#endif
+
+#ifdef OPLUS_BUG_STABILITY
+int is_kernel_panic = 0;
+#endif
+
+#ifdef OPLUS_FEATURE_PERFORMANCE
+bool is_triggering_panic = false;
+bool is_triggering_hwt = false;
+#endif  /*OPLUS_FEATURE_PERFORMANCE*/
+
 int panic_on_oops = CONFIG_PANIC_ON_OOPS_VALUE;
 static unsigned long tainted_mask;
 static int pause_on_oops;
@@ -73,6 +91,33 @@ void __weak nmi_panic_self_stop(struct pt_regs *regs)
 {
 	panic_smp_self_stop();
 }
+
+#ifdef OPLUS_FEATURE_PHOENIX
+void deal_fatal_err(void)
+{
+    if(!phx_is_phoenix_boot_completed()) {
+
+        if(kernel_panic_happened) {
+            phx_set_boot_error(ERROR_KERNEL_PANIC);
+        } else if(hwt_happened) {
+            phx_set_boot_error(ERROR_HWT);
+        }
+
+    } else {
+        struct timespec ts;
+        struct rtc_time tm;
+        char err_info[60] = {0};
+
+        getnstimeofday(&ts);
+        rtc_time_to_tm(ts.tv_sec, &tm);
+
+        sprintf(err_info, "panic after bootup @%d-%d-%d %d:%d:%d",
+                tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+        pr_err("panic after bootup @%d-%d-%d %d:%d:%d\n",
+               tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+    }
+}
+#endif /*OPLUS_FEATURE_PHOENIX*/
 
 /*
  * Stop other CPUs in panic.  Architecture dependent code may override this
@@ -121,6 +166,19 @@ void nmi_panic(struct pt_regs *regs, const char *msg)
 		nmi_panic_self_stop(regs);
 }
 EXPORT_SYMBOL(nmi_panic);
+
+#ifdef OPLUS_FEATURE_PERFORMANCE
+extern int panic_flush_device_cache(int timeout);
+extern unsigned int get_eng_version(void);
+void flush_cache_on_panic(void){
+    if (get_eng_version() == 1){
+        pr_err("In full dump mode!\n");
+    }else{
+        pr_err("In mini dump mode and start flushing the devices cache!");
+        panic_flush_device_cache(2000);
+    }
+}
+#endif  /*OPLUS_FEATURE_PERFORMANCE*/
 
 /**
  *	panic - halt the system
@@ -250,6 +308,10 @@ void panic(const char *fmt, ...)
 
 	if (!panic_blink)
 		panic_blink = no_blink;
+
+#ifdef OPLUS_BUG_STABILITY
+	is_kernel_panic = 1;
+#endif
 
 	if (panic_timeout > 0) {
 		/*
@@ -474,6 +536,9 @@ int oops_may_print(void)
  */
 void oops_enter(void)
 {
+#ifdef OPLUS_BUG_STABILITY
+    is_kernel_panic = 1;
+#endif
 	tracing_off();
 	/* can't trust the integrity of the kernel anymore: */
 	debug_locks_off();

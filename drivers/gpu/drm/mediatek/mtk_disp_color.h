@@ -169,6 +169,7 @@ enum LUT_REG {
 #define DISP_COLOR_START_MT6885		0x0c00
 #define DISP_COLOR_START_MT8173		0x0c00
 #define DISP_COLOR_START_MT6873		0x0c00
+#define DISP_COLOR_START_MT6781		0x0c00
 #define DISP_COLOR_START(module)		((module)->data->color_offset)
 #define DISP_COLOR_INTEN(reg)		(DISP_COLOR_START(reg) + 0x4UL)
 #define DISP_COLOR_OUT_SEL(reg)		(DISP_COLOR_START(reg) + 0xCUL)
@@ -191,6 +192,8 @@ bool disp_color_reg_get(struct mtk_ddp_comp *comp,
 void disp_color_set_window(struct mtk_ddp_comp *comp,
 	unsigned int sat_upper, unsigned int sat_lower,
 	unsigned int hue_upper, unsigned int hue_lower);
+void mtk_color_setbypass(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
+		bool bypass);
 void ddp_color_bypass_color(struct mtk_ddp_comp *comp, int bypass,
 		struct cmdq_pkt *handle);
 

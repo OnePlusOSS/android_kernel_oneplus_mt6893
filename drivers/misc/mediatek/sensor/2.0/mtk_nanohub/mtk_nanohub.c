@@ -36,6 +36,14 @@
 #include "hf_manager.h"
 #include "sensor_list.h"
 #include "mtk_nanohub_ipi.h"
+#include <linux/of_gpio.h>
+#include <linux/regulator/consumer.h>
+#include <mt-plat/upmu_common.h>
+#include <linux/hrtimer.h>
+
+#ifdef OPLUS_FEATURE_SENSOR_ALGORITHM
+#include "../oplus_sensor_devinfo/sensor_devinfo.h"
+#endif
 
 /* ALGIN TO SCP SENSOR_IPI_SIZE AT FILE CONTEXTHUB_FW.H, ALGIN
  * TO SCP_SENSOR_HUB_DATA UNION, ALGIN TO STRUCT DATA_UNIT_T
@@ -59,6 +67,11 @@
 
 #define SYNC_TIME_CYCLC 10000
 #define SYNC_TIME_START_CYCLC 3000
+
+enum {
+	CUST_CMD_CALI,
+	MAX_CUST_CMD,
+};
 
 struct curr_wp_queue {
 	spinlock_t buffer_lock;
@@ -84,17 +97,29 @@ struct mtk_nanohub_device {
 	atomic_t cfg_data_after_reboot;
 	atomic_t start_timesync_first_boot;
 	atomic_t create_manager_first_boot;
-	atomic_t mtk_nanohub_ready;
-	atomic64_t mtk_nanohub_ready_time;
 
 	int32_t acc_config_data[6];
 	int32_t gyro_config_data[12];
 	int32_t mag_config_data[9];
 	int32_t light_config_data[1];
+#ifdef OPLUS_FEATURE_SENSOR
+	int32_t proximity_config_data[3];
+#else
 	int32_t proximity_config_data[2];
+#endif
 	int32_t pressure_config_data[2];
 	int32_t sar_config_data[4];
-	int32_t ois_config_data[2];
+	int32_t ois_config_data[12];
+#ifdef OPLUS_FEATURE_SENSOR
+	int32_t cct_config_data[6];
+#endif /*OPLUS_FEATURE_SENSOR*/
+	int32_t rear_als_config_data[1];
+	int32_t sars_config_data[4];
+#ifdef OPLUS_FEATURE_SENSOR
+	struct regulator *power_3v;
+	int infrared_power_ctrl;
+	struct hrtimer infrared_power_timer;
+#endif
 };
 
 static uint8_t rtc_compensation_suspend;
@@ -119,6 +144,11 @@ static int mtk_nanohub_send_timestamp_to_hub(void);
 static int mtk_nanohub_server_dispatch_data(uint32_t *currWp);
 static int mtk_nanohub_report_to_manager(struct data_unit_t *data);
 static int mtk_nanohub_create_manager(void);
+
+#ifdef OPLUS_FEATURE_SENSOR_ALGORITHM
+extern void oplus_init_sensor_state(struct SensorState *mSensorState);
+extern void virtual_sensor_report_data(struct data_unit_t *data,int handle);
+#endif /*OPLUS_FEATURE_SENSOR_ALGORITHM*/
 
 enum scp_ipi_status __attribute__((weak)) scp_ipi_registration(enum ipi_id id,
 	void (*ipi_handler)(int id, void *data, unsigned int len),
@@ -317,8 +347,10 @@ static void mtk_nanohub_sync_time_func(unsigned long data)
 static int mtk_nanohub_direct_push_work(void *data)
 {
 	for (;;) {
-		wait_event(chre_kthread_wait,
-			READ_ONCE(chre_kthread_wait_condition));
+		if (wait_event_interruptible(chre_kthread_wait,
+			READ_ONCE(chre_kthread_wait_condition)))
+			continue;
+
 		WRITE_ONCE(chre_kthread_wait_condition, false);
 		mtk_nanohub_read_wp_queue();
 	}
@@ -330,6 +362,14 @@ static void mtk_nanohub_common_cmd(union SCP_SENSOR_HUB_DATA *rsp,
 {
 	mtk_nanohub_ipi_complete((unsigned char *)rsp, rx_len);
 }
+//#ifdef OPLUS_FEATURE_SENSOR
+static void
+SCP_sensorHub_set_oplus_cmd(union SCP_SENSOR_HUB_DATA *rsp,
+					int rx_len)
+{
+	mtk_nanohub_ipi_complete((unsigned char *)rsp, rx_len);
+}
+//#endif
 
 static void mtk_nanohub_moving_average(union SCP_SENSOR_HUB_DATA *rsp)
 {
@@ -422,13 +462,23 @@ static void mtk_nanohub_ipi_handler(int id,
 		return;
 	}
 	/*pr_err("sensorType:%d, action=%d event:%d len:%d\n",
-	 * rsp->rsp.sensorType, rsp->rsp.action, rsp->notify_rsp.event, len);
+	 *rsp->rsp.sensorType, rsp->rsp.action, rsp->notify_rsp.event, len);
 	 */
-	cmd = mtk_nanohub_find_cmd(rsp->rsp.action);
+	//#ifndef OPLUS_FEATURE_SENSOR
+	/*cmd = mtk_nanohub_find_cmd(rsp->rsp.action);
 	if (cmd != NULL)
 		cmd->handler(rsp, len);
 	else
-		pr_err("cannot find cmd!\n");
+		pr_err("cannot find cmd!\n");*/
+	//#else
+	cmd = mtk_nanohub_find_cmd(rsp->rsp.action);
+	if (cmd != NULL)
+		cmd->handler(rsp, len);
+	else {
+		pr_err("cannot find cmd! try to find oplus cmd\n");
+		SCP_sensorHub_set_oplus_cmd(rsp,len);
+	}
+	//#endif
 }
 
 static void mtk_nanohub_get_sensor_info(void)
@@ -672,10 +722,56 @@ static void mtk_nanohub_init_sensor_info(void)
 
 	p = &sensor_state[SENSOR_TYPE_OIS];
 	p->sensorType = SENSOR_TYPE_OIS;
-	p->gain = 1000000;
+	p->gain = 100000;
 	strlcpy(p->name, "ois", sizeof(p->name));
 	strlcpy(p->vendor, "mtk", sizeof(p->vendor));
+#ifdef OPLUS_FEATURE_SENSOR
+	p = &sensor_state[SENSOR_TYPE_RAW_MAG];
+	p->sensorType = SENSOR_TYPE_RAW_MAG;
+	p->gain = 1;
+	p->rate = SENSOR_RATE_ONCHANGE;
+	strlcpy(p->name, "raw_mag", sizeof(p->name));
+	strlcpy(p->vendor, "oplus", sizeof(p->vendor));
 
+	p = &sensor_state[SENSOR_TYPE_REAR_ALS];
+	p->sensorType = SENSOR_TYPE_REAR_ALS;
+	p->gain = 1;
+	p->rate = SENSOR_RATE_ONCHANGE;
+	strlcpy(p->name, "rear_als", sizeof(p->name));
+	strlcpy(p->vendor, "oplus", sizeof(p->vendor));
+
+	p = &sensor_state[SENSOR_TYPE_CCT];
+	p->sensorType = SENSOR_TYPE_CCT;
+	p->gain = 1;
+	p->rate = SENSOR_RATE_ONCHANGE;
+	strlcpy(p->name, "cct", sizeof(p->name));
+	strlcpy(p->vendor, "oplus", sizeof(p->vendor));
+
+	p = &sensor_state[SENSOR_TYPE_FLICKER];
+	p->sensorType = SENSOR_TYPE_FLICKER;
+	p->gain = 1;
+	p->rate = SENSOR_RATE_ONCHANGE;
+	strlcpy(p->name, "flicker", sizeof(p->name));
+	strlcpy(p->vendor, "oplus", sizeof(p->vendor));
+
+	p = &sensor_state[SENSOR_TYPE_SARS];
+	p->sensorType = SENSOR_TYPE_SARS;
+	p->rate = SENSOR_RATE_ONCHANGE;
+	p->gain = 1;
+	strlcpy(p->name, "sars", sizeof(p->name));
+	strlcpy(p->vendor, "mtk", sizeof(p->vendor));
+#endif /*OPLUS_FEATURE_SENSOR*/
+	#ifdef OPLUS_FEATURE_SENSOR_ALGORITHM
+	p = &sensor_state[SENSOR_TYPE_AI_SHUTTER];
+	p->sensorType = SENSOR_TYPE_AI_SHUTTER;
+	p->gain = 1;
+	p->rate = SENSOR_RATE_ONCHANGE;
+	strlcpy(p->name, "ai_shutter", sizeof(p->name));
+	strlcpy(p->vendor, "oplus", sizeof(p->vendor));
+	#endif
+	#ifdef OPLUS_FEATURE_SENSOR_ALGORITHM
+	oplus_init_sensor_state(sensor_state);
+	#endif
 }
 
 static void init_sensor_config_cmd(struct ConfigCmd *cmd,
@@ -731,6 +827,12 @@ static int mtk_nanohub_report_data(struct data_unit_t *data_t)
 	comp_time = data_t->time_stamp;
 
 	do {
+		if (data_t->flush_action == DATA_ACTION) {
+			if (unlikely(comp_time < raw_time)) {
+				data_t->time_stamp += 10000;
+				comp_time += 10000;
+			}
+		}
 		/* must check report return value for retry sending */
 		if (data_t->flush_action != FLUSH_ACTION) {
 			err = mtk_nanohub_report_to_manager(data_t);
@@ -764,6 +866,8 @@ static int mtk_nanohub_report_data(struct data_unit_t *data_t)
 					raw_ts_reverse_debug[sensor_type],
 					comp_ts_reverse_debug[sensor_type],
 					comp_time);
+				//data_t->time_stamp += 10000;
+				//comp_time += 10000;
 			}
 			comp_ts_reverse_debug[sensor_type] = comp_time;
 		}
@@ -954,7 +1058,7 @@ int mtk_nanohub_enable_to_hub(uint8_t sensor_id, int enabledisable)
 	struct ConfigCmd cmd;
 	int ret = 0;
 
-	if (enabledisable == 1 && (READ_ONCE(scp_system_ready)))
+	if (enabledisable == 1)
 		scp_register_feature(SENS_FEATURE_ID);
 	mutex_lock(&sensor_state_mtx);
 	if (sensor_id >= ID_SENSOR_MAX) {
@@ -1561,6 +1665,151 @@ int mtk_nanohub_set_cmd_to_hub(uint8_t sensor_id,
 			return -1;
 		}
 		break;
+#ifdef OPLUS_FEATURE_SENSOR
+	case ID_REAR_ALS:
+		req.set_cust_req.sensorType = ID_REAR_ALS;
+		req.set_cust_req.action = SENSOR_HUB_SET_CUST;
+		switch (action) {
+		case CUST_ACTION_GET_RAW_DATA:
+			req.set_cust_req.getRawData.action =
+				CUST_ACTION_GET_RAW_DATA;
+			len = offsetof(struct SCP_SENSOR_HUB_SET_CUST_REQ,
+				custData) + sizeof(req.set_cust_req.getRawData);
+			err = mtk_nanohub_req_send(&req);
+			if (err == 0) {
+				if ((req.set_cust_rsp.action !=
+					SENSOR_HUB_SET_CUST)
+					|| (req.set_cust_rsp.errCode != 0)) {
+					pr_err("get_raw fail!\n");
+					return -1;
+				}
+				if (req.set_cust_rsp.getRawData.action !=
+					CUST_ACTION_GET_RAW_DATA) {
+					pr_err("get_raw fail!\n");
+					return -1;
+				}
+				pGetRawData = &req.set_cust_rsp.getRawData;
+				*((uint8_t *) data) =
+					pGetRawData->uint8_data[0];
+			} else {
+				pr_err("get_raw failed!\n");
+			}
+			return 0;
+		case CUST_ACTION_GET_SENSOR_INFO:
+			req.set_cust_req.getInfo.action =
+				CUST_ACTION_GET_SENSOR_INFO;
+			len = offsetof(struct SCP_SENSOR_HUB_SET_CUST_REQ,
+				custData) + sizeof(req.set_cust_req.getInfo);
+			break;
+        case CUST_ACTION_SHOW_ALSLV:
+            req.set_cust_req.showAlslv.action =
+                CUST_ACTION_SHOW_ALSLV;
+            len = offsetof(struct SCP_SENSOR_HUB_SET_CUST_REQ,
+                custData) + sizeof(req.set_cust_req.showAlslv);
+            break;
+        case CUST_ACTION_SHOW_ALSVAL:
+            req.set_cust_req.showAlsval.action =
+                CUST_ACTION_GET_RAW_DATA;
+            len = offsetof(struct SCP_SENSOR_HUB_SET_CUST_REQ,
+                custData) + sizeof(req.set_cust_req.showAlsval);
+            break;
+		default:
+			return -1;
+		}
+		break;
+	case ID_CCT:
+		req.set_cust_req.sensorType = ID_CCT;
+		req.set_cust_req.action = SENSOR_HUB_SET_CUST;
+		switch (action) {
+		case CUST_ACTION_GET_RAW_DATA:
+			req.set_cust_req.getRawData.action =
+				CUST_ACTION_GET_RAW_DATA;
+			len = offsetof(struct SCP_SENSOR_HUB_SET_CUST_REQ,
+				custData) + sizeof(req.set_cust_req.getRawData);
+			err = mtk_nanohub_req_send(&req);
+			if (err == 0) {
+				if ((req.set_cust_rsp.action !=
+					SENSOR_HUB_SET_CUST)
+					|| (req.set_cust_rsp.errCode != 0)) {
+					pr_err("get_raw fail!\n");
+					return -1;
+				}
+				if (req.set_cust_rsp.getRawData.action !=
+					CUST_ACTION_GET_RAW_DATA) {
+					pr_err("get_raw fail!\n");
+					return -1;
+				}
+				pGetRawData = &req.set_cust_rsp.getRawData;
+				*((uint8_t *) data) =
+					pGetRawData->uint8_data[0];
+			} else {
+				pr_err("get_raw failed!\n");
+			}
+			return 0;
+		case CUST_ACTION_GET_SENSOR_INFO:
+			req.set_cust_req.getInfo.action =
+				CUST_ACTION_GET_SENSOR_INFO;
+			len = offsetof(struct SCP_SENSOR_HUB_SET_CUST_REQ,
+				custData) + sizeof(req.set_cust_req.getInfo);
+			break;
+		default:
+			return -1;
+		}
+		break;
+	case ID_FLICKER:
+		req.set_cust_req.sensorType = ID_FLICKER;
+		req.set_cust_req.action = SENSOR_HUB_SET_CUST;
+		switch (action) {
+		case CUST_ACTION_GET_SENSOR_INFO:
+			req.set_cust_req.getInfo.action =
+				CUST_ACTION_GET_SENSOR_INFO;
+			len = offsetof(struct SCP_SENSOR_HUB_SET_CUST_REQ,
+				custData) + sizeof(req.set_cust_req.getInfo);
+			break;
+		default:
+			return -1;
+		}
+		break;
+	case ID_SARS:
+		req.set_cust_req.sensorType = ID_SARS;
+		req.set_cust_req.action = SENSOR_HUB_SET_CUST;
+		switch (action) {
+		case CUST_ACTION_GET_RAW_DATA:
+			req.set_cust_req.getRawData.action =
+				CUST_ACTION_GET_RAW_DATA;
+			len = offsetof(struct SCP_SENSOR_HUB_SET_CUST_REQ,
+				custData) + sizeof(req.set_cust_req.getRawData);
+			err = mtk_nanohub_req_send(&req);
+			if (err == 0) {
+				if ((req.set_cust_rsp.action !=
+					SENSOR_HUB_SET_CUST)
+					|| (req.set_cust_rsp.errCode != 0)) {
+					pr_err("get_raw fail!\n");
+					return -1;
+				}
+				if (req.set_cust_rsp.getRawData.action !=
+					CUST_ACTION_GET_RAW_DATA) {
+					pr_err("get_raw fail!\n");
+					return -1;
+				}
+				pGetRawData = &req.set_cust_rsp.getRawData;
+				*((uint8_t *) data) =
+					pGetRawData->uint8_data[0];
+			} else {
+				pr_err("get_raw failed!\n");
+			}
+			return 0;
+		case CUST_ACTION_GET_SENSOR_INFO:
+			req.set_cust_req.getInfo.action =
+				CUST_ACTION_GET_SENSOR_INFO;
+			len = offsetof(struct SCP_SENSOR_HUB_SET_CUST_REQ,
+				custData) + sizeof(req.set_cust_req.getInfo);
+			break;
+		default:
+			return -1;
+		}
+		break;
+#endif
 	case ID_OIS:
 		req.set_cust_req.sensorType = ID_OIS;
 		req.set_cust_req.action = SENSOR_HUB_SET_CUST;
@@ -1743,7 +1992,11 @@ static void mtk_nanohub_restoring_config(void)
 		spin_lock(&config_data_lock);
 		memcpy(data, device->proximity_config_data, length);
 		spin_unlock(&config_data_lock);
+		#ifdef OPLUS_FEATURE_SENSOR_ALGORITHM
+		if (!is_support_new_arch_func()) {
 		mtk_nanohub_cfg_to_hub(ID_PROXIMITY, data, length);
+		}
+		#endif
 		vfree(data);
 	}
 
@@ -1767,6 +2020,16 @@ static void mtk_nanohub_restoring_config(void)
 		vfree(data);
 	}
 
+	length = sizeof(device->sars_config_data);
+	data = vzalloc(length);
+	if (data) {
+		spin_lock(&config_data_lock);
+		memcpy(data, device->sars_config_data, length);
+		spin_unlock(&config_data_lock);
+		mtk_nanohub_cfg_to_hub(ID_SAR, data, length);
+		vfree(data);
+	}
+
 	length = sizeof(device->ois_config_data);
 	data = vzalloc(length);
 	if (data) {
@@ -1774,6 +2037,27 @@ static void mtk_nanohub_restoring_config(void)
 		memcpy(data, device->ois_config_data, length);
 		spin_unlock(&config_data_lock);
 		mtk_nanohub_cfg_to_hub(ID_OIS, data, length);
+		vfree(data);
+	}
+#ifdef OPLUS_FEATURE_SENSOR
+	length = sizeof(device->cct_config_data);
+	data = vzalloc(length);
+	if (data) {
+		spin_lock(&config_data_lock);
+		memcpy(data, device->cct_config_data, length);
+		spin_unlock(&config_data_lock);
+		mtk_nanohub_cfg_to_hub(ID_CCT, data, length);
+		vfree(data);
+	}
+#endif /*OPLUS_FEATURE_SENSOR*/
+
+	length = sizeof(device->rear_als_config_data);
+	data = vzalloc(length);
+	if (data) {
+		spin_lock(&config_data_lock);
+		memcpy(data, device->rear_als_config_data, length);
+		spin_unlock(&config_data_lock);
+		mtk_nanohub_cfg_to_hub(ID_REAR_ALS, data, length);
 		vfree(data);
 	}
 }
@@ -1795,8 +2079,10 @@ void mtk_nanohub_power_up_loop(void *data)
 	struct mtk_nanohub_device *device = mtk_nanohub_dev;
 	unsigned long flags = 0;
 
-	wait_event(power_reset_wait,
-		READ_ONCE(scp_system_ready) && READ_ONCE(scp_chre_ready));
+	if (wait_event_interruptible(power_reset_wait,
+		READ_ONCE(scp_system_ready) && READ_ONCE(scp_chre_ready)))
+		return;
+
 	spin_lock_irqsave(&scp_state_lock, flags);
 	WRITE_ONCE(scp_chre_ready, false);
 	WRITE_ONCE(scp_system_ready, false);
@@ -1880,12 +2166,77 @@ static struct notifier_block mtk_nanohub_ready_notifier = {
 	.notifier_call = mtk_nanohub_ready_event,
 };
 
+#ifdef OPLUS_FEATURE_SENSOR
+static int infrared_set_power(int on,bool boc){
+	int ret = 0;
+	static int power_cnt = 0;
+	struct mtk_nanohub_device *device = mtk_nanohub_dev;
+	if (IS_ERR_OR_NULL(device->power_3v)) {
+		printk("power_3v invalid maybe is yasuo project\n");
+		return -EINVAL;
+	}
+	if(boc){
+		pmic_enable_interrupt(INT_VIBR_OC, 0, "vibr");
+		ret = regulator_disable(device->power_3v);
+		if (ret) {
+			printk("Regulator power_3v disable failed\n");
+			ret = regulator_enable(device->power_3v);
+			return ret;
+		}
+		power_cnt = 0;
+		return 0;
+	}
+	if (on) {
+		//cancel disable infraed power in three seconds
+		hrtimer_cancel(&mtk_nanohub_dev->infrared_power_timer);
+		if (regulator_count_voltages(device->power_3v) > 0) {
+			ret = regulator_set_voltage(device->power_3v, 3000000, 3104000);
+			if (ret) {
+				printk("Regulator failed vdds\n", ret);
+				return ret;
+			}
+		} else {
+			ret = regulator_set_voltage(device->power_3v, 3000000, 3104000);
+			if (ret) {
+				printk("Regulator failed vdds\n", ret);
+				return ret;
+			}
+		}
+		pmic_enable_interrupt(INT_VIBR_OC, 1, "vibr");
+		ret = regulator_enable(device->power_3v);
+		if (ret) {
+			printk("Regulator vdds enable failed\n");
+			return 0;
+		}
+		power_cnt++;
+	} else {
+		if (power_cnt == 1) {
+			//disable infraed power after 3s later to avoid frequent switching power supply
+			hrtimer_start(&mtk_nanohub_dev->infrared_power_timer,
+				ktime_set(3, 0),
+				HRTIMER_MODE_REL);
+			power_cnt = 0;
+		} else {
+			power_cnt--;
+		}
+	}
+	printk(" ----infrared_set_power ok %s[%d] on =%d----\n", __FUNCTION__, __LINE__,on);
+
+	return 0;
+}
+#endif
+
 static int mtk_nanohub_enable(struct hf_device *hfdev,
 		int sensor_type, int en)
 {
 	if (sensor_type <= 0)
 		return 0;
 	/* pr_notice("%s [%d,%d]\n", __func__, sensor_type, en); */
+#if OPLUS_FEATURE_SENSOR
+	if(sensor_type == SENSOR_TYPE_PROXIMITY && mtk_nanohub_dev->infrared_power_ctrl){
+		infrared_set_power(en,false);
+	}
+#endif
 	return mtk_nanohub_enable_to_hub(type_to_id(sensor_type), en);
 }
 
@@ -1920,9 +2271,8 @@ static int mtk_nanohub_calibration(struct hf_device *hfdev,
 }
 
 static int mtk_nanohub_config(struct hf_device *hfdev,
-		int sensor_type, int32_t *data)
+		int sensor_type, void *data, uint8_t length)
 {
-	int length = 0;
 	struct mtk_nanohub_device *device = mtk_nanohub_dev;
 
 	if (sensor_type <= 0)
@@ -1930,51 +2280,79 @@ static int mtk_nanohub_config(struct hf_device *hfdev,
 	pr_notice("%s [%d]\n", __func__, sensor_type);
 	switch (type_to_id(sensor_type)) {
 	case ID_ACCELEROMETER:
-		length = sizeof(device->acc_config_data);
+		if (sizeof(device->acc_config_data) < length)
+			length = sizeof(device->acc_config_data);
 		spin_lock(&config_data_lock);
 		memcpy(device->acc_config_data, data, length);
 		spin_unlock(&config_data_lock);
 		break;
 	case ID_GYROSCOPE:
-		length = sizeof(device->gyro_config_data);
+		if (sizeof(device->gyro_config_data) < length)
+			length = sizeof(device->gyro_config_data);
 		spin_lock(&config_data_lock);
 		memcpy(device->gyro_config_data, data, length);
 		spin_unlock(&config_data_lock);
 		break;
 	case ID_MAGNETIC_FIELD:
-		length = sizeof(device->mag_config_data);
+		if (sizeof(device->mag_config_data) < length)
+			length = sizeof(device->mag_config_data);
 		spin_lock(&config_data_lock);
 		memcpy(device->mag_config_data, data, length);
 		spin_unlock(&config_data_lock);
 		break;
 	case ID_LIGHT:
-		length = sizeof(device->light_config_data);
+		if (sizeof(device->light_config_data) < length)
+			length = sizeof(device->light_config_data);
 		spin_lock(&config_data_lock);
 		memcpy(device->light_config_data, data, length);
 		spin_unlock(&config_data_lock);
 		break;
 	case ID_PROXIMITY:
-		length = sizeof(device->proximity_config_data);
+		if (sizeof(device->proximity_config_data) < length)
+			length = sizeof(device->proximity_config_data);
 		spin_lock(&config_data_lock);
 		memcpy(device->proximity_config_data, data, length);
 		spin_unlock(&config_data_lock);
 		break;
 	case ID_PRESSURE:
-		length = sizeof(device->pressure_config_data);
+		if (sizeof(device->pressure_config_data) < length)
+			length = sizeof(device->pressure_config_data);
 		spin_lock(&config_data_lock);
 		memcpy(device->pressure_config_data, data, length);
 		spin_unlock(&config_data_lock);
 		break;
 	case ID_SAR:
-		length = sizeof(device->sar_config_data);
+		if (sizeof(device->sar_config_data) < length)
+			length = sizeof(device->sar_config_data);
+		spin_lock(&config_data_lock);
+		memcpy(device->sar_config_data, data, length);
+		spin_unlock(&config_data_lock);
+		break;
+	case ID_SARS:
+		length = sizeof(device->sars_config_data);
 		spin_lock(&config_data_lock);
 		memcpy(device->sar_config_data, data, length);
 		spin_unlock(&config_data_lock);
 		break;
 	case ID_OIS:
-		length = sizeof(device->ois_config_data);
+		if (sizeof(device->ois_config_data) < length)
+			length = sizeof(device->ois_config_data);
 		spin_lock(&config_data_lock);
 		memcpy(device->ois_config_data, data, length);
+		spin_unlock(&config_data_lock);
+		break;
+#ifdef OPLUS_FEATURE_SENSOR
+	case ID_CCT:
+		length = sizeof(device->cct_config_data);
+		spin_lock(&config_data_lock);
+		memcpy(device->cct_config_data, data, length);
+		spin_unlock(&config_data_lock);
+		break;
+#endif /*OPLUS_FEATURE_SENSOR*/
+	case ID_REAR_ALS:
+		length = sizeof(device->rear_als_config_data);
+		spin_lock(&config_data_lock);
+		memcpy(device->rear_als_config_data, data, length);
 		spin_unlock(&config_data_lock);
 		break;
 	}
@@ -2008,10 +2386,11 @@ static int mtk_nanohub_custom_cmd(struct hf_device *hfdev,
 		int sensor_type, struct custom_cmd *cust_cmd)
 {
 	struct mtk_nanohub_device *device = mtk_nanohub_dev;
-	enum custom_action cust_action = cust_cmd->data[0];
+	int cust_action = cust_cmd->command;
 	int ret = 0;
 
-	/* User can use the cust_action to distinguish their own operations
+	/*
+	 * User can use the cust_action to distinguish their own operations
 	 * the default value(0) means the action to get sensors calibrated
 	 * values.
 	 */
@@ -2021,6 +2400,7 @@ static int mtk_nanohub_custom_cmd(struct hf_device *hfdev,
 			if (sizeof(cust_cmd->data) <
 					sizeof(device->acc_config_data))
 				return -EINVAL;
+			cust_cmd->rx_len = sizeof(device->acc_config_data);
 			spin_lock(&config_data_lock);
 			memcpy(cust_cmd->data, device->acc_config_data,
 					sizeof(device->acc_config_data));
@@ -2030,6 +2410,7 @@ static int mtk_nanohub_custom_cmd(struct hf_device *hfdev,
 			if (sizeof(cust_cmd->data) <
 					sizeof(device->gyro_config_data))
 				return -EINVAL;
+			cust_cmd->rx_len = sizeof(device->gyro_config_data);
 			spin_lock(&config_data_lock);
 			memcpy(cust_cmd->data, device->gyro_config_data,
 					sizeof(device->gyro_config_data));
@@ -2039,6 +2420,7 @@ static int mtk_nanohub_custom_cmd(struct hf_device *hfdev,
 			if (sizeof(cust_cmd->data) <
 					sizeof(device->mag_config_data))
 				return -EINVAL;
+			cust_cmd->rx_len = sizeof(device->mag_config_data);
 			spin_lock(&config_data_lock);
 			memcpy(cust_cmd->data, device->mag_config_data,
 					sizeof(device->mag_config_data));
@@ -2048,6 +2430,7 @@ static int mtk_nanohub_custom_cmd(struct hf_device *hfdev,
 			if (sizeof(cust_cmd->data) <
 					sizeof(device->light_config_data))
 				return -EINVAL;
+			cust_cmd->rx_len = sizeof(device->light_config_data);
 			spin_lock(&config_data_lock);
 			memcpy(cust_cmd->data, device->light_config_data,
 					sizeof(device->light_config_data));
@@ -2057,6 +2440,8 @@ static int mtk_nanohub_custom_cmd(struct hf_device *hfdev,
 			if (sizeof(cust_cmd->data) <
 					sizeof(device->proximity_config_data))
 				return -EINVAL;
+			cust_cmd->rx_len =
+				sizeof(device->proximity_config_data);
 			spin_lock(&config_data_lock);
 			memcpy(cust_cmd->data, device->proximity_config_data,
 					sizeof(device->proximity_config_data));
@@ -2066,6 +2451,8 @@ static int mtk_nanohub_custom_cmd(struct hf_device *hfdev,
 			if (sizeof(cust_cmd->data) <
 					sizeof(device->pressure_config_data))
 				return -EINVAL;
+			cust_cmd->rx_len =
+				sizeof(device->pressure_config_data);
 			spin_lock(&config_data_lock);
 			memcpy(cust_cmd->data, device->pressure_config_data,
 					sizeof(device->pressure_config_data));
@@ -2075,20 +2462,42 @@ static int mtk_nanohub_custom_cmd(struct hf_device *hfdev,
 			if (sizeof(cust_cmd->data) <
 					sizeof(device->sar_config_data))
 				return -EINVAL;
+			cust_cmd->rx_len = sizeof(device->sar_config_data);
 			spin_lock(&config_data_lock);
 			memcpy(cust_cmd->data, device->sar_config_data,
 					sizeof(device->sar_config_data));
+			spin_unlock(&config_data_lock);
+			break;
+		case SENSOR_TYPE_SARS:
+			if (sizeof(cust_cmd->data) <
+					sizeof(device->sars_config_data))
+				return -EINVAL;
+			spin_lock(&config_data_lock);
+			memcpy(cust_cmd->data, device->sars_config_data,
+					sizeof(device->sars_config_data));
 			spin_unlock(&config_data_lock);
 			break;
 		case SENSOR_TYPE_OIS:
 			if (sizeof(cust_cmd->data) <
 					sizeof(device->ois_config_data))
 				return -EINVAL;
+			cust_cmd->rx_len = sizeof(device->ois_config_data);
 			spin_lock(&config_data_lock);
 			memcpy(cust_cmd->data, device->ois_config_data,
 					sizeof(device->ois_config_data));
 			spin_unlock(&config_data_lock);
 			break;
+#ifdef OPLUS_FEATURE_SENSOR
+		case SENSOR_TYPE_CCT:
+			if (sizeof(cust_cmd->data) <
+					sizeof(device->cct_config_data))
+				return -EINVAL;
+			spin_lock(&config_data_lock);
+			memcpy(cust_cmd->data, device->cct_config_data,
+					sizeof(device->cct_config_data));
+			spin_unlock(&config_data_lock);
+			break;
+#endif /*OPLUS_FEATURE_SENSOR*/
 		default:
 			pr_notice("SensorType:%d not support CUST_CMD_CALI!\n",
 				sensor_type);
@@ -2111,6 +2520,13 @@ static int mtk_nanohub_report_to_manager(struct data_unit_t *data)
 		return 0;
 
 	memset(&event, 0, sizeof(struct hf_manager_event));
+	#ifdef OPLUS_FEATURE_SENSOR_ALGORITHM
+	if(data->sensor_type >= ID_OPLUS_VIRTUAL_SENSOR_START &&
+		data->sensor_type < ID_VIRTUAL_SENSOR_MAX) {
+		virtual_sensor_report_data(data,data->sensor_type);
+		return 0;
+	}
+	#endif /*OPLUS_FEATURE_SENSOR_ALGORITHM*/
 	if (data->flush_action == DATA_ACTION) {
 		switch (data->sensor_type) {
 		case ID_ACCELEROMETER:
@@ -2244,6 +2660,10 @@ static int mtk_nanohub_report_to_manager(struct data_unit_t *data)
 			event.word[3] = data->data[3];
 			event.word[4] = data->data[4];
 			event.word[5] = data->data[5];
+#ifdef OPLUS_FEATURE_SENSOR
+			event.word[6] = data->data[6];
+			event.word[7] = data->data[7];
+#endif /*OPLUS_FEATURE_SENSOR*/
 			break;
 		}
 	} else if (data->flush_action == FLUSH_ACTION) {
@@ -2447,38 +2867,22 @@ static struct notifier_block mtk_nanohub_pm_notifier_func = {
 static int mtk_nanohub_create_manager(void)
 {
 	int err = 0;
-	struct hf_device *hf_dev = &mtk_nanohub_dev->hf_dev;
 	struct mtk_nanohub_device *device = mtk_nanohub_dev;
 
 	if (likely(atomic_xchg(&device->create_manager_first_boot, 1)))
 		return 0;
 
-	memset(hf_dev, 0, sizeof(*hf_dev));
-
+	/* must update support_sensors firstly */
 	mtk_nanohub_get_sensor_info();
-
-	hf_dev->dev_name = "mtk_nanohub";
-	hf_dev->device_poll = HF_DEVICE_IO_INTERRUPT;
-	hf_dev->device_bus = HF_DEVICE_IO_ASYNC;
-	hf_dev->support_list = support_sensors;
-	hf_dev->support_size = support_size;
-	hf_dev->enable = mtk_nanohub_enable;
-	hf_dev->batch = mtk_nanohub_batch;
-	hf_dev->flush = mtk_nanohub_flush;
-	hf_dev->calibration = mtk_nanohub_calibration;
-	hf_dev->config_cali = mtk_nanohub_config;
-	hf_dev->selftest = mtk_nanohub_selftest;
-	hf_dev->rawdata = mtk_nanohub_rawdata;
-	hf_dev->custom_cmd = mtk_nanohub_custom_cmd;
-
-	err = hf_manager_create(hf_dev);
+	/* refill support_list and support_size then create manager */
+	device->hf_dev.support_list = support_sensors;
+	device->hf_dev.support_size = support_size;
+	err = hf_manager_create(&device->hf_dev);
 	if (err < 0) {
 		pr_err("%s hf_manager_create fail\n", __func__);
 		return err;
 	}
 
-	atomic64_set(&device->mtk_nanohub_ready_time, ktime_get_boot_ns());
-	atomic_set(&device->mtk_nanohub_ready, 1);
 	return err;
 }
 
@@ -2531,24 +2935,10 @@ err_out:
 	return count;
 }
 
-static ssize_t state_show(struct device_driver *ddri, char *buf)
-{
-	struct mtk_nanohub_device *device = mtk_nanohub_dev;
-	const char *status =
-		atomic_read(&device->mtk_nanohub_ready) ? "ready" : "unready";
-	int64_t ready_time = atomic64_read(&device->mtk_nanohub_ready_time);
-	int64_t now_time = ktime_get_boot_ns();
-
-	return snprintf(buf, PAGE_SIZE, "%s,%lld,%lld\n",
-		status, ready_time, now_time);
-}
-
 static DRIVER_ATTR_RW(trace);
-static DRIVER_ATTR_RO(state);
 
 static struct driver_attribute *mtk_nanohub_attrs[] = {
 	&driver_attr_trace,
-	&driver_attr_state,
 };
 
 static int mtk_nanohub_create_attr(struct device_driver *driver)
@@ -2584,6 +2974,68 @@ static int mtk_nanohub_delete_attr(struct device_driver *driver)
 	return err;
 }
 
+#ifdef OPLUS_FEATURE_SENSOR
+
+static void init_infrared_oc_handler(void (*vibr_oc_func)(void))
+{
+//#ifdef CONFIG_MTK_PMIC_NEW_ARCH
+	pmic_register_interrupt_callback(INT_VIBR_OC, vibr_oc_func);
+//#endif
+}
+
+static void infrared_oc_handler(void)
+{
+    pr_info("%s: disable vibr for oc intr happened\n", __func__);
+    //when oc should disable voltage 3ms at least and enable voltage
+    infrared_set_power(0,true);
+    mdelay(3);
+    infrared_set_power(1,false);
+}
+
+static int mtk_parse_dts(struct mtk_nanohub_device *mtk_ndevice, struct platform_device *p_device)
+{
+	mtk_ndevice->power_3v = regulator_get(&p_device->dev, "vdd");
+	if (IS_ERR_OR_NULL(mtk_ndevice->power_3v)) {
+		printk("Regulator get failed vdd_3v\n");
+		mtk_ndevice->power_3v = NULL;
+		goto err;
+	}else{
+		printk(" ----parse_dts ok %s[%d]----\n", __FUNCTION__, __LINE__);
+	}
+
+	return 0;
+	err:
+	return -1;
+};
+
+static enum hrtimer_restart infrared_power_timer_func(struct hrtimer *timer)
+{
+    int ret = 0;
+    pmic_enable_interrupt(INT_VIBR_OC, 0, "vibr");
+    ret = regulator_disable(mtk_nanohub_dev->power_3v);
+    if (ret) {
+        printk("Regulator power_3v disable failed\n");
+        ret = regulator_enable(mtk_nanohub_dev->power_3v);
+        return ret;
+    }
+
+    return HRTIMER_NORESTART;
+}
+
+static int mtk_nanohub_probe_info(struct platform_device *pdev)
+{
+	mtk_parse_dts(mtk_nanohub_dev,pdev);
+	mtk_nanohub_dev->infrared_power_ctrl = 1;
+	init_infrared_oc_handler(infrared_oc_handler);
+
+	hrtimer_init(&mtk_nanohub_dev->infrared_power_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	mtk_nanohub_dev->infrared_power_timer.function = infrared_power_timer_func;
+
+	printk(" ----mtk_nanohub_probe_info %s[%d]----\n", __FUNCTION__, __LINE__);
+	return 0;
+}
+#endif
+
 static int mtk_nanohub_probe(struct platform_device *pdev)
 {
 	int err = 0, index;
@@ -2597,6 +3049,24 @@ static int mtk_nanohub_probe(struct platform_device *pdev)
 		err = -ENOMEM;
 		goto exit;
 	}
+	device->hf_dev.dev_name = "mtk_nanohub";
+	device->hf_dev.device_poll = HF_DEVICE_IO_INTERRUPT;
+	device->hf_dev.device_bus = HF_DEVICE_IO_ASYNC;
+	device->hf_dev.support_list = support_sensors;
+	device->hf_dev.support_size = support_size;
+	device->hf_dev.enable = mtk_nanohub_enable;
+	device->hf_dev.batch = mtk_nanohub_batch;
+	device->hf_dev.flush = mtk_nanohub_flush;
+	device->hf_dev.calibration = mtk_nanohub_calibration;
+	device->hf_dev.config_cali = mtk_nanohub_config;
+	device->hf_dev.selftest = mtk_nanohub_selftest;
+	device->hf_dev.rawdata = mtk_nanohub_rawdata;
+	device->hf_dev.custom_cmd = mtk_nanohub_custom_cmd;
+	err = hf_device_register(&device->hf_dev);
+	if (err < 0) {
+		pr_err("register hf device fail!\n");
+		goto exit_kfree;
+	}
 	mtk_nanohub_dev = device;
 	/* init sensor share dram write pointer event queue */
 	spin_lock_init(&device->wp_queue.buffer_lock);
@@ -2607,7 +3077,7 @@ static int mtk_nanohub_probe(struct platform_device *pdev)
 		vzalloc(device->wp_queue.bufsize * sizeof(uint32_t));
 	if (!device->wp_queue.ringbuffer) {
 		err = -ENOMEM;
-		goto exit_kfree;
+		goto exit_device;
 	}
 	/* init the debug trace flag */
 	for (index = 0; index < ID_SENSOR_MAX; index++)
@@ -2616,8 +3086,6 @@ static int mtk_nanohub_probe(struct platform_device *pdev)
 	atomic_set(&device->cfg_data_after_reboot, 0);
 	atomic_set(&device->start_timesync_first_boot, 0);
 	atomic_set(&device->create_manager_first_boot, 0);
-	atomic_set(&device->mtk_nanohub_ready, 0);
-	atomic64_set(&device->mtk_nanohub_ready_time, 0);
 	/* init timestamp sync worker */
 	INIT_WORK(&device->sync_time_worker, mtk_nanohub_sync_time_work);
 	device->sync_time_timer.expires =
@@ -2674,6 +3142,8 @@ exit_scp:
 	scp_A_unregister_notify(&mtk_nanohub_ready_notifier);
 	scp_ipi_unregistration(IPI_SENSOR);
 	vfree(device->wp_queue.ringbuffer);
+exit_device:
+	hf_device_unregister(&device->hf_dev);
 exit_kfree:
 	kfree(device);
 exit:
@@ -2692,6 +3162,7 @@ static int mtk_nanohub_remove(struct platform_device *pdev)
 	scp_A_unregister_notify(&mtk_nanohub_ready_notifier);
 	scp_ipi_unregistration(IPI_SENSOR);
 	vfree(device->wp_queue.ringbuffer);
+	hf_device_unregister(&device->hf_dev);
 	kfree(device);
 	return 0;
 }
@@ -2720,6 +3191,23 @@ static void mtk_nanohub_shutdown(struct platform_device *pdev)
 	}
 	mutex_unlock(&sensor_state_mtx);
 }
+
+#ifdef OPLUS_FEATURE_SENSOR
+static const struct of_device_id mtk_nanohub_of_match[] = {
+	{ .compatible = "mediatek,mtk_nanohub_info" },
+	{ /* Sentinel */ }
+};
+
+MODULE_DEVICE_TABLE(of, mtk_nanohub_of_match);
+
+static struct platform_driver mtk_nanohub_info = {
+	.driver = {
+		.name = "mtk_nanohub_info",
+		.of_match_table	= mtk_nanohub_of_match,
+	},
+	.probe = mtk_nanohub_probe_info,
+};
+#endif
 
 static struct platform_device mtk_nanohub_pdev = {
 	.name = "mtk_nanohub",
@@ -2751,6 +3239,23 @@ static int __init mtk_nanohub_init(void)
 static void __exit mtk_nanohub_exit(void)
 {
 }
+
+#ifdef OPLUS_FEATURE_SENSOR
+static int __init mtk_nanohub_info_init(void)
+{
+	if (platform_driver_register(&mtk_nanohub_info)) {
+		pr_err("mtk_nanohub platform driver error\n");
+		return -1;
+	}
+	return 0;
+}
+
+static void __exit mtk_nanohub_info_exit(void)
+{
+}
+late_initcall(mtk_nanohub_info_init);
+module_exit(mtk_nanohub_info_exit);
+#endif
 
 module_init(mtk_nanohub_init);
 module_exit(mtk_nanohub_exit);

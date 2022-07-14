@@ -318,6 +318,11 @@ int update_cpu_core_limit(int kicker, int cid, int min, int max)
 {
 	int i, final_min, final_max;
 
+	if (kicker < 0 || cid < 0) {
+		pr_debug("kicker: %d, cid: %d errro\n", kicker, cid);
+		return -1;
+	}
+
 	perfmgr_trace_count(kicker,
 		"update_cpu_core_limit_%d_%d_%d_%d", kicker, cid, min, max);
 	mutex_lock(&boost_freq);
@@ -724,6 +729,7 @@ int cpu_ctrl_init(struct proc_dir_entry *parent)
 {
 	struct proc_dir_entry *boost_dir = NULL;
 	int i, j, ret = 0;
+	size_t idx;
 
 	struct pentry {
 		const char *name;
@@ -748,11 +754,11 @@ int cpu_ctrl_init(struct proc_dir_entry *parent)
 		pr_debug("boost_dir null\n ");
 
 	/* create procfs */
-	for (i = 0; i < ARRAY_SIZE(entries); i++) {
-		if (!proc_create(entries[i].name, 0644,
-					boost_dir, entries[i].fops)) {
+	for (idx = 0; idx < ARRAY_SIZE(entries); idx++) {
+		if (!proc_create(entries[idx].name, 0644,
+					boost_dir, entries[idx].fops)) {
 			pr_debug("%s(), create /cpu_ctrl%s failed\n",
-					__func__, entries[i].name);
+					__func__, entries[idx].name);
 			ret = -EINVAL;
 			goto out;
 		}

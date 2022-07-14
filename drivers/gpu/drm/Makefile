@@ -101,6 +101,7 @@ obj-$(CONFIG_DRM_ZTE)	+= zte/
 obj-$(CONFIG_DRM_MXSFB)	+= mxsfb/
 obj-$(CONFIG_DRM_TINYDRM) += tinydrm/
 obj-$(CONFIG_DRM_PL111) += pl111/
+obj-$(CONFIG_DRM_MEDIATEK) += oplus/
 
 ccflags-y += -I$(srctree)/drivers/gpu/drm/mediatek/			\
              -I$(srctree)/drivers/misc/mediatek/dramc/$(MTK_PLATFORM)	\
@@ -110,7 +111,19 @@ ccflags-y += -I$(srctree)/drivers/gpu/drm/mediatek/			\
              -I$(srctree)/drivers/iommu/				\
              -I$(srctree)/drivers/devfreq/				\
              -I$(srctree)/drivers/gpu/drm/				\
-             -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/mach/				\
              -I$(srctree)/drivers/misc/mediatek/include/mt-plat \
              -I$(srctree)/drivers/misc/mediatek/leds/ \
              -I$(srctree)/drivers/misc/mediatek/leds/$(MTK_PLATFORM)
+ifeq (y, $(filter y, $(CONFIG_MACH_MT6833)))
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/mt6833/include/mach/
+else
+ifeq (y, $(filter y, $(CONFIG_MACH_MT6877)))
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/mt6877/include/mach/
+else
+ifeq (y, $(filter y, $(CONFIG_MACH_MT6781)))
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/mt6781/include/mach/
+else
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/mach/
+endif
+endif
+endif

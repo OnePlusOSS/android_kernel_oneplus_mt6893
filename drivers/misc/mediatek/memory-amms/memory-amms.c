@@ -80,9 +80,13 @@
 #define CREATE_TRACE_POINTS
 #include <trace/events/mtk_amms.h>
 
+#define AMMS_POS 0
+
 #define AMMS_PENDING_DRDI_FREE_BIT (1<<0)
+
 #define AMMS_PENDING_POS_DEALLOC_BIT (1<<1)
 #define AMMS_PENDING_POS_ALLOC_BIT (1<<2)
+
 #define AMMS_CMA_RETRY_COUNT 6
 #define AMMS_CPU_FREQ_OPP (0)
 #define EMI_MPU_ALIGN_ORDER (0)
@@ -96,12 +100,16 @@ static const struct of_device_id amms_of_ids[] = {
 	{ .compatible = "mediatek,amms", },
 	{}
 };
+
 static unsigned int amms_freq_up = 1;
 static unsigned int amms_vcore_up = 1;
+#if AMMS_POS
 static unsigned int amms_force_timeout;
 static unsigned int amms_alloc_count;
 static unsigned int amms_dealloc_count;
+#endif
 static unsigned int amms_irq_count;
+
 #ifdef CONFIG_MTK_CPU_FREQ
 #if AMMS_STRESS
 static unsigned int amms_pos_stress_operation;
@@ -328,11 +336,12 @@ module_param(amms_bind_cpu, int, 0644);
 
 module_param(amms_freq_up, uint, 0644);
 module_param(amms_vcore_up, uint, 0644);
+#if AMMS_POS
 module_param(amms_force_timeout, uint, 0644);
 module_param(amms_alloc_count, uint, 0644);
 module_param(amms_dealloc_count, uint, 0644);
+#endif
 module_param(amms_irq_count, uint, 0644);
-
 
 
 #if CONFIG_SYSFS
@@ -419,6 +428,7 @@ static struct module_attribute amms_pos_stress_attribute =
 	__ATTR(amms_pos_stress, 0600,
 	amms_pos_stress_show, amms_pos_stress_store);
 #endif
+
 static struct attribute *attrs[] = {
 	&amms_version_attribute.attr,
 #if AMMS_STRESS
@@ -469,7 +479,13 @@ static int __init memory_ccci_share_init(struct reserved_mem *rmem)
 	pr_info("pos_addr=%pa pos_length=%pa\n",
 		&pos_addr, &pos_length);
 
-	if ((long long)pos_addr == -1 || (long long)pos_addr == 0xffffffff) {
+	/*
+	 * Check the return value of smc call. ATF might return
+	 * unknown value because the smc id handler function maybe
+	 * undefined. ATF v1.4 return 0xffffffff, v1.6 will
+	 * return -1. Need to be handled in aarch32 and aarch64.
+	 */
+	if ((pos_addr == (~0ULL)) || (pos_addr == (~0UL))) {
 		pr_info("%s: no support POS\n", __func__);
 		return 0;
 	}
@@ -554,8 +570,10 @@ void amms_handle_event(void)
 
 	phys_addr_t addr = 0, length = 0;
 	unsigned long long pending;
+#if AMMS_POS
 	phys_addr_t pos_alloc_addr;
 	int use_count;
+#endif
 
 	amms_seq_id = mt_secure_call(MTK_SIP_KERNEL_AMMS_GET_SEQ_ID
 			, 0, 0, 0, 0);
@@ -616,6 +634,7 @@ void amms_handle_event(void)
 				(AMMS_PENDING_DRDI_FREE_BIT), 0, 0, 0);
 			pr_info("amms: static memory already free, should not happened\n");
 		}
+#if AMMS_POS
 	} else if (pending & AMMS_PENDING_POS_DEALLOC_BIT) {
 		if (!ccci_share_cma_init) {
 			pr_info("not ccci_share_cma_init, not apply\n");
@@ -693,11 +712,19 @@ void amms_handle_event(void)
 				"AMMS allocate memory failed.\nCRDISPATCH_KEY:AMMS\n",
 				"[AMMS ALLOCATE FAILED]: AMMS allocate failed\n");
 		}
+#endif
 	}
 
+#if AMMS_POS
 	if (pending & (~(AMMS_PENDING_POS_ALLOC_BIT|
 		AMMS_PENDING_POS_DEALLOC_BIT|AMMS_PENDING_DRDI_FREE_BIT)))
 		pr_info("amms:unknown pending interrupt\n");
+#endif
+
+#if !AMMS_POS
+	if (pending & (~(AMMS_PENDING_DRDI_FREE_BIT)))
+		pr_info("amms:unknown pending interrupt\n");
+#endif
 
 }
 
@@ -832,6 +859,10 @@ static int __init amms_init(void)
 	if (ret)
 		pr_info("amms init FAIL, ret 0x%x!!!\n", ret);
 
+	if (amms_task) {
+		/* set amms_task interruptible */
+		smp_store_mb(amms_task->state, (TASK_INTERRUPTIBLE));
+	}
 	return ret;
 }
 

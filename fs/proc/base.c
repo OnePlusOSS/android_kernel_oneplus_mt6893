@@ -103,6 +103,22 @@
 
 #include "../../lib/kstrtox.h"
 
+#if defined (OPLUS_FEATURE_HEALTHINFO) && defined (CONFIG_OPLUS_JANK_INFO)
+#include <linux/healthinfo/jank_monitor.h>
+#endif /* OPLUS_FEATURE_HEALTHINFO */
+
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+#define GLOBAL_SYSTEM_UID KUIDT_INIT(1000)
+#define GLOBAL_SYSTEM_GID KGIDT_INIT(1000)
+extern const struct file_operations proc_ux_state_operations;
+extern bool is_special_entry(struct dentry *dentry, const char* special_proc);
+#endif /* OPLUS_FEATURE_SCHED_ASSIST */
+
+#ifdef OPLUS_BUG_STABILITY
+extern size_t get_ion_heap_by_pid(pid_t pid);
+extern int get_gl_mem_by_pid(pid_t pid);
+#endif
+
 /* NOTE:
  *	Implementing inode permission operations in /proc is almost
  *	certainly an error.  Permission checks need to happen during
@@ -381,6 +397,57 @@ static const struct file_operations proc_pid_cmdline_ops = {
 	.read	= proc_pid_cmdline_read,
 	.llseek	= generic_file_llseek,
 };
+
+#ifdef OPLUS_BUG_STABILITY
+#define P2K(x) ((x) << (PAGE_SHIFT - 10))	/* Converts #Pages to KB */
+
+static ssize_t proc_pid_real_phymemory_read(struct file *file, char __user *buf,
+				     size_t _count, loff_t *pos)
+{
+	struct task_struct *tsk;
+	struct task_struct *p;
+	char buffer[128];
+	unsigned long rss = 0;
+	unsigned long rswap = 0;
+	unsigned long ion = 0;
+	unsigned long gpu = 0;
+	unsigned long totalram_size = 0;
+	size_t len;
+
+	BUG_ON(*pos < 0);
+
+	tsk = get_proc_task(file_inode(file));   //first_tid find will get_proc_task
+	if (!tsk)
+		return 0;
+	if (tsk->flags & PF_KTHREAD) {
+		put_task_struct(tsk);
+		return 0;
+	}
+	put_task_struct(tsk);
+
+	tsk = tsk->group_leader;
+	get_task_struct(tsk);
+	ion = get_ion_heap_by_pid(tsk->pid);
+	gpu = get_gl_mem_by_pid(tsk->pid);
+
+	p = find_lock_task_mm(tsk);
+	if (p) {
+		rss = P2K(get_mm_rss(p->mm));
+		rswap = P2K(get_mm_counter(p->mm, MM_SWAPENTS));
+		task_unlock(p);
+	}
+	totalram_size = ion + gpu + rss + rswap;
+	put_task_struct(tsk);
+	len = snprintf(buffer, sizeof(buffer), "RSS:%luKB \nRswap:%luKB \nION:%luKB \nGPU:%luKB \nTotalsize:%luKB \n",
+		rss, rswap, ion, gpu, totalram_size);
+	return simple_read_from_buffer(buf, _count, pos, buffer, len);
+}
+
+static const struct file_operations proc_pid_real_phymemory_ops = {
+	.read	= proc_pid_real_phymemory_read,
+	.llseek	= generic_file_llseek,
+};
+#endif
 
 #ifdef CONFIG_KALLSYMS
 /*
@@ -1739,6 +1806,15 @@ void task_dump_owner(struct task_struct *task, mode_t mode,
 	/* Default to the tasks effective ownership */
 	rcu_read_lock();
 	cred = __task_cred(task);
+
+	/* Workaround invalid cred from corrupted task */
+#if defined(__is_lm_address)
+	if (__is_lm_address((unsigned long)cred) && !virt_addr_valid((void *)cred)) {
+		rcu_read_unlock();
+		return;
+	}
+#endif
+
 	uid = cred->euid;
 	gid = cred->egid;
 	rcu_read_unlock();
@@ -1867,7 +1943,12 @@ int pid_revalidate(struct dentry *dentry, unsigned int flags)
 
 	if (task) {
 		task_dump_owner(task, inode->i_mode, &inode->i_uid, &inode->i_gid);
-
+#ifdef OPLUS_FEATURE_USCHED_ASSIST
+		if (is_special_entry(dentry, "ux_state")) {
+			inode->i_uid = GLOBAL_SYSTEM_UID;
+			inode->i_gid = GLOBAL_SYSTEM_GID;
+		}
+#endif /* OPLUS_FEATURE_SCHED_ASSIST */
 		inode->i_mode &= ~(S_ISUID | S_ISGID);
 		security_task_to_inode(task, inode);
 		put_task_struct(task);
@@ -3007,6 +3088,9 @@ static const struct pid_entry tgid_base_stuff[] = {
 	REG("cmdline",    S_IRUGO, proc_pid_cmdline_ops),
 	ONE("stat",       S_IRUGO, proc_tgid_stat),
 	ONE("statm",      S_IRUGO, proc_pid_statm),
+#ifdef OPLUS_FEATURE_PERFORMANCE
+	ONE("statm_as",   S_IRUGO, proc_pid_statm_as),
+#endif /* OPLUS_FEATURE_PERFORMANCE */
 	REG("maps",       S_IRUGO, proc_pid_maps_operations),
 #ifdef CONFIG_NUMA
 	REG("numa_maps",  S_IRUGO, proc_pid_numa_maps_operations),
@@ -3083,6 +3167,14 @@ static const struct pid_entry tgid_base_stuff[] = {
 #endif
 #ifdef CONFIG_CPU_FREQ_TIMES
 	ONE("time_in_state", 0444, proc_time_in_state_show),
+#endif
+
+#if defined (OPLUS_FEATURE_HEALTHINFO) && defined (CONFIG_OPLUS_JANK_INFO)
+	REG("jank_info", S_IRUGO | S_IWUGO, proc_jank_trace_operations),
+#endif /* OPLUS_FEATURE_HEALTHINFO */
+
+#ifdef OPLUS_BUG_STABILITY
+	REG("real_phymemory",    S_IRUGO, proc_pid_real_phymemory_ops),
 #endif
 };
 
@@ -3414,6 +3506,9 @@ static const struct pid_entry tid_base_stuff[] = {
 	REG("cmdline",   S_IRUGO, proc_pid_cmdline_ops),
 	ONE("stat",      S_IRUGO, proc_tid_stat),
 	ONE("statm",     S_IRUGO, proc_pid_statm),
+#ifdef OPLUS_FEATURE_PERFORMANCE
+	ONE("statm_as",   S_IRUGO, proc_pid_statm_as),
+#endif /* OPLUS_FEATURE_PERFORMANCE */
 	REG("maps",      S_IRUGO, proc_pid_maps_operations),
 #ifdef CONFIG_PROC_CHILDREN
 	REG("children",  S_IRUGO, proc_tid_children_operations),
@@ -3488,6 +3583,14 @@ static const struct pid_entry tid_base_stuff[] = {
 #endif
 #ifdef CONFIG_MTK_TASK_TURBO
 	ONE("turbo", 0444, proc_turbo_task_show),
+#endif
+
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+	REG("ux_state", S_IRUGO | S_IWUGO, proc_ux_state_operations),
+#endif /* OPLUS_FEATURE_SCHED_ASSIST */
+
+#ifdef OPLUS_BUG_STABILITY
+	REG("real_phymemory",   S_IRUGO, proc_pid_real_phymemory_ops),
 #endif
 };
 

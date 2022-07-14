@@ -123,7 +123,8 @@ static ssize_t emimpu_ctrl_store
 	char *ptr;
 	char *token[MTK_EMI_MAX_TOKEN];
 	static struct emimpu_region_t *rg_info;
-	unsigned long long start, end;
+	unsigned long long start = 0;
+	unsigned long long end = 0;
 	unsigned long region;
 	unsigned long dgroup;
 	unsigned long apc;
@@ -164,8 +165,6 @@ static ssize_t emimpu_ctrl_store
 	if (!command)
 		return count;
 	backup_command = command;
-	if (!command)
-		return count;
 	strncpy(command, buf, (size_t) MTK_EMI_MAX_CMD_LEN);
 
 	for (i = 0; i < MTK_EMI_MAX_TOKEN; i++) {
@@ -302,6 +301,8 @@ static irqreturn_t emimpu_violation_irq(int irq, void *dev_id)
 	struct emimpu_callbacks *mpucb;
 
 	aee_msg_cnt = snprintf(aee_msg, MTK_EMI_MAX_CMD_LEN, "violation\n");
+	if (aee_msg_cnt < 0)
+		pr_info("%s: snprintf error\n", __func__);
 	for (emi_id = 0; emi_id < emimpu_dev_ptr->emi_cen_cnt; emi_id++) {
 		violation = false;
 		emi_cen_base = emimpu_dev_ptr->emi_cen_base[emi_id];
@@ -683,7 +684,7 @@ module_exit(emimpu_drv_exit);
  * @rg_info:	the target region for init
  * @rg_num:	the region id for the rg_info
  *
- * Returns 0 for success and 1 for abort
+ * Returns 0 for success and non-zero for abort
  */
 int mtk_emimpu_init_region(
 	struct emimpu_region_t *rg_info, unsigned int rg_num)
@@ -692,12 +693,9 @@ int mtk_emimpu_init_region(
 	unsigned int size;
 	unsigned int i;
 
-	if (rg_info) {
-		rg_info->start = 0;
-		rg_info->end = 0;
-		rg_info->rg_num = rg_num;
-		rg_info->lock = false;
-		rg_info->apc = NULL;
+	if (!rg_info) {
+		pr_info("%s: %p is NULL", __func__, __builtin_return_address(0));
+		return -EINVAL;
 	}
 
 	if (!emimpu_pdev)
@@ -710,6 +708,11 @@ int mtk_emimpu_init_region(
 		pr_info("%s: fail, out-of-range region\n", __func__);
 		return -1;
 	}
+
+	rg_info->start = 0;
+	rg_info->end = 0;
+	rg_info->rg_num = rg_num;
+	rg_info->lock = false;
 
 	size = sizeof(unsigned int) * emimpu_dev_ptr->domain_cnt;
 	rg_info->apc = kmalloc(size, GFP_KERNEL);
@@ -730,11 +733,16 @@ EXPORT_SYMBOL(mtk_emimpu_init_region);
  */
 int mtk_emimpu_free_region(struct emimpu_region_t *rg_info)
 {
-	if (rg_info && rg_info->apc) {
-		kfree(rg_info->apc);
-		return 0;
-	} else
+//#ifndef OPLUS_BUG_STABILITY
+//	if (!rg_info) {
+//#else
+	if (!rg_info || !rg_info->apc) {
+//#endif /*OPLUS_BUG_STABILITY*/
+		pr_info("%s: %p is NULL", __func__, __builtin_return_address(0));
 		return -EINVAL;
+	}
+	kfree(rg_info->apc);
+	return 0;
 }
 EXPORT_SYMBOL(mtk_emimpu_free_region);
 
@@ -749,6 +757,10 @@ EXPORT_SYMBOL(mtk_emimpu_free_region);
 int mtk_emimpu_set_addr(struct emimpu_region_t *rg_info,
 	unsigned long long start, unsigned long long end)
 {
+	if (!rg_info) {
+		pr_info("%s: %p is NULL", __func__, __builtin_return_address(0));
+		return -EINVAL;
+	}
 	rg_info->start = start;
 	rg_info->end = end;
 	return 0;
@@ -768,6 +780,10 @@ int mtk_emimpu_set_apc(struct emimpu_region_t *rg_info,
 {
 	struct emimpu_dev_t *emimpu_dev_ptr;
 
+	if (!rg_info) {
+		pr_info("%s: %p is NULL", __func__, __builtin_return_address(0));
+		return -EINVAL;
+	}
 	if (!emimpu_pdev)
 		return -1;
 

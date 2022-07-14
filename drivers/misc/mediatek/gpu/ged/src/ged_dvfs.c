@@ -544,8 +544,6 @@ unsigned int ged_dvfs_vcore(unsigned int prev_freq_khz,
 			bFB, cur_freq_mhz,
 		prev_freq_mhz, g_ui32NextMaxBW, g_ui32CurMaxBW);
 
-	prev_freq_mhz = cur_freq_mhz;
-
 	if (gpu_bw_ratio)
 		return (g_ui32NextMaxBW * gpu_bw_ratio) / 100;
 	else
@@ -2124,7 +2122,6 @@ GED_ERROR ged_dvfs_probe_signal(int signo)
 	info.si_int = 1234;
 
 	if (cache_pid != g_probe_pid) {
-		cache_pid = g_probe_pid;
 		if (g_probe_pid == GED_NO_UM_SERVICE)
 			t = NULL;
 		else {
@@ -2163,12 +2160,14 @@ void ged_dvfs_reset_opp_cost(int oppsize)
 {
 	int i;
 
-	if (oppsize > 0 && oppsize <= mt_gpufreq_get_dvfs_table_num()) {
+	if (g_aOppStat && oppsize > 0 && oppsize <= mt_gpufreq_get_dvfs_table_num()) {
 		for (i = 0; i < oppsize; i++) {
-			g_aOppStat[i].ui64Active = 0;
-			g_aOppStat[i].ui64Idle = 0;
-			memset(g_aOppStat[i].uMem.aTrans,
-				0, sizeof(uint32_t) * oppsize);
+			if (g_aOppStat[i].uMem.aTrans) {
+				g_aOppStat[i].ui64Active = 0;
+				g_aOppStat[i].ui64Idle = 0;
+				memset(g_aOppStat[i].uMem.aTrans,
+					0, sizeof(uint32_t) * oppsize);
+			}
 		}
 	}
 }

@@ -17,9 +17,7 @@
 #include <linux/proc_fs.h>
 
 #include <platform/mtk_platform_common.h>
-#ifdef ENABLE_COMMON_DVFS
 #include "mtk_gpufreq.h"
-#endif /* ENABLE_COMMON_DVFS */
 #include <mali_kbase_pm_internal.h>
 
 #include <ged_log.h>
@@ -196,6 +194,24 @@ static int proc_gpu_memoryusage_show(struct seq_file *m, void *v)
 	kbase_device_put_list(kbdev_list);
 	return 0;
 }
+
+#ifdef OPLUS_BUG_STABILITY
+#define P2K(x) ((x) << (PAGE_SHIFT - 10))	/* Converts #Pages to KB */
+int get_gl_mem_by_pid(pid_t pid)
+{
+	ssize_t ret = 0;
+#ifdef ENABLE_MTK_MEMINFO
+	int i = 0;
+	for (i = 0; (i < MTK_MEMINFO_SIZE) && (g_mtk_gpu_meminfo[i].pid != 0); i++) {
+		if(g_mtk_gpu_meminfo[i].pid == pid) {  //no lock protecte?
+			return P2K(g_mtk_gpu_meminfo[i].used_pages);
+		}
+	}
+#endif /* ENABLE_MTK_MEMINFO */
+	return ret;
+}
+EXPORT_SYMBOL(get_gl_mem_by_pid);
+#endif
 
 static int kbasep_gpu_memoryusage_debugfs_open(struct inode *in, struct file *file)
 {
@@ -523,6 +539,36 @@ int mtk_set_mt_gpufreq_target(int freq_id)
 
 	return 0;
 }
+
+#ifdef SHADER_PWR_CTL_WA
+void mtk_set_mt_gpufreq_clock_parking_lock(unsigned long *pFlags)
+{
+	mt_gpufreq_clock_parking_lock(pFlags);
+}
+
+void mtk_set_mt_gpufreq_clock_parking_unlock(unsigned long *pFlags)
+{
+	mt_gpufreq_clock_parking_unlock(pFlags);
+}
+
+int mtk_set_mt_gpufreq_clock_parking(int clksrc)
+{
+	/*
+	 * This function will be called under the Interrupt-Handler,
+	 * so can't implement any mutex-lock behaviors
+	 * (that will result the sleep/schedule operations).
+	 */
+
+	int ret = 0;
+
+	if (mtk_get_vgpu_power_on_flag() == MTK_VGPU_POWER_ON)
+		ret = mt_gpufreq_clock_parking(clksrc);
+	else
+		pr_info("MALI: set clock parking at power off\n");
+
+	return ret;
+}
+#endif
 
 unsigned long mtk_get_ged_dvfs_last_commit_idx(void)
 {

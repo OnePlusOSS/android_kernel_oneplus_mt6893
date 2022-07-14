@@ -60,7 +60,6 @@
 #define GED_INFO_SIZE            20
 #define GED_INFO                 int
 
-
 #define GED_DVFS_VSYNC_OFFSET_DEBUG_CLEAR_EVENT	         0
 #define GED_DVFS_VSYNC_OFFSET_FORCE_ON                   1
 #define GED_DVFS_VSYNC_OFFSET_FORCE_OFF                  2
@@ -82,6 +81,10 @@
 #define GED_VSYNC_SW_EVENT	0
 #define GED_VSYNC_HW_EVENT	1
 #define GED_VSYNC_TYPE      int
+
+#define GED_SWD_FENCE_DEQUEUE   0
+#define GED_SWD_FENCE_QUEUE     1
+#define GED_SWD_FENCE_TYPE      int
 
 enum {
 	GAS_CATEGORY_GAME,

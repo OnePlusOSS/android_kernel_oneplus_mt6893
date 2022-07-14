@@ -43,7 +43,9 @@
 #endif
 
 #ifdef CONNADP_HAS_CLOCK_BUF_CTRL
+#ifndef CONFIG_FPGA_EARLY_PORTING
 #include <mtk_clkbuf_ctl.h>
+#endif
 #endif
 
 /* PMIC */
@@ -133,6 +135,18 @@ void connectivity_export_tracing_record_cmdline(struct task_struct *tsk)
 }
 EXPORT_SYMBOL(connectivity_export_tracing_record_cmdline);
 
+void connectivity_export_conap_scp_init(unsigned int chip_info, phys_addr_t emi_phy_addr)
+{
+}
+EXPORT_SYMBOL(connectivity_export_conap_scp_init);
+
+
+void connectivity_export_conap_scp_deinit(void)
+{
+}
+EXPORT_SYMBOL(connectivity_export_conap_scp_deinit);
+
+
 #ifdef CPU_BOOST
 bool connectivity_export_spm_resource_req(unsigned int user,
 					  unsigned int req_mask)
@@ -180,7 +194,11 @@ EXPORT_SYMBOL(connectivity_export_mt_ppm_sysboost_set_freq_limit);
 #ifdef CONNADP_HAS_CLOCK_BUF_CTRL
 void connectivity_export_clk_buf_ctrl(enum clk_buf_id id, bool onoff)
 {
+#if defined(CONFIG_MTK_BASE_POWER)
 	clk_buf_ctrl(id, onoff);
+#else
+	pr_info("[%s] not support now", __func__);
+#endif
 }
 EXPORT_SYMBOL(connectivity_export_clk_buf_ctrl);
 
@@ -191,8 +209,15 @@ void connectivity_export_clk_buf_show_status_info(void)
 	defined(CONFIG_MACH_MT6771) || \
 	defined(CONFIG_MACH_MT6739) || \
 	defined(CONFIG_MACH_MT6785) || \
-	defined(CONFIG_MACH_MT6873)
+	defined(CONFIG_MACH_MT6873) || \
+	defined(CONFIG_MACH_MT6885) || \
+	defined(CONFIG_MACH_MT6893) || \
+	defined(CONFIG_MACH_MT6877)
+#if defined(CONFIG_MTK_BASE_POWER)
 	clk_buf_show_status_info();
+#else
+	pr_info("[%s] not support now", __func__);
+#endif
 #endif
 }
 EXPORT_SYMBOL(connectivity_export_clk_buf_show_status_info);
@@ -318,7 +343,12 @@ int connectivity_export_mmc_io_rw_direct(struct mmc_card *card,
 				int write, unsigned int fn,
 				unsigned int addr, u8 in, u8 *out)
 {
+#if defined(CONFIG_MACH_MT6877)
+	pr_info("[%s] not support now", __func__);
+	return 0;
+#else
 	return mmc_io_rw_direct(card, write, fn, addr, in, out);
+#endif
 }
 EXPORT_SYMBOL(connectivity_export_mmc_io_rw_direct);
 

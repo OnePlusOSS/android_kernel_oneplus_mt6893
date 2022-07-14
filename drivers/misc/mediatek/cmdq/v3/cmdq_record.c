@@ -606,6 +606,14 @@ void cmdq_task_set_mtee(struct cmdqRecStruct *handle, const bool enable)
 		__func__, handle, handle->secData.mtee);
 }
 
+void cmdq_task_set_secure_id(struct cmdqRecStruct *handle, s32 sec_id)
+{
+	handle->secData.sec_id = sec_id;
+	CMDQ_LOG("%s handle:%p sec_id:%d\n",
+		__func__, handle, handle->secData.sec_id);
+}
+
+
 s32 cmdq_append_addr_metadata(struct cmdqRecStruct *handle,
 	const struct cmdqSecAddrMetadataStruct *pMetadata)
 {
@@ -661,6 +669,8 @@ s32 cmdq_append_addr_metadata(struct cmdqRecStruct *handle,
 		pAddrs[index].size = pMetadata->size;
 		pAddrs[index].port = pMetadata->port;
 		pAddrs[index].type = pMetadata->type;
+		pAddrs[index].useSecIdinMeta = pMetadata->useSecIdinMeta;
+		pAddrs[index].sec_id = pMetadata->sec_id;
 
 		/* meatadata count ++ */
 		handle->secData.addrMetadataCount += 1;
@@ -1384,7 +1394,7 @@ s32 cmdq_op_write_reg(struct cmdqRecStruct *handle, u32 addr,
 
 s32 cmdq_op_write_reg_secure(struct cmdqRecStruct *handle, u32 addr,
 	enum CMDQ_SEC_ADDR_METADATA_TYPE type, u64 baseHandle,
-	u32 offset, u32 size, u32 port)
+	u32 offset, u32 size, u32 port, uint32_t sec_id)
 {
 #ifdef CMDQ_SECURE_PATH_SUPPORT
 	s32 status;
@@ -1407,6 +1417,11 @@ s32 cmdq_op_write_reg_secure(struct cmdqRecStruct *handle, u32 addr,
 	metadata.offset = offset;
 	metadata.size = size;
 	metadata.port = port;
+	metadata.useSecIdinMeta = 1;
+	metadata.sec_id = sec_id;
+	CMDQ_MSG("%s,port:%d,useSecIdinMeta:%d,sec_id:%d,baseHandle:%#llx,handle:%p",
+		__func__, metadata.port, metadata.useSecIdinMeta, metadata.sec_id,
+		baseHandle, handle);
 
 	status = cmdq_append_addr_metadata(handle, &metadata);
 
@@ -1815,6 +1830,13 @@ s32 cmdq_op_read_reg_to_mem(struct cmdqRecStruct *handle,
 	if (!handle)
 		return -EINVAL;
 
+#ifdef CMDQ_SECURE_PATH_SUPPORT
+	if (cmdq_task_is_secure(handle)) {
+		CMDQ_ERR("%s secure handle\n", __func__);
+		return -EINVAL;
+	}
+#endif
+
 	do {
 		status = cmdq_op_read_reg(handle, addr,
 			&handle->arg_value, ~0);
@@ -1924,6 +1946,7 @@ s32 cmdq_op_finalize_command(struct cmdqRecStruct *handle, bool loop)
 		if (handle->scenario == CMDQ_SCENARIO_TIMER_LOOP)
 			arg_b = 0x0;
 
+#ifndef CONFIG_MTK_IN_HOUSE_TEE_SUPPORT
 #if defined(CONFIG_MTK_SEC_VIDEO_PATH_SUPPORT) || \
 	defined(CONFIG_MTK_CAM_SECURITY_SUPPORT)
 		if (handle->secData.is_secure) {
@@ -1938,6 +1961,7 @@ s32 cmdq_op_finalize_command(struct cmdqRecStruct *handle, bool loop)
 				return status;
 			}
 		}
+#endif
 #endif
 		status = cmdq_append_command(handle, CMDQ_CODE_EOC,
 			0, arg_b, 0, 0);
@@ -3613,7 +3637,15 @@ s32 cmdqRecWriteSecure(struct cmdqRecStruct *handle, u32 addr,
 	u64 baseHandle, u32 offset, u32 size, u32 port)
 {
 	return cmdq_op_write_reg_secure(handle, addr, type, baseHandle, offset,
-		size, port);
+		size, port, 0);
+}
+
+s32 cmdqRecWriteSecureMetaData(struct cmdqRecStruct *handle, u32 addr,
+	enum CMDQ_SEC_ADDR_METADATA_TYPE type,
+	u64 baseHandle, u32 offset, u32 size, u32 port, uint32_t sec_id)
+{
+	return cmdq_op_write_reg_secure(handle, addr, type, baseHandle, offset,
+		size, port, sec_id);
 }
 
 s32 cmdqRecPoll(struct cmdqRecStruct *handle, u32 addr, u32 value, u32 mask)

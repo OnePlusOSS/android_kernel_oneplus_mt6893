@@ -176,14 +176,14 @@ static int mtk_disp_pwm_config_impl(struct mtk_disp_pwm *mdp,
 	 * period = (PWM_CLK_RATE * period_ns) / (10^9 * (clk_div + 1)) - 1
 	 * high_width = (PWM_CLK_RATE * duty_ns) / (10^9 * (clk_div + 1))
 	 */
-	dev_dbg(mdp->chip.dev, "duty=%d period=%d\n", duty_ns, period_ns);
+	dev_notice(mdp->chip.dev, "duty=%d period=%d\n", duty_ns, period_ns);
 	rate = clk_get_rate(mdp->clk_main);
 
 	clk_div = div_u64(rate * period_ns, NSEC_PER_SEC) >>
 			  PWM_PERIOD_BIT_WIDTH;
 	if (clk_div > PWM_CLKDIV_MAX)
 		return -EINVAL;
-	dev_dbg(mdp->chip.dev, "rate=%lld clk_div=%d\n", rate, clk_div);
+	dev_notice(mdp->chip.dev, "rate=%lld clk_div=%d\n", rate, clk_div);
 
 	div = NSEC_PER_SEC * (clk_div + 1);
 	period = div64_u64(rate * period_ns, div);
@@ -426,6 +426,8 @@ static const struct of_device_id mtk_disp_pwm_of_match[] = {
 	{.compatible = "mediatek,mt6853-disp-pwm", .data = &mt6799_pwm_data},
 	{.compatible = "mediatek,mt8173-disp-pwm", .data = &mt8173_pwm_data},
 	{.compatible = "mediatek,mt6833-disp-pwm", .data = &mt6799_pwm_data},
+	{.compatible = "mediatek,mt6877-disp-pwm", .data = &mt6799_pwm_data},
+	{.compatible = "mediatek,mt6781-disp-pwm", .data = &mt6799_pwm_data},
 	{}
 };
 MODULE_DEVICE_TABLE(of, mtk_disp_pwm_of_match);

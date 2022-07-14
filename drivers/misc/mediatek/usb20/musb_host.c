@@ -365,7 +365,7 @@ static void musb_h_tx_flush_fifo(struct musb_hw_ep *ep)
 			 "Could not flush host TX%d fifo: csr: %04x\n"
 			 , ep->epnum, csr))
 			return;
-		udelay(10);
+		udelay(50);
 	}
 }
 
@@ -2808,6 +2808,50 @@ success:
 	return 0;
 }
 
+static int musb_check_ep_usage(struct musb *musb)
+{
+	struct musb_hw_ep *hw_ep = NULL;
+	int epnum, hw_end;
+	int ret = 0;
+
+	/* check rx endpoint  */
+	for (hw_end = 0, epnum = 1, hw_ep = musb->endpoints + epnum;
+		epnum < musb->nr_endpoints; epnum++, hw_ep++) {
+
+		if (musb_ep_get_qh(hw_ep, 128) != NULL)
+			continue;
+
+		hw_end = epnum;
+		break;
+	}
+
+	if (!hw_end) {
+		DBG(0, "can't find free in ep\n");
+		ret = -ENOMEM;
+		goto done;
+	} else
+		DBG(1, "find free in ep=%d\n", hw_end);
+
+	/* check tx endpoint */
+	for (hw_end = 0, epnum = 1, hw_ep = musb->endpoints + epnum;
+		epnum < musb->nr_endpoints; epnum++, hw_ep++) {
+
+		if (musb_ep_get_qh(hw_ep, 0) != NULL)
+			continue;
+
+		hw_end = epnum;
+		break;
+	}
+
+	if (!hw_end) {
+		DBG(0, "can't find free out ep\n");
+		ret = -ENOMEM;
+	} else
+		DBG(1, "find free out ep=%d\n", hw_end);
+done:
+	return ret;
+}
+
 static int
 	musb_urb_enqueue(struct usb_hcd *hcd, struct urb *urb, gfp_t mem_flags)
 {
@@ -2833,6 +2877,26 @@ static int
 		return -ENODEV;
 
 	spin_lock_irqsave(&musb->lock, flags);
+
+	/* check free ep before enumeration */
+	if (usb_endpoint_num(epd) == 0 && usb_pipecontrol(urb->pipe) &&
+			urb->setup_packet) {
+		struct usb_ctrlrequest *ctrlreq =
+			(struct usb_ctrlrequest *) urb->setup_packet;
+		u16 w_value = le16_to_cpu(ctrlreq->wValue);
+
+		if (ctrlreq->bRequest == USB_REQ_GET_DESCRIPTOR &&
+				(w_value >> 8) == USB_DT_CONFIG) {
+
+			ret = musb_check_ep_usage(musb);
+			if (ret < 0) {
+				DBG(0, "no free ep, block enumeration\n");
+				spin_unlock_irqrestore(&musb->lock, flags);
+				return ret;
+			}
+		}
+	}
+
 	ret = usb_hcd_link_urb_to_ep(hcd, urb);
 	qh = ret ? NULL : hep->hcpriv;
 	if (qh) {
@@ -2897,7 +2961,7 @@ static int
 	 * we don't (yet!) support high bandwidth interrupt transfers.
 	 */
 	if (qh->type == USB_ENDPOINT_XFER_ISOC) {
-		qh->hb_mult = 1 + ((qh->maxpacket >> 11) & 0x03);
+		qh->hb_mult = usb_endpoint_maxp_mult(epd);
 		if (qh->hb_mult > 1) {
 			int ok = (qh->type == USB_ENDPOINT_XFER_ISOC);
 
@@ -3055,8 +3119,8 @@ static int musb_cleanup_urb(struct urb *urb, struct musb_qh *qh)
 	else
 		DBG(4, "111111aaaaaaaaa\n");
 
-
-	musb_ep_select(regs, hw_end);
+	if (regs)
+		musb_ep_select(regs, hw_end);
 	DBG(2, "is_in is %d,ep num is %d\n", is_in, ep->epnum);
 
 	if (is_dma_capable()) {
@@ -3143,10 +3207,7 @@ static int musb_urb_dequeue(struct usb_hcd *hcd, struct urb *urb, int status)
 			DBG(0, "ret<%d>\n", ret);
 	}
 
-	if (strstr(current->comm, "usb_call"))
-		DBG_LIMIT(5, "%s", info);
-	else
-		DBG(0, "%s\n", info);
+	DBG_LIMIT(5, "%s", info);
 
 #ifdef CONFIG_MTK_MUSB_QMU_SUPPORT
 	/* abort HW transaction on this ep */
@@ -3199,7 +3260,7 @@ static int musb_urb_dequeue(struct usb_hcd *hcd, struct urb *urb, int status)
 #endif
 			if (qh->type != USB_ENDPOINT_XFER_CONTROL) {
 				DBG(0, "why here, this is ring case?\n");
-				musb_bug();
+				dump_stack();
 			}
 
 			qh->hep->hcpriv = NULL;
@@ -3385,6 +3446,11 @@ static int musb_bus_suspend(struct usb_hcd *hcd)
 {
 	struct musb *musb = hcd_to_musb(hcd);
 	u8 devctl;
+	int ret;
+
+	ret = musb_port_suspend(musb, true);
+	if (ret)
+		return ret;
 
 	if (!is_host_active(musb))
 		return 0;
@@ -3416,6 +3482,7 @@ static int musb_bus_suspend(struct usb_hcd *hcd)
 	}
 
 	usb_hal_dpidle_request(USB_DPIDLE_TIMER);
+
 	return 0;
 }
 
@@ -3423,8 +3490,10 @@ static int musb_bus_resume(struct usb_hcd *hcd)
 {
 	struct musb *musb = hcd_to_musb(hcd);
 
-	if (is_host_active(musb))
-		usb_hal_dpidle_request(USB_DPIDLE_FORBIDDEN);
+	if (!is_host_active(musb))
+		return 0;
+
+	usb_hal_dpidle_request(USB_DPIDLE_FORBIDDEN);
 
 	/* resuming child port does the work */
 	return 0;

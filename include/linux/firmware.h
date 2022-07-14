@@ -52,6 +52,8 @@ int request_firmware_into_buf(const struct firmware **firmware_p,
 	const char *name, struct device *device, void *buf, size_t size);
 
 void release_firmware(const struct firmware *fw);
+int request_firmware_select(const struct firmware **fw, const char *name,
+		     struct device *device);
 #else
 static inline int request_firmware(const struct firmware **fw,
 				   const char *name,

@@ -48,6 +48,7 @@ static const struct of_device_id sdio_of_ids[] = {
 	{ .compatible = "mediatek,mt2712-mmc", .data = &mt2712_compat},
 	{ .compatible = "mediatek,mt7622-mmc", .data = &mt7622_compat},
 	{ .compatible = "mediatek,mt8183-sdio", .data = &mt8183_compat},
+	{ .compatible = "mediatek,mt8185-sdio", .data = &mt8185_compat},
 	{}
 };
 MODULE_DEVICE_TABLE(of, sdio_of_ids);
@@ -1097,6 +1098,13 @@ static void msdc_init_hw(struct msdc_host *host)
 	/* Config SDIO device detect interrupt function */
 	sdr_clr_bits(host->base + SDC_CFG, SDC_CFG_SDIOIDE);
 
+	sdr_set_bits(host->base + SDC_ADV_CFG0, SDC_IRQ_ENHANCE_EN);
+
+	/* For SDIO which do not support INCR1 */
+	if (host->no_sdio_incr1)
+		sdr_set_bits(host->base + MSDC_PATCH_BIT1,
+			MSDC_PB1_SINGLE_BURST);
+
 	/* Configure to default data timeout */
 	sdr_set_field(host->base + SDC_CFG, SDC_CFG_DTOC, 3);
 
@@ -1838,6 +1846,11 @@ static void msdc_of_property_parse(struct platform_device *pdev,
 		host->hs400_cmd_resp_sel_rising = true;
 	else
 		host->hs400_cmd_resp_sel_rising = false;
+
+	if (of_property_read_bool(pdev->dev.of_node, "no-sdio-incr1"))
+		host->no_sdio_incr1 = true;
+	else
+		host->no_sdio_incr1 = false;
 }
 
 static int msdc_drv_probe(struct platform_device *pdev)
@@ -2012,8 +2025,10 @@ static int msdc_drv_probe(struct platform_device *pdev)
 	pinctrl_select_state(host->pinctrl, host->pins_dat1);
 
 #ifdef CONFIG_PM_DEVFREQ
+#ifndef CONFIG_MACH_MT6771
 	pm_qos_add_request(&host->pm_qos, PM_QOS_VCORE_OPP,
 			PM_QOS_VCORE_OPP_DEFAULT_VALUE);
+#endif
 #endif
 	pm_runtime_set_active(host->dev);
 	pm_runtime_set_autosuspend_delay(host->dev, MTK_MMC_AUTOSUSPEND_DELAY);
@@ -2072,7 +2087,9 @@ static int msdc_drv_remove(struct platform_device *pdev)
 			host->dma.bd, host->dma.bd_addr);
 
 #ifdef CONFIG_PM_DEVFREQ
+#ifndef CONFIG_MACH_MT6771
 	pm_qos_remove_request(&host->pm_qos);
+#endif
 #endif
 	mmc_free_host(host->mmc);
 
@@ -2150,7 +2167,9 @@ static int msdc_runtime_suspend(struct device *dev)
 	spin_unlock_irqrestore(&host->lock, flags);
 	msdc_gate_clock(host);
 #ifdef CONFIG_PM_DEVFREQ
+#ifndef CONFIG_MACH_MT6771
 	pm_qos_update_request(&host->pm_qos, VCORE_OPP_UNREQ);
+#endif
 #endif
 	return 0;
 }
@@ -2162,7 +2181,9 @@ static int msdc_runtime_resume(struct device *dev)
 	struct msdc_host *host = mmc_priv(mmc);
 
 #ifdef CONFIG_PM_DEVFREQ
+#ifndef CONFIG_MACH_MT6771
 	pm_qos_update_request(&host->pm_qos, VCORE_OPP_0);
+#endif
 #endif
 	msdc_ungate_clock(host);
 	msdc_restore_reg(host);

@@ -1,0 +1,6 @@
+config OPLUS_ALS_CALI
+	bool "config oplus als cali"
+	help
+		define this config to compile oplus_als_cali_value.c for device register
+
+

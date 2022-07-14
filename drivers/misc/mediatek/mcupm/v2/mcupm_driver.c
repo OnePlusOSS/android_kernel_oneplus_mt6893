@@ -60,6 +60,8 @@ struct plt_ctrl_s {
 };
 #endif
 
+extern void mt_irq_dump_status(int irq);
+
 /* MCUPM HELPER */
 struct platform_device *mcupm_pdev;
 int mcupm_plt_ackdata;
@@ -663,6 +665,35 @@ int mcupm_mbox_write(unsigned int mbox, unsigned int slot, void *buf,
 
 	return 0;
 }
+static void mcupm_ipi_timeout(int id)
+{
+	if (mcupm_ipidev.mbdev == NULL) {
+		pr_debug("[mcupm] %s: mbox=%d no mbox dev", __func__, id);
+		return;
+	}
+
+	if (id >= MCUPM_MBOX_TOTAL || id < 0) {
+		pr_debug("[mcupm] %s: mbox=%d out of info table dev", __func__, id);
+		return;
+	}
+
+	pr_debug("[mcupm]mbox=%d irq num=%d", id, mcupm_ipidev.mbdev->info_table[id].irq_num);
+	mt_irq_dump_status(mcupm_ipidev.mbdev->info_table[id].irq_num);
+
+	pr_debug("[mcupm]mbox=%d timeout setreg(%p)=%x clrreg(%p)=%x sendreg(%p)=%x recvreg(%p)=%x\n",
+		id,
+		mcupm_ipidev.mbdev->info_table[id].set_irq_reg,
+		readl(mcupm_ipidev.mbdev->info_table[id].set_irq_reg),
+		mcupm_ipidev.mbdev->info_table[id].clr_irq_reg,
+		readl(mcupm_ipidev.mbdev->info_table[id].clr_irq_reg),
+		mcupm_ipidev.mbdev->info_table[id].send_status_reg,
+		readl(mcupm_ipidev.mbdev->info_table[id].send_status_reg),
+		mcupm_ipidev.mbdev->info_table[id].recv_status_reg,
+		readl(mcupm_ipidev.mbdev->info_table[id].recv_status_reg));
+
+	ipi_monitor_dump(&mcupm_ipidev);
+	mtk_mbox_dump_all(mcupm_ipidev.mbdev);
+}
 
 static int mcupm_device_probe(struct platform_device *pdev)
 {
@@ -724,6 +755,8 @@ static int mcupm_device_probe(struct platform_device *pdev)
 		pr_debug("[MCUPM] ipi_register fail, ret %d\n", ret);
 		return -1;
 	}
+
+	mcupm_ipidev.timeout_handler = mcupm_ipi_timeout;
 
 	pr_info("MCUPM is ready to service IPI\n");
 

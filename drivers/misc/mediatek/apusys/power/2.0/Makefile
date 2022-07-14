@@ -13,6 +13,8 @@
 
 ifeq ($(CONFIG_MACH_MT6893),y)
 PDIR = mt6885
+else ifeq ($(CONFIG_MACH_MT6877),y)
+PDIR = mt6877
 else
 PDIR = $(MTK_PLATFORM)
 endif
@@ -38,6 +40,14 @@ else ifeq ($(CONFIG_FPGA_EARLY_PORTING),y)
 subdir-ccflags-y += -DMTK_FPGA_PORTING
 endif
 
+#ifdef OPLUS_BUG_STABILITY
+ifeq ($(CONFIG_MACH_MT6885),y)
+ifeq ($(CONFIG_ARCH_MTK_PROJECT), "k6885v1_64")
+subdir-ccflags-y += -DVVPU_VMDLA_FORCE_PWM
+endif
+endif
+#endif /*OPLUS_BUG_STABILITY*/
+
 obj-y:= apusys_power_driver.o apusys_power_ctl.o apusys_power_debug.o \
 		$(PDIR)/hal_config_power.o $(PDIR)/apu_power_regulator.o \
 		$(PDIR)/apu_power_clock.o $(PDIR)/apusys_power_cust.o \
@@ -50,18 +60,6 @@ endif
 
 
 ifneq (,$(findstring aging,$(PROJECT_DTB_NAMES)))
-subdir-ccflags-y += -DAGING_MARGIN
-endif
-ifneq (,$(findstring _khwasan,$(PROJECT_DTB_NAMES)))
-subdir-ccflags-y += -DAGING_MARGIN
-endif
-ifneq (,$(findstring _kasan,$(PROJECT_DTB_NAMES)))
-subdir-ccflags-y += -DAGING_MARGIN
-endif
-ifneq (,$(findstring _hwasan,$(PROJECT_DTB_NAMES)))
-subdir-ccflags-y += -DAGING_MARGIN
-endif
-ifneq (,$(findstring _ubsan,$(PROJECT_DTB_NAMES)))
 subdir-ccflags-y += -DAGING_MARGIN
 endif
 

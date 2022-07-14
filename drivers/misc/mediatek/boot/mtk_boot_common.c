@@ -121,7 +121,12 @@ static void __init init_boot_common(unsigned int line)
 }
 
 /* return boot mode */
-unsigned int get_boot_mode(void)
+/* #ifndef FEATURE_BUG_STABILITY */
+/* modify for conlict with oplus/kernel/system/boot_mode.h build error */
+/* unsigned int get_boot_mode(void) */
+/* #else */
+int get_boot_mode(void)
+/* #endif */
 {
 	if (atomic_read(&g_boot_init) != BM_INITIALIZED) {
 		pr_warn("fail, %s (%d) state(%d,%d)\n", __func__, __LINE__,
@@ -221,6 +226,35 @@ static const struct file_operations boot_fops = {
 	.unlocked_ioctl = NULL
 };
 
+#ifdef OPLUS_BUG_STABILITY
+static struct kobject *systeminfo_kobj;
+static ssize_t ftmmode_show(struct kobject *kobj, struct kobj_attribute *attr,
+				char *buf)
+{
+	if (oplus_boot_mode == OPLUS_SILENCE_BOOT)
+		return sprintf(buf, "%d\n", SILENCE_BOOT);
+	else if (oplus_boot_mode == OPLUS_SAFE_BOOT)
+		return sprintf(buf, "%d\n", SAFE_BOOT);
+	else if (oplus_boot_mode == OPLUS_AGING_BOOT)
+		return sprintf(buf, "%d\n", AGING_BOOT);
+	else
+		return sprintf(buf, "%d\n", get_boot_mode());
+}
+
+struct kobj_attribute ftmmode_attr = {
+	.attr = {"ftmmode", 0444},
+
+	.show = &ftmmode_show,
+};
+static struct attribute * g[] = {
+	&ftmmode_attr.attr,
+	NULL,
+};
+
+static struct attribute_group attr_group = {
+	.attrs = g,
+};
+#endif /* OPLUS_BUG_STABILITY */
 /* boot device class */
 static struct class *boot_class;
 static struct device *boot_device;
@@ -265,6 +299,12 @@ static int __init create_sysfs(void)
 		return ret;
 	}
 
+#ifdef OPLUS_BUG_STABILITY
+	systeminfo_kobj = kobject_create_and_add("systeminfo", NULL);
+	printk("oplus create systeminto node suscess!\n");
+	if (systeminfo_kobj)
+		ret = sysfs_create_group(systeminfo_kobj, &attr_group);
+#endif /* OPLUS_BUG_STABILITY */
 	return 0;
 }
 
@@ -300,6 +340,38 @@ static int boot_mode_proc_show(struct seq_file *p, void *v)
 	return 0;
 }
 
+#ifdef OPLUS_BUG_STABILITY
+OPLUS_BOOTMODE oplus_boot_mode = OPLUS_NORMAL_BOOT;
+static int oplus_get_boot_mode(char *oplus_boot_mode_char)
+{
+	int  boot_mode_temp = 0;
+	sscanf(oplus_boot_mode_char, "%d", &boot_mode_temp);
+	if(boot_mode_temp == 0)
+	{
+		oplus_boot_mode = OPLUS_NORMAL_BOOT;
+	}
+	else if (boot_mode_temp == 1)
+	{
+		oplus_boot_mode = OPLUS_SILENCE_BOOT;
+	}
+	else if (boot_mode_temp == 2)
+	{
+		oplus_boot_mode = OPLUS_SAFE_BOOT;
+	}
+	else if (boot_mode_temp == 3)
+	{
+		oplus_boot_mode = OPLUS_AGING_BOOT;
+	}
+	else
+	{
+		oplus_boot_mode = OPLUS_UNKNOWN_BOOT;
+	}
+    pr_err("oplus_boot_mode: %d ",oplus_boot_mode);
+
+     return 1;
+}
+__setup("oplus_boot_mode=", oplus_get_boot_mode);
+#endif /* OPLUS_BUG_STABILITY */
 static int boot_mode_proc_open(struct inode *inode, struct file *file)
 {
 	return single_open(file, boot_mode_proc_show, NULL);

@@ -15,8 +15,8 @@
 		tcpc-dual,supported_modes = <0>; /* 0: dfp/ufp, */
 						 /* 1: dfp, 2: ufp */
 		rt-tcpc,name = "type_c_port0"; /* tcpc_device's name */
-		rt-tcpc,role_def = <4>; /* 0: SNK Only, 1: SRC Only, 2: DRP, */
-					/* 3: Try.SRC, 4: Try.SNK */
+		rt-tcpc,role_def = <5>; /* 0: Unknown, 1: SNK, 2: SRC */
+					/* 3: DRP, 4: Try.SRC, 5: Try.SNK */
 		rt-tcpc,rp_level = <0>; /* 0: Default, 1: 1.5, 2: 3.0 */
 		rt-tcpc,vconn_supply  = <1>;  /* 0: Never, 1: Always, */
 					      /* 2: EMarkOnly, 3: StartOnly */
@@ -62,15 +62,18 @@
 
 			/*
 			 * No DP, host + device
-			 *	pd,id-vdo-size = <3>;
-			 *	pd,id-vdo-data = <0xd10029cf 0x0 0x17110000>;
+			 *	pd,id-vdo-size = <6>;
+			 *	pd,id-vdo-data = <0xd14029cf 0x0 0x17110000
+						  0x41800000 0x0 0x21800000>;
 			 * With DP
-			 *	pd,id-vdo-size = <3>;
-			 *	pd,id-vdo-data = <0xd60029cf 0x0 0x17110000
+			 *	pd,id-vdo-size = <6>;
+			 *	pd,id-vdo-data = <0xd54029cf 0x0 0x17110000
+						  0x41800000 0x0 0x21800000>;
 			 */
 
-			pd,id-vdo-size = <3>;
-			pd,id-vdo-data = <0xd10029cf 0x0 0x17110000>;
+			pd,id-vdo-size = <6>;
+			pd,id-vdo-data = <0xd14029cf 0x0 0x17110000
+					  0x41800000 0x0 0x21800000>;
 
 			bat,nr = <1>;
 			pd,country_nr = <0>;
@@ -145,7 +148,6 @@
 				//pin_assignment,mode_e;
 			};
 			dfp_d {
-				/* Only support mode C & D */
 				//pin_assignment,mode_a;
 				//pin_assignment,mode_b;
 				pin_assignment,mode_c;

@@ -16,6 +16,7 @@
 #include <linux/kernel.h>
 #include <linux/notifier.h>
 #include <linux/perf_event.h>
+#include <linux/spinlock.h>
 #include <trace/events/mtk_events.h>
 #ifdef CONFIG_MTK_QOS_FRAMEWORK
 #include <mtk_qos_ipi.h>
@@ -58,7 +59,7 @@
 static unsigned int swpm_init_state;
 
 /* index snapshot */
-static struct mutex swpm_snap_lock;
+static DEFINE_SPINLOCK(swpm_snap_spinlock);
 static struct mem_swpm_index mem_idx_snap;
 
 #ifdef CONFIG_MTK_TINYSYS_SSPM_SUPPORT
@@ -78,7 +79,6 @@ static unsigned long long rec_size;
 #define swpm_pmu_get_sta(u)  ((swpm_pmu_sta & (1 << u)) >> u)
 #define swpm_pmu_set_sta(u)  (swpm_pmu_sta |= (1 << u))
 #define swpm_pmu_clr_sta(u)  (swpm_pmu_sta &= ~(1 << u))
-static struct mutex swpm_pmu_mutex;
 static unsigned int swpm_pmu_sta;
 
 __weak int mt_spower_get_leakage_uW(int dev, int voltage, int deg)
@@ -601,16 +601,16 @@ static void swpm_pmu_set_enable(int cpu, int enable)
 		swpm_pmu_stop(cpu);
 
 		if (l3_event) {
-			per_cpu(l3dc_events, cpu) = NULL;
 			perf_event_release_kernel(l3_event);
+			per_cpu(l3dc_events, cpu) = NULL;
 		}
 		if (i_event) {
-			per_cpu(inst_spec_events, cpu) = NULL;
 			perf_event_release_kernel(i_event);
+			per_cpu(inst_spec_events, cpu) = NULL;
 		}
 		if (c_event) {
-			per_cpu(cycle_events, cpu) = NULL;
 			perf_event_release_kernel(c_event);
+			per_cpu(cycle_events, cpu) = NULL;
 		}
 	}
 }
@@ -629,8 +629,6 @@ static void swpm_pmu_set_enable_all(unsigned int enable)
 		return;
 	}
 
-	swpm_lock(&swpm_pmu_mutex);
-	get_online_cpus();
 	if (swpm_pmu_en) {
 		if (!swpm_pmu_sta) {
 #ifdef CONFIG_MTK_CACHE_CONTROL
@@ -654,8 +652,6 @@ static void swpm_pmu_set_enable_all(unsigned int enable)
 #endif
 		}
 	}
-	put_online_cpus();
-	swpm_unlock(&swpm_pmu_mutex);
 
 	swpm_err("pmu_enable: %d, user_sta: %d\n",
 		 swpm_pmu_en, swpm_pmu_sta);
@@ -863,22 +859,24 @@ static void swpm_update_lkg_table(void)
 
 static void swpm_idx_snap(void)
 {
+	unsigned long flags;
+
 	if (share_idx_ref) {
-		swpm_lock(&swpm_snap_lock);
+		spin_lock_irqsave(&swpm_snap_spinlock, flags);
 		/* directly copy due to 8 bytes alignment problem */
 		mem_idx_snap.read_bw[0] = share_idx_ref->mem_idx.read_bw[0];
 		mem_idx_snap.read_bw[1] = share_idx_ref->mem_idx.read_bw[1];
 		mem_idx_snap.write_bw[0] = share_idx_ref->mem_idx.write_bw[0];
 		mem_idx_snap.write_bw[1] = share_idx_ref->mem_idx.write_bw[1];
-		swpm_unlock(&swpm_snap_lock);
+		spin_unlock_irqrestore(&swpm_snap_spinlock, flags);
 	}
 }
 
 static char idx_buf[POWER_INDEX_CHAR_SIZE] = { 0 };
+static char buf[POWER_CHAR_SIZE] = { 0 };
 
 static void swpm_log_loop(unsigned long data)
 {
-	char buf[256] = {0};
 	char *ptr = buf;
 	char *idx_ptr = idx_buf;
 	int i;
@@ -1138,13 +1136,15 @@ static char *_copy_from_user_for_proc(const char __user *buffer, size_t count)
 
 static int dram_bw_proc_show(struct seq_file *m, void *v)
 {
-	swpm_lock(&swpm_snap_lock);
+	unsigned long flags;
+
+	spin_lock_irqsave(&swpm_snap_spinlock, flags);
 	seq_printf(m, "DRAM BW [N]R/W=%d/%d,[S]R/W=%d/%d\n",
 		   mem_idx_snap.read_bw[0],
 		   mem_idx_snap.write_bw[0],
 		   mem_idx_snap.read_bw[1],
 		   mem_idx_snap.write_bw[1]);
-	swpm_unlock(&swpm_snap_lock);
+	spin_unlock_irqrestore(&swpm_snap_spinlock, flags);
 
 	return 0;
 }

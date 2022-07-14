@@ -232,7 +232,6 @@ static int m4u_client_add_buf(
  * @remark
  * @see
  * @to-do    we need to add multi domain support here.
- * @author K Zhang      @date 2013/11/14
  ************************************************************/
 static struct m4u_buf_info_t *m4u_client_find_buf(
 		struct m4u_client_t *client, unsigned int mva, int del)
@@ -3034,7 +3033,7 @@ static int __init MTK_M4U_Init(void)
 		return ret;
 	}
 #else
-	gM4uDev->m4u_dev_proc_entry = proc_create("m4u", 0, NULL, &m4u_fops);
+	gM4uDev->m4u_dev_proc_entry = proc_create("m4u", 0640, NULL, &m4u_fops);
 	if (!(gM4uDev->m4u_dev_proc_entry)) {
 		M4UMSG("m4u:failed to register m4u in proc/m4u_device.\n");
 		return ret;

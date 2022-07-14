@@ -754,7 +754,6 @@ static int xfrm_del_sa(struct sk_buff *skb, struct nlmsghdr *nlh,
 	x = xfrm_user_state_lookup(net, p, attrs, &err);
 	if (x == NULL)
 		return err;
-
 	if ((err = security_xfrm_state_delete(x)) != 0)
 		goto out;
 
@@ -762,7 +761,6 @@ static int xfrm_del_sa(struct sk_buff *skb, struct nlmsghdr *nlh,
 		err = -EPERM;
 		goto out;
 	}
-
 	err = xfrm_state_delete(x);
 
 	if (err < 0)

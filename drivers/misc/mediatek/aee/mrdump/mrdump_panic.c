@@ -34,6 +34,14 @@
 #include "mrdump_mini.h"
 #include <mt-plat/mtk_ram_console.h>
 
+/* for arm_smccc_smc */
+#include <linux/arm-smccc.h>
+#include <uapi/linux/psci.h>
+
+#ifdef OPLUS_FEATURE_PERFORMANCE
+extern bool is_triggering_panic;
+extern void flush_cache_on_panic(void);
+#endif  /*OPLUS_FEATURE_PERFORMANCE*/
 static char mrdump_lk[12];
 bool mrdump_ddr_reserve_ready;
 
@@ -52,31 +60,23 @@ static inline unsigned long get_linear_memory_size(void)
 	return (unsigned long)high_memory - PAGE_OFFSET;
 }
 
-
 /* no export symbol to aee_exception_reboot, only used in exception flow */
+/* PSCI v1.1 extended power state encoding for SYSTEM_RESET2 function */
+#define PSCI_1_1_FN_SYSTEM_RESET2       0x84000012
+#define PSCI_1_1_RESET2_TYPE_VENDOR_SHIFT   31
+#define PSCI_1_1_RESET2_TYPE_VENDOR     \
+	(1 << PSCI_1_1_RESET2_TYPE_VENDOR_SHIFT)
+
 static void aee_exception_reboot(void)
 {
-#ifdef CONFIG_MTK_WATCHDOG
-	int res;
-	struct wd_api *wd_api = NULL;
+	struct arm_smccc_res res;
+	int opt1 = 1, opt2 = 0;
 
-	/* config reset mode */
-	int mode = WD_SW_RESET_BYPASS_PWR_KEY;
-
-	res = get_wd_api(&wd_api);
-	if (res < 0) {
-		pr_info("arch_reset, get wd api error %d\n", res);
-		while (1)
-			cpu_relax();
-	} else {
-		pr_info("exception reboot\n");
-		mode += WD_SW_RESET_KEEP_DDR_RESERVE;
-		wd_api->wd_sw_reset(mode);
-	}
-#else
-	emergency_restart();
-#endif
+	arm_smccc_smc(PSCI_1_1_FN_SYSTEM_RESET2,
+		PSCI_1_1_RESET2_TYPE_VENDOR | opt1,
+		opt2, 0, 0, 0, 0, 0, &res);
 }
+
 
 /*save stack as binary into buf,
  *return value
@@ -141,8 +141,6 @@ void ipanic_recursive_ke(struct pt_regs *regs, struct pt_regs *excp_regs,
 				&saved_regs, "Kernel NestedPanic");
 	}
 	mrdump_mini_ke_cpu_regs(excp_regs);
-	mrdump_mini_per_cpu_regs(cpu, regs, current);
-	dis_D_inner_flush_all();
 	aee_exception_reboot();
 }
 EXPORT_SYMBOL(ipanic_recursive_ke);
@@ -152,9 +150,46 @@ __weak void aee_wdt_zap_locks(void)
 	pr_notice("%s:weak function\n", __func__);
 }
 
+#ifdef OPLUS_FEATURE_PHOENIX
+extern void deal_fatal_err(void);
+extern int kernel_panic_happened;
+extern int hwt_happened;
+#endif /* OPLUS_FEATURE_PHOENIX */
+
+#ifdef CONFIG_OPLUS_FEATURE_PANIC_FLUSH
+extern int panic_flush_device_cache(int timeout);
+#endif
+
 int mrdump_common_die(int fiq_step, int reboot_reason, const char *msg,
 		      struct pt_regs *regs)
 {
+
+#ifdef OPLUS_FEATURE_PHOENIX
+	if((AEE_REBOOT_MODE_KERNEL_OOPS == reboot_reason || AEE_REBOOT_MODE_KERNEL_PANIC == reboot_reason)
+		&& !kernel_panic_happened)
+	{
+		kernel_panic_happened = 1;
+		deal_fatal_err();
+	}
+	else if (AEE_REBOOT_MODE_WDT == reboot_reason && !hwt_happened)
+	{
+		hwt_happened = 1;
+		deal_fatal_err();
+	}
+#endif /* OPLUS_FEATURE_PHOENIX */
+
+#ifdef CONFIG_OPLUS_FEATURE_PANIC_FLUSH
+	panic_flush_device_cache(2000);
+#endif
+
+#ifdef OPLUS_FEATURE_PERFORMANCE
+    if(!is_triggering_panic)
+    {
+        is_triggering_panic = true;
+        pr_notice("is_triggering_panic : true\n");
+        flush_cache_on_panic();
+    }
+#endif // OPLUS_FEATURE_PERFORMANCE
 	bust_spinlocks(1);
 	aee_disable_api();
 
@@ -166,19 +201,13 @@ int mrdump_common_die(int fiq_step, int reboot_reason, const char *msg,
 	aee_rr_rec_scp();
 #endif
 	__mrdump_create_oops_dump(reboot_reason, regs, msg);
-
+	mrdump_mini_ke_cpu_regs(regs);
 	switch (reboot_reason) {
 	case AEE_REBOOT_MODE_KERNEL_OOPS:
-#ifdef CONFIG_MTK_RAM_CONSOLE
-		aee_rr_rec_exp_type(AEE_EXP_TYPE_KE);
-#endif
 		__show_regs(regs);
 		dump_stack();
 		break;
 	case AEE_REBOOT_MODE_KERNEL_PANIC:
-#ifdef CONFIG_MTK_RAM_CONSOLE
-		aee_rr_rec_exp_type(AEE_EXP_TYPE_KE);
-#endif
 #ifndef CONFIG_DEBUG_BUGVERBOSE
 		dump_stack();
 #endif
@@ -193,8 +222,6 @@ int mrdump_common_die(int fiq_step, int reboot_reason, const char *msg,
 		break;
 	}
 
-	mrdump_mini_ke_cpu_regs(regs);
-	dis_D_inner_flush_all();
 	aee_wdt_zap_locks();
 	console_unlock();
 	aee_exception_reboot();
@@ -208,7 +235,9 @@ int ipanic(struct notifier_block *this, unsigned long event, void *ptr)
 
 #ifdef CONFIG_MTK_RAM_CONSOLE
 	fiq_step = AEE_FIQ_STEP_KE_IPANIC_START;
+	aee_rr_rec_exp_type(AEE_EXP_TYPE_KE);
 #endif
+
 	crash_setup_regs(&saved_regs, NULL);
 	return mrdump_common_die(fiq_step,
 				 AEE_REBOOT_MODE_KERNEL_PANIC,
@@ -222,6 +251,7 @@ static int ipanic_die(struct notifier_block *self, unsigned long cmd, void *ptr)
 
 #ifdef CONFIG_MTK_RAM_CONSOLE
 	fiq_step = AEE_FIQ_STEP_KE_IPANIC_DIE;
+	aee_rr_rec_exp_type(AEE_EXP_TYPE_KE);
 #endif
 	return mrdump_common_die(fiq_step,
 				 AEE_REBOOT_MODE_KERNEL_OOPS,
@@ -291,6 +321,11 @@ static struct notifier_block mrdump_module_nb = {
 
 static int __init mrdump_panic_init(void)
 {
+	if (!aee_is_enable()) {
+		pr_notice("%s: ipanic: mrdump is disable\n", __func__);
+		return 0;
+	}
+
 	mrdump_parse_chosen();
 
 	mrdump_hw_init();
@@ -385,6 +420,7 @@ inline void aee_print_bt(struct pt_regs *regs)
 		aee_nested_printf("invalid sp[%lx]\n", (unsigned long)regs);
 		return;
 	}
+	memset(&cur_frame, 0, sizeof(cur_frame));
 	high = ALIGN(bottom, THREAD_SIZE);
 	cur_frame.fp = regs->reg_fp;
 	cur_frame.pc = regs->reg_pc;

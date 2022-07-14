@@ -278,7 +278,8 @@ struct clk *mtk_clk_register_gate(
 		return ERR_PTR(-ENOMEM);
 
 	init.name = name;
-	init.flags = flags | CLK_SET_RATE_PARENT | CLK_OPS_PARENT_ENABLE;
+	init.flags = flags | CLK_SET_RATE_PARENT |
+		((flags & CLK_IGNORE_UNUSED) ? 0 : CLK_OPS_PARENT_ENABLE);
 	init.parent_names = parent_name ? &parent_name : NULL;
 	init.num_parents = parent_name ? 1 : 0;
 	init.ops = ops;

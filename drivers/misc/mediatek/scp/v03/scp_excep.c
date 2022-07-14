@@ -27,6 +27,10 @@
 #include "scp_excep.h"
 #include "scp_feature_define.h"
 #include "scp_l1c.h"
+#ifdef OPLUS_FEATURE_SENSOR
+
+#include <soc/oplus/system/kernel_fb.h>
+#endif /* OPLUS_FEATURE_SENSOR */
 
 struct scp_dump_st {
 	uint8_t *detail_buff;
@@ -63,9 +67,10 @@ static unsigned int scp_A_task_context_addr;
 struct scp_status_reg c0_m;
 struct scp_status_reg c1_m;
 
-static struct mutex scp_excep_mutex;
 int scp_ee_enable;
 int scp_reset_counts = 100000;
+static atomic_t coredumping = ATOMIC_INIT(0);
+static DECLARE_COMPLETION(scp_coredump_comp);
 
 void scp_dump_last_regs(void)
 {
@@ -166,6 +171,52 @@ void scp_do_l1cdump(uint32_t *out, uint32_t *out_end)
 
 void scp_do_tbufdump(uint32_t *out, uint32_t *out_end)
 {
+
+	uint32_t *buf = out;
+	uint32_t index, raw, wbuf_ptr, wptr_value, i;
+
+	wptr_value = readl(R_CORE0_TBUF_WPTR);
+	/* tbuf wptr0 for bit[0:5], 0~63 for ring buffer */
+	wbuf_ptr = wptr_value & 0x3f;
+
+	pr_notice("%s\n", __func__);
+	pr_notice("[SCP] TBUF_WPTR = 0x%08x\n", wptr_value);
+
+	for (i = 0; i < 32; ++i) {
+		/* ring buffer, 0, 2, 4, ... 58, 60, 62 */
+		index = (wbuf_ptr + (i << 1)) & 0x3f;
+		/* raw:0 ~ 15, each raw has tbuf0 && tbuf1
+		 * each tbuf have 128 bit(4 word)
+		 */
+		raw = index / 4;
+		/* tbuf1 index is 2, 6, 10, 14 ... */
+		if (index & 0x2) {
+			/* bit16~19 for tbuf1 */
+			writel(raw << 16, R_CORE0_DBG_CTRL);
+			buf[0] = readl(R_CORE0_TBUF1_DATA31_0);
+			buf[1] = readl(R_CORE0_TBUF1_DATA63_32);
+			buf[2] = readl(R_CORE0_TBUF1_DATA95_64);
+			buf[3] = readl(R_CORE0_TBUF1_DATA127_96);
+		/* tbuf0 index is 0, 4, 8, 12 ... */
+		} else {
+			/* bit4~7 for tbuf0 */
+			writel(raw << 4, R_CORE0_DBG_CTRL);
+			buf[0] = readl(R_CORE0_TBUF_DATA31_0);
+			buf[1] = readl(R_CORE0_TBUF_DATA63_32);
+			buf[2] = readl(R_CORE0_TBUF_DATA95_64);
+			buf[3] = readl(R_CORE0_TBUF_DATA127_96);
+		}
+		buf += 4;
+	}
+
+	/* read start from out */
+	buf = out;
+	for (i = 0; i < 32; i++) {
+		pr_notice("[SCP] C0:%02d:0x%08x::0x%08x::0x%08x::0x%08x\n",
+			i, buf[0], buf[1], buf[2], buf[3]);
+		buf += 4;
+	}
+#if 0
 	uint32_t *buf = out;
 	uint32_t tmp, tmp1, index, offset, wbuf_ptr, wbuf1_ptr;
 	int i;
@@ -200,6 +251,7 @@ void scp_do_tbufdump(uint32_t *out, uint32_t *out_end)
 		pr_notice("[SCP] C1:%02d:0x%08x::0x%08x\n",
 			i, *(out + 64 + i * 2), *(out + 64 + i * 2 + 1));
 	}
+#endif
 }
 
 /*
@@ -314,12 +366,20 @@ void scp_aed(enum SCP_RESET_TYPE type, enum scp_core_id id)
 {
 	char *scp_aed_title = NULL;
 
+#ifdef OPLUS_FEATURE_SENSOR
+	unsigned char fb_str[256] = "";
+#endif /*OPLUS_FEATURE_SENSOR*/
+
 	if (!scp_ee_enable) {
 		pr_debug("[SCP]ee disable value=%d\n", scp_ee_enable);
 		return;
 	}
 
-	mutex_lock(&scp_excep_mutex);
+	/* wait for previous coredump complete */
+	wait_for_completion(&scp_coredump_comp);
+	if (atomic_read(&coredumping) == true)
+		pr_notice("[SCP] coredump overwrite happen\n");
+	atomic_set(&coredumping, true);
 
 	/* get scp title and exception type*/
 	switch (type) {
@@ -351,16 +411,27 @@ void scp_aed(enum SCP_RESET_TYPE type, enum scp_core_id id)
 	scp_get_log(id);
 	/*print scp message*/
 	pr_debug("scp_aed_title=%s\n", scp_aed_title);
+	if (scp_dump.ramdump == NULL)
+		scp_dump.ramdump = vmalloc(sizeof(struct MemoryDump));
 
-	scp_prepare_aed_dump(scp_aed_title, id);
+	if (scp_dump.ramdump != NULL)
+		scp_prepare_aed_dump(scp_aed_title, id);
+	else
+		pr_notice("[SCP] ramdump malloc fail\n");
 
 	/* scp aed api, only detail information available*/
 	aed_common_exception_api("scp", NULL, 0, NULL, 0,
 			scp_dump.detail_buff, DB_OPT_DEFAULT);
-
+#ifndef OPLUS_FEATURE_SENSOR
+	unsigned char fb_str[256] = "";
+	/* scp aed api, only detail information available*/
 	pr_debug("[SCP] scp exception dump is done\n");
+#else
+	pr_info("[SCP] scp exception dump is done\n");
+	scnprintf(fb_str,sizeof(fb_str),"%s: core0 pc:0x%08x,lr:0x%08x;core1 pc:0x%08x,lr:0x%08x:$$module@@scp",scp_aed_title,c0_m.pc,c0_m.lr,c1_m.pc,c1_m.lr);
 
-	mutex_unlock(&scp_excep_mutex);
+	oplus_kevent_fb_str(FB_SENSOR,FB_SENSOR_ID_CRASH,fb_str);
+#endif  //OPLUS_FEATURE_SENSOR
 }
 
 
@@ -371,17 +442,24 @@ static ssize_t scp_A_dump_show(struct file *filep,
 {
 	unsigned int length = 0;
 
-	mutex_lock(&scp_excep_mutex);
 
 	if (offset >= 0 && offset < scp_dump.ramdump_length) {
-		if ((offset + size) > scp_dump.ramdump_length)
+		if ((offset + size) >= scp_dump.ramdump_length)
 			size = scp_dump.ramdump_length - offset;
 
 		memcpy(buf, scp_dump.ramdump + offset, size);
 		length = size;
+		/* the last time read scp_dump buffer has done
+		 * so the next coredump flow can be continued
+		 */
+		if (size == scp_dump.ramdump_length - offset) {
+			atomic_set(&coredumping, false);
+			pr_notice("[SCP] coredumping:%d, coredump complete\n",
+				atomic_read(&coredumping));
+			complete(&scp_coredump_comp);
+		}
 	}
 
-	mutex_unlock(&scp_excep_mutex);
 
 	return length;
 }
@@ -405,7 +483,6 @@ int scp_excep_init(void)
 {
 	int dram_size = 0;
 
-	mutex_init(&scp_excep_mutex);
 
 	/* alloc dump memory */
 	scp_dump.detail_buff = vmalloc(SCP_AED_STR_LEN);
@@ -416,14 +493,14 @@ int scp_excep_init(void)
 	if ((int)(scp_region_info->ap_dram_size) > 0)
 		dram_size = scp_region_info->ap_dram_size;
 
-	scp_dump.ramdump = vmalloc(sizeof(struct MemoryDump));
-	if (!scp_dump.ramdump)
-		return -1;
+	scp_dump.ramdump = NULL;
 
 	/* init global values */
 	scp_dump.ramdump_length = 0;
 	/* 1: ee on, 0: ee disable */
 	scp_ee_enable = 1;
+	/* all coredump need element is prepare done */
+	complete(&scp_coredump_comp);
 
 	return 0;
 }

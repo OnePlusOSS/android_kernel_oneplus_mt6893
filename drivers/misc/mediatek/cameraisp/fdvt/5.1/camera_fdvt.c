@@ -84,6 +84,7 @@
 #if IS_ENABLED(CONFIG_MTK_CAM_SECURITY_SUPPORT)
 #ifdef CMDQ_MTEE
 #include <linux/atomic.h>
+#include "tz_m4u.h"
 static atomic_t m4u_gz_init = ATOMIC_INIT(0);
 #endif
 #endif
@@ -1699,7 +1700,7 @@ static signed int config_secure_fdvt_hw(struct fdvt_config *basic_config)
 			CMDQ_SEC_ISP_FDVT,
 			CMDQ_METAEX_FD);
 #ifdef CMDQ_MTEE
-		cmdq_sec_pkt_set_mtee(pkt, true);
+		cmdq_sec_pkt_set_mtee(pkt, true, SEC_ID_SEC_CAM);
 		if (atomic_cmpxchg(&m4u_gz_init, 0, 1) == 0)
 			m4u_gz_sec_init(0);
 #endif
@@ -1749,27 +1750,32 @@ static signed int config_secure_fdvt_hw(struct fdvt_config *basic_config)
 		cmdq_pkt_write(pkt, NULL, FDVT_LOOP_HW, 0x00006002,
 			       CMDQ_REG_MASK);
 		cmdq_pkt_write(pkt, NULL, FDVT_INT_EN_HW, 0x0, CMDQ_REG_MASK);
+#ifdef CMDQ_MTEE
 		cmdq_sec_pkt_write_reg(pkt,
 			FDVT_RS_CON_BASE_ADR_HW,
 			basic_config->FDVT_RSCON_BASE_ADR,
 			CMDQ_IWC_PH_2_MVA,
 			0,
 			basic_config->FDVT_RSCON_BUFSIZE,
-			M4U_PORT_L20_IPE_FDVT_RDA_DISP);
+			M4U_PORT_L20_IPE_FDVT_RDA_DISP,
+			SEC_ID_SEC_CAM);
 		cmdq_sec_pkt_write_reg(pkt,
 			FDVT_FD_CON_BASE_ADR_HW,
 			basic_config->FDVT_FD_CON_BASE_ADR,
 			CMDQ_IWC_PH_2_MVA,
 			0,
 			basic_config->FDVT_FD_CON_BUFSIZE,
-			M4U_PORT_L20_IPE_FDVT_RDA_DISP);
+			M4U_PORT_L20_IPE_FDVT_RDA_DISP,
+			SEC_ID_SEC_CAM);
 		cmdq_sec_pkt_write_reg(pkt,
 			FDVT_YUV2RGB_CON_BASE_ADR_HW,
 			basic_config->FDVT_YUV2RGBCON_BASE_ADR,
 			CMDQ_IWC_PH_2_MVA,
 			0,
 			basic_config->FDVT_YUV2RGBCON_BUFSIZE,
-			M4U_PORT_L20_IPE_FDVT_RDA_DISP);
+			M4U_PORT_L20_IPE_FDVT_RDA_DISP,
+			SEC_ID_SEC_CAM);
+#endif
 		cmdq_sec_pkt_set_payload(pkt, 1, sizeof(basic_config->FDVT_METADATA_TO_GCE), (unsigned int *)&basic_config->FDVT_METADATA_TO_GCE);
 
 		cmdq_pkt_write(pkt, NULL, FDVT_START_HW, 0x1, CMDQ_REG_MASK);
@@ -1784,15 +1790,16 @@ static signed int config_secure_fdvt_hw(struct fdvt_config *basic_config)
 			       CMDQ_REG_MASK);
 
 		cmdq_pkt_write(pkt, NULL, FDVT_INT_EN_HW, 0x1, CMDQ_REG_MASK);
-
+#ifdef CMDQ_MTEE
 		cmdq_sec_pkt_write_reg(pkt,
 			FDVT_FD_CON_BASE_ADR_HW,
 			basic_config->FDVT_FD_POSE_CON_BASE_ADR,
 			CMDQ_IWC_PH_2_MVA,
 			0,
 			basic_config->FDVT_FD_POSE_CON_BUFSIZE,
-			M4U_PORT_L20_IPE_FDVT_RDA_DISP);
-
+			M4U_PORT_L20_IPE_FDVT_RDA_DISP,
+			SEC_ID_SEC_CAM);
+#endif
 		cmdq_pkt_write(pkt, NULL, FDVT_START_HW, 0x1, CMDQ_REG_MASK);
 
 		cmdq_pkt_wfe(pkt, fdvt_event_id);
@@ -1805,29 +1812,32 @@ static signed int config_secure_fdvt_hw(struct fdvt_config *basic_config)
 		cmdq_pkt_write(pkt, NULL, FDVT_LOOP_HW, 0x00001A00,
 			       CMDQ_REG_MASK);
 		cmdq_pkt_write(pkt, NULL, FDVT_INT_EN_HW, 0x1, CMDQ_REG_MASK);
-
+#ifdef CMDQ_MTEE
 		cmdq_sec_pkt_write_reg(pkt,
 			FDVT_RS_CON_BASE_ADR_HW,
 			basic_config->FDVT_RSCON_BASE_ADR,
 			CMDQ_IWC_PH_2_MVA,
 			0,
 			basic_config->FDVT_RSCON_BUFSIZE,
-			M4U_PORT_L20_IPE_FDVT_RDA_DISP);
+			M4U_PORT_L20_IPE_FDVT_RDA_DISP,
+			SEC_ID_SEC_CAM);
 		cmdq_sec_pkt_write_reg(pkt,
 			FDVT_FD_CON_BASE_ADR_HW,
 			basic_config->FDVT_FD_CON_BASE_ADR,
 			CMDQ_IWC_PH_2_MVA,
 			0,
 			basic_config->FDVT_FD_CON_BUFSIZE,
-			M4U_PORT_L20_IPE_FDVT_RDA_DISP);
+			M4U_PORT_L20_IPE_FDVT_RDA_DISP,
+			SEC_ID_SEC_CAM);
 		cmdq_sec_pkt_write_reg(pkt,
 			FDVT_YUV2RGB_CON_BASE_ADR_HW,
 			basic_config->FDVT_YUV2RGBCON_BASE_ADR,
 			CMDQ_IWC_PH_2_MVA,
 			0,
 			basic_config->FDVT_YUV2RGBCON_BUFSIZE,
-			M4U_PORT_L20_IPE_FDVT_RDA_DISP);
-
+			M4U_PORT_L20_IPE_FDVT_RDA_DISP,
+			SEC_ID_SEC_CAM);
+#endif
 		cmdq_pkt_write(pkt, NULL, FDVT_START_HW, 0x1, CMDQ_REG_MASK);
 
 		cmdq_pkt_wfe(pkt, fdvt_event_id);
@@ -2234,9 +2244,8 @@ static void fdvt_enable_clock(bool En)
 #endif
 
 	if (En) { /* Enable clock. */
-		/* log_dbg("Dpe clock enbled. clock_enable_count: %d.",
-		 * clock_enable_count);
-		 */
+		log_inf("FDVT clock enbled. clock_enable_count: %d.",
+		clock_enable_count);
 		mutex_lock(&fdvt_clk_mutex);
 		switch (clock_enable_count) {
 		case 0:
@@ -2266,6 +2275,7 @@ static void fdvt_enable_clock(bool En)
 		default:
 			break;
 		}
+
 		clock_enable_count++;
 		mutex_unlock(&fdvt_clk_mutex);
 #ifdef CONFIG_MTK_IOMMU_V2
@@ -2277,9 +2287,9 @@ static void fdvt_enable_clock(bool En)
 #endif
 	} else { /* Disable clock. */
 
-		/* log_dbg("Dpe clock disabled. clock_enable_count: %d.",
-		 * clock_enable_count);
-		 */
+		log_inf("FDVT clock disabled. clock_enable_count: %d.",
+		clock_enable_count);
+
 		mutex_lock(&fdvt_clk_mutex);
 		clock_enable_count--;
 		switch (clock_enable_count) {
@@ -2332,6 +2342,13 @@ static signed int fdvt_read_reg(FDVT_REG_IO_STRUCT *pRegIo)
 	    pRegIo->count > (FDVT_REG_RANGE >> 2)) {
 		log_err("%s pRegIo->pData is NULL, count:%d!!",
 			__func__, pRegIo->count);
+		ret = -EFAULT;
+		goto EXIT;
+	}
+
+	if (pData->addr < 0x0 || pData->addr > 0x1000) {
+		log_err("%s pData->addr is out of range",
+			__func__);
 		ret = -EFAULT;
 		goto EXIT;
 	}
@@ -3479,6 +3496,7 @@ static signed int FDVT_open(struct inode *pInode, struct file *pFile)
 	fdvt_req_ring.hw_process_idx = 0x0;
 
 	/* Enable clock */
+	log_inf("open enable clk\n");
 	fdvt_enable_clock(MTRUE);
 
 	fdvt_count = 0;
@@ -3543,6 +3561,7 @@ static signed int FDVT_release(struct inode *pInode, struct file *pFile)
 		current->tgid);
 
 	/* Disable clock. */
+	log_inf("disable clk\n");
 	fdvt_enable_clock(MFALSE);
 	log_dbg("FDVT release clock_enable_count: %d", clock_enable_count);
 	/*  */
@@ -4072,6 +4091,7 @@ static signed int FDVT_suspend(struct platform_device *pDev, pm_message_t Mesg)
 	bPass1_On_In_Resume_TG1 = 0;
 
 	if (clock_enable_count > 0) {
+		log_inf("suspend enable clk\n");
 		fdvt_enable_clock(MFALSE);
 		fdvt_count++;
 	}
@@ -4086,6 +4106,7 @@ static signed int FDVT_resume(struct platform_device *pDev)
 	log_dbg("bPass1_On_In_Resume_TG1(%d).\n", bPass1_On_In_Resume_TG1);
 
 	if (fdvt_count > 0) {
+		log_inf("resume enable clk\n");
 		fdvt_enable_clock(MTRUE);
 		fdvt_count--;
 	}

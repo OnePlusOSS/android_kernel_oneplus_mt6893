@@ -23,12 +23,52 @@
 #include <linux/irq.h>
 #include "../inc/mt6360_pmu.h"
 
+
+extern bool mt6360_get_vbus_status(void);
+extern int mt6360_chg_enable(bool en);
+extern int mt6360_chg_enable_wdt(bool enable);
+extern bool oplus_chg_wake_update_work(void);
+extern void oplus_chg_check_break(int vbus_rising);
+extern bool oplus_vooc_get_fastchg_started(void);
+extern int oplus_vooc_get_adapter_update_status(void);
+extern void oplus_vooc_reset_fastchg_after_usbout(void);
+extern void oplus_chg_clear_chargerid_info(void);
+extern void oplus_chg_set_chargerid_switch_val(int);
+extern bool oplus_vooc_get_fastchg_to_normal(void);
+extern bool oplus_vooc_get_fastchg_to_warm(void);
+extern void oplus_chg_set_charger_type_unknown(void);
+#ifndef CONFIG_OPLUS_CHARGER_MTK6873
+extern bool oplus_otgctl_by_buckboost(void);
+#endif
+int __attribute__((weak)) oplus_chg_get_mmi_status(void)
+{
+	return 1;
+}
+int __attribute__((weak)) oplus_mtk_hv_flashled_plug(int plug)
+{
+	return 1;
+}
+/*end*/
+
+#ifdef CONFIG_MT6360_PMU_DEBUG
+static unsigned long long duration_index[8], pmu_irq_duration;
+static int count_index[8];
+#endif
 static irqreturn_t mt6360_pmu_irq_handler(int irq, void *data)
 {
 	struct mt6360_pmu_info *mpi = data;
 	u8 irq_events[MT6360_PMU_IRQ_REGNUM] = {0};
 	u8 irq_masks[MT6360_PMU_IRQ_REGNUM] = {0};
 	int i, j, ret;
+
+#ifdef CONFIG_MT6360_PMU_DEBUG
+	int k;
+	unsigned long long duration = 0;
+	ktime_t calltime, delta, rettime;
+#endif
+
+	bool vbus_status = false;
+/*end*/
 
 	mt_dbg(mpi->dev, "%s ++\n", __func__);
 	pm_runtime_get_sync(mpi->dev);
@@ -45,18 +85,85 @@ static irqreturn_t mt6360_pmu_irq_handler(int irq, void *data)
 	for (i = 0; i < MT6360_PMU_IRQ_REGNUM; i++) {
 		irq_events[i] &= ~irq_masks[i];
 		for (j = 0; j < 8; j++) {
-			if (!(irq_events[i] & (1 << j)))
+			if (!(irq_events[i] & (1 << (u32)j)))
+			{
 				continue;
+			}
 			ret = irq_find_mapping(mpi->irq_domain, i * 8 + j);
 			if (ret) {
-				/* bypass adc donei & mivr irq */
+#ifdef CONFIG_MT6360_PMU_DEBUG
+				calltime = ktime_get();
+#endif
+				/* bypass adc done & mivr irq */
 				if ((i == 5 && j == 4) || (i == 0 && j == 6))
+				{
 					mt_dbg(mpi->dev,
 					       "handle_irq [%d,%d]\n", i, j);
+				}
+				else {
+					if (i == 7) {
+						vbus_status = mt6360_get_vbus_status();
+						oplus_chg_check_break(vbus_status);
+						printk(KERN_ERR "!!!!! mt6360_pmu_irq_handler: [%d]\n", vbus_status);
+#if !defined CONFIG_OPLUS_CHARGER_MTK6873 && !defined CONFIG_OPLUS_CHARGER_MTK6833
+						if (!oplus_otgctl_by_buckboost()) {
+							mt6360_chg_enable_wdt(vbus_status);
+						}
+#else
+						mt6360_chg_enable_wdt(vbus_status);
+#endif
+						if(vbus_status == 0) {
+							oplus_mtk_hv_flashled_plug(0);
+						}
+						if (oplus_vooc_get_fastchg_started() == true
+								&& oplus_vooc_get_adapter_update_status() != 1) {
+							printk(KERN_ERR "[OPLUS_CHG] %s oplus_vooc_get_fastchg_started = true!\n", __func__);
+							if (vbus_status) {
+								/*vooc adapters MCU vbus reset time is about 800ms(default standard),
+								 * but some adapters reset time is about 350ms, so when vbus plugin irq
+								 * was trigger, fastchg_started is true(default standard is false).
+								 */
+								mt6360_chg_enable(false);
+							}
+						} else {
+							if (!vbus_status) {
+								oplus_vooc_reset_fastchg_after_usbout();
+								if (oplus_vooc_get_fastchg_started() == false) {
+									oplus_chg_set_chargerid_switch_val(0);
+									oplus_chg_clear_chargerid_info();
+								}
+								oplus_chg_set_charger_type_unknown();
+							} else {
+								if ((oplus_vooc_get_fastchg_to_normal() == true)
+										|| (oplus_vooc_get_fastchg_to_warm() == true)
+										|| (oplus_chg_get_mmi_status() == 0)) {
+									mt6360_chg_enable(false);
+								}
+							}
+							oplus_chg_wake_update_work();
+						}
+					} else {
+						dev_dbg(mpi->dev,
+							"handle_irq [%d,%d]\n", i, j);					
+					}
+				}
+/*else*/
+/*
 				else
 					dev_dbg(mpi->dev,
 						"handle_irq [%d,%d]\n", i, j);
+*/
+/* OPLUS_FEATURE_CHG_BASIC end */
 				handle_nested_irq(ret);
+#ifdef CONFIG_MT6360_PMU_DEBUG
+				rettime = ktime_get();
+				delta = ktime_sub(rettime, calltime);
+				duration = (unsigned long long)
+					    ktime_to_ns(delta) >> 10;
+				pmu_irq_duration += duration;
+				duration_index[i] += duration;
+				count_index[i]++;
+#endif
 			} else
 				dev_err(mpi->dev, "unmapped [%d,%d]\n", i, j);
 		}
@@ -71,6 +178,18 @@ static irqreturn_t mt6360_pmu_irq_handler(int irq, void *data)
 				      MT6360_PMU_IRQ_SET, MT6360_IRQ_RETRIG);
 	if (ret < 0)
 		dev_err(mpi->dev, "fail to retrig interrupt\n");
+
+#ifdef CONFIG_MT6360_PMU_DEBUG
+	dev_info_ratelimited(mpi->dev, "%s: pmu_irq_duration: %lld\n",
+			    __func__, pmu_irq_duration);
+	for (k = 0; k < 8; k++) {
+		if (k != 2)
+			dev_info_ratelimited(mpi->dev,
+				"%d index_count: %d, index_duration: %lld\n", k,
+				 count_index[k], duration_index[k]);
+	}
+#endif
+
 out_irq_handler:
 	pm_runtime_put(mpi->dev);
 	mt_dbg(mpi->dev, "%s --\n", __func__);
@@ -91,11 +210,12 @@ static void mt6360_pmu_irq_bus_lock(struct irq_data *data)
 static void mt6360_pmu_irq_bus_sync_unlock(struct irq_data *data)
 {
 	struct mt6360_pmu_info *mpi = data->chip_data;
-	int offset = data->hwirq, ret;
+	int ret;
+	unsigned int offset = data->hwirq;
 
 	/* force clear current irq event */
 	ret = mt6360_pmu_reg_write(mpi, MT6360_PMU_CHG_IRQ1 + offset / 8,
-				   1 << (offset % 8));
+				   1 << (u32)(offset % 8));
 	if (ret < 0)
 		dev_err(mpi->dev, "%s: fail to write clr irq\n", __func__);
 	/* unmask current irq */
@@ -164,7 +284,9 @@ static int mt6360_pmu_gpio_irq_init(struct mt6360_pmu_info *mpi)
 {
 	struct mt6360_pmu_platform_data *pdata = dev_get_platdata(mpi->dev);
 	int ret;
-
+#ifdef CONFIG_MT6360_PMU_DEBUG
+	int i;
+#endif
 	ret = devm_gpio_request_one(mpi->dev, pdata->irq_gpio, GPIOF_IN,
 				    devm_kasprintf(mpi->dev, GFP_KERNEL,
 				    "%s.irq", dev_name(mpi->dev)));
@@ -194,6 +316,13 @@ static int mt6360_pmu_gpio_irq_init(struct mt6360_pmu_info *mpi)
 		dev_err(mpi->dev, "irq domain add fail\n");
 		return -EINVAL;
 	}
+#ifdef CONFIG_MT6360_PMU_DEBUG
+	pmu_irq_duration = 0;
+	for (i = 0; i < 8; i++) {
+		duration_index[i] = 0;
+		count_index[i] = 0;
+	}
+#endif
 	return 0;
 }
 

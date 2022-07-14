@@ -880,7 +880,6 @@ kal_uint16 addr_data_pair_capture_30fps_ov13b10[] = {
 
 static void capture_setting(kal_uint16 currefps)
 {
-
 	cam_pr_debug("E 4224x3136_zsl_30fps currefps = %d\n",
 		currefps);
 #if MULTI_WRITE
@@ -1881,13 +1880,13 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 	UINT32 *feature_data_32 = (UINT32 *) feature_para;
 	INT32 *feature_return_para_i32 = (INT32 *) feature_para;
 	unsigned long long *feature_data = (unsigned long long *) feature_para;
-
+	kal_uint32 rate;
 	struct SENSOR_WINSIZE_INFO_STRUCT *wininfo;
 	MSDK_SENSOR_REG_INFO_STRUCT *sensor_reg_data =
 		(MSDK_SENSOR_REG_INFO_STRUCT *) feature_para;
 	struct SET_PD_BLOCK_INFO_T *PDAFinfo;
 
-	UINT32 fps = 0;
+	// UINT32 fps = 0;
 
 	if (!((feature_id == 3040) || (feature_id == 3058)))
 		cam_pr_debug("feature_id = %d\n", feature_id);
@@ -2061,8 +2060,6 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 		streaming_control(KAL_TRUE);
 		break;
 	case SENSOR_FEATURE_GET_MIPI_PIXEL_RATE:
-		kal_uint32 rate;
-
 		switch (*feature_data) {
 		case MSDK_SCENARIO_ID_CAMERA_CAPTURE_JPEG:
 			rate = imgsensor_info.cap.mipi_pixel_rate;

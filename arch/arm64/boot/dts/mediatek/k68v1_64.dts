@@ -1,0 +1,543 @@
+/*
+ * Copyright (C) 2019 MediaTek Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See http://www.gnu.org/licenses/gpl-2.0.html for more details.
+ */
+
+/dts-v1/;
+/plugin/;
+#include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/pinctrl/mt6768-pinfunc.h>
+
+&reserved_memory {
+	reserve-memory-scp_share {
+		compatible = "mediatek,reserve-memory-scp_share";
+		no-map;
+		size = <0 0x00d00000>;
+		alignment = <0 0x1000000>;
+		alloc-ranges = <0 0x40000000 0 0x50000000>;
+	};
+};
+
+/* chosen */
+&chosen {
+
+	atag,videolfb-fb_base_l = <0x7e605000>;
+	atag,videolfb-fb_base_h = <0x0>;
+	atag,videolfb-islcmfound = <1>;
+	atag,videolfb-islcm_inited = <0>;
+	atag,videolfb-fps= <6000>;
+	atag,videolfb-vramSize= <0x017e8000>;
+	atag,videolfb-lcmname=
+		"hx83112b_fhdp_dsi_cmd_auo_rt5081_drv";
+};
+
+&odm {
+	led0:led@0 {
+		compatible = "mediatek,red";
+		led_mode = <0>;
+		data = <1>;
+		pwm_config = <0 0 0 0 0>;
+	};
+	led1:led@1 {
+		compatible = "mediatek,green";
+		led_mode = <0>;
+		data = <1>;
+		pwm_config = <0 0 0 0 0>;
+	};
+	led2:led@2 {
+		compatible = "mediatek,blue";
+		led_mode = <0>;
+		data = <1>;
+		pwm_config = <0 0 0 0 0>;
+	};
+	led3:led@3 {
+		compatible = "mediatek,jogball-backlight";
+		led_mode = <0>;
+		data = <1>;
+		pwm_config = <0 0 0 0 0>;
+	};
+	led4:led@4 {
+		compatible = "mediatek,keyboard-backlight";
+		led_mode = <0>;
+		data = <1>;
+		pwm_config = <0 0 0 0 0>;
+	};
+	led5:led@5 {
+		compatible = "mediatek,button-backlight";
+		led_mode = <0>;
+		data = <1>;
+		pwm_config = <0 0 0 0 0>;
+	};
+	led6:led@6 {
+		compatible = "mediatek,lcd-backlight";
+		led_mode = <4>;
+		data = <1>;
+		pwm_config = <0 3 0 0 0>;
+	};
+	vibrator0:vibrator@0 {
+		compatible = "mediatek,vibrator";
+		vib_timer = <25>;
+		vib_limit = <9>;
+		vib_vol= <9>;
+	};
+	oplus_project:oplus_project {
+		compatible = "oplus,oplus_project";
+	};
+        oplus_devinfo:oplus_devinfo {
+                compatible = "oplus-devinfo";
+
+                main-sub {
+                        compatible = "hw-match, main-sub";
+			aboard-gpio0 = <&pio 36 0x00>;
+                        aboard-patterns = <0 1 1 0 1>;
+                        /*main board*/
+                        match-projects = <20761 20762 20764 20767 20766>;
+                };
+        };
+	kpd_volume_down:kpd_volume_down {
+		compatible = "mediatek, VOLUME_DOWN-eint";
+		interrupt-parent = <&pio>;
+		interrupts = <94 IRQ_TYPE_EDGE_FALLING 94 0>;
+		debounce = <32000>;
+		status = "okay";
+	};
+};
+&keypad {
+	keypad,volume-down	= <&pio 94 0x00>;
+	pinctrl-names = "default", "volume_down_as_int";
+	pinctrl-0 = <&kpd_gpios_def_cfg>;
+	pinctrl-1 = <&volume_down_gpio_eint>;
+	status = "okay";
+};
+
+&pio {
+	kpd_gpios_def_cfg: kpdgpiodefault {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO93__FUNC_KPCOL0>;
+			bias-pull-up = <MTK_PUPD_SET_R1R0_10>;
+			output-low;
+			input-schmitt-enable;
+		};
+	};
+	volume_down_gpio_eint:volume_down@0{
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO94__FUNC_GPIO94>;
+			slew-rate = <0>;  /*direction 0:in, 1:out*/
+			input-enable;
+		};
+	};
+
+};
+&i2c0 {
+      lcm_bias@3e{
+               compatible = "LCD_BIAS_SM5109","LCD_BIAS_OCP2130";
+               reg = <0x3e>;
+               status = "okay";
+       };
+};
+&i2c2 {
+	clock-frequency = <400000>;
+
+	mtk-usb@60 {
+		compatible = "mediatek,mtk-usb";
+		reg = <0x60>;
+		status = "okay";
+	};
+};
+
+//#ifdef OPLUS_FEATURE_FINGERPRINT
+&spi5 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	status = "okay";
+	finger_spi@0 {
+	    compatible = "mediatek,fingerspi-fp";
+	    reg = <0>;
+	    spi-max-frequency = <8000000>;
+	    netlink-event = <30>;
+	    spi-id = <1>;
+	    spi-irq = <5>;
+	    spi-reg = <0x11015000>;
+	    spi-avdd-gpio = <158>;
+        status = "okay";
+    };
+};
+&chipone_fp {
+	chipone,ldo_disable = <1>;
+	pinctrl-names = "fpsensor_finger_rst_low", "fpsensor_finger_rst_high",
+	                "irq-init", "power_high","power_low";
+	pinctrl-0 = <&chiponefp_rst_low>;
+	pinctrl-1 = <&chiponefp_rst_high>;
+	pinctrl-2 = <&chiponefp_irq>;
+	pinctrl-3 = <&chiponefp_power_high>;
+	pinctrl-4 = <&chiponefp_power_low>;
+	status = "okay";
+};
+&pio {
+	chiponefp_rst_low: chiponefp_rst_low {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO4__FUNC_GPIO4>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+	chiponefp_rst_high: chiponefp_rst_high {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO4__FUNC_GPIO4>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+	chiponefp_irq: chiponefp_irq {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO5__FUNC_GPIO5>;
+			slew-rate = <0>;
+			bias-disable;
+		};
+	};
+	chiponefp_power_high: chiponefp_power_high {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO158__FUNC_GPIO158>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+	chiponefp_power_low: chiponefp_power_low {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO158__FUNC_GPIO158>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+};
+
+&egis_fp {
+	egis,pmic_disable = <0>;
+	sil,ldo_disable = <1>;
+	sil,silead_irq = <&pio 5 0x00>;
+	pinctrl-names = "default", "rst-low", "rst-high",
+	                "irq-init", "power_high","power_low";
+	pinctrl-0 = <&silfp_default>;
+	pinctrl-1 = <&silfp_rst_low>;
+	pinctrl-2 = <&silfp_rst_high>;
+	pinctrl-3 = <&silfp_irq>;
+	pinctrl-4 = <&fingerfp_power_high>;
+	pinctrl-5 = <&fingerfp_power_low>;
+	status = "okay";
+};
+
+&pio {
+	silfp_default: silfpdefault {
+	};
+	silfp_rst_low: state_reset_low {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO4__FUNC_GPIO4>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+	silfp_rst_high: state_reset_high {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO4__FUNC_GPIO4>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+	silfp_irq: fp_eint@5 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO5__FUNC_GPIO5>;
+			slew-rate = <0>;
+			bias-disable;
+		};
+	};
+	fingerfp_power_high: state_power_high {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO158__FUNC_GPIO158>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+
+	fingerfp_power_low: state_power_low {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO158__FUNC_GPIO158>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+};
+
+/*the id config to project dts.*/
+&pio{
+	gpio_id0_up: gpio_id0_up {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO38__FUNC_GPIO38>;
+			slew-rate = <0>;
+			bias-pull-up;
+			input-enable;
+		};
+	};
+	gpio_id0_down: gpio_id0_down {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO38__FUNC_GPIO38>;
+			slew-rate = <0>;
+			bias-pull-down;
+			input-enable;
+		};
+	};
+};
+
+&oplus_fp_common {
+	compatible = "oplus,fp_common"; //Manufacture, and Model
+	oplus,fp_gpio_num = <1>;
+	oplus,fp_gpio_0 = <&pio 38 0x00>;
+	oplus,one_gpio_for_three_ic = <1>;
+	pinctrl-names = "gpio_id0_up","gpio_id0_down";
+	pinctrl-0 = <&gpio_id0_up>;
+	pinctrl-1 = <&gpio_id0_down>;
+	egis_520 {
+		oplus,fp-id = <1>; /* fp id mapping table */
+		vendor-chip = <18>; /* please refer to the struct fp_vendor_t in oplus_fp_commmon.n */
+		eng-menu = "-1,-1"; /* represents SNR, inclination test item in engineer menu, and 0/1 means off/on */
+		chip-name = "E_520";  /* /proc/fp_id, will be displayed in engineer menu  */
+	};
+	silead {
+		oplus,fp-id = <0>; /* fp id mapping table */
+		vendor-chip = <21>; /* please refer to the struct fp_vendor_t in oplus_fp_commmon.n */
+		eng-menu = "-1,-1"; /* represents SNR, inclination test item in engineer menu, and 0/1 means off/on */
+		chip-name = "S_gsl6150";  /* /proc/fp_id, will be displayed in engineer menu  */
+	};
+	FP_CHIPONE_7332 {
+		oplus,fp-id = <2>; /* fp id mapping table */
+		vendor-chip = <24>; /* please refer to the struct fp_vendor_t in oplus_fp_commmon.n */
+		eng-menu = "-1,-1"; /* represents SNR, inclination test item in engineer menu, and 0/1 means off/on */
+		chip-name = "C_7332";  /* /proc/fp_id, will be displayed in engineer menu  */
+	};
+};
+//#endif //OPLUS_FEATURE_FINGERPRINT
+/* accdet start */
+&accdet {
+	/* accdet micbias voltage: 0x07,2.7v;0x05,2.5v;0x02,1.9v */
+	accdet-mic-vol = <6>;
+	headset-mode-setting = <0x500 0x500 1 0x1f0 0x800 0x800 0x20 0x44>;
+	accdet-plugout-debounce = <1>;
+	/*1:ACC mode, 2:low cost without in bias, 6:low cost with in bias*/
+	accdet-mic-mode = <1>;
+	/* eint_level_trigger: 8,LEVEL_LOW(DEF) ;4,LV_HIGH;others,LV_LOW */
+	headset-eint-level-pol = <8>;
+	/*0--MD_MAX--UP_MAX--DW_MAX*/
+	headset-three-key-threshold = <0 80 220 400>;
+	headset-three-key-threshold-CDD = <0 121 192 600>;
+	/*0--MD_MAX--VOICE_MAX--UP_MAX--DW_MAX*/
+	headset-four-key-threshold = <0 58 121 192 400>;
+	status = "okay";
+};
+/* accdet end */
+
+
+&mt6370_pmu {
+	mt6370,intr_gpio_num = <20>; /* direct defined GPIO num */
+	mt6370,intr_gpio = <&pio 20 0x0>;
+};
+&mt6370_typec {
+	mt6370pd,intr_gpio_num = <41>; /* direct defined GPIO num */
+	mt6370pd,intr_gpio = <&pio 41 0x0>;
+};
+
+/* CONSYS GPIO standardization */
+&pio {
+	consys_pins_default: consys_default {
+	};
+	gpslna_pins_init: gpslna@0 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO94__FUNC_GPIO94>;
+			slew-rate = <0>;
+			bias-disable;
+			output-low;
+		};
+	};
+	gpslna_pins_oh: gpslna@1 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO94__FUNC_GPIO94>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+	gpslna_pins_ol: gpslna@2 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO94__FUNC_GPIO94>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+};
+&consys {
+	pinctrl-names = "default", "gps_lna_state_init",
+		"gps_lna_state_oh", "gps_lna_state_ol";
+	pinctrl-0 = <&consys_pins_default>;
+	pinctrl-1 = <&gpslna_pins_init>;
+	pinctrl-2 = <&gpslna_pins_oh>;
+	pinctrl-3 = <&gpslna_pins_ol>;
+	status = "okay";
+};
+/* CONSYS end */
+
+/* IRTX GPIO Start */
+&irtx_pwm {
+	pinctrl-names = "irtx_gpio_led_default", "irtx_gpio_led_set";
+	pinctrl-0 = <&irtx_gpio_led_default>;
+	pinctrl-1 = <&irtx_gpio_led_set>;
+	status = "okay";
+};
+&pio {
+	/* IRTX GPIO Settings -Start */
+	/* default: GPIO0, output, high */
+	irtx_gpio_led_default:irtx_gpio_led_def@gpio12 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO12__FUNC_GPIO12>;
+			slew-rate = <1>;
+			bias-disable;
+			output-low;
+			input-schmitt-enable = <0>;
+		};
+	};
+
+	irtx_gpio_led_set:irtx_gpio_led_set@gpio12 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO12__FUNC_PWM0>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+}; /* IRTX GPIO Settings -End */
+
+/* DISPSYS GPIO standardization */
+&pio {
+	mtkfb_pins_lcm_rst_out1_gpio: lcm_rst_out1_gpio {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO45__FUNC_GPIO45>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+
+	mtkfb_pins_lcm_rst_out0_gpio: lcm_rst_out0_gpio {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO45__FUNC_GPIO45>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+
+	mtkfb_pins_lcm_dsi_te: lcm_dsi_te {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO44__FUNC_DSI_TE>;
+		};
+	};
+};
+
+/*&mtkfb {
+	pinctrl-names =
+		"lcm_rst_out1_gpio", "lcm_rst_out0_gpio",
+		"mode_te_te";
+	pinctrl-0 = <&mtkfb_pins_lcm_rst_out1_gpio>;
+	pinctrl-1 = <&mtkfb_pins_lcm_rst_out0_gpio>;
+	pinctrl-2 = <&mtkfb_pins_lcm_dsi_te>;
+	status = "okay";
+};*/
+/* DISPSYS GPIO standardization */
+&mtkfb {
+        pinctrl-names = "lcm_rst_out0_gpio", "lcm_rst_out1_gpio", "lcd_bias_enp0_gpio", "lcd_bias_enp1_gpio",
+			"lcd_bias_enn0_gpio", "lcd_bias_enn1_gpio", "lcd_vddio18_en0_gpio", "lcd_vddio18_en1_gpio";
+
+	pinctrl-0 = <&mtkfb_pins_lcm_reset0>;
+	pinctrl-1 = <&mtkfb_pins_lcm_reset1>;
+	pinctrl-2 = <&mtkfb_pins_lcd_bias_enp0>;
+	pinctrl-3 = <&mtkfb_pins_lcd_bias_enp1>;
+	pinctrl-4 = <&mtkfb_pins_lcd_bias_enn0>;
+	pinctrl-5 = <&mtkfb_pins_lcd_bias_enn1>;
+	//pinctrl-6 = <&mtkfb_pins_lcd_vddio18_en0>;
+	//pinctrl-7 = <&mtkfb_pins_lcd_vddio18_en1>;
+        status = "okay";
+	oplus_display_twelvebits_support;
+	oplus_display_cabc_support;
+	oplus_display_cabc_cmdq_support;
+	oplus_display_panelnum_support;
+};
+
+&pio {
+        mtkfb_pins_lcm_reset0: lcm_rst_out0_gpio {
+                pins_cmd_dat {
+                        pinmux = <PINMUX_GPIO45__FUNC_GPIO45>;
+                        slew-rate = <1>;
+                        output-low;
+                };
+        };
+        mtkfb_pins_lcm_reset1: lcm_rst_out1_gpio {
+                pins_cmd_dat {
+                        pinmux = <PINMUX_GPIO45__FUNC_GPIO45>;
+                        slew-rate = <1>;
+                        output-high;
+                };
+        };
+
+	mtkfb_pins_lcd_bias_enp0: lcd_bias_enp0_gpio {
+                pins_cmd_dat {
+                        pinmux = <PINMUX_GPIO169__FUNC_GPIO169>;
+                        slew-rate = <1>;
+                        output-low;
+                };
+        };
+	mtkfb_pins_lcd_bias_enp1: lcd_bias_enp1_gpio {
+                pins_cmd_dat {
+                        pinmux = <PINMUX_GPIO169__FUNC_GPIO169>;
+                        slew-rate = <1>;
+                        output-high;
+                };
+        };
+
+	mtkfb_pins_lcd_bias_enn0: lcd_bias_enn0_gpio {
+                pins_cmd_dat {
+                        pinmux = <PINMUX_GPIO165__FUNC_GPIO165>;
+                        slew-rate = <1>;
+                        output-low;
+                };
+        };
+	mtkfb_pins_lcd_bias_enn1: lcd_bias_enn1_gpio {
+                pins_cmd_dat {
+                        pinmux = <PINMUX_GPIO165__FUNC_GPIO165>;
+                        slew-rate = <1>;
+                        output-high;
+                };
+        };
+
+/*	mtkfb_pins_lcd_vddio18_en0: lcd_vddio18_en0_gpio {
+                pins_cmd_dat {
+                        pinmux = <PINMUX_GPIO170__FUNC_GPIO170>;
+                        slew-rate = <1>;
+                        output-low;
+                };
+        };
+	mtkfb_pins_lcd_vddio18_en1: lcd_vddio18_en1_gpio {
+                pins_cmd_dat {
+                        pinmux = <PINMUX_GPIO170__FUNC_GPIO170>;
+                        slew-rate = <1>;
+                        output-high;
+                };
+        };*/
+};
+/* DISPSYS GPIO standardization end*/
+
+#include <k68v1_64/cust.dtsi>
+#include "mediatek/cust_mt6768_camera.dtsi"
+#include "mediatek/cust_mt6768_touch_1080x2160.dtsi"
+/*End of this file, DO NOT ADD ANYTHING HERE*/

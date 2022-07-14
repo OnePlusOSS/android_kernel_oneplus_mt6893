@@ -1105,6 +1105,10 @@ static int copy_pte_range(struct mm_struct *dst_mm, struct mm_struct *src_mm,
 	int rss[NR_MM_COUNTERS];
 	swp_entry_t entry = (swp_entry_t){0};
 
+#ifdef OPLUS_BUG_STABILITY
+	unsigned long orig_addr = addr;
+#endif
+
 again:
 	init_rss_vec(rss);
 
@@ -1141,6 +1145,17 @@ again:
 	} while (dst_pte++, src_pte++, addr += PAGE_SIZE, addr != end);
 
 	arch_leave_lazy_mmu_mode();
+
+#ifdef OPLUS_BUG_STABILITY
+	/*
+	 * Prevent the page fault handler to copy the page while stale tlb entry
+	 * are still not flushed.
+	 */
+	if (IS_ENABLED(CONFIG_SPECULATIVE_PAGE_FAULT) &&
+			is_cow_mapping(vma->vm_flags))
+		flush_tlb_range(vma, orig_addr, end);
+#endif
+
 	spin_unlock(src_ptl);
 	pte_unmap(orig_src_pte);
 	add_mm_rss_vec(dst_mm, rss);
@@ -2919,6 +2934,7 @@ static int do_wp_page(struct vm_fault *vmf)
 	 */
 	if (PageAnon(vmf->page) && !PageKsm(vmf->page)) {
 		int total_map_swapcount;
+
 		if (!trylock_page(vmf->page)) {
 			get_page(vmf->page);
 			pte_unmap_unlock(vmf->pte, vmf->ptl);

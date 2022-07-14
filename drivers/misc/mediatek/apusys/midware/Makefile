@@ -19,6 +19,8 @@ APUSYS_VERSION_REVISER = 1.0
 # mt6893 and mt6885 co-platform folder
 ifeq ($(CONFIG_MACH_MT6893),y)
 PDIR = mt6885
+else ifeq ($(CONFIG_MACH_MT6877),y)
+PDIR = mt6877
 else
 PDIR = $(MTK_PLATFORM)
 endif
@@ -36,13 +38,12 @@ ccflags-y += -I$(obj)/../reviser/$(APUSYS_VERSION_REVISER)/
 ccflags-y += -I$(obj)/../power/$(APUSYS_VERSION_POWER)/
 ccflags-y += -I$(obj)/../power/$(APUSYS_VERSION_POWER)/$(PDIR)/
 ccflags-y += -I$(obj)/../debug/
+ccflags-y += -I$(obj)/../debug/$(PDIR)/
 ccflags-y += -I$(obj)/$(PDIR)/
 ccflags-y += -I$(obj)/$(APUSYS_VERSION_MIDWARE)/
 ccflags-y += -I$(obj)/$(UTIL_DIR)/
 
-
 obj-y += apusys.o
-ifeq ($(APUSYS_VERSION_MIDWARE), 1.1)
 apusys-$(CONFIG_FTRACE) += $(UTIL_DIR)/apusys_trace.o
 apusys-objs += $(APUSYS_VERSION_MIDWARE)/mdw_drv.o
 apusys-objs += $(APUSYS_VERSION_MIDWARE)/mdw_usr.o
@@ -60,23 +61,4 @@ apusys-objs += $(APUSYS_VERSION_MIDWARE)/mdw_mem_ion.o
 apusys-objs += $(APUSYS_VERSION_MIDWARE)/mdw_fence.o
 apusys-objs += $(APUSYS_VERSION_MIDWARE)/mdw_sysfs.o
 apusys-$(CONFIG_MTK_APUSYS_DEBUG) += $(APUSYS_VERSION_MIDWARE)/mdw_tag.o
-else
-apusys-$(CONFIG_FTRACE) += $(UTIL_DIR)/apusys_trace.o
-apusys-objs += $(APUSYS_VERSION_MIDWARE)/apusys_drv.o
-apusys-objs += $(APUSYS_VERSION_MIDWARE)/apusys_user.o
-apusys-objs += $(APUSYS_VERSION_MIDWARE)/cmd_parser.o
-apusys-objs += $(APUSYS_VERSION_MIDWARE)/cmd_parser_mdla.o
-apusys-objs += $(APUSYS_VERSION_MIDWARE)/resource_mgt.o
-apusys-objs += $(APUSYS_VERSION_MIDWARE)/scheduler.o
-apusys-objs += $(APUSYS_VERSION_MIDWARE)/apusys_dbg.o
-apusys-objs += $(APUSYS_VERSION_MIDWARE)/memory_mgt.o
-apusys-objs += $(APUSYS_VERSION_MIDWARE)/thread_pool.o
-apusys-objs += $(APUSYS_VERSION_MIDWARE)/memory_ion.o
-apusys-objs += $(APUSYS_VERSION_MIDWARE)/memory_dma.o
-apusys-objs += $(APUSYS_VERSION_MIDWARE)/sched_deadline.o
-apusys-objs += $(APUSYS_VERSION_MIDWARE)/sched_normal.o
-apusys-$(CONFIG_MTK_APUSYS_DEBUG) += $(APUSYS_VERSION_MIDWARE)/mdw_tag.o
-endif
 
-apusys-objs += $(PDIR)/dump_reg.o
-apusys-objs += $(PDIR)/secure_perf.o

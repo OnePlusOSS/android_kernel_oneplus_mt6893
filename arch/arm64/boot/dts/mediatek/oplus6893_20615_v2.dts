@@ -1,0 +1,33 @@
+/*
+ * Mediatek's mt6885 SoC device tree source
+ *
+ * Copyright (C) 2016 MediaTek Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See http://www.gnu.org/licenses/gpl-2.0.html for more details.
+ */
+/dts-v1/;
+/plugin/;
+#include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/spmi/spmi.h>
+#include <dt-bindings/pinctrl/mt6885-pinfunc.h>
+
+#include "mediatek/oplus6893/common/cust_oplus20615_camera.dtsi"
+#include "mediatek/oplus6893/common/oplus6893_common.dtsi"
+
+#include "mediatek/oplus6893/20615/common/20615_common.dtsi"
+#include "mediatek/oplus6893/20615/pcbv2/20615_cust.dtsi"
+
+#include <oplus6893_20615/cust.dtsi>
+
+/* #ifdef OPLUS_ARCH_EXTENDS */
+#include "mediatek/oplus6893/common/oplus6893_20615_audio_extend.dtsi"
+/* #endif OPLUS_ARCH_EXTENDS */
+/*End of this file, DO NOT ADD ANYTHING HERE*/

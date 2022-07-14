@@ -163,7 +163,7 @@ struct fw_update_ctrl {
 	struct gt9896s_ts_device *ts_dev;
 	struct gt9896s_ts_core *core_data;
 
-	char fw_name[32];
+	char fw_name[64];
 	struct bin_attribute attr_fwimage;
 };
 static struct fw_update_ctrl gt9896s_fw_update_ctrl;
@@ -1368,7 +1368,7 @@ static ssize_t gt9896s_sysfs_fwimage_store(struct file *file,
 			attr_fwimage);
 	fw_data = &fw_ctrl->fw_data;
 
-	if (!fw_data->firmware) {
+	if ((!fw_data->firmware) || (!buf)) {
 		ts_err("Need set fw image size first");
 		return -ENOMEM;
 	}
@@ -1380,6 +1380,18 @@ static ssize_t gt9896s_sysfs_fwimage_store(struct file *file,
 
 	if (pos + count > fw_data->firmware->size)
 		return -EFAULT;
+
+	if (IS_ERR_OR_NULL(&fw_ctrl->mutex)) {
+		ts_err("ERROR:fw_ctrl->mutex is NULL!!!\n");
+		return -ENOMEM;
+	}
+
+	if (IS_ERR_OR_NULL(&fw_data->firmware->data[pos])) {
+		ts_err("ERROR:fw_data->firmware->data[pos] is NULL!!! pos:%d,count:%d\n",
+			pos, count);
+		return -ENOMEM;
+	}
+
 	mutex_lock(&fw_ctrl->mutex);
 	memcpy((u8 *)&fw_data->firmware->data[pos], buf, count);
 	mutex_unlock(&fw_ctrl->mutex);
@@ -1395,14 +1407,14 @@ static ssize_t gt9896s_sysfs_force_update_store(
 }
 
 static struct gt9896s_ext_attribute gt9896s_fwu_attrs[] = {
-	__EXTMOD_ATTR(update_en, S_IWUGO, NULL, gt9896s_sysfs_update_en_store),
+	__EXTMOD_ATTR(update_en, 0220, NULL, gt9896s_sysfs_update_en_store),
 	__EXTMOD_ATTR(progress, S_IRUGO, gt9896s_sysfs_update_progress_show, NULL),
 	__EXTMOD_ATTR(result, S_IRUGO, gt9896s_sysfs_update_result_show, NULL),
 	__EXTMOD_ATTR(fwversion, S_IRUGO,
 			gt9896s_sysfs_update_fwversion_show, NULL),
-	__EXTMOD_ATTR(fwsize, S_IRUGO | S_IWUGO, gt9896s_sysfs_fwsize_show,
+	__EXTMOD_ATTR(fwsize, 0660, gt9896s_sysfs_fwsize_show,
 			gt9896s_sysfs_fwsize_store),
-	__EXTMOD_ATTR(force_update, S_IWUGO, NULL,
+	__EXTMOD_ATTR(force_update, 0220, NULL,
 			gt9896s_sysfs_force_update_store),
 };
 
@@ -1438,7 +1450,7 @@ static int gt9896s_fw_sysfs_init(struct gt9896s_ts_core *core_data,
 	}
 
 	fw_ctrl->attr_fwimage.attr.name = "fwimage";
-	fw_ctrl->attr_fwimage.attr.mode = S_IRUGO | S_IWUGO;
+	fw_ctrl->attr_fwimage.attr.mode = 0660;
 	fw_ctrl->attr_fwimage.size = 0;
 	fw_ctrl->attr_fwimage.write = gt9896s_sysfs_fwimage_store;
 	ret = sysfs_create_bin_file(&module->kobj,
@@ -1524,11 +1536,27 @@ static int gt9896s_fw_update_init(struct gt9896s_ts_core *core_data,
 		strlcpy(gt9896s_fw_update_ctrl.fw_name, ts_bdata->fw_name,
 			sizeof(gt9896s_fw_update_ctrl.fw_name));
 	else {
-		ret = snprintf(gt9896s_fw_update_ctrl.fw_name,
-			sizeof(gt9896s_fw_update_ctrl.fw_name),
-			"%s%s.bin",
-			TS_DEFAULT_FIRMWARE,
-			gt9896s_firmware_buf);
+		if (ts_bdata->lcm_max_x == 1080 && ts_bdata->lcm_max_y == 2280) {
+			ret = snprintf(gt9896s_fw_update_ctrl.fw_name,
+						sizeof(gt9896s_fw_update_ctrl.fw_name),
+						"%s%s_1080x2280.bin",
+						TS_DEFAULT_FIRMWARE,
+						gt9896s_firmware_buf);
+		} else if (ts_bdata->lcm_max_x == 1080 && ts_bdata->lcm_max_y == 2300) {
+			ret = snprintf(gt9896s_fw_update_ctrl.fw_name,
+						sizeof(gt9896s_fw_update_ctrl.fw_name),
+						"%s%s_1080x2300.bin",
+						TS_DEFAULT_FIRMWARE,
+						gt9896s_firmware_buf);
+		} else {
+			ret = snprintf(gt9896s_fw_update_ctrl.fw_name,
+						sizeof(gt9896s_fw_update_ctrl.fw_name),
+						"%s%s.bin",
+						TS_DEFAULT_FIRMWARE,
+						gt9896s_firmware_buf);
+		}
+
+		ts_info("firmware_bin_name %s!!!", gt9896s_fw_update_ctrl.fw_name);
 		if (ret >= sizeof(gt9896s_fw_update_ctrl.fw_name))
 			ts_err("get firmware_bin_name name FAILED!!!");
 	}

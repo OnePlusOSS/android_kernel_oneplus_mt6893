@@ -16,9 +16,14 @@
 #include <linux/timer.h>
 #include <linux/uaccess.h>
 
+
 #include "cmdq-util.h"
 #include "cmdq-sec.h"
 #include "../../mdp/mdp_cmdq_helper_ext.h"
+
+#ifdef CMDQ_SECURE_MTEE_SUPPORT
+#include "tz_m4u.h"
+#endif
 
 #define CMDQ_THR_SPR3(base, id)		((base) + (0x80 * (id)) + 0x16c)
 #define CMDQ_GPR_R32(base, id)		((base) + (0x4 * (id)) + 0x80)
@@ -613,7 +618,7 @@ void cmdq_test_mbox_flush(
 				CMDQ_METAEX_NONE);
 #ifdef CMDQ_SECURE_MTEE_SUPPORT
 			if (!~secure)
-				cmdq_sec_pkt_set_mtee(pkt[i], true);
+				cmdq_sec_pkt_set_mtee(pkt[i], true, SEC_ID_SVP);
 #endif
 		}
 #endif
@@ -685,7 +690,7 @@ static void cmdq_test_mbox_write(
 			CMDQ_METAEX_NONE);
 #ifdef CMDQ_SECURE_MTEE_SUPPORT
 		if (!~secure)
-			cmdq_sec_pkt_set_mtee(pkt, true);
+			cmdq_sec_pkt_set_mtee(pkt, true, SEC_ID_SVP);
 #endif
 	}
 #endif
@@ -858,9 +863,17 @@ static void cmdq_test_show_events(struct cmdq_test *test)
 static void
 cmdq_test_trigger(struct cmdq_test *test, const s32 sec, const s32 id)
 {
-	struct cmdq_thread	*thread =
+	struct cmdq_thread	*thread_clt =
+		(struct cmdq_thread *)test->clt->chan->con_priv;
+	s32 backup_clt = cmdq_thread_timeout_backup(thread_clt, CMDQ_TIMEOUT_DEFAULT);
+	struct cmdq_thread	*thread_loop =
 		(struct cmdq_thread *)test->loop->chan->con_priv;
-	s32 backup = cmdq_thread_timeout_backup(thread, CMDQ_NO_TIMEOUT);
+	s32 backup_loop = cmdq_thread_timeout_backup(thread_loop, CMDQ_NO_TIMEOUT);
+#ifdef CMDQ_SECURE_SUPPORT
+	struct cmdq_thread	*thread_sec =
+		(struct cmdq_thread *)test->sec->chan->con_priv;
+	s32 backup_sec = cmdq_thread_timeout_backup(thread_sec, CMDQ_TIMEOUT_DEFAULT);
+#endif
 
 #ifndef CMDQ_SECURE_SUPPORT
 	if (sec) {
@@ -937,7 +950,12 @@ cmdq_test_trigger(struct cmdq_test *test, const s32 sec, const s32 id)
 	default:
 		break;
 	}
-	cmdq_thread_timeout_restore(thread, backup);
+	cmdq_thread_timeout_restore(thread_clt, backup_clt);
+	cmdq_thread_timeout_restore(thread_loop, backup_loop);
+#ifdef CMDQ_SECURE_SUPPORT
+	cmdq_thread_timeout_restore(thread_sec, backup_sec);
+#endif
+
 }
 
 #define MAX_SCAN 30
@@ -1071,17 +1089,17 @@ static int cmdq_test_probe(struct platform_device *pdev)
 		test->mmsys.dev, test->mmsys.va, &test->mmsys.pa);
 
 	// clt
+	ret = CMDQ_MAX_THREAD_COUNT;
 	test->clt = cmdq_mbox_create(&pdev->dev, 0);
 	if (IS_ERR(test->clt) || !test->clt) {
-		ret = cmdq_test_client_get(
-			&test->clt, CMDQ_MAX_THREAD_COUNT - 1);
+		ret = cmdq_test_client_get(&test->clt, ret - 1);
 		if (!test->clt)
 			return -ENXIO;
 	}
 
 	test->loop = cmdq_mbox_create(&pdev->dev, 1);
 	if (IS_ERR(test->loop) || !test->loop) {
-		ret = cmdq_test_client_get(&test->loop, ret);
+		ret = cmdq_test_client_get(&test->loop, ret - 1);
 		if (!test->loop)
 			return -ENXIO;
 	}

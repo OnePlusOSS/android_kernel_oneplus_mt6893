@@ -1,0 +1,55 @@
+
+&audio_extend {
+	//for nxp speaker
+	oplus,speaker-vendor = "awinic_digital";
+	oplus,speaker-i2s-id = <3>;
+	oplus,speaker-i2s-id-in = <0>;
+	oplus,speaker-codec-name = "aw882xx_smartpa";
+	oplus,speaker-codec-dai-name = "aw882xx-aif";
+};
+
+//#ifdef OPLUS_ARCH_EXTENDS
+&i2c6 {
+    #address-cells = <1>;
+    #size-cells = <0>;
+
+	aw882xx: aw882xx@34 {
+		compatible = "awinic,aw882xx_smartpa";
+		reg = <0x34>;
+		#sound-dai-cells = <0>;
+		monitor-flag = <1>;
+		monitor-timer-val = <3000>;
+		status = "okay";
+		aw-cali-mode = "aw_misc";
+		reset-gpio = <&pio 139 0>;
+	};
+
+	fsa4480: fsa4480@42 {
+		compatible = "qcom,fsa4480-i2c";
+		reg = <0x42>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&fsa_hs_det>;
+		fsa4480,hs-det-gpio = <&pio 128 0>;
+	};
+};
+
+
+&pio {
+	fsa_hs_det: fsa_hs_det {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO128__FUNC_GPIO128>;
+			slew-rate = <1>;  /*direction 0:in, 1:out*/
+			output-high;
+		};
+	};
+};
+//#endif /*OPLUS_ARCH_EXTENDS*/
+
+&sound {
+        mtk_spk_i2s_in = <9>;
+        si,sia81xx-max-num = <0>;
+};
+&sia81xx_L{
+	compatible = "si,sia81xx";
+	si,sia81xx_type = "3";
+};

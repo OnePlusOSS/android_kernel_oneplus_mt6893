@@ -63,7 +63,8 @@
 	defined(CONFIG_MACH_MT6853) || \
 	defined(CONFIG_MACH_MT6873) || \
 	defined(CONFIG_MACH_ELBRUS) || \
-	defined(CONFIG_MACH_MT6893)
+	defined(CONFIG_MACH_MT6893) || \
+	defined(CONFIG_MACH_MT6877)
 #define CONNADP_HAS_CLOCK_BUF_CTRL
 #define KERNEL_CLK_BUF_CHIP_NOT_SUPPORT -7788
 #define KERNEL_clk_buf_ctrl connectivity_export_clk_buf_ctrl
@@ -224,6 +225,10 @@ extern bool spm_resource_req(unsigned int user, unsigned int req_mask);
 void connectivity_export_show_stack(struct task_struct *tsk, unsigned long *sp);
 void connectivity_export_dump_thread_state(const char *name);
 void connectivity_export_tracing_record_cmdline(struct task_struct *tsk);
+
+void connectivity_export_conap_scp_init(unsigned int chip_info, phys_addr_t emi_phy_addr);
+void connectivity_export_conap_scp_deinit(void);
+
 #ifdef CPU_BOOST
 void connectivity_export_mt_ppm_sysboost_freq(enum ppm_sysboost_user user,
 					      unsigned int freq);

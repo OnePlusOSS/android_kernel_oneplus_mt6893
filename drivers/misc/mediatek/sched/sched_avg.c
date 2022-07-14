@@ -142,6 +142,7 @@ int show_btask(char *buf, int buf_size)
 	int len = 0;
 	struct task_struct *p;
 
+	rcu_read_lock();
 	for (i = 0; i < MAX_CLUSTER_NR; i++) {
 		btask_list = btask_list_h[i];
 
@@ -171,6 +172,7 @@ int show_btask(char *buf, int buf_size)
 			(btask_list[j] && p) ? p->se.avg.util_avg : 0UL);
 		}
 	}
+	rcu_read_unlock();
 
 	return len;
 }
@@ -184,6 +186,7 @@ enum overutil_type_t is_task_overutil(struct task_struct *p)
 	unsigned long task_util;
 	int cpu, cid;
 	unsigned long boosted_task_util;
+	int cluster_nr = arch_get_nr_clusters();
 
 	if (!p)
 		return NO_OVERUTIL;
@@ -196,6 +199,11 @@ enum overutil_type_t is_task_overutil(struct task_struct *p)
 	cid = cpu_topology[cpu].socket_id;
 #endif
 
+	if (cid < 0 || cid >= cluster_nr) {
+		printk_deferred("[%s] invalid cluster id %d\n",
+			__func__, cid);
+		return NO_OVERUTIL;
+	}
 
 	get_task_util(p, &task_util, &boosted_task_util);
 

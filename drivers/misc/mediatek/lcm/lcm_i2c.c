@@ -11,7 +11,7 @@
  * GNU General Public License for more details.
  */
 
-#if defined(MTK_LCM_DEVICE_TREE_SUPPORT)
+//#if defined(MTK_LCM_DEVICE_TREE_SUPPORT)
 #ifndef BUILD_LK
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -55,6 +55,9 @@
 #include "lcm_drv.h"
 #include "lcm_i2c.h"
 
+#if 1
+#define MTK_LCM_DEVICE_TREE_SUPPORT
+#endif
 
 /*****************************************************************************
  * Define
@@ -66,10 +69,14 @@
 #define LCM_I2C_ID_NAME "tps65132"
 #else
 #define LCM_I2C_ADDR 0x3E
-#define LCM_I2C_BUSNUM  1	/* for I2C channel 0 */
+#define LCM_I2C_BUSNUM  0	/* for I2C channel 0 */
 #define LCM_I2C_ID_NAME "I2C_LCD_BIAS"
 #endif
 
+#define LCM_I2C_WRITE   1
+int	LCM_STATUS_OK = 0;
+int	LCM_STATUS_ERROR=1;
+#endif
 
 /*****************************************************************************
  * GLobal Variable
@@ -79,15 +86,18 @@ static struct i2c_board_info _lcm_i2c_board_info __initdata = {
 	I2C_BOARD_INFO(LCM_I2C_ID_NAME, LCM_I2C_ADDR)
 };
 #else
-static const struct of_device_id _lcm_i2c_of_match[] = {
-	{
+static struct of_device_id _lcm_i2c_of_match[] = {
+	/*{
 	 .compatible = "mediatek,I2C_LCD_BIAS",
-	 },
+	 },*/
+	{
+		.compatible = "default",
+	}
 };
 #endif
 
-static struct i2c_client *_lcm_i2c_client;
-
+//static struct i2c_client *_lcm_i2c_client;
+struct i2c_client *_lcm_i2c_client;
 
 /*****************************************************************************
  * Function Prototype
@@ -148,6 +158,7 @@ static int _lcm_i2c_probe(struct i2c_client *client,
 	pr_debug("[LCM][I2C] NT: info==>name=%s addr=0x%x\n",
 		client->name, client->addr);
 	_lcm_i2c_client = client;
+	pr_err("[LCM][I2C] lcm gata probe name=%s addr=0x%x\n",client->name, client->addr);
 	return 0;
 }
 
@@ -182,6 +193,68 @@ static int _lcm_i2c_write_bytes(unsigned char addr, unsigned char value)
 }
 
 
+#define LCD_GATE_IC_SM5109_MUSK    0x03
+#define LCD_GATE_IC_OCP2130_MUSK  0x33
+static unsigned char gateICfalg;
+
+int display_bias_setting(unsigned char voltage_value_offset)
+{
+	int rc=0;
+	pr_err("%s\n", __func__);
+	if(!(gateICfalg^LCD_GATE_IC_SM5109_MUSK)){
+		rc=_lcm_i2c_write_bytes(0x03,0x43);
+		pr_debug("[lcm] i2c read value is %x\n",rc);
+		if( 0x02 == _lcm_i2c_write_bytes(0x03,0x43)){
+		// set register 03H
+		// bit0 active discharge enable OUTP
+		// bit1 active discharge enable OUTN
+		// bit6 current drive capability
+			if(0x02 == _lcm_i2c_write_bytes(0x00,voltage_value_offset)){
+				if(0x02 == _lcm_i2c_write_bytes(0x01,voltage_value_offset)){
+					pr_debug(" _lcm_i2c_bias is LCD_BIAS_SM5109\n");
+					return 0;
+					}
+			}
+		}
+		pr_err("oops! [LCD] gate ic SM5109 setting error \n");
+		return 0;
+	}else if(!(gateICfalg^LCD_GATE_IC_OCP2130_MUSK)){
+
+		if(0x02 == _lcm_i2c_write_bytes(0x00,voltage_value_offset)){
+			if(0x02 == _lcm_i2c_write_bytes(0x01,voltage_value_offset)){
+				pr_debug(" _lcm_i2c_bias is OCP2130\n");
+				return 0;
+			}
+		}
+		pr_err("oops! [LCD] gate ic setting OCP2130 error \n");
+		return -2;
+	}else{
+		pr_err("oops! [LCD] no gate ic device matched \n");
+		return -3;
+	}
+}
+static int __init parse_lcdBias(char *arg)
+{
+	if (!arg)
+		return -EINVAL;
+	//gate driver is SM5109 or NT50358A;
+	if (strcmp(arg, "SM5109") == 0) {
+		printk("_lcm_parse_bias LCD_SM5109 \n");
+		strcpy(_lcm_i2c_of_match->compatible,"LCD_BIAS_SM5109");
+		gateICfalg = LCD_GATE_IC_SM5109_MUSK;
+	}
+	else if (strcmp(arg, "OCP2130") == 0) {
+		printk("_lcm_parse_bias OCP2130 \n");
+		strcpy(_lcm_i2c_of_match->compatible,"LCD_BIAS_OCP2130");
+		gateICfalg = LCD_GATE_IC_OCP2130_MUSK;
+	}
+	return 0;
+}
+
+early_param("lcdgateic", parse_lcdBias);
+
+//#endif
+
 /*
  * module load/unload record keeping
  */
@@ -204,9 +277,9 @@ static void __exit _lcm_i2c_exit(void)
 	pr_debug("[LCM][I2C] %s\n", __func__);
 	i2c_del_driver(&_lcm_i2c_driver);
 }
+//enum LCM_STATUS----->int
 
-
-static enum LCM_STATUS _lcm_i2c_check_data(char type,
+static int _lcm_i2c_check_data(char type,
 	const struct LCM_DATA_T2 *t2)
 {
 	switch (type) {
@@ -230,10 +303,10 @@ static enum LCM_STATUS _lcm_i2c_check_data(char type,
 
 	return LCM_STATUS_OK;
 }
-#endif
+//#endif
 
 
-enum LCM_STATUS lcm_i2c_set_data(char type, const struct LCM_DATA_T2 *t2)
+int lcm_i2c_set_data(char type, const struct LCM_DATA_T2 *t2)
 {
 #ifndef CONFIG_FPGA_EARLY_PORTING
 	unsigned int ret_code = 0;
@@ -280,6 +353,7 @@ MODULE_DESCRIPTION("MTK LCM I2C Driver");
 MODULE_LICENSE("GPL");
 #endif
 
-#else
-struct i2c_client *_lcm_i2c_client;
-#endif
+//#else
+//struct i2c_client *_lcm_i2c_client;
+//#endif
+

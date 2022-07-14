@@ -156,6 +156,7 @@ struct layering_rule_ops {
 	bool (*adjust_hrt_level)(struct disp_layer_info
 			*disp_info);
 	void (*adjust_hrt_scen)(struct disp_layer_info *disp_info);
+	void (*clear_layer)(struct disp_layer_info *disp_info);
 };
 
 #define HRT_GET_DVFS_LEVEL(hrt_num) (hrt_num & 0xF)
@@ -206,5 +207,8 @@ bool is_gles_layer(struct disp_layer_info *disp_info,
 bool has_layer_cap(struct layer_config *layer_info, enum LAYERING_CAPS l_caps);
 void set_layering_opt(enum LYE_HELPER_OPT opt, int value);
 int get_layering_opt(enum LYE_HELPER_OPT opt);
-
+bool is_layer_id_valid(struct disp_layer_info *disp_info,
+	int disp_idx, int i);
+void rollback_layer_to_GPU(struct disp_layer_info *disp_info, int disp_idx,
+	int i);
 #endif

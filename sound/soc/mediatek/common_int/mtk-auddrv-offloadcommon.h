@@ -58,6 +58,7 @@
 #include <linux/timer.h>
 #include "mtk-auddrv-def.h"
 #include <linux/clk.h>
+#include "mtk-auddrv-def.h"
 
 #include <sound/compress_driver.h>
 #include <sound/pcm.h>
@@ -70,8 +71,7 @@
 #include "mtk-dsp-platform-driver.h"
 #endif
 
-#define MP3_IPIMSG_TIMEOUT            25
-#define MP3_WAITCHECK_INTERVAL_MS      1
+#define OFFLOAD_IPIMSG_TIMEOUT             25
 
 enum {
 	OFFLOAD_STATE_INIT = 0x1,
@@ -96,13 +96,17 @@ struct afe_offload_param_t {
 	unsigned long long   copied_total;    /* for tstamp*/
 	unsigned long long   write_blocked_idx;
 	bool                 wakelock;
+	ktime_t              time_pcm;
+	unsigned long        time_pcm_delay_ms;
 };
 
 struct afe_offload_service_t {
 	bool write_blocked;
 	bool enable;
 	bool drain;
-	bool ipiwait;
+	bool tswait;
+	struct mutex ts_lock;
+	wait_queue_head_t ts_wq;
 	bool needdata;
 	bool decode_error;
 	unsigned int pcmdump;
@@ -113,6 +117,7 @@ struct afe_offload_service_t {
 struct afe_offload_codec_t {
 	unsigned int codec_samplerate;
 	unsigned int codec_bitrate;
+	unsigned int target_samplerate;
 };
 
 enum ipi_received_offload {

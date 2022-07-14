@@ -41,7 +41,7 @@
 	#define BUS_DBG_BUS_MHZ             (156)
 #elif defined(CONFIG_MACH_MT6785) || defined(CONFIG_MACH_MT6885) || \
 	defined(CONFIG_MACH_MT6873) || defined(CONFIG_MACH_MT6853) || \
-	defined(CONFIG_MACH_MT6893)
+	defined(CONFIG_MACH_MT6893) || defined(CONFIG_MACH_MT6833)
 	#define BUS_DBG_BUS_MHZ             (156)
 #elif defined(CONFIG_MACH_MT6779)
 	#define BUS_DBG_BUS_MHZ             (273)
@@ -72,6 +72,10 @@
 #define BUS_DBG_CON_IRQ_AR_STA1     (0x00100000)
 #define BUS_DBG_CON_IRQ_AW_STA1     (0x00200000)
 #define BUS_DBG_CON_TIMEOUT_CLR     (0x00800000)
+
+#define BUS_DBG_CON_RESP_MON_EN     (0x00010000)
+#define BUS_DBG_CON_RESP_UNMASK     (0x01000000)
+
 /* detect all stages of timeout */
 #define BUS_DBG_CON_TIMEOUT	\
 	(BUS_DBG_CON_IRQ_AR_STA0|BUS_DBG_CON_IRQ_AW_STA0| \
@@ -151,6 +155,8 @@ struct systracker_config_t {
 	int enable_slave_err;
 	int enable_wp;
 	int enable_irq;
+	int enable_resp_mon;
+	int enable_resp_unmask;
 	int timeout_ms;
 	int timeout2_ms;
 	int wp_phy_address;

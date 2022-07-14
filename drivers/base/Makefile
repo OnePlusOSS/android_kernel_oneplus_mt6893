@@ -30,6 +30,8 @@ obj-$(CONFIG_GENERIC_MSI_IRQ_DOMAIN) += platform-msi.o
 obj-$(CONFIG_GENERIC_ARCH_TOPOLOGY) += arch_topology.o
 
 obj-y			+= test/
-
+#ifdef OPLUS_FEATURE_TP_BASIC
+obj-$(CONFIG_OPLUS_FW_UPDATE)	+=  kernelFwUpdate/
+#endif /*OPLUS_FEATURE_TP_BASIC*/
 ccflags-$(CONFIG_DEBUG_DRIVER) := -DDEBUG
 

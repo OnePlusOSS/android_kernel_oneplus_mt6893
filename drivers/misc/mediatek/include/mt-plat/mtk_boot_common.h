@@ -27,8 +27,27 @@ enum boot_mode_t {
 	KERNEL_POWER_OFF_CHARGING_BOOT = 8,
 	LOW_POWER_OFF_CHARGING_BOOT = 9,
 	DONGLE_BOOT = 10,
+#ifdef OPLUS_BUG_STABILITY
+	OPLUS_SAU_BOOT = 11,
+	SILENCE_BOOT = 12,
+	AGING_BOOT = 998,
+	SAFE_BOOT = 999,
+#endif /* OPLUS_BUG_STABILITY */
 	UNKNOWN_BOOT
 };
+#ifdef OPLUS_BUG_STABILITY
+typedef enum
+{
+	OPLUS_NORMAL_BOOT = 0,
+	OPLUS_SILENCE_BOOT = 1,
+	OPLUS_SAFE_BOOT = 2,
+	OPLUS_AGING_BOOT = 3,
+	OPLUS_UNKNOWN_BOOT
+}OPLUS_BOOTMODE;
+
+extern OPLUS_BOOTMODE oplus_boot_mode;
+#endif /* OPLUS_BUG_STABILITY */
+
 
 /* for boot type usage */
 #define BOOTDEV_NAND            (0)
@@ -40,7 +59,11 @@ enum boot_mode_t {
 #define BOOT_MODE_SYSFS_ATTR    "boot_mode"
 #define BOOT_TYPE_SYSFS_ATTR    "boot_type"
 
-extern enum boot_mode_t get_boot_mode(void);
+/* #ifndef FEATURE_BUG_STABILITY */
+/* extern enum boot_mode_t get_boot_mode(void); */
+/* #else */
+extern int get_boot_mode(void); 
+/* #endif */
 extern unsigned int get_boot_type(void);
 extern bool is_meta_mode(void);
 extern bool is_advanced_meta_mode(void);

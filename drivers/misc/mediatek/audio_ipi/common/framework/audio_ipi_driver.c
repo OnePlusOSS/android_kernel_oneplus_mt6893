@@ -224,6 +224,11 @@ static int parsing_ipi_msg_from_user_space(
 		retval = -1;
 		goto parsing_exit;
 	}
+	if (ipi_msg.source_layer != AUDIO_IPI_LAYER_FROM_HAL) {
+		pr_notice("source_layer %d != %d", ipi_msg.source_layer, AUDIO_IPI_LAYER_FROM_HAL);
+		retval = -1;
+		goto parsing_exit;
+	}
 	msg_len = get_message_buf_size(&ipi_msg);
 	retval = check_msg_format(&ipi_msg, msg_len);
 	if (retval != 0)
@@ -238,6 +243,10 @@ static int parsing_ipi_msg_from_user_space(
 	if (data_type == AUDIO_IPI_DMA) {
 		/* get hal data & write hal data to DRAM */
 		hal_data_size = dma_info->hal_buf.data_size;
+		if (hal_data_size > MAX_DSP_DMA_WRITE_SIZE) {
+			DUMP_IPI_MSG("hal_data_size error!!", &ipi_msg);
+			goto parsing_exit;
+		}
 		copy_hal_data = vmalloc(hal_data_size);
 		if (copy_hal_data == NULL) {
 			retval = -ENOMEM;

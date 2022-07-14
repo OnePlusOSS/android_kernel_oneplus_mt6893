@@ -38,7 +38,8 @@ int mt_cpufreq_set_by_wfi_load_cluster(unsigned int cluster_id,
 
 #ifdef CONFIG_HYBRID_CPU_DVFS
 	enum mt_cpu_dvfs_id id = (enum mt_cpu_dvfs_id) cluster_id;
-#if defined(CONFIG_MACH_MT6893)
+#if defined(CONFIG_MACH_MT6893) || defined(CONFIG_MACH_MT6877) \
+	|| defined(CONFIG_MACH_MT6781) || defined(CONFIG_MACH_MT6833)
 	struct mt_cpu_dvfs *p = id_to_cpu_dvfs(id);
 	struct cpufreq_policy *policy = p->mt_policy;
 	int cpu;
@@ -52,12 +53,14 @@ int mt_cpufreq_set_by_wfi_load_cluster(unsigned int cluster_id,
 	if (g_pCpuFreqSampler_func_cpi)
 		g_pCpuFreqSampler_func_cpi(id, freq);
 #endif /* CONFIG_MTK_CM_MGR */
-#if defined(CONFIG_MACH_MT6893)
+#if defined(CONFIG_MACH_MT6893) || defined(CONFIG_MACH_MT6877) \
+	|| defined(CONFIG_MACH_MT6781) || defined(CONFIG_MACH_MT6833)
 	for_each_cpu(cpu, policy->cpus)
 		trace_cpu_frequency(freq, cpu);
 #endif
 	cpuhvfs_set_dvfs(id, freq);
-#if defined(CONFIG_MACH_MT6893)
+#if defined(CONFIG_MACH_MT6893) || defined(CONFIG_MACH_MT6877) \
+	|| defined(CONFIG_MACH_MT6781) || defined(CONFIG_MACH_MT6833)
 	policy->cur = freq;
 	arch_set_freq_scale(policy->cpus, freq, policy->cpuinfo.max_freq);
 #endif
@@ -82,6 +85,7 @@ int mt_cpufreq_set_by_schedule_load_cluster(unsigned int cluster_id,
 	cpuhvfs_set_cluster_load_freq(id, freq);
 #endif
 
+
 	return 0;
 }
 EXPORT_SYMBOL(mt_cpufreq_set_by_schedule_load_cluster);
@@ -91,10 +95,13 @@ unsigned int mt_cpufreq_find_close_freq(unsigned int cluster_id,
 {
 	enum mt_cpu_dvfs_id id = (enum mt_cpu_dvfs_id) cluster_id;
 	struct mt_cpu_dvfs *p = id_to_cpu_dvfs(id);
-	int idx = _search_available_freq_idx(p, freq, CPUFREQ_RELATION_L);
+	int idx;
+
 
 	if (p == NULL)
 		return 0;
+
+	idx = _search_available_freq_idx(p, freq, CPUFREQ_RELATION_L);
 	if (idx < 0)
 		idx = 0;
 
@@ -107,12 +114,13 @@ unsigned int mt_cpufreq_find_Vboot_idx(unsigned int cluster_id)
 {
 	enum mt_cpu_dvfs_id id = (enum mt_cpu_dvfs_id) cluster_id;
 	struct mt_cpu_dvfs *p = id_to_cpu_dvfs(id);
-	int idx;
+	int idx = 0;
 
-	if (!p)
+	if (p == NULL)
 		return 0;
 
 	idx = _search_available_freq_idx_under_v(p, VBOOT_VOLT);
+
 	if (idx > p->nr_opp_tbl)
 		idx = p->nr_opp_tbl;
 
@@ -393,6 +401,7 @@ unsigned int mt_cpufreq_get_cpu_freq(int cpu, int idx)
 #endif
 }
 EXPORT_SYMBOL(mt_cpufreq_get_cpu_freq);
+
 
 unsigned int mt_cpufreq_get_volt_by_idx(enum mt_cpu_dvfs_id id, int idx)
 {

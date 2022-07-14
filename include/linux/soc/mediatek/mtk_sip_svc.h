@@ -38,6 +38,10 @@
 #define MTK_SIP_EMIMPU_CONTROL \
 	(0x8200050B | MTK_SIP_SMC_AARCH_BIT)
 
+/* VPU */
+#define MTK_SIP_APUSYS_CONTROL \
+	(0x8200051E | MTK_SIP_SMC_AARCH_BIT)
+
 /* Clock Buffer */
 #define MTK_SIP_CLKBUF_CONTROL \
 	(0x82000520 | MTK_SIP_SMC_AARCH_BIT)
@@ -49,6 +53,14 @@
 /* display port control related SMC call */
 #define MTK_SIP_DP_CONTROL \
 	(0x82000523 | MTK_SIP_SMC_AARCH_BIT)
+
+/* SDA */
+#define MTK_SIP_SDA_CONTROL \
+	(0x82000525 | MTK_SIP_SMC_AARCH_BIT)
+
+/* USB related SMC call */
+#define MTK_SIP_USB_CONTROL \
+	(0x82000527 | MTK_SIP_SMC_AARCH_BIT)
 
 #endif
 /* _MTK_SECURE_API_H_ */

@@ -170,6 +170,11 @@ struct aee_siginfo {
 	uintptr_t fault_addr;
 };
 
+struct name_list {
+	char name[TASK_COMM_LEN + 1];
+	struct name_list *next;
+};
+
 /* Show string on DAL layer  */
 #define AEEIOCTL_DAL_SHOW       _IOW('p', 0x01, struct aee_dal_show)
 #define AEEIOCTL_DAL_CLEAN      _IO('p', 0x02)	/* Clear DAL layer */
@@ -192,6 +197,8 @@ struct aee_siginfo {
 #define AEEIOCTL_GET_AEE_SIGINFO _IOW('p', 0x10, struct aee_siginfo)
 #define AEEIOCTL_SET_HANG_FLAG _IOW('p', 0x11, int)
 #define AEEIOCTL_SET_HANG_REBOOT _IO('p', 0x12)
+#define HANG_ADD_WHITE_LIST _IOR('p', 0x13, char [TASK_COMM_LEN])
+#define HANG_DEL_WHITE_LIST _IOR('p', 0x14, char [TASK_COMM_LEN])
 #define AEEIOCTL_GET_THREAD_RMS  _IOW('p', 0x13, struct unwind_info_rms)
 #define AEEIOCTL_GET_THREAD_STACK_RAW  _IOW('p', 0x14, struct unwind_info_stack)
 
@@ -229,7 +236,7 @@ extern int ksysfs_bootinfo_init(void);
 extern void ksysfs_bootinfo_exit(void);
 extern int aee_dump_ccci_debug_info(int md_id, void **addr, int *size);
 extern void show_stack(struct task_struct *tsk, unsigned long *sp);
-extern int aee_mode;
+extern int aee_get_mode(void);
 extern void aee_kernel_RT_Monitor_api(int lParam);
 extern void mlog_get_buffer(char **ptr, int *size)__attribute__((weak));
 extern void get_msdc_aee_buffer(unsigned long *buff,

@@ -121,17 +121,19 @@ struct charger_ops {
 	int (*kick_direct_charging_wdt)(struct charger_device *dev);
 	int (*set_direct_charging_ibusoc)(struct charger_device *dev, u32 uA);
 	int (*set_direct_charging_vbusov)(struct charger_device *dev, u32 uV);
-	int (*set_direct_charging_ibatoc)(struct charger_device *dev, u32 uA);
-	int (*set_direct_charging_vbatov)(struct charger_device *dev, u32 uV);
-	int (*set_direct_charging_vbatov_alarm)(struct charger_device *dev,
-						u32 uV);
-	int (*reset_direct_charging_vbatov_alarm)(struct charger_device *dev);
-	int (*set_direct_charging_vbusov_alarm)(struct charger_device *dev,
-						u32 uV);
-	int (*reset_direct_charging_vbusov_alarm)(struct charger_device *dev);
-	int (*is_direct_charging_vbuslowerr)(struct charger_device *dev,
-					     bool *err);
-	int (*init_direct_charging_chip)(struct charger_device *dev);
+
+	int (*set_ibusocp)(struct charger_device *dev, u32 uA);
+	int (*set_vbusovp)(struct charger_device *dev, u32 uV);
+	int (*set_ibatocp)(struct charger_device *dev, u32 uA);
+	int (*set_vbatovp)(struct charger_device *dev, u32 uV);
+	int (*set_vbatovp_alarm)(struct charger_device *dev, u32 uV);
+	int (*reset_vbatovp_alarm)(struct charger_device *dev);
+	int (*set_vbusovp_alarm)(struct charger_device *dev, u32 uV);
+	int (*reset_vbusovp_alarm)(struct charger_device *dev);
+	int (*is_vbuslowerr)(struct charger_device *dev, bool *err);
+	int (*init_chip)(struct charger_device *dev);
+	int (*enable_auto_trans)(struct charger_device *dev, bool en);
+	int (*set_auto_trans)(struct charger_device *dev, u32 uV, bool en);
 
 	/* OTG */
 	int (*enable_otg)(struct charger_device *dev, bool en);
@@ -172,6 +174,12 @@ struct charger_ops {
 	int (*enable_force_typec_otp)(struct charger_device *dev, bool en);
 	int (*enable_hidden_mode)(struct charger_device *dev, bool en);
 	int (*get_ctd_dischg_status)(struct charger_device *dev, u8 *status);
+#ifdef OPLUS_FEATURE_CHG_BASIC
+    /* HVDCP */
+    int (*send_hvdcp_pattern_ex)(struct charger_device *dev, bool en);
+    int (*reset_hvdcp_ta_ex)(struct charger_device *dev);
+    int (*hvdcp_can_enabled)(struct charger_device *dev, bool *en);
+#endif /*OPLUS_FEATURE_CHG_BASIC*/
 	int (*enable_hz)(struct charger_device *dev, bool en);
 
 	int (*enable_bleed_discharge)(struct charger_device *dev, bool en);
@@ -314,22 +322,23 @@ extern int charger_dev_set_direct_charging_ibusoc(
 	struct charger_device *charger_dev, u32 ua);
 extern int charger_dev_set_direct_charging_vbusov(
 	struct charger_device *charger_dev, u32 uv);
-extern int charger_dev_set_direct_charging_ibatoc(
-	struct charger_device *charger_dev, u32 ua);
-extern int charger_dev_set_direct_charging_vbatov(
-	struct charger_device *charger_dev, u32 uv);
-extern int charger_dev_set_direct_charging_vbatov_alarm(
-	struct charger_device *charger_dev, u32 uv);
-extern int charger_dev_reset_direct_charging_vbatov_alarm(
-	struct charger_device *charger_dev);
-extern int charger_dev_set_direct_charging_vbusov_alarm(
-	struct charger_device *charger_dev, u32 uv);
-extern int charger_dev_reset_direct_charging_vbusov_alarm(
-	struct charger_device *charger_dev);
-extern int charger_dev_is_direct_charging_vbuslowerr(
-	struct charger_device *charger_dev, bool *err);
-extern int charger_dev_init_direct_charging_chip(
-	struct charger_device *charger_dev);
+
+extern int charger_dev_set_ibusocp(struct charger_device *chg_dev, u32 uA);
+extern int charger_dev_set_vbusovp(struct charger_device *chg_dev, u32 uV);
+extern int charger_dev_set_ibatocp(struct charger_device *chg_dev, u32 uA);
+extern int charger_dev_set_vbatovp(struct charger_device *chg_dev, u32 uV);
+extern int charger_dev_set_vbatovp_alarm(struct charger_device *chg_dev,
+					 u32 uV);
+extern int charger_dev_reset_vbatovp_alarm(struct charger_device *chg_dev);
+extern int charger_dev_set_vbusovp_alarm(struct charger_device *chg_dev,
+					 u32 uV);
+extern int charger_dev_reset_vbusovp_alarm(struct charger_device *chg_dev);
+extern int charger_dev_is_vbuslowerr(struct charger_device *chg_dev, bool *err);
+extern int charger_dev_init_chip(struct charger_device *chg_dev);
+extern int charger_dev_enable_auto_trans(struct charger_device *chg_dev,
+					 bool en);
+extern int charger_dev_set_auto_trans(struct charger_device *chg_dev, u32 uV,
+				      bool en);
 
 /* TypeC */
 extern int charger_dev_enable_usbid(struct charger_device *dev, bool en);
@@ -358,5 +367,11 @@ extern int unregister_charger_device_notifier(
 extern int charger_dev_notify(
 	struct charger_device *charger_dev, int event);
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+extern int charger_dev_send_hvdcp_pattern_ex(
+    struct charger_device *charger_dev, bool en);
+extern int charger_dev_reset_hvdcp_ta_ex(struct charger_device *chg_dev);
+extern int charger_dev_hvdcp_can_enabled(struct charger_device *chg_dev, bool *en);
+#endif /*OPLUS_FEATURE_CHG_BASIC*/
 
 #endif /*LINUX_POWER_CHARGER_CLASS_H*/

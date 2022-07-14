@@ -14,6 +14,17 @@ config ASHMEM
 	  It is, in theory, a good memory allocator for low-memory devices,
 	  because it can discard shared memory units when under memory pressure.
 
+config DEBUG_KINFO
+	bool "Debug Kernel Information Support"
+	depends on KALLSYMS
+	help
+	  This supports kernel information backup for bootloader usage.
+	  Specifics:
+	   - The kallsyms symbols for unwind_backtrace
+	   - Page directory pointer
+	   - UTS_RELEASE
+	   - BUILD_INFO(ro.build.fingerprint)
+
 config ANDROID_VSOC
 	tristate "Android Virtual SoC support"
 	default n
@@ -79,6 +90,14 @@ config MTK_ENABLE_AGO
 	  Do not use this options in Kernel
 	  directly.
 	  this is a group kernel setting of AGO
+ 
+#ifdef OPLUS_FEATURE_HANS_FREEZE
+config OPLUS_HANS
+        bool "HANS kernel and HANS native communication channel"
+        default n
+        ---help---
+          Key events (signal/network package/binder) report to HAS native.
+#endif /*OPLUS_FEATURE_HANS_FREEZE*/
 
 source "drivers/staging/android/ion/Kconfig"
 

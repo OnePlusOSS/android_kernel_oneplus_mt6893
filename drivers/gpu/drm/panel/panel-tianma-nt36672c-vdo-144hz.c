@@ -264,7 +264,7 @@ static const struct drm_display_mode default_mode = {
 	.vrefresh = MODE_0_FPS,
 };
 
-static const struct drm_display_mode performance_mode_1 = {
+static const struct drm_display_mode performance_mode_90hz = {
 	.clock = 414831,
 	.hdisplay = FRAME_WIDTH,
 	.hsync_start = FRAME_WIDTH + MODE_1_HFP,
@@ -279,7 +279,7 @@ static const struct drm_display_mode performance_mode_1 = {
 
 };
 
-static const struct drm_display_mode performance_mode_2 = {
+static const struct drm_display_mode performance_mode_60hz = {
 	.clock = 414831,
 	.hdisplay = FRAME_WIDTH,
 	.hsync_start = FRAME_WIDTH + MODE_2_HFP,
@@ -349,13 +349,13 @@ static struct mtk_panel_params ext_params = {
 		.switch_en = 0,
 		.vact_timing_fps = MODE_0_FPS,
 	},
+	.data_rate = DATA_RATE,
 	.lfr_enable = 1,
 	.lfr_minimum_fps = 60,
-	.data_rate = DATA_RATE,
 };
 
 
-static struct mtk_panel_params ext_params_mode_1 = {
+static struct mtk_panel_params ext_params_90hz = {
 	.cust_esd_check = 1,
 	.esd_check_enable = 1,
 	.lcm_esd_check_table[0] = {
@@ -407,14 +407,14 @@ static struct mtk_panel_params ext_params_mode_1 = {
 	},
 	.dyn_fps = {
 		.switch_en = 0,
-		.vact_timing_fps = MODE_0_FPS,
+		.vact_timing_fps = MODE_1_FPS,
 	},
+	.data_rate = DATA_RATE,
 	.lfr_enable = 1,
 	.lfr_minimum_fps = 60,
-	.data_rate = DATA_RATE,
 };
 
-static struct mtk_panel_params ext_params_mode_2 = {
+static struct mtk_panel_params ext_params_60hz = {
 	.cust_esd_check = 1,
 	.esd_check_enable = 1,
 	.lcm_esd_check_table[0] = {
@@ -466,11 +466,11 @@ static struct mtk_panel_params ext_params_mode_2 = {
 	},
 	.dyn_fps = {
 		.switch_en = 0,
-		.vact_timing_fps = MODE_0_FPS,
+		.vact_timing_fps = MODE_2_FPS,
 	},
+	.data_rate = DATA_RATE,
 	.lfr_enable = 1,
 	.lfr_minimum_fps = 60,
-	.data_rate = DATA_RATE,
 };
 
 static int tianma_setbacklight_cmdq(void *dsi, dcs_write_gce cb,
@@ -491,39 +491,22 @@ static int tianma_setbacklight_cmdq(void *dsi, dcs_write_gce cb,
 	return 0;
 }
 
-struct drm_display_mode *get_mode_by_id(struct drm_panel *panel,
-	unsigned int mode)
-{
-	struct drm_display_mode *m;
-	unsigned int i = 0;
-
-	list_for_each_entry(m, &panel->connector->modes, head) {
-		if (i == mode)
-			return m;
-		i++;
-	}
-	return NULL;
-}
-
 static int mtk_panel_ext_param_set(struct drm_panel *panel,
 			 unsigned int mode)
 {
 	struct mtk_panel_ext *ext = find_panel_ext(panel);
 	int ret = 0;
 
-	struct drm_display_mode *m = get_mode_by_id(panel, mode);
-
-	if (m->vrefresh == MODE_0_FPS)
+	if (mode == 0)
 		ext->params = &ext_params;
-	else if (m->vrefresh == MODE_1_FPS)
-		ext->params = &ext_params_mode_1;
-	else if (m->vrefresh == MODE_2_FPS)
-		ext->params = &ext_params_mode_2;
+	else if (mode == 1)
+		ext->params = &ext_params_90hz;
+	else if (mode == 2)
+		ext->params = &ext_params_60hz;
 	else
 		ret = 1;
 
 	return ret;
-
 }
 
 static int panel_ext_reset(struct drm_panel *panel, int on)
@@ -578,8 +561,8 @@ struct panel_desc {
 static int tianma_get_modes(struct drm_panel *panel)
 {
 	struct drm_display_mode *mode;
-	struct drm_display_mode *mode_1;
-	struct drm_display_mode *mode_2;
+	struct drm_display_mode *mode_90hz;
+	struct drm_display_mode *mode_60hz;
 
 	mode = drm_mode_duplicate(panel->drm, &default_mode);
 	if (!mode) {
@@ -592,30 +575,30 @@ static int tianma_get_modes(struct drm_panel *panel)
 	mode->type = DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED;
 	drm_mode_probed_add(panel->connector, mode);
 
-	mode_1 = drm_mode_duplicate(panel->drm, &performance_mode_1);
-	if (!mode_1) {
+	mode_90hz = drm_mode_duplicate(panel->drm, &performance_mode_90hz);
+	if (!mode_90hz) {
 		dev_err(panel->drm->dev, "failed to add mode %ux%ux@%u\n",
-			performance_mode_1.hdisplay,
-			performance_mode_1.vdisplay,
-			performance_mode_1.vrefresh);
+			performance_mode_90hz.hdisplay,
+			performance_mode_90hz.vdisplay,
+			performance_mode_90hz.vrefresh);
 		return -ENOMEM;
 	}
-	drm_mode_set_name(mode_1);
-	mode_1->type = DRM_MODE_TYPE_DRIVER;
-	drm_mode_probed_add(panel->connector, mode_1);
+	drm_mode_set_name(mode_90hz);
+	mode_90hz->type = DRM_MODE_TYPE_DRIVER;
+	drm_mode_probed_add(panel->connector, mode_90hz);
 
 
-	mode_2 = drm_mode_duplicate(panel->drm, &performance_mode_2);
-	if (!mode_2) {
+	mode_60hz = drm_mode_duplicate(panel->drm, &performance_mode_60hz);
+	if (!mode_60hz) {
 		dev_err(panel->drm->dev, "failed to add mode %ux%ux@%u\n",
-			performance_mode_2.hdisplay,
-			performance_mode_2.vdisplay,
-			performance_mode_2.vrefresh);
+			performance_mode_60hz.hdisplay,
+			performance_mode_60hz.vdisplay,
+			performance_mode_60hz.vrefresh);
 		return -ENOMEM;
 	}
-	drm_mode_set_name(mode_2);
-	mode_2->type = DRM_MODE_TYPE_DRIVER;
-	drm_mode_probed_add(panel->connector, mode_2);
+	drm_mode_set_name(mode_60hz);
+	mode_60hz->type = DRM_MODE_TYPE_DRIVER;
+	drm_mode_probed_add(panel->connector, mode_60hz);
 
 	panel->connector->display_info.width_mm = 64;
 	panel->connector->display_info.height_mm = 129;

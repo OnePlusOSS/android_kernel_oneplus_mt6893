@@ -169,6 +169,16 @@ int fbt_get_default_adj_loading(void)
 	return 1;
 }
 
+int fbt_get_default_adj_count(void)
+{
+	return 10;
+}
+
+int fbt_get_default_adj_tdiff(void)
+{
+	return 1000000;
+}
+
 int fbt_get_cluster_limit(int *cluster, int *freq, int *r_freq)
 {
 /*
@@ -179,6 +189,26 @@ int fbt_get_cluster_limit(int *cluster, int *freq, int *r_freq)
  */
 	*cluster = 2;
 	*freq = 2600000;
+	return 1;
+}
+
+int fbt_get_default_uboost(void)
+{
+	return 75;
+}
+
+int fbt_get_default_qr_enable(void)
+{
+	return 0;
+}
+
+int fbt_get_default_gcc_enable(void)
+{
+	return 0;
+}
+
+int fbt_get_l_min_bhropp(void)
+{
 	return 1;
 }
 

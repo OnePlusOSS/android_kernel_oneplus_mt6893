@@ -107,7 +107,11 @@
 	};
 	led6:led@6 {
 		compatible = "mediatek,lcd-backlight";
-		led_mode = <5>;
+		/*#ifndef OPLUS_FEATURE_BRINGUP*/
+		//led_mode = <5>;
+		//#else
+		led_mode = <4>;
+		//#endif
 		data = <1>;
 		pwm_config = <0 1 0 0 0>;
 	};
@@ -116,11 +120,345 @@
 		vib_timer = <25>;
 		vib_limit = <9>;
 		vib_vol= <9>;
+	};	
+/* sensor start */
+	/*
+	enum {
+		LIS3DH,
+		LSM6DS3,
+		BMI160,
+		LIS2HH12,
+		LSM6DSM,
+		BMI2XY,
+		LSM6DSO,
 	};
+    */
+
+	gsensor_1: gsensor_1 {
+		status = "okay";
+		sensor_name = <5>;//BMI220
+		device_name = "bmi2xy";
+		i2c_num = <2>;
+		i2c_addr = <0>;
+		direction = <6>;
+		eint_num = <3>;
+		gyro_cali_version= <2>;
+		acc_cali_range= <300 300 300>;
+	};
+	gsensor_2: gsensor_2 {
+		status = "okay";
+		sensor_name = <6>;//LSM6DSO
+		device_name = "lsm6dso";
+		i2c_num = <2>;
+		i2c_addr = <0>;
+		direction = <5>;
+		eint_num = <3>;
+		gyro_cali_version= <2>; //should be always v2 for lsm6dso
+		acc_cali_range= <300 300 300>;
+	};
+	gsensor_3: gsensor_3 {
+		status = "okay";
+		sensor_name = <4>;//LSM6DS3_c
+		device_name = "lsm6dsm";
+		i2c_num = <2>;
+		i2c_addr = <0>;
+		direction = <5>;
+		eint_num = <3>;
+		gyro_cali_version= <2>;
+		acc_cali_range= <300 300 300>; //250mg
+};
+	/*
+	enum {
+		AKM09911,
+		MMC3530,
+		MMC5603,
+		MXG4300,
+	};
+	*/
+	msensor_1: msensor_1 {
+		status = "okay";
+		sensor_name = <0>;//AKM09911
+		i2c_num = <0>;
+		i2c_addr = <12>;
+		direction = <1>;
+		eint_num = <0>;
+		soft-mag-parameter = <10211 0 57 1 166 1 303 0 9044 0 4 0 401 1 78 1 10730 0>;
+	};
+	msensor_2: msensor_2 {
+		status = "okay";
+		sensor_name = <2>;//MMC5603
+		i2c_num = <0>;
+		i2c_addr = <48>;
+		direction = <1>;
+		eint_num = <0>;
+		soft-mag-parameter = <10294 0 42 0 117 1 42 0 8863 0 246 1 117 1 245 1 10969 0>;
+	};
+
+	/*
+	enum {
+		TMD2725,
+		APSD9922,
+		STK3335,
+		STK3331,
+		STK2232,
+		TCS3701,
+		STK32600,
+	};
+	*/
+	proximity_1: proximity_1 {
+		status = "okay";
+		sensor_name = <5>;//TCS3701
+		i2c_num = <0>;
+		i2c_addr = <57>;
+		direction = <4>;
+		eint_num = <4>;
+		low_step = <300>;
+		high_step = <400>;
+		low_limit = <400>;
+		high_limit = <600>;
+		dirty_low_step = <180>;
+		dirty_high_step = <250>;
+		ps_dirty_limit = <1023>;
+		ps_ir_limit = <500>;
+		ps_adjust_min = <0>;
+		ps_adjust_max = <600>;
+		sampling_count = <5>;
+		step_max = <400>;
+		step_min = <110>;
+		step_div = <1500>;
+		anti_shake_delta = <80>;
+		dynamic_cali_max = <1024>;
+		raw2offset_radio = <20800>;
+		offset_max = <250>;
+		offset_range_min = <255>;
+		offset_range_max = <255>;
+		force_cali_limit = <2000>;
+		cali_jitter_limit = <30>;
+		cal_offset_margin = <120>;
+	};
+	proximity_2: proximity_2 {
+		status = "okay";
+		sensor_name = <6>;//STK32600
+		i2c_num = <0>;
+		i2c_addr = <72>;
+		direction = <4>;
+		eint_num = <4>;
+		low_step = <300>;
+		high_step = <400>;
+		low_limit = <400>;
+		high_limit = <600>;
+		dirty_low_step = <100>;
+		dirty_high_step = <150>;
+		ps_dirty_limit = <1800>;
+		ps_ir_limit = <2000>;
+		ps_adjust_min = <0>;
+		ps_adjust_max = <600>;
+		sampling_count = <5>;
+		step_max = <400>;
+		step_min = <100>;
+		step_div = <1500>;
+		anti_shake_delta = <70>;
+		dynamic_cali_max = <5000>;
+		raw2offset_radio = <1000>;
+		offset_max = <60000>;
+		offset_range_min = <0>;
+		offset_range_max = <65534>;
+		force_cali_limit = <2000>;
+		cali_jitter_limit = <20>;
+		cal_offset_margin = <3000>;
+	};
+	light_1: light_1 {
+		status = "okay";
+		sensor_name = <5>;//TCS3701
+		i2c_num = <0>;
+		i2c_addr = <57>;
+		direction = <4>;
+		eint_num = <4>;
+		als_ratio = <150>;
+		als_buffer_length = <10>;
+		als_type = <2>;
+		device_name = "tcs3701";
+	};
+	light_2: light_2 {
+		status = "okay";
+		sensor_name = <6>;//STK32600
+		i2c_num = <0>;
+		i2c_addr = <72>;
+		direction = <4>;
+		eint_num = <4>;
+		als_ratio = <150>;
+		als_buffer_length =<8>;
+		als_type = <2>;//<1-normal;2-under screen;3-normal needed compensation>
+		use_lb_algo = <1>;
+		filter_lcd_type = <1>;//enum {SAMSUNG = 1}
+		device_name = "stk32600";
+	};
+	/*
+	enum {
+		SX933x
+	};
+	*/
+	sar_1: sar_1 {
+		status = "okay";
+		sensor_name = <0>;//SX933x
+		i2c_num = <0>;
+		i2c_addr = <40>;
+		direction = <4>;
+		eint_num = <13>;
+		channel_num = <3>;
+		channel_0_min = <6302>;
+		channel_0_max = <9453>;
+		channel_1_min = <8788>;
+		channel_1_max = <13182>;
+		channel_2_min = <993>;
+		channel_2_max = <1490>;
+		channel_3_min = <0>;
+		channel_3_max = <70000>;
+		reg_table_num = <2>;
+	};
+	/*
+	enum {
+		STK37600,
+		MN29005,
+		TCS3408,
+	};
+	*/
+	rear_cct_1: rear_cct_1 {
+		status = "okay";
+		sensor_name = <0>;//STK37600
+		i2c_num = <1>;
+		i2c_addr = <0x48>;
+		direction = <0>;
+		eint_num = <0>;
+		available_sensor = <7>; // bit 0: rear als, bit 1: rear cct, bit 2: rear flicker
+		cct_coef_Lir = <15668492 0 5818664 0 2185413 0 3182499 1 3380047 0
+				2243747 1 12251103 0 10842902 0 42691319 0 13784706 0
+				18424187 0 8543594 0>;
+		cct_coef_Hir = <10278160 1 15934330 1 22134192 1 15437748 0 19368151 0
+				17235924 0 469412 0 945301 0 25161818 0 401601 0
+				334050 0 155525 1>;
+	};
+	pick_up: pick_up {
+		status = "okay";
+		use-proximity = <1>;
+	};
+	lux_aod: lux_aod {
+		status = "okay";
+		use-proximity = <1>;
+	};
+	alsps_arch: alsps_arch {
+		status = "okay";
+		new-arch-supported = <1>;
+	};
+	cali_arch: cali_arch {
+		status = "okay";
+		new-arch-supported = <1>;
+	};
+/* sensor end */	
 	usb_c_pinctrl:usb_c_pinctrl {
 		compatible = "mediatek,usb_c_pinctrl";
 	};
+//#ifdef OPLUS_FEATURE_TP_BASIC
+	oplus_devinfo:oplus_devinfo {
+		compatible = "oplus-devinfo";
+		pinctrl-names = "default", "aboard_gpio0_sleep", "aboard_gpio0_active", "aboard_gpio0_idle";
+		pinctrl-0 = <&hw_pins_default>;
+		pinctrl-1 = <&aboard_pin_gpio0_sleep>;
+		pinctrl-2 = <&aboard_pin_gpio0_active>;
+		pinctrl-3 = <&aboard_pin_gpio0_idle>;
+		main-sub {
+			use_tristate_gpio;
+			compatible = "hw-match, main-sub";
+			aboard-gpio0 = <&pio 132 0x00>;
+			aboard-patterns = <0 0 1>;	/*0[high-resistance] 1[pull-down] 2[pull-up]*/
+			/*main board*/
+			match-projects = <20171 20172 20353>;
+		};
+	};
+//#endif OPLUS_FEATURE_TP_BASIC
+//#ifdef OPLUS_FEATURE_TP_BASIC
+        kpd_volume_down:kpd_volume_down {
+                compatible = "mediatek, VOLUME_DOWN-eint";
+                interrupt-parent = <&pio>;
+                interrupts = <155 IRQ_TYPE_EDGE_FALLING 155 0>;
+                debounce = <32000>;
+                status = "okay";
+        };
+
+//#endif OPLUS_FEATURE_TP_BASIC
+
+/*OPLUS_BUG_STABILITY oplus project start */
+	oplus_project:oplus_project {
+		compatible = "oplus,oplus_project";
+		};
+/*endif*/
+
+    nfc_chipset:nfc_chipset {
+        compatible = "oplus-nfc-chipset";
+        chipset-20171 = "SN100T";
+    };
+//#endif /* OPLUS_FEATURE_NFC_CONSOFT */
 };
+//#ifdef OPLUS_FEATURE_TP_BASIC
+&keypad {
+        keypad,volume-up        = <&pio 40 0x00>;
+        keypad,volume-down      = <&pio 155 0x00>;
+        pinctrl-names = "volume_up_as_int", "volume_down_as_int";
+        pinctrl-0 = <&volume_up_gpio_eint>;
+        pinctrl-1 = <&volume_down_gpio_eint>;
+        status = "okay";
+};
+&pio {
+        volume_up_gpio_eint:volume_up@0{
+                pins_cmd_dat {
+                        pinmux = <PINMUX_GPIO40__FUNC_GPIO40>;
+                        slew-rate = <0>;  /*direction 0:in, 1:out*/
+                        input-enable;
+                };
+        };
+
+        volume_down_gpio_eint:volume_down@0{
+                pins_cmd_dat {
+                        pinmux = <PINMUX_GPIO155__FUNC_GPIO155>;
+                        slew-rate = <0>;  /*direction 0:in, 1:out*/
+                        input-enable;
+                };
+        };
+};
+
+&pio {
+	hw_pins_default:default@hw_sub_id {
+	};
+
+	aboard_pin_gpio0_sleep:sleep@id0 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO132__FUNC_GPIO132>;
+			slew-rate = <0>;
+			bias-pull-down;
+			input-enable;
+		};
+	};
+
+	aboard_pin_gpio0_active:active@id0 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO132__FUNC_GPIO132>;
+			slew-rate = <0>;
+			bias-pull-up;
+			input-enable;
+		};
+	};
+
+	aboard_pin_gpio0_idle:idle@id0 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO132__FUNC_GPIO132>;
+			slew-rate = <0>;
+			bias-disable;
+			input-enable;
+		};
+	};
+};
+
+//#endif OPLUS_FEATURE_TP_BASIC
 
 /* DISPSYS GPIO standardization */
 &pio {
@@ -224,7 +562,11 @@
 	/*1:ACC mode, 2:low cost without in bias, 6:low cost with in bias*/
 	accdet-mic-mode = <2>;
 	/*0--MD_MAX--UP_MAX--DW_MAX*/
-	headset-three-key-threshold = <0 80 220 400>;
+	//#ifdef OPLUS_ARCH_EXTENDS
+	headset-three-key-threshold = <0 82 170 306>;
+	//#else /* OPLUS_ARCH_EXTENDS */
+	//headset-three-key-threshold = <0 80 220 400>;
+	//#endif /* OPLUS_ARCH_EXTENDS */
 	headset-three-key-threshold-CDD = <0 121 192 600>;
 	/*0--MD_MAX--VOICE_MAX--UP_MAX--DW_MAX*/
 	headset-four-key-threshold = <0 58 121 192 400>;
@@ -268,6 +610,7 @@
 &spi1 {
 	#address-cells = <1>;
 	#size-cells = <0>;
+	tee-only;
 	fingerprint@0 {
 		compatible = "goodix,goodix-fp";
 		reg = <0>;
@@ -533,12 +876,13 @@
 	#address-cells = <1>;
 	#size-cells = <0>;
 	panel1@0 {
-		compatible = "nt36672a,rt4801,vdo";
-		reg = <1>;
+		compatible = "oplus20171_boe_nt37701_1080p_dsi_cmd";
+		reg = <0>;
 		pm-enable-gpios = <&pio 41 0>;
 		reset-gpios = <&pio 42 0>;
-		bias-gpios = <&pio 28 0>,
-			<&pio 29 0>;
+		bias-gpios = <&pio 29 0>;
+		ldo3-supply = <&mt_pmic_vmc_ldo_reg>;
+		/*pm8008ldo1-supply = <&L1P>;*/
 		pinctrl-names = "default";
 		port {
 			panel_in: endpoint {
@@ -546,13 +890,15 @@
 			};
 		};
 	};
+
 	panel2@0 {
-		compatible = "truly,td4330,vdo";
-		reg = <2>;
+		compatible = "oplus20171_tianma_nt37701_42_1080p_dsi_cmd";
+		reg = <1>;
 		pm-enable-gpios = <&pio 41 0>;
 		reset-gpios = <&pio 42 0>;
-		bias-gpios = <&pio 28 0>,
-			<&pio 29 0>;
+		bias-gpios = <&pio 29 0>;
+		ldo3-supply = <&mt_pmic_vmc_ldo_reg>;
+		/*pm8008ldo1-supply = <&L1P>;*/
 		pinctrl-names = "default";
 		port {
 			panel_in2: endpoint {
@@ -560,13 +906,14 @@
 			};
 		};
 	};
+
 	panel3@0 {
-		compatible = "truly,ft8756,vdo";
-		reg = <3>;
+		compatible = "oplus20171_samsung_ana6705_1080p_dsi_cmd,lcm";
+		reg = <2>;
 		pm-enable-gpios = <&pio 41 0>;
 		reset-gpios = <&pio 42 0>;
-		bias-gpios = <&pio 28 0>,
-			<&pio 29 0>;
+		bias-gpios = <&pio 29 0>;
+		ldo3-supply = <&mt_pmic_vmc_ldo_reg>;
 		pinctrl-names = "default";
 		port {
 			panel_in3: endpoint {
@@ -574,6 +921,7 @@
 			};
 		};
 	};
+
 	ports {
 		port {
 			dsi_out: endpoint {
@@ -583,7 +931,290 @@
 	};
 };
 
-#include "mediatek/cust_mt6893_touch_1080x2300.dtsi"
+&disp_leds {
+	compatible = "mediatek,disp-leds";
+
+	backlight {
+		label = "lcd-backlight";
+		max-brightness = <4095>;
+		led-bits = <12>;
+		trans-bits = <12>;
+		default-state = "on";
+	};
+};
+
+/*#ifdef VENDOE_EDIT*/
+&i2c8 {
+        fan53870@35 {
+                compatible = "fan53870";
+                reg = <0x35>;
+                ldo1_min_vol = <800000>;  /*uV*/
+                ldo1_max_vol = <1504000>;
+                ldo1_step_vol = <8000>;
+        };
+        wl2868c@2f {
+                compatible = "wl2868c-i2c";
+                reg = <0x2f>;
+                id_reg = <0x00>;
+                id_val = <0x82>;
+                vin1_vol = <800000>;
+                vin2_vol = <1504000>;
+                en-gpios = <&pio 29 1>;
+        };
+};
+/*#endif*/
+
+&i2c0 {
+	synaptics20171@4B {
+		compatible = "synaptics-s3908";
+		reg = <0x4B>;
+		chip-name = "S3908";
+
+		/* Interrupt && Irq-gpio */
+		interrupt-parent = <&pio>;
+		interrupts = <21 0x2008>;
+
+		/* Power Config */
+		vdd_2v8-supply  = <&mt_pmic_vtp_ldo_reg>;
+		vdd_2v8_volt = <3000000>;
+		vcc_1v8-supply  = <&mt_pmic_vfp_ldo_reg>;
+		/* Other HW Resource */
+
+		irq-gpio = <&pio 21 0x2008>;
+		reset-gpio = <&pio 20 0x1>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&ts_int_active &ts_reset_active>;
+
+		touchpanel,max-num-support = <10>;
+		touchpanel,tx-rx-num = <16 36>;
+		touchpanel,panel-coords = <5400 12000>;
+		touchpanel,display-coords = <1080 2400>;
+  		touchpanel,touchmajor-limit = <160 270>;
+		//touchpanel,elimination-range = <20 200 200>;
+		touchpanel,int-mode = <1>; /*0: interrupt and disable, 1:interrupt and not disable*/
+		touchpanel,smooth-level = <0 1 2 3 8 10>;
+		touchpanel,sensitive-level = <0 88 70 64 45 10>;
+		touchpanel,smooth-level-charging = <0 5 7 8 10 12>;
+
+		vid_len = <2>;
+		tp_type = <3>; /*type:8 BOE*/
+		platform_support_project = <20171 20172 20353
+                				20171 20172 20353>;
+		platform_support_project_dir = <20171 20171 20353
+                				20171 20171 20171>;
+		platform_support_project_commandline = "20171_boe_nt37701_1080p_dsi_cmd","20171_boe_nt37701_1080p_dsi_cmd","20171_boe_nt37701_1080p_dsi_cmd",
+							"20171_tianma_nt37701","20171_tianma_nt37701","20171_tianma_nt37701";
+
+		prevention,curved_screen_V2;
+		prevention,grip_disable_level = <6>;
+		prevention,updelay_time_ms = <30>;
+		prevention,makeup_cnt_weight = <4 1 2 2 2>;
+		prevention,large_corner_range = <600 1500>;
+		prevention,large_corner_judge_condition = <500 100 500 6 6>;
+		prevention,trx_reject_condition = <8 7 7>;
+		prevention,trx_strict_reject_condition = <8 6 6>;
+		prevention,large_judge_time_ms = <500 50 30>;
+		prevention,large_exit_condition = <8 8 2>;
+		prevention,single_channel_width = <160 160>;
+		prevention,normal_tap_condition = <10 300>;
+		prevention,long_edge_condition = <200 90 180 80>;
+		prevention,long_strict_edge_condition = <160 60>;
+		prevention,long_fingerhold_condition = <50 6 4 4>;
+		prevention,short_edge_condition = <200 90 180 80>;
+		prevention,short_strict_edge_condition = <160 60>;
+		prevention,large_strict_exit_condition = <4 4>;
+		prevention,top_corner_config = <250 750 240>;
+		prevention,edge_swipe_config = <150 500>;
+
+		/* SW Support Feature Control */
+		health_monitor_v2_support;
+		black_gesture_support;
+		charger_pump_support;
+		lcd_tp_refresh_support;
+		fw_update_app_support;
+		smart_gesture_support;
+		game_switch_support;
+		report_flow_unlock_support;
+		kernel_grip_support;
+		fingerprint_underscreen_support;
+		pressure_report_support;
+		touchpanel,single-optimized-time = <8>;
+		freq_hop_simulate_support;
+		black_gesture_indep_support;
+		auto_test_need_cal_support;
+		thermal_detect_support;
+		/*
+		 *Virtual Key Config:
+		 *1:touchpanel,button-type: <virtualkey_type  supportted_button-map>
+		 *virtualkey_type:
+		 *Type 1: using board_properties
+		 *Type 2: using same IC (button zone&& touch zone are seprate)
+		 *Type 3: using diffrent IC (button zone&& touch zone are seprate)
+		 *Type 4: No need of virtual key process
+		 *supportted_button-map:select|menu|home|back
+		 *
+		 *2:touchpanel,button-map
+		 *type (X1,Y1)(X2,Y2)(X3,Y3)(Width_X,Hight_Y)--Only when button-type is 0
+		 */
+		touchpanel,button-type = <4>;
+		touchpanel.button-TRx = <0 0>;
+
+		S3908 {
+			report_rate_default = <90>;
+			report_rate_game_value = <2>;
+		};
+	};
+	s6sy792_20161@48 {
+		compatible = "sec-s6sy792";
+		reg = <0x48>;
+		chip-name = "S6SY792";
+
+		/* Interrupt && Irq-gpio */
+		interrupt-parent = <&pio>;
+		interrupts = <21 0x2008>;
+
+		/* Power Config */
+		vdd_2v8-supply  = <&mt_pmic_vtp_ldo_reg>;
+		vdd_2v8_volt = <3000000>;
+		vcc_1v8-supply  = <&mt_pmic_vfp_ldo_reg>;
+		/* Other HW Resource */
+
+		irq-gpio = <&pio 21 0x2008>;
+		reset-gpio = <&pio 20 0x1>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&ts_int_active &ts_reset_active>;
+
+		touchpanel,max-num-support = <10>;
+		touchpanel,tx-rx-num = <16 36>;
+		touchpanel,panel-coords = <5400 12000>;
+		touchpanel,display-coords = <1080 2400>;
+		touchpanel,touchmajor-limit = <160 270>;
+		touchpanel,stop-filter-set = <42>;
+		touchpanel,smooth-level = <255 1 2 4 5 6>;
+		touchpanel,smooth-level-charging = <255 6 8 9 10 11>;
+		touchpanel,sensitive-level = <255 18 13 11 6 4>;
+		touchpanel,sensitive-level-charging = <255 20 16 13 10 6>;
+		touchpanel,single-optimized-time = <8>;
+
+		project_id = <20171>;
+		vid_len = <2>;
+		tp_type = <8>;
+		// type of tp_dev ,TP-SAMSUNG = 8;
+		platform_support_project = <20171 20172 20353>;
+		platform_support_project_dir = <20171 20171 20171>;
+		platform_support_project_commandline = "20171_samsung_ana6705_1080p_dsi_cmd","20171_samsung_ana6705_1080p_dsi_cmd",
+												"20171_samsung_ana6705_1080p_dsi_cmd";
+
+		prevention,curved_screen_V2;
+		prevention,grip_disable_level = <6>;
+		prevention,updelay_time_ms = <30>;
+		prevention,makeup_cnt_weight = <4 1 2 2 2>;
+		prevention,large_corner_range = <600 1500>;
+		prevention,large_corner_judge_condition = <500 100 500 6 6>;
+		prevention,trx_reject_condition = <8 7 7>;
+		prevention,trx_strict_reject_condition = <8 6 6>;
+		prevention,large_judge_time_ms = <500 50 30>;
+		prevention,large_exit_condition = <8 8 2>;
+		prevention,single_channel_width = <160 160>;
+		prevention,normal_tap_condition = <10 300>;
+		prevention,long_edge_condition = <200 100 180 70>;
+		prevention,long_strict_edge_condition = <160 60>;
+		prevention,long_fingerhold_condition = <50 6 4 4>;
+		prevention,short_edge_condition = <200 100 180 80>;
+		prevention,short_strict_edge_condition = <160 60>;
+		prevention,large_strict_exit_condition = <4 4>;
+		prevention,top_corner_config = <250 750 240>;
+		prevention,edge_swipe_config = <150 500>;
+
+		/* SW Support Feature Control */
+		health_monitor_v2_support;
+		black_gesture_support;
+		charger_pump_support;
+		fw_update_app_support;
+		smart_gesture_support;
+		game_switch_support;
+		kernel_grip_support;
+		fingerprint_underscreen_support;
+		headset_pump_support;
+		pressure_report_support;
+		irq_need_dev_resume_ok;
+		sec_kernel_grip_para = <21000>;
+		auto_test_need_cal_support;
+
+		/*
+		 *Virtual Key Config:
+		 *1:touchpanel,button-type: <virtualkey_type  supportted_button-map>
+		 *virtualkey_type:
+		 *Type 1: using board_properties
+		 *Type 2: using same IC (button zone&& touch zone are seprate)
+		 *Type 3: using diffrent IC (button zone&& touch zone are seprate)
+		 *Type 4: No need of virtual key process
+		 *supportted_button-map:select|menu|home|back
+		 *
+		 *2:touchpanel,button-map
+		 *type (X1,Y1)(X2,Y2)(X3,Y3)(Width_X,Hight_Y)--Only when button-type is 0
+		 */
+		touchpanel,button-type = <4>;
+		touchpanel.button-TRx = <0 0>;
+	};	
+};
+&pio {
+
+	ts_int_active: ts_int_active {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO21__FUNC_GPIO21>;
+			slew-rate = <0>;
+			bias-pull-up;
+		};
+	};
+	ts_reset_active: ts_reset_active {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO20__FUNC_GPIO20>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+};
+
+&audio_extend {
+	//for nxp speaker
+	oplus,speaker-vendor = "nxp";
+	oplus,speaker-i2s-id = <3>;
+        oplus,speaker-i2s-id-in = <0>;
+	oplus,speaker-codec-name = "tfa98xx.6-0034";
+	oplus,speaker-codec-dai-name = "tfa98xx-aif-6-34";
+};
+
+&i2c6 {
+	tfa98xx: tfa98xx@34 {
+		compatible = "nxp,tfa98xx";
+		reg = <0x34>;
+		status = "okay";
+	};
+};
+
+//#ifdef OPLUS_ARCH_EXTENDS
+&i2c6 {
+	fsa4480: fsa4480@42 {
+		compatible = "qcom,fsa4480-i2c";
+		reg = <0x42>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&fsa_hs_det>;
+		fsa4480,hs-det-gpio = <&pio 54 0>;
+	};
+};
+
+&pio {
+	fsa_hs_det: fsa_hs_det {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO54__FUNC_GPIO54>;
+			slew-rate = <1>;  /*direction 0:in, 1:out*/
+			output-high;
+		};
+	};
+};
+//#endif /*OPLUS_ARCH_EXTENDS*/
+#include "mediatek/cust_mt6893_touch.dtsi"
 #include "mediatek/cust_mt6893_camera.dtsi"
 #include <k6893v1_64/cust.dtsi>
 /*End of this file, DO NOT ADD ANYTHING HERE*/

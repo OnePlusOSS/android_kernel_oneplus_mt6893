@@ -18,7 +18,7 @@ obj-$(CONFIG_NETFILTER)		+= netfilter/
 obj-$(CONFIG_INET)		+= ipv4/
 obj-$(CONFIG_TLS)		+= tls/
 obj-$(CONFIG_XFRM)		+= xfrm/
-obj-$(CONFIG_UNIX)		+= unix/
+obj-$(CONFIG_UNIX_SCM)		+= unix/
 obj-$(CONFIG_NET)		+= ipv6/
 obj-$(CONFIG_PACKET)		+= packet/
 obj-$(CONFIG_NET_KEY)		+= key/
@@ -86,3 +86,22 @@ obj-y				+= l3mdev/
 endif
 obj-$(CONFIG_QRTR)		+= qrtr/
 obj-$(CONFIG_NET_NCSI)		+= ncsi/
+
+
+#ifdef OPLUS_FEATURE_WIFI_SLA
+obj-$(CONFIG_OPLUS_FEATURE_WIFI_SLA)                  	+= oplus_connectivity_sla/
+#endif /* OPLUS_FEATURE_WIFI_SLA */
+
+#ifdef OPLUS_FEATURE_DATA_EVAL
+obj-$(CONFIG_OPLUS_FEATURE_DATA_EVAL) += oplus_score/
+#endif /* OPLUS_FEATURE_DATA_EVAL */
+
+#ifdef OPLUS_FEATURE_WIFI_CAPCENTER
+obj-$(CONFIG_OPLUS_FEATURE_WIFI_CAPCENTER) += oplus_wificapcenter/
+#endif /* OPLUS_FEATURE_WIFI_CAPCENTER */
+
+obj-y                           += oplus_modules/
+
+#ifdef OPLUS_FEATURE_NWPOWER
+obj-y				+= oplus_nwpower/
+#endif /* OPLUS_FEATURE_NWPOWER */

@@ -1,0 +1,63 @@
+// SPDX-License-Identifier: GPL-2.0+
+/*
+ * Copyright (c) 2019 MediaTek Inc.
+ *
+ */
+
+&spi2 {
+    #address-cells = <1>;
+    #size-cells = <0>;
+
+    touch_ts@0 {
+        reg = <0>;
+        compatible = "oplus,tp_noflash","ilitek,ili9882n","ilitek,ilitek-ts-spi","novatek,NVT-ts-spi","novatek,nf_nt36525b","focal,ft_spi_ft8006s";
+        spi-max-frequency = <9600000>;
+        status = "okay";
+
+		//chip_name = "NF_NT36525B";
+		chip_name_ilitek = "NF_ILI9881H";
+		chip_name_ilitek_9882n = "NF_ILI9882N";
+		chip_name_himax = "NF_HX83102D";
+		chip_name_novatek = "NF_NT36525B";
+		chip_name_focal = "NF_FT8006S";
+
+        /* touch spi config */
+		reset-gpio = <&pio 23 0x00>;
+		interrupt-parent = <&pio>;
+		interrupts = <1 IRQ_TYPE_EDGE_FALLING 1 0>;
+		irq-gpio = <&pio 1 0x2002>;
+
+		novatek,reset-gpio = <&pio 23 0x00>;
+		novatek,irq-gpio = <&pio 1 0x2002>;
+
+		touchpanel,max-num-support = <10>;
+		touchpanel,tx-rx-num = <18 32>;
+		touchpanel,panel-coords = <720 1600>;
+		touchpanel,display-coords = <720 1600>;
+		touchpanel,touchmajor-limit = <0 54>;
+
+		platform_support_project = <0x2167A 0x2167B 0x2167C 0x2167D 0x216AF 0x216B0 0x216B1>;
+		platform_support_project_dir = <0x2167A 0x2167A 0x2167A 0x2167A 0x2167A 0x2167A 0x2167A>;
+		platform_support_project_commandline = "default_commandline","default_commandline","default_commandline","default_commandline","default_commandline","default_commandline","default_commandline";
+		incell_screen;
+		fw_edge_limit_support;
+		black_gesture_support;
+		charger_pump_support;
+		headset_pump_support;
+		esd_handle_support;
+		//spurious_fingerprint_support;
+		//lcd_trigger_fp_check;
+		black_gesture_test_support;
+		noflash_support;
+		smart_gesture_support;
+		pressure_report_support;
+		fw_update_app_support;
+		game_switch_support;
+		drlimit_remove_support;
+		lcd_trigger_load_tp_fw_support;
+		freq_hop_simulate_support;
+		suspend_gesture_cfg;
+		fw_update_in_probe_with_headfile;
+    };
+};
+/* TOUCH end */

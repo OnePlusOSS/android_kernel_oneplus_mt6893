@@ -98,6 +98,8 @@
 #define AUTOBOOT_ON 0
 #define AUTOBOOT_OFF 1
 
+#define RTC_POFF_ALM_SET	_IOW('p', 0x15, struct rtc_time) /* Set alarm time  */
+
 /*
  * RTC_PDN1:
  *     bit 0 - 3  : Android bits
@@ -413,6 +415,135 @@ void rtc_mark_fast(void)
 	hal_rtc_set_spare_register(RTC_FAST_BOOT, 0x1);
 	spin_unlock_irqrestore(&rtc_lock, flags);
 }
+
+#ifdef OPLUS_BUG_STABILITY
+void oplus_rtc_mark_reboot_kernel(void)
+{
+	unsigned long flags;
+	rtc_xinfo("oplus_rtc_mark_reboot_kernel\n");
+	spin_lock_irqsave(&rtc_lock, flags);
+	hal_rtc_set_spare_register(RTC_REBOOT_KERNEL, 0x1);
+	spin_unlock_irqrestore(&rtc_lock, flags);
+}
+
+
+void oplus_rtc_mark_silence(void)
+{
+	unsigned long flags;
+
+	rtc_xinfo("oplus_rtc_mark_silence\n");
+	spin_lock_irqsave(&rtc_lock, flags);
+	hal_rtc_set_spare_register(RTC_SILENCE_BOOT, 0x1);
+	spin_unlock_irqrestore(&rtc_lock, flags);
+}
+
+void oplus_rtc_mark_meta(void)
+{
+	unsigned long flags;
+
+	rtc_xinfo("oplus_rtc_mark_meta\n");
+	spin_lock_irqsave(&rtc_lock, flags);
+	hal_rtc_set_spare_register(RTC_META_BOOT, 0x1);
+	spin_unlock_irqrestore(&rtc_lock, flags);
+}
+
+void oplus_rtc_mark_sau(void)
+{
+	unsigned long flags;
+
+	rtc_xinfo("rtc_mark_sau\n");
+	spin_lock_irqsave(&rtc_lock, flags);
+	hal_rtc_set_spare_register(RTC_SAU_BOOT, 0x1);
+	spin_unlock_irqrestore(&rtc_lock, flags);
+}
+
+void oplus_rtc_mark_factory(void)
+{
+	unsigned long flags;
+
+	rtc_xinfo("rtc_mark_factory\n");
+	spin_lock_irqsave(&rtc_lock, flags);
+	hal_rtc_set_spare_register(RTC_FACTORY_BOOT, 0x1);
+	spin_unlock_irqrestore(&rtc_lock, flags);
+}
+
+#ifdef OPLUS_FEATURE_AGINGTEST
+void oplus_rtc_mark_agingtest(void)
+{
+	unsigned long flags;
+
+	rtc_xinfo("rtc_mark_agingtest\n");
+	spin_lock_irqsave(&rtc_lock, flags);
+	hal_rtc_set_spare_register(RTC_AGINGTEST_BOOT, 0x01);
+	spin_unlock_irqrestore(&rtc_lock, flags);
+}
+#endif /*OPLUS_FEATURE_AGINGTEST */
+
+void oplus_rtc_mark_safe(void)
+{
+	unsigned long flags;
+
+	rtc_xinfo("rtc_mark_safe\n");
+	spin_lock_irqsave(&rtc_lock, flags);
+	hal_rtc_set_spare_register(RTC_SAFE_BOOT, 0x01);
+	spin_unlock_irqrestore(&rtc_lock, flags);
+}
+
+void oplus_rtc_mark_sensor_cause_panic(void)
+{
+	unsigned long flags;
+
+	rtc_xinfo("rtc mark sensor i2c cause panic\n");
+	spin_lock_irqsave(&rtc_lock, flags);
+	hal_rtc_set_spare_register(RTC_SENSOR_CAUSE_PANIC, 0x1);
+	spin_unlock_irqrestore(&rtc_lock, flags);
+}
+
+int oplus_get_rtc_sensor_cause_panic_value(void)
+{
+	u16 temp;
+	unsigned long flags;
+
+	spin_lock_irqsave(&rtc_lock, flags);
+	temp = hal_rtc_get_spare_register(RTC_SENSOR_CAUSE_PANIC);
+	spin_unlock_irqrestore(&rtc_lock, flags);
+
+	return temp;
+}
+
+void oplus_clear_rtc_sensor_cause_panic(void)
+{
+	unsigned long flags = 0;
+
+	spin_lock_irqsave(&rtc_lock, flags);
+	hal_rtc_set_spare_register(RTC_SENSOR_CAUSE_PANIC, 0x0);
+	spin_unlock_irqrestore(&rtc_lock, flags);
+}
+
+u16  is_kernel_panic_reboot(void)
+{
+	/* RTC_SPAR0 bit8 */
+	u16 temp;
+	unsigned long flags;
+
+	spin_lock_irqsave(&rtc_lock, flags);
+	temp = hal_rtc_get_spare_register(RTC_REBOOT_KERNEL);
+	spin_unlock_irqrestore(&rtc_lock, flags);
+
+	if(temp != 0)
+	 	return 1;
+	else
+		return 0;
+}
+void  hal_rtc_clear_spar0_bit8(void)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&rtc_lock, flags);
+	hal_rtc_set_spare_register(RTC_REBOOT_KERNEL, 0x0);
+	spin_unlock_irqrestore(&rtc_lock, flags);
+}
+#endif/* OPLUS_BUG_STABILITY */
 
 u16 rtc_rdwr_uart_bits(u16 *val)
 {
@@ -822,30 +953,53 @@ static int rtc_ops_set_alarm(struct device *dev, struct rtc_wkalrm *alm)
 	return 0;
 }
 
+int mtk_set_power_on(struct device *dev, struct rtc_wkalrm *alm)
+{
+	int err = 0;
+	struct rtc_time tm;
+	time64_t now, scheduled;
+
+	err = rtc_valid_tm(&alm->time);
+	if (err != 0)
+		return err;
+	scheduled = rtc_tm_to_time64(&alm->time);
+
+	err = rtc_ops_read_time(dev, &tm);
+	if (err != 0)
+		return err;
+	now = rtc_tm_to_time64(&tm);
+
+	if (scheduled <= now)
+		alm->enabled = 4;
+	else
+		alm->enabled = 3;
+
+	rtc_ops_set_alarm(dev, alm);
+
+	return err;
+}
+
 static int rtc_ops_ioctl(struct device *dev, unsigned int cmd,
 			 unsigned long arg)
 {
-	/* dump_stack(); */
+	void __user *uarg = (void __user *) arg;
+	int err = 0;
+	struct rtc_wkalrm alm;
+
 	rtc_xinfo("%s cmd=%d\n", __func__, cmd);
-#if 0
+
 	switch (cmd) {
-	case RTC_AUTOBOOT_ON:
-		{
-			hal_rtc_set_spare_register(RTC_AUTOBOOT, AUTOBOOT_ON);
-			rtc_xinfo("%s cmd=RTC_AUTOBOOT_ON\n", __func__);
-			return 0;
-		}
-	case RTC_AUTOBOOT_OFF:	/* IPO shutdown */
-		{
-			hal_rtc_set_spare_register(RTC_AUTOBOOT, AUTOBOOT_OFF);
-			rtc_xinfo("%s cmd=RTC_AUTOBOOT_OFF\n", __func__);
-			return 0;
-		}
+	case RTC_POFF_ALM_SET:
+		if (copy_from_user(&alm.time, uarg, sizeof(alm.time)))
+			return -EFAULT;
+		err = mtk_set_power_on(dev, &alm);
+		break;
 	default:
+		err = -EINVAL;
 		break;
 	}
-#endif
-	return -ENOIOCTLCMD;
+
+	return err;
 }
 
 static const struct rtc_class_ops rtc_ops = {

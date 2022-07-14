@@ -1,0 +1,102 @@
+//#ifdef OPLUS_ARCH_EXTENDS
+&audio_extend {
+	//for nxp speaker
+	oplus,speaker-vendor = "nxp";
+	oplus,speaker-i2s-id = <3>;
+	oplus,speaker-i2s-id-in = <0>;
+	oplus,speaker-codec-name = "tfa98xx.6-0035";
+	oplus,speaker-codec-dai-name = "tfa98xx-aif-6-35";
+};
+
+&i2c6 {
+	tfa98xx: tfa98xx@35 {
+		compatible = "nxp,tfa98xx";
+		reg = <0x35>;
+		//reset-gpio = <&pio 111 0>;
+		status = "okay";
+	};
+};
+/* Audio start */
+&spi4 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	dbmd4_spi:dbmd4_interface@0 {
+		compatible = "dspg,dbmd4-spi";
+		reg = <0>;
+		spi-max-frequency = <1000000>;
+		read-chunk-size  = <0x2000>;    /* 16*16*16*16*2 bytes   */
+		write-chunk-size = <0x40000>;   /* 1000 bytes */
+		dma_min_buffer_size = <0>;
+		status = "okay";
+	};
+};
+
+&dbmdx {
+
+		reset-gpio = <&pio 19 0x0>; /* GPX1.3 */
+		sv-gpio = <&pio 22 0x0>; /* GPX1.5 */
+		wakeup-gpio = <&pio 27 0x0>; /* GPA0.1 */
+		ldo-gpio = <&pio 127 0x0>; /* 1.1v */
+
+		auto_buffering = <1>;
+		multi-interface-support = <1>;
+		cd-interfaces = <&dbmd4_spi>;
+		va-interfaces = <0 0 0 0>;
+		feature-va; /* enable VA */
+		va-firmware-name = "dbmd4_va_fw.bin";
+		va-config = <0x800C2400
+			0x80290020
+			0x802210A0
+			0x80330056
+			0x80091400
+			0x80158E8E
+			0x8018000A
+			0x801b0020
+			0x80230000
+			0x801a0011
+			0x80108000
+			0x8aab0040
+			0x805004B0
+			0x805104B0
+			0x80410001
+			0x8060ef81
+			0x8061f98f
+			0x806221c0
+			0x8063fb2f
+			0x806421c0
+			0x8065fb2f
+			0x80660006
+			0x80000000
+			0x80000000
+			0x80000000>;
+		va-speeds = <0x0000 460800  0 960000
+			0x0000 2000000 0 4800000
+			0x0000 3000000 0 4800000>;
+		va-mic-config = <0x5012 0x1044 0x0007>;
+		va-mic-mode = <4>;
+
+	//		digital_mic_digital_gain = <0x14>;
+		analog_mic_analog_gain = <0x0E>;
+	//		analog_mic_digital_gain = <0x14>;
+
+		master-clk-rate = <32768>;
+		/* constant-clk-rate = <32768>; */
+		firmware_id = <0xdbd4>;
+		use_gpio_for_wakeup = <1>; /* Use wakeup gpio */
+		wakeup_set_value = <0>;  /* Value to write to wakeup gpio */
+		auto_detection = <1>;
+		detection_buffer_channels = <0>;
+		min_samples_chunk_size = <128>;
+		pcm_streaming_mode = <1>;
+		boot_options = <0x200>; /* Verify chip id */
+		amodel_options = <0x24>;
+		send_uevent_on_detection = <1>;
+		send_uevent_after_buffering = <0>;
+		detection_after_buffering = <0>;
+		va_backlog_length = <0x780>;
+		va_advanced_options = <0x1D>; /* Split Passphrase/Buf, Send det and buf events, Send event after passphrase */
+		va_passphrase_margins = <0x00320640>;
+};
+//#endif /* OPLUS_BUG_COMPATIBILITY */
+//#endif /*OPLUS_ARCH_EXTENDS*/

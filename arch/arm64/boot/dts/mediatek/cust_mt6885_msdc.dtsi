@@ -32,12 +32,14 @@
 	bootable;
 	status = "okay";
 
+#ifndef CONFIG_FPGA_EARLY_PORTING
 	vmmc-supply = <&mt_pmic_vemc_ldo_reg>;
 	vcore-supply = <&mt_pmic_vgpu11_buck_reg>;
 	clocks = <&infracfg_ao INFRACFG_AO_MSDC0_SRC_CLK_CG>,
 		<&infracfg_ao INFRACFG_AO_MSDC0_CG>,
 		<&infracfg_ao INFRACFG_AO_AES_UFSFDE_CG>;
 	clock-names = "msdc0-clock", "msdc0-hclock", "msdc0-aes-clock";
+#endif
 };
 
 
@@ -47,36 +49,38 @@
 	bus-width = <4>;
 	max-frequency = <200000000>;
 	cap-sd-highspeed;
-	cap-mmc-highspeed;
 	sd-uhs-sdr12;
 	sd-uhs-sdr25;
 	sd-uhs-sdr50;
 	sd-uhs-sdr104;
 	sd-uhs-ddr50;
-	mmc-ddr-1_8v;
-	mmc-hs200-1_8v;
-
+	no-mmc;
 	no-sdio;
+
 	pinctl = <&msdc1_pins_default>;
 	pinctl_sdr104 = <&msdc1_pins_sdr104>;
 	pinctl_sdr50 = <&msdc1_pins_sdr50>;
 	pinctl_ddr50 = <&msdc1_pins_ddr50>;
-	pinctl_hs200 = <&msdc1_pins_hs200>;
 	register_setting = <&msdc1_register_setting_default>;
 
 	host_function = /bits/ 8 <MSDC_SD>;
 
 	cd_level = /bits/ 8 <MSDC_CD_LOW>;
 	cd-gpios = <&pio 23 0>;
+//#ifdef OPLUS_ARCH_EXTENDS
+	status = "disabled";
+//#else
+//	status = "okay";
+//#endif
 
-	status = "okay";
-
+#ifndef CONFIG_FPGA_EARLY_PORTING
 	vmmc-supply = <&mt_pmic_vmch_ldo_reg>;
 	vqmmc-supply = <&mt_pmic_vmc_ldo_reg>;
 
 	clocks = <&infracfg_ao INFRACFG_AO_MSDC1_SRC_CLK_CG>,
 			<&infracfg_ao INFRACFG_AO_MSDC1_CG>;
 	clock-names = "msdc1-clock", "msdc1-hclock";
+#endif
 };
 
 &pio {
@@ -177,18 +181,6 @@
 	};
 
 	msdc1_pins_ddr50: msdc1@ddr50 {
-		pins_cmd {
-			drive-strength = /bits/ 8 <3>;
-		};
-		pins_dat {
-			drive-strength = /bits/ 8 <3>;
-		};
-		pins_clk {
-			drive-strength = /bits/ 8 <3>;
-		};
-	};
-
-	msdc1_pins_hs200: msdc1@hs200 {
 		pins_cmd {
 			drive-strength = /bits/ 8 <3>;
 		};

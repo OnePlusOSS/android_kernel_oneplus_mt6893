@@ -474,11 +474,15 @@ int get_sw_req_vcore_opp(void)
 {
 	int opp = -1;
 	int sw_req = -1;
-	int scp_req = -1;
+	int scp_req = VCORE_OPP_NUM - 1;
 
 	/* return opp 0, if dvfsrc not enable */
 	if (!is_dvfsrc_enabled())
 		return 0;
+	/* return opp 0, if dvfsrc pmqos not ready */
+	if (!is_dvfsrc_qos_enabled())
+		return 0;
+
 	/* 1st get sw req opp  no lock protect is ok*/
 	if (!is_dvfsrc_forced()) {
 		sw_req = (dvfsrc_read(DVFSRC_SW_REQ3) >> VCORE_SW_AP_SHIFT);
@@ -511,6 +515,7 @@ int helio_dvfsrc_config(struct helio_dvfsrc *dvfsrc)
 #endif
 	helio_dvfsrc_enable(1);
 	helio_dvfsrc_platform_init(dvfsrc);
+	helio_dvfsrc_qos_init_done();
 
 #if IS_ENABLED(CONFIG_MMPROFILE)
 	mmprofile_enable(1);

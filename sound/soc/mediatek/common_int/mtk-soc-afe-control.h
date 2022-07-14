@@ -66,6 +66,25 @@
 #define MASK_ALL (0xFFFFFFFF)
 #define AFE_MASK_ALL (0xffffffff)
 
+#ifdef CONFIG_OPLUS_FEATURE_KTV_V2_NONDAPM
+#define KTV_DATA_UNIT_SIZE 3840
+
+extern char ktv_dl_data_unit[KTV_DATA_UNIT_SIZE];
+extern spinlock_t ktv_dl_data_lock;
+extern spinlock_t ktv_dl_ctrl_lock;
+extern wait_queue_head_t ktvsleep;
+extern int ktv_running;
+extern int prevu4read;
+
+extern int write_access;
+extern int dl_init_done;
+extern int dl_drop_size;
+extern struct afe_block_t user_dl_block;
+
+void auddrv_dl1_write_init(void);
+void auddrv_dl1_write_handler(kal_uint32 bytes);
+#endif /* CONFIG_OPLUS_FEATURE_KTV_V2_NONDAPM */
+
 int InitAfeControl(struct device *pdev);
 bool ResetAfeControl(void);
 bool Register_Aud_Irq(void *dev, unsigned int afe_irq_number);

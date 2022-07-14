@@ -18,12 +18,12 @@
 #define DATA_RATE                   1140
 #define HSA                         4
 #define HBP                         16
-#define VSA                         8
-#define VBP                         20
+#define VSA                         4
+#define VBP                         16
 
 /*Parameter setting for mode 0 Start*/
-#define MODE_0_FPS                  60
-#define MODE_0_VFP                  3478
+#define MODE_0_FPS                  144
+#define MODE_0_VFP                  30
 #define MODE_0_HFP                  72
 #define MODE_0_DATA_RATE            1140
 /*Parameter setting for mode 0 End*/
@@ -36,8 +36,8 @@
 /*Parameter setting for mode 1 End*/
 
 /*Parameter setting for mode 2 Start*/
-#define MODE_2_FPS                  144
-#define MODE_2_VFP                  30
+#define MODE_2_FPS                  60
+#define MODE_2_VFP                  3478
 #define MODE_2_HFP                  72
 #define MODE_2_DATA_RATE            1140
 /*Parameter setting for mode 2 End*/

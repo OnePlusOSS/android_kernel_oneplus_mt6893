@@ -1388,7 +1388,7 @@ retry_journal:
 		return ret;
 	}
 	*pagep = page;
-	mtk_btag_pidlog_set_pid(*pagep);
+	mtk_btag_pidlog_set_pid(page, PIDLOG_MODE_FS_WRITE_BEGIN, true);
 	return ret;
 }
 
@@ -1483,7 +1483,9 @@ errout:
 		if (inode->i_nlink)
 			ext4_orphan_del(NULL, inode);
 	}
-
+#if defined(CONFIG_EXT4_ASYNC_DISCARD_SUPPORT)
+	ext4_update_time(EXT4_SB(inode->i_sb));
+#endif
 	return ret ? ret : copied;
 }
 
@@ -1602,7 +1604,9 @@ errout:
 		if (inode->i_nlink)
 			ext4_orphan_del(NULL, inode);
 	}
-
+#if defined(CONFIG_EXT4_ASYNC_DISCARD_SUPPORT)
+	ext4_update_time(EXT4_SB(inode->i_sb));
+#endif
 	return ret ? ret : copied;
 }
 

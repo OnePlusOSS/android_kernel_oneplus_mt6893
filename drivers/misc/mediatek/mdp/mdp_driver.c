@@ -265,7 +265,7 @@ static int cmdq_driver_create_reg_address_buffer(
 	return 0;
 }
 
-void cmdq_driver_dump_readback(u32 *addrs, u32 count, u32 *values)
+void cmdq_driver_dump_readback(u32 *ids, u32 *addrs, u32 count, u32 *values)
 {
 	u32 i, n, len, cur;
 	char buf[72];
@@ -278,7 +278,8 @@ void cmdq_driver_dump_readback(u32 *addrs, u32 count, u32 *values)
 
 	i = 0;
 	while (i < count) {
-		len = snprintf(buf, sizeof(buf), "%#x:", addrs[i]);
+		len = snprintf(buf, sizeof(buf), "%#x %#x:",
+			addrs[i], ids ? ids[i] : 0);
 		if (len >= sizeof(buf))
 			pr_debug("len:%d over buf size:%d\n", len, sizeof(buf));
 		cur = addrs[i] & 0xFFFFFFF0;
@@ -349,7 +350,7 @@ static void cmdq_driver_process_read_address_request(
 
 		/* actually read these PA write buffers */
 		cmdqCoreReadWriteAddressBatch(addrs, req_user->count, values);
-		cmdq_driver_dump_readback(addrs, req_user->count, values);
+		cmdq_driver_dump_readback(NULL, addrs, req_user->count, values);
 
 		/* copy value to user */
 		if (copy_to_user(values_addr, values,
@@ -1159,6 +1160,7 @@ static long cmdq_ioctl_compat(struct file *pFile, unsigned int code,
 	case CMDQ_IOCTL_ALLOC_READBACK_SLOTS:
 	case CMDQ_IOCTL_FREE_READBACK_SLOTS:
 	case CMDQ_IOCTL_READ_READBACK_SLOTS:
+	case CMDQ_IOCTL_SIMULATE:
 		/* All ioctl structures should be the same size in
 		 * 32-bit and 64-bit linux.
 		 */

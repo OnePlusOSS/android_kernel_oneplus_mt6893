@@ -40,7 +40,7 @@ enum TASK_STATE_ENUM {
 	TASK_STATE_ERR_IRQ,	/* task execution invalid instruction */
 	TASK_STATE_DONE,	/* task finished */
 	TASK_STATE_WAITING,	/* allocated but waiting for available thread */
-	TASK_STATE_TIMEOUT,     /* task timeout */
+	TASK_STATE_TIMEOUT,	/* task timeout */
 };
 
 
@@ -53,11 +53,12 @@ enum TASK_STATE_ENUM {
 #define CMDQ_THREAD_SEC_ISP		(CMDQ_MIN_SECURE_THREAD_ID + 3)
 
 /* max count of input */
-#define CMDQ_MAX_COMMAND_SIZE		(0x80000000)
-#define CMDQ_MAX_DUMP_REG_COUNT		(4096)
-#define CMDQ_MAX_WRITE_ADDR_COUNT	(PAGE_SIZE / sizeof(u32))
-#define CMDQ_MAX_DBG_STR_LEN		(1024)
-#define CMDQ_MAX_USER_PROP_SIZE		(1024)
+#define CMDQ_MAX_COMMAND_SIZE			(0x80000000)
+#define CMDQ_MAX_SIMULATE_COMMAND_SIZE		(0x80000)
+#define CMDQ_MAX_DUMP_REG_COUNT			(4096)
+#define CMDQ_MAX_WRITE_ADDR_COUNT		(PAGE_SIZE / sizeof(u32))
+#define CMDQ_MAX_DBG_STR_LEN			(1024)
+#define CMDQ_MAX_USER_PROP_SIZE			(1024)
 
 #define CMDQ_LOG(string, args...) \
 do {			\
@@ -756,6 +757,9 @@ struct cmdqRecStruct {
 	void *sec_client_meta;
 	enum cmdq_sec_rec_meta_type sec_meta_type;
 	u32 sec_meta_size;
+
+	/* Readback slot protection */
+	s32 slot_ids[8];
 };
 
 /* TODO: add controller support */

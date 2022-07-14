@@ -25,6 +25,10 @@
 #include "sched.h"
 #include "walt.h"
 
+#ifdef CONFIG_SCHEDUTIL_USE_TL
+#include "tune.h"
+#endif
+
 #define WINDOW_STATS_RECENT		0
 #define WINDOW_STATS_MAX		1
 #define WINDOW_STATS_MAX_RECENT_AVG	2
@@ -307,7 +311,11 @@ u64 walt_irqload(int cpu) {
 }
 
 int walt_cpu_high_irqload(int cpu) {
+#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_SCHED_WALT)
+	return false;
+#else /* OPLUS_FEATURE_SCHED_ASSIST */
 	return walt_irqload(cpu) >= sysctl_sched_walt_cpu_high_irqload;
+#endif /* OPLUS_FEATURE_SCHED_ASSIST */
 }
 
 static int account_busy_for_cpu_time(struct rq *rq, struct task_struct *p,
@@ -551,9 +559,16 @@ static int account_busy_for_task_demand(struct task_struct *p, int event)
 	 * time. Likewise, if wait time is not treated as busy time, then
 	 * when a task begins to run or is migrated, it is not running and
 	 * is completing a segment of non-busy time. */
+#ifdef CONFIG_SCHEDUTIL_USE_TL
+	if (event == TASK_WAKE || ((!walt_account_wait_time ||
+			  uclamp_discount_wait_time(p)) &&
+			 (event == PICK_NEXT_TASK || event == TASK_MIGRATE)))
+		return 0;
+#else
 	if (event == TASK_WAKE || (!walt_account_wait_time &&
 			 (event == PICK_NEXT_TASK || event == TASK_MIGRATE)))
 		return 0;
+#endif
 
 	return 1;
 }
@@ -595,6 +610,9 @@ static void update_history(struct rq *rq, struct task_struct *p,
 
 	p->ravg.sum = 0;
 
+#ifdef CONFIG_SCHEDUTIL_USE_TL
+	walt_window_stats_policy = schedtune_window_policy(p);
+#endif
 	if (walt_window_stats_policy == WINDOW_STATS_RECENT) {
 		demand = runtime;
 	} else if (walt_window_stats_policy == WINDOW_STATS_MAX) {
@@ -800,6 +818,9 @@ void walt_mark_task_starting(struct task_struct *p)
 	}
 
 	wallclock = walt_ktime_clock();
+#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_SCHED_WALT)
+	p->last_wake_ts = wallclock;
+#endif /* OPLUS_FEATURE_SCHED_ASSIST */
 	p->ravg.mark_start = wallclock;
 }
 

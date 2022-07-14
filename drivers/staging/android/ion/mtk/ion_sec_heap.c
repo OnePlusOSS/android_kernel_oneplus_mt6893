@@ -137,6 +137,67 @@ static void ion_sec_heap_unmap_dma(
 }
 
 #ifdef CONFIG_MTK_TRUSTED_MEMORY_SUBSYSTEM
+
+/* copy from tz_m4u.h */
+enum ion_mtk_iommu_sec_id {
+	SEC_ID_SEC_CAM = 0,
+	SEC_ID_SVP,
+	SEC_ID_SDSP,
+	SEC_ID_WFD,
+	SEC_ID_COUNT
+};
+
+/*
+ * return value:
+ *    <0: not MTEE mem, no sec_id
+ *    >0: iommu_sec_id
+ */
+static int ion_tmem_type2sec_id(enum TRUSTED_MEM_REQ_TYPE tmem)
+{
+	switch (tmem) {
+	case TRUSTED_MEM_REQ_PROT: /* sec cam, only MTEE on S */
+		return SEC_ID_SEC_CAM;
+#ifdef CONFIG_MTK_SVP_ON_MTEE_SUPPORT
+	case TRUSTED_MEM_REQ_SVP:/* MTEE SVP on:MTEE, off: TEE */
+		return SEC_ID_SVP;
+	case TRUSTED_MEM_REQ_WFD:/* MTEE SVP on:MTEE, off: TEE */
+		return SEC_ID_WFD;
+#endif
+	case TRUSTED_MEM_REQ_SDSP:
+		return SEC_ID_SDSP;
+	default:
+		return -1;
+	}
+}
+
+/*
+ * return value:
+ *    <0: not secure mem
+ *    =0: protected mem, used in MTEE
+ *    =1: secure memory, used in TEE
+ */
+static int ion_tmem_type_is_secure(enum TRUSTED_MEM_REQ_TYPE tmem)
+{
+	switch (tmem) {
+	case TRUSTED_MEM_REQ_SVP:/* MTEE SVP on:MTEE, off: TEE */
+	case TRUSTED_MEM_REQ_WFD:/* MTEE SVP on:MTEE, off: TEE */
+#ifdef CONFIG_MTK_SVP_ON_MTEE_SUPPORT
+		return 0;
+#else
+		return 1;
+#endif
+	case TRUSTED_MEM_REQ_PROT: /* sec cam, only MTEE on S */
+	case TRUSTED_MEM_REQ_HAPP:      /* tmporarily as MTEE */
+	case TRUSTED_MEM_REQ_HAPP_EXTRA:/* tmporarily as MTEE */
+	case TRUSTED_MEM_REQ_SDSP:      /* tmporarily as MTEE */
+		return 0;
+	case TRUSTED_MEM_REQ_SDSP_SHARED:/* TEE */
+	case TRUSTED_MEM_REQ_2D_FR:      /* TEE */
+		return 1;
+	default:
+		return -1;
+	}
+}
 static enum TRUSTED_MEM_REQ_TYPE get_trusted_mem_type(unsigned int heap_id)
 {
 	switch (heap_id) {
@@ -157,8 +218,132 @@ static enum TRUSTED_MEM_REQ_TYPE get_trusted_mem_type(unsigned int heap_id)
 	case ION_HEAP_TYPE_MULTIMEDIA_SDSP_SHARED:
 		return TRUSTED_MEM_REQ_SDSP_SHARED;
 	default:
-		return TRUSTED_MEM_REQ_SVP;
+		return -1;
 	}
+}
+
+enum TRUSTED_MEM_REQ_TYPE ion_get_trust_mem_type(struct dma_buf *dmabuf)
+{
+	enum TRUSTED_MEM_REQ_TYPE tmem_type = -1;
+	struct ion_buffer *buffer;
+
+	if (!dmabuf) {
+		IONMSG("%s dmabuf is NULL\n", __func__);
+		return tmem_type;
+	}
+
+	buffer = dmabuf->priv;
+	if (buffer)
+		tmem_type = get_trusted_mem_type(buffer->heap->id);
+
+	return tmem_type;
+}
+
+/*
+ * return: trustmem type.
+ *      -1: nomal buffer
+ *     >=0: valid tmem_type
+ *
+ * handle: input ion handle
+ * sec: used for return.
+ *      0: protected buffer;
+ *      1: secure buffer;
+ *     <0: error buffer;
+ * iommu_sec_id: used for return
+ *      <0: error buffer;
+ *     >=0: valid sec_id
+ * sec_hdl: used for return
+ *       0: normal buffer, no secure handle
+ *  others: secure handle
+ */
+enum TRUSTED_MEM_REQ_TYPE
+ion_hdl2sec_type(struct ion_handle *handle,
+		 int *sec, int *iommu_sec_id,
+		 ion_phys_addr_t *sec_hdl)
+{
+	enum TRUSTED_MEM_REQ_TYPE tmem_type = -1;
+	struct ion_buffer *buffer;
+	struct ion_sec_buffer_info *pbufferinfo;
+
+	if (!handle || !sec || !iommu_sec_id || !sec_hdl) {
+		IONMSG("%s NULL ptr\n", __func__);
+		return tmem_type;
+	}
+
+	*sec_hdl = 0;
+	buffer = handle->buffer;
+	if (buffer) {
+		tmem_type = get_trusted_mem_type(buffer->heap->id);
+	} else {
+		IONMSG("handle invalid, handle id:%d client:%s\n",
+		       handle->id, handle->client->display_name);
+		dump_stack();
+	}
+
+	*sec = ion_tmem_type_is_secure(tmem_type);
+
+	*iommu_sec_id = ion_tmem_type2sec_id(tmem_type);
+
+	if (*sec >= 0) {
+		pbufferinfo = (struct ion_sec_buffer_info *)buffer->priv_virt;
+		*sec_hdl = pbufferinfo->priv_phys;
+	}
+
+	IONDBG("tmem type:%d, sec:%d, sec_id:%d, handle:0x%lx\n",
+	       tmem_type, *sec, *iommu_sec_id, *sec_hdl);
+	return tmem_type;
+}
+
+/*
+ * return: trustmem type.
+ *      -1: nomal buffer
+ *     >=0: valid tmem_type
+ *
+ * fd: input ion buffer fd
+ *
+ * sec: used for return.
+ *      0: protected buffer;
+ *      1: secure buffer;
+ *     <0: error buffer;
+ *
+ * iommu_sec_id: used for return
+ *      <0: error buffer;
+ *     >=0: valid sec_id
+ *
+ * sec_hdl: used for return
+ *       0: normal buffer, no secure handle
+ *  others: secure handle
+ */
+enum TRUSTED_MEM_REQ_TYPE
+ion_fd2sec_type(int fd, int *sec, int *iommu_sec_id,
+		ion_phys_addr_t *sec_hdl)
+{
+	enum TRUSTED_MEM_REQ_TYPE tmem_type = -1;
+	struct ion_buffer *buffer;
+	struct ion_client *client;
+	struct ion_handle *handle;
+
+	if (fd < 0) {
+		IONMSG("%s fd is invalid:%d\n", __func__, fd);
+		return tmem_type;
+	}
+
+	client = ion_client_create(g_ion_device, "fd2sec_type");
+	if (IS_ERR(client))
+		return PTR_ERR(client);
+
+	handle = ion_import_dma_buf_fd(client, fd);
+	if (IS_ERR(handle)) {
+		ion_client_destroy(client);
+		return PTR_ERR(handle);
+	}
+
+	tmem_type = ion_hdl2sec_type(handle, sec, iommu_sec_id, sec_hdl);
+
+	ion_free(client, handle);
+	ion_client_destroy(client);
+
+	return tmem_type;
 }
 #endif
 
@@ -196,6 +381,11 @@ static int ion_sec_heap_allocate(struct ion_heap *heap,
 
 #ifdef CONFIG_MTK_TRUSTED_MEMORY_SUBSYSTEM
 	tmem_type = get_trusted_mem_type(heap->id);
+
+	if (tmem_type < 0) {
+		IONMSG("invalid heap:%d\n", heap->id);
+		return -EINVAL;
+	}
 	if (flags & ION_FLAG_MM_HEAP_INIT_ZERO)
 		ret = trusted_mem_api_alloc_zero(
 				tmem_type, align, size, &refcount,
@@ -301,6 +491,11 @@ void ion_sec_heap_free(struct ion_buffer *buffer)
 
 #ifdef CONFIG_MTK_TRUSTED_MEMORY_SUBSYSTEM
 	tmem_type = get_trusted_mem_type(buffer->heap->id);
+	if (tmem_type < 0) {
+		IONMSG("%s invalid buffer, heap:%d\n",
+		       __func__, buffer->heap->id);
+		goto unmap_dma;
+	}
 	trusted_mem_api_unref(tmem_type, sec_handle,
 			      (uint8_t *)buffer->heap->name,
 			      buffer->heap->id);
@@ -318,6 +513,7 @@ void ion_sec_heap_free(struct ion_buffer *buffer)
 	}
 #endif
 
+unmap_dma:
 	ion_sec_heap_unmap_dma(heap, buffer);
 	kfree(table);
 	buffer->priv_virt = NULL;
@@ -451,7 +647,11 @@ void ion_sec_heap_dump_info(void)
 			     "client", "dbg_name", "pid", "size", "address");
 	ION_DUMP(NULL, "%s\n", seq_line);
 
+#ifdef OPLUS_FEATURE_MTK_ION_SEPARATE_LOCK
+	if (!down_read_trylock(&dev->client_lock)) {
+#else /* OPLUS_FEATURE_MTK_ION_SEPARATE_LOCK */
 	if (!down_read_trylock(&dev->lock)) {
+#endif /* OPLUS_FEATURE_MTK_ION_SEPARATE_LOCK */
 		ION_DUMP(
 			 NULL,
 			 "detail trylock fail, alloc pid(%d-%d)\n",
@@ -499,7 +699,11 @@ void ion_sec_heap_dump_info(void)
 	}
 
 	if (need_dev_lock)
+#ifdef OPLUS_FEATURE_MTK_ION_SEPARATE_LOCK
+		up_read(&dev->client_lock);
+#else /* OPLUS_FEATURE_MTK_ION_SEPARATE_LOCK */
 		up_read(&dev->lock);
+#endif /* OPLUS_FEATURE_MTK_ION_SEPARATE_LOCK */
 
 	ION_DUMP(NULL, "%s\n", seq_line);
 	ION_DUMP(
@@ -575,6 +779,11 @@ static int __do_dump_share_fd(
 		return 0;
 
 	bug_info = (struct ion_sec_buffer_info *)buffer->priv_virt;
+
+	if (!bug_info ||
+	    buffer->heap->type != (unsigned int)ION_HEAP_TYPE_MULTIMEDIA_SEC)
+		return 0;
+
 	if (!buffer->handle_count)
 		ION_DUMP(
 			 s,
@@ -621,6 +830,7 @@ static int ion_sec_heap_debug_show(
 	struct ion_sec_buffer_info *bug_info;
 	bool has_orphaned = false;
 	size_t fr_size = 0;
+	size_t wfd_size = 0;
 	size_t sec_size = 0;
 	size_t prot_size = 0;
 	const char *seq_line = "---------------------------------------";
@@ -669,6 +879,8 @@ static int ion_sec_heap_debug_show(
 				prot_size += buffer->size;
 			if (buffer->heap->id == ION_HEAP_TYPE_MULTIMEDIA_2D_FR)
 				fr_size += buffer->size;
+			if (buffer->heap->id == ION_HEAP_TYPE_MULTIMEDIA_WFD)
+				wfd_size += buffer->size;
 
 			if (!buffer->handle_count)
 				has_orphaned = true;
@@ -683,11 +895,17 @@ static int ion_sec_heap_debug_show(
 	ION_DUMP(s, "%s\n", seq_line);
 	ION_DUMP(s, "%s\n", seq_line);
 	ION_DUMP(s, "%16s %16zu\n", "sec-sz:", sec_size);
+	ION_DUMP(s, "%16s %16zu\n", "wfd-sz:", wfd_size);
 	ION_DUMP(s, "%16s %16zu\n", "prot-sz:", prot_size);
 	ION_DUMP(s, "%16s %16zu\n", "2d-fr-sz:", fr_size);
 	ION_DUMP(s, "%s\n", seq_line);
 
+#ifdef OPLUS_FEATURE_MTK_ION_SEPARATE_LOCK
+	down_read(&dev->client_lock);
+#else /* OPLUS_FEATURE_MTK_ION_SEPARATE_LOCK */
 	down_read(&dev->lock);
+#endif /* OPLUS_FEATURE_MTK_ION_SEPARATE_LOCK */
+
 	for (n = rb_first(&dev->clients); n; n = rb_next(n)) {
 		struct ion_client
 		*client = rb_entry(n, struct ion_client, node);
@@ -718,6 +936,8 @@ static int ion_sec_heap_debug_show(
 				if (handle->buffer->heap->id ==
 					ION_HEAP_TYPE_MULTIMEDIA_SEC ||
 				    handle->buffer->heap->id ==
+				    ION_HEAP_TYPE_MULTIMEDIA_WFD ||
+				    handle->buffer->heap->id ==
 				    ION_HEAP_TYPE_MULTIMEDIA_PROT ||
 				    handle->buffer->heap->id ==
 				    ION_HEAP_TYPE_MULTIMEDIA_2D_FR) {
@@ -732,7 +952,11 @@ static int ion_sec_heap_debug_show(
 			mutex_unlock(&client->lock);
 		}
 	}
+#ifdef OPLUS_FEATURE_MTK_ION_SEPARATE_LOCK
+	up_read(&dev->client_lock);
+#else /* OPLUS_FEATURE_MTK_ION_SEPARATE_LOCK */
 	up_read(&dev->lock);
+#endif /* OPLUS_FEATURE_MTK_ION_SEPARATE_LOCK */
 
 	return 0;
 }

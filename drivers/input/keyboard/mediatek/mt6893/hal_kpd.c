@@ -55,6 +55,8 @@ void kpd_get_keymap_state(u16 state[])
 void long_press_reboot_function_setting(void)
 {
 #ifdef CONFIG_MTK_PMIC_NEW_ARCH /*for pmic not ready*/
+	/* unlock PMIC protect key */
+	pmic_set_register_value(PMIC_RG_CPS_W_KEY, 0x4729);
 	if (kpd_enable_lprst && get_boot_mode() == NORMAL_BOOT) {
 		kpd_info("Normal Boot long press reboot selection\n");
 
@@ -96,6 +98,8 @@ void long_press_reboot_function_setting(void)
 #endif
 
 	}
+	/* lock PMIC protect key */
+	pmic_set_register_value(PMIC_RG_CPS_W_KEY, 0);
 #endif
 }
 
@@ -187,6 +191,14 @@ void kpd_pmic_pwrkey_hal(unsigned long pressed)
 	input_sync(kpd_input_dev);
 	kpd_print(KPD_SAY "(%s) HW keycode =%d using PMIC\n",
 	       pressed ? "pressed" : "released", kpd_dts_data.kpd_sw_pwrkey);
+
+	#if IS_ENABLED(CONFIG_OPLUS_FEATURE_THEIA)
+	if(pressed){
+		//we should canel per work
+		black_screen_timer_restart();
+		bright_screen_timer_restart();
+	}
+	#endif
 }
 
 static int mrdump_eint_state;

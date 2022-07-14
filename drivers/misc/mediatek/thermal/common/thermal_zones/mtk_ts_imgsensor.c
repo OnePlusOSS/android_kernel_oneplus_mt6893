@@ -32,6 +32,7 @@
 #include "kd_camera_feature.h"
 #include "kd_imgsensor_define.h"
 #include "kd_imgsensor_api.h"
+#include <soc/oplus/system/oplus_project.h>
 
 /*=============================================================
  * Weak function
@@ -808,7 +809,10 @@ struct thermal_cooling_device *cdev, unsigned long state)
 		/* To trigger data abort to reset the system
 		 * for thermal protection.
 		 */
-		BUG();
+		if (get_eng_version() != HIGH_TEMP_AGING)
+			BUG();
+		else
+			pr_info("%s should reset but bypass\n", __func__);
 	}
 	return 0;
 }

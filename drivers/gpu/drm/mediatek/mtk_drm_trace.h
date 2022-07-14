@@ -21,6 +21,7 @@
 #define DRM_TRACE_FENCE_ID (DRM_TRACE_ID + 2)
 #define DRM_TRACE_VSYNC_ID (DRM_TRACE_ID + 3)
 
+extern int hwc_pid;
 
 /* MTK_DRM FTRACE */
 extern bool g_trace_log;
@@ -40,6 +41,24 @@ extern bool g_trace_log;
 		preempt_enable(); \
 	} \
 } while (0)
+
+#define mtk_drm_trace_async_begin(fmt, args...) do { \
+		if (g_trace_log) { \
+			preempt_disable(); \
+			event_trace_printk(mtk_drm_get_tracing_mark(), \
+				"S|%d|"fmt"\n", current->tgid, ##args); \
+			preempt_enable();\
+		} \
+	} while (0)
+
+#define mtk_drm_trace_async_end(fmt, args...) do { \
+		if (g_trace_log) { \
+			preempt_disable(); \
+			event_trace_printk(mtk_drm_get_tracing_mark(), \
+				"F|%d|"fmt"\n", current->tgid, ##args); \
+			preempt_enable(); \
+		} \
+	} while (0)
 
 #define mtk_drm_trace_c(fmt, args...) do { \
 	if (g_trace_log) { \

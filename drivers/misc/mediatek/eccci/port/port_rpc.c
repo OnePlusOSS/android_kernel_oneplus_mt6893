@@ -76,7 +76,16 @@ static struct gpio_item gpio_mapping_table[] = {
 
 static int get_md_gpio_val(unsigned int num)
 {
-	return gpio_get_value(num);
+    //#ifdef OPLUS_FEATURE_THREESTATE_GPIO
+    if(is_project(0x2169E) || is_project(0x2169F) || is_project(0x216CA) ||is_project(0x216C9) || is_project(21711) || is_project(21712) || is_project(20730) || is_project(20731) || is_project(20732) || is_project(20761) || is_project(20762) || is_project(20764) || is_project(20766) || is_project(20767) || is_project(0x2167A) || is_project(0x2167B) || is_project(0x2167C) || is_project(0x2167D) || is_project(0x216AF) || is_project(0x216B0) || is_project(0x216B1))
+    {
+        return gpio_get_tristate_input(num);
+    }
+    else
+    {
+        return gpio_get_value(num);
+    }
+    //#endif OPLUS_FEATURE_THREESTATE_GPIO
 }
 
 static int get_md_adc_val(__attribute__((unused))unsigned int num)
@@ -194,29 +203,6 @@ static int get_md_gpio_info(char *gpio_name,
 	return gpio_id;
 }
 
-static void md_drdi_gpio_status_scan(void)
-{
-	int i;
-	int size;
-	int gpio_id;
-	int gpio_md_view;
-	char *curr;
-	int val;
-
-	CCCI_BOOTUP_LOG(0, RPC, "scan didr gpio status\n");
-	for (i = 0; i < ARRAY_SIZE(gpio_mapping_table); i++) {
-		curr = gpio_mapping_table[i].gpio_name_from_md;
-		size = strlen(curr) + 1;
-		gpio_md_view = -1;
-		gpio_id = get_md_gpio_info(curr, size, &gpio_md_view);
-		if (gpio_id >= 0) {
-			val = get_md_gpio_val(gpio_id);
-			CCCI_BOOTUP_LOG(0, RPC, "GPIO[%s]%d(%d@md),val:%d\n",
-					curr, gpio_id, gpio_md_view, val);
-		}
-	}
-}
-
 static int get_dram_type_clk(int *clk, int *type)
 {
 	return -1;
@@ -328,7 +314,7 @@ void get_dtsi_eint_node(int md_id)
 {
 	static int init; /*default is 0*/
 	int i;
-	struct device_node *node;
+	struct device_node *node = NULL;
 
 	if (init)
 		return;
@@ -341,7 +327,7 @@ void get_dtsi_eint_node(int md_id)
 		node = of_find_node_by_name(NULL,
 			eint_node_prop.name[i].node_name);
 		if (node != NULL) {
-			eint_node_prop.ExistFlag |= (1 << i);
+			eint_node_prop.ExistFlag |= (1U << i);
 			get_eint_attr_val(md_id, node, i);
 		} else {
 			CCCI_INIT_LOG(md_id, RPC, "%s: node %d no found\n",
@@ -350,7 +336,7 @@ void get_dtsi_eint_node(int md_id)
 	}
 }
 
-int get_eint_attr_DTSVal(int md_id, char *name, unsigned int name_len,
+int get_eint_attr_DTSVal(int md_id, const char *name, unsigned int name_len,
 			unsigned int type, char *result, unsigned int *len)
 {
 	int i, sim_value;
@@ -362,7 +348,7 @@ int get_eint_attr_DTSVal(int md_id, char *name, unsigned int name_len,
 		return ERR_SIM_HOT_PLUG_QUERY_TYPE;
 
 	for (i = 0; i < MD_SIM_MAX; i++) {
-		if ((eint_node_prop.ExistFlag & (1 << i)) == 0)
+		if ((eint_node_prop.ExistFlag & (1U << i)) == 0)
 			continue;
 		if (!(strncmp(name,
 			eint_node_prop.name[i].node_name, name_len))) {
@@ -1223,7 +1209,7 @@ static void rpc_msg_handler(struct port_t *port, struct sk_buff *skb)
 	struct rpc_buffer *rpc_buf = (struct rpc_buffer *)skb->data;
 	int i, data_len, AlignLength, ret;
 	struct rpc_pkt pkt[RPC_MAX_ARG_NUM];
-	char *ptr, *ptr_base;
+	char *ptr = NULL, *ptr_base = NULL;
 	/* unsigned int tmp_data[128]; */
 	/* size of tmp_data should be >= any RPC output result */
 	unsigned int *tmp_data =
@@ -1350,7 +1336,7 @@ static const struct file_operations rpc_dev_fops = {
 };
 static int port_rpc_init(struct port_t *port)
 {
-	struct cdev *dev;
+	struct cdev *dev = NULL;
 	int ret = 0;
 	static int first_init = 1;
 
@@ -1381,7 +1367,6 @@ static int port_rpc_init(struct port_t *port)
 	if (first_init) {
 		get_dtsi_eint_node(port->md_id);
 		get_md_dtsi_debug();
-		md_drdi_gpio_status_scan();
 		first_init = 0;
 	}
 	return 0;

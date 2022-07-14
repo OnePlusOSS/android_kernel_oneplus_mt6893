@@ -259,6 +259,10 @@ struct ion_mm_data {
 /* Exported global variables */
 extern struct ion_device *g_ion_device;
 
+#ifdef CONFIG_OPLUS_ION_BOOSTPOOL
+extern struct proc_dir_entry *boost_root_dir;
+#endif /* CONFIG_OPLUS_ION_BOOSTPOOL */
+
 /* Exported functions */
 long ion_kernel_ioctl(struct ion_client *client, unsigned int cmd,
 		      unsigned long arg);
@@ -276,6 +280,7 @@ size_t ion_mm_heap_total_memory(void);
  * ion_mm_heap_total_memory() - get mm heap buffer detail info.
  */
 void ion_mm_heap_memory_detail(void);
+int ion_drv_create_FB_heap(ion_phys_addr_t fb_base, size_t fb_size);
 
 typedef int (ion_mm_buf_destroy_callback_t)(struct ion_buffer *buffer,
 					    unsigned int phy_addr);
@@ -284,6 +289,7 @@ int ion_mm_heap_register_buf_destroy_cb(struct ion_buffer *buffer,
 struct ion_heap *ion_mm_heap_create(struct ion_platform_heap *unused);
 void ion_mm_heap_destroy(struct ion_heap *heap);
 
+struct ion_heap *ion_fb_heap_create(struct ion_platform_heap *heap_data);
 void ion_fb_heap_destroy(struct ion_heap *heap);
 
 int ion_device_destroy_heaps(struct ion_device *dev);

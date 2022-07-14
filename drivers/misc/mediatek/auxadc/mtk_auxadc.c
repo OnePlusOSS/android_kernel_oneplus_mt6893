@@ -1409,7 +1409,7 @@ static ssize_t show_AUXADC_channel(struct device *dev,
 		ret = IMM_auxadc_GetOneChannelValue(i, tmp_vol,
 							&rawdata);
 		if (ret < 0) {
-			pr_err(TAG "get chn[%d] data error\n", i);
+			pr_info(TAG "get chn[%d] data error\n", i);
 			rawdata = 0;
 			tmp_vol[0] = -1;
 			tmp_len = snprintf(tmp_buf, 255,

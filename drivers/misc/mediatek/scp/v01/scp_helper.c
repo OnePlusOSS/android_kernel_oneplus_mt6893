@@ -46,7 +46,13 @@
 #if SCP_DVFS_INIT_ENABLE
 #include "scp_dvfs.h"
 #endif
+
+#if defined(CONFIG_MACH_MT6781)
+#include "mtk_secure_api.h"
+#else
 #include "mtk_spm_resource_req.h"
+#endif
+
 #include "scp_scpctl.h"
 
 #ifdef CONFIG_OF_RESERVED_MEM
@@ -54,7 +60,10 @@
 #include "scp_reservedmem_define.h"
 #endif
 
-#if ENABLE_SCP_EMI_PROTECTION
+#ifdef CONFIG_MEDIATEK_EMI
+#include "memory/mediatek/emi.h"
+#endif
+#ifdef CONFIG_MTK_EMI
 #include <mt_emi_api.h>
 #endif
 
@@ -378,7 +387,11 @@ static void scp_A_notify_ws(struct work_struct *ws)
 	/*clear reset status and unlock wake lock*/
 	pr_debug("[SCP] clear scp reset flag and unlock\n");
 #ifndef CONFIG_FPGA_EARLY_PORTING
+#if defined(CONFIG_MACH_MT6781)
+	scp_resource_req(SCP_REQ_RELEASE);
+#else
 	spm_resource_req(SPM_RESOURCE_USER_SCP, SPM_RESOURCE_RELEASE);
+#endif
 #endif  // CONFIG_FPGA_EARLY_PORTING
 	/* register scp dvfs*/
 	msleep(2000);
@@ -1140,7 +1153,29 @@ static int scp_reserve_memory_ioremap(void)
 }
 #endif
 
-#if ENABLE_SCP_EMI_PROTECTION
+#ifdef CONFIG_MEDIATEK_EMI
+void set_scp_mpu(void)
+{
+	struct emimpu_region_t md_region;
+	int ret;
+
+	ret = mtk_emimpu_init_region(&md_region, MPU_REGION_ID_SCP_SMEM);
+	if (ret) {
+		pr_notice("[SCP]mtk_emimpu_init_region failed\n");
+		return;
+	}
+	mtk_emimpu_set_addr(&md_region, scp_mem_base_phys,
+		scp_mem_base_phys + scp_mem_size - 1);
+	mtk_emimpu_set_apc(&md_region, MPU_DOMAIN_D0,
+		MTK_EMIMPU_NO_PROTECTION);
+	mtk_emimpu_set_apc(&md_region, MPU_DOMAIN_D3,
+		MTK_EMIMPU_NO_PROTECTION);
+	if (mtk_emimpu_set_protection(&md_region))
+		pr_notice("[SCP]mtk_emimpu_set_protection fail\n");
+	mtk_emimpu_free_region(&md_region);
+}
+#endif
+#ifdef CONFIG_MTK_EMI
 void set_scp_mpu(void)
 {
 	struct emi_region_info_t region_info;
@@ -1532,8 +1567,11 @@ void scp_sys_reset_ws(struct work_struct *ws)
 	/* wake lock AP*/
 	__pm_stay_awake(&scp_reset_lock);
 #ifndef CONFIG_FPGA_EARLY_PORTING
-	/* keep Univpll */
+#if defined(CONFIG_MACH_MT6781)
+	scp_resource_req(SCP_REQ_26M);
+#else
 	spm_resource_req(SPM_RESOURCE_USER_SCP, SPM_RESOURCE_CK_26M);
+#endif
 #endif  // CONFIG_FPGA_EARLY_PORTING
 
 	/*request pll clock before turn off scp */
@@ -1890,8 +1928,11 @@ static int __init scp_init(void)
 #endif
 
 #ifndef CONFIG_FPGA_EARLY_PORTING
-	/* keep Univpll */
+#if defined(CONFIG_MACH_MT6781)
+	scp_resource_req(SCP_REQ_26M);
+#else
 	spm_resource_req(SPM_RESOURCE_USER_SCP, SPM_RESOURCE_CK_26M);
+#endif
 #endif  // CONFIG_FPGA_EARLY_PORTING
 
 #if SCP_RESERVED_MEM && defined(CONFIG_OF_RESERVED_MEM)
@@ -1988,7 +2029,7 @@ static int __init scp_init(void)
 	}
 #endif
 
-#if ENABLE_SCP_EMI_PROTECTION
+#ifdef CONFIG_MTK_EMI
 	set_scp_mpu();
 #endif
 
@@ -2059,5 +2100,15 @@ static void __exit scp_exit(void)
 #endif
 }
 
+static int __init scp_late_init(void)
+{
+	pr_notice("[SCP] %s\n", __func__);
+#ifdef CONFIG_MEDIATEK_EMI
+	set_scp_mpu();
+#endif
+	return 0;
+}
+
 module_init(scp_init);
 module_exit(scp_exit);
+late_initcall(scp_late_init);

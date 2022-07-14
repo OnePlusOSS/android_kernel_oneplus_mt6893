@@ -370,8 +370,9 @@ enum mt6362_ic_stat {
 };
 
 static const char * const mt6362_ic_stat_list[] = {
-	"hz", "ready", "trickle_chg", "pre_chg", "fast_chg",
-	"ieoc_chg", "backgnd_chg", "chg_done", "chg_fault", "otg",
+	"hz", "ready", "trickle_chg", "pre_chg", "fast_chg", "ieoc_chg",
+	"backgnd_chg", "chg_done", "chg_fault", "unknown", "unknown", "unknown",
+	"unknown", "unknown", "unknown", "otg",
 };
 
 enum mt6362_chg_adc_channel {
@@ -2227,6 +2228,8 @@ static int mt6362_enable_bleed_discharge(struct charger_device *chg_dev,
 	mutex_lock(&data->bd_lock);
 	if (en == data->bd_flag)
 		goto out;
+	data->bd_flag = en;
+
 	if (en) {
 		ret = mt6362_get_mivr(chg_dev, &data->bd_mivr);
 		if (ret < 0)
@@ -2247,7 +2250,6 @@ static int mt6362_enable_bleed_discharge(struct charger_device *chg_dev,
 		if (ret < 0)
 			goto out;
 	}
-	data->bd_flag = en;
 out:
 	mutex_unlock(&data->bd_lock);
 	return ret;

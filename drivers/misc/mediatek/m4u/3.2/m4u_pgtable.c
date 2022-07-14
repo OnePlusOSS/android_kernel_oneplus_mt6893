@@ -114,7 +114,6 @@ static inline unsigned int m4u_get_pt_type_size(int type)
  * @return NULL
  * @remark
  * @see
- * @author K Zhang      @date 2013/11/18
  */
 /************************************************************/
 void *__m4u_print_pte(struct m4u_pte_info_t *info, void *data)
@@ -239,7 +238,6 @@ typedef void *(m4u_pte_fn_t) (struct m4u_pte_info_t *pte_info, void *data);
  *	1. fn will only be called when pte is valid.
  *	2. if fn return non-NULL, the iteration will return imediately.
  * @see
- * @author K Zhang      @date 2013/11/18
  */
 /************************************************************/
 void *m4u_for_each_pte(struct m4u_domain_t *domain,
@@ -328,7 +326,6 @@ int _m4u_get_pte(struct m4u_domain_t *domain, unsigned int mva)
  * @param   seq      -- seq file. if NULL, we will dump to kernel log
  *
  * @remark  this func will lock pgtable_lock, it may sleep.
- * @author K Zhang      @date 2013/11/18
  */
 /************************************************************/
 void m4u_dump_pgtable(struct m4u_domain_t *domain,
@@ -363,7 +360,6 @@ static inline unsigned int m4u_prot_fixup(unsigned int prot)
  * @return  pgd or pte attribute
  * @remark
  * @see
- * @author K Zhang      @date 2013/11/18
  */
 /************************************************************/
 static inline unsigned int __m4u_get_pgd_attr_16M(unsigned int prot)
@@ -429,7 +425,6 @@ static inline unsigned int __m4u_get_pte_attr_4K(unsigned int prot)
 /** cache flush for modified pte.
  *   notes: because pte is allocated using slab, cache sync is needed.
  *
- * @author K Zhang      @date 2013/11/18
  */
 /************************************************************/
 int m4u_clean_pte(struct m4u_domain_t *domain,
@@ -533,7 +528,6 @@ int m4u_pte_allocator_init(void)
  *	    <0 -- error
  * @remark
  * @see
- * @author K Zhang      @date 2013/11/18
  */
 /************************************************************/
 int m4u_alloc_pte(struct m4u_domain_t *domain,
@@ -549,8 +543,10 @@ int m4u_alloc_pte(struct m4u_domain_t *domain,
 	for (retry_cnt = 0; retry_cnt < 5; retry_cnt++) {
 		pte_new_va = kmem_cache_zalloc(gM4u_pte_kmem,
 					       GFP_KERNEL | GFP_DMA);
-		if (likely(pte_new_va))
+		if (likely(pte_new_va)) {
+			kmemleak_ignore(pte_new_va); //ignored by kmemleak tool
 			break;
+		}
 	}
 	write_lock_domain(domain);
 	if (unlikely(!pte_new_va)) {
@@ -608,7 +604,6 @@ int m4u_free_pte(struct m4u_domain_t *domain,
  *	for performance concern.
  *       callers should clean pte + invalid tlb after mapping.
  *
- * @author K Zhang      @date 2013/11/19
  */
 /************************************************************/
 int m4u_map_16M(struct m4u_domain_t *m4u_domain,
@@ -942,7 +937,6 @@ static inline int m4u_map_phys_align(
  * @return   0 on success, others on fail
  * @remark
  * @see     refer to kernel/drivers/iommu/iommu.c iommu_map()
- * @author K Zhang      @date 2013/11/19
  */
 /************************************************************/
 int m4u_map_phys_range(struct m4u_domain_t *m4u_domain,

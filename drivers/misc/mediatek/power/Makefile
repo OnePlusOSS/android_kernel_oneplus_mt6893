@@ -35,6 +35,8 @@ ccflags-$(CONFIG_USB_C_SWITCH_U3_MUX) += -I$(srctree)/drivers/misc/mediatek/usb_
 
 ifeq ($(CONFIG_MACH_MT6761),y)
 obj-y += mt6765/
+else ifeq ($(CONFIG_MACH_MT6781),y)
+obj-y += mt6781/
 else ifeq ($(CONFIG_MACH_MT6893),y)
 obj-y += mt6885/
 else
@@ -48,5 +50,3 @@ ifeq ($(CONFIG_MTK_BQ24296_SUPPORT),y)
      obj-$(CONFIG_MTK_SMART_BATTERY) += bq24296.o
 endif
 endif
-
-obj-$(CONFIG_TCPC_CLASS) += rt_pd_manager.o
