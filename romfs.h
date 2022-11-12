@@ -64,3 +64,5 @@ struct romfs_inode {
 #define ROMFH_MASK (~ROMFH_PAD)
 
 #endif
+
+#endif
