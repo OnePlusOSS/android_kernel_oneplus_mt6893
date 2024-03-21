@@ -66,6 +66,34 @@
 #include "ddp_m4u.h"
 #include "disp_lowpower.h"
 #include "mtk_disp_mgr.h"
+/* #ifdef OPLUS_FEATURE_MIPICLKCHANGE */
+/*
+ * add for mipi clk change
+ */
+#include <mt-plat/mtk_ccci_common.h>
+/* #endif */ /*OPLUS_FEATURE_MIPICLKCHANGE*/
+
+/* #ifdef OPLUS_FEATURE_ONSCREENFINGERPRINT */
+extern bool oplus_display_fppress_support;
+/* #endif */ /*OPLUS_FEATURE_ONSCREENFINGERPRINT*/
+//#ifdef OPLUS_FEATURE_RAMLESS_AOD
+extern bool oplus_display_aod_ramless_support;
+//#endif /* OPLUS_FEATURE_RAMLESS_AOD */
+/* #ifdef OPLUS_BUG_STABILITY */
+extern bool oplus_display_meta_idle_support;
+extern bool oplus_display_panelnum_support;
+extern bool oplus_display_aodlight_support;
+extern bool oplus_display_elevenbits_support;
+extern bool oplus_display_tenbits_support;
+extern bool oplus_display_twelvebits_support;
+extern bool doze_rec_fpd;
+extern bool ds_rec_fpd;
+extern void get_panel_state(void);
+extern bool oplus_display_hbm_support;
+extern bool oplus_display_panelid_support;
+extern bool oplus_display_sau_support;
+extern unsigned int oplus_display_normal_max_brightness;
+/* #endif */ /* OPLUS_BUG_STABILITY */
 
 #ifdef MTKFB_SUPPORT_SECOND_DISP
 #  include "extd_multi_control.h"
@@ -207,8 +235,12 @@ static int _parse_tag_videolfb(void);
 #endif
 static void mtkfb_late_resume(void);
 static void mtkfb_early_suspend(void);
-
-
+//#ifdef OPLUS_BUG_STAILITY
+/*
+* add resume to doze for tp gesture.
+*/
+void notify_suspend_to_tp(struct fb_info *info, enum mtkfb_aod_power_mode aod_pm);
+//#endif
 void mtkfb_log_enable(int enable)
 {
 	mtkfb_log_on = enable;
@@ -319,6 +351,10 @@ static int mtkfb_blank(int blank_mode, struct fb_info *info)
 	return 0;
 }
 
+//#ifdef OPLUS_FEATURE_DC
+unsigned int dc_level;
+//#endif
+
 int mtkfb_set_backlight_level(unsigned int level)
 {
 	bool aal_is_support = disp_aal_is_support();
@@ -327,8 +363,17 @@ int mtkfb_set_backlight_level(unsigned int level)
 
 	DISPDBG("%s:%d Start\n", __func__, level);
 
+//#ifndef OPLUS_FEATURE_DC
+	/*
 	if (aal_is_support)
 		primary_display_setbacklight_nolock(level);
+	*/
+//#else/*OPLUS_FEATURE_DC*/
+	if (aal_is_support) {
+		dc_level = level ;
+		primary_display_setbacklight_nolock(level);
+	}
+//#endif/*OPLUS_FEATURE_DC*/
 	else
 		primary_display_setbacklight(level);
 
@@ -1023,6 +1068,17 @@ int mtkfb_aod_mode_switch(enum mtkfb_aod_power_mode aod_pm)
 		 * First DOZE to power on dispsys and LCM(low power mode);
 		 * then DOZE_SUSPEND to power off dispsys.
 		 */
+		#ifdef OPLUS_BUG_STABILITY
+		/*
+		* add for skip DOZE_SUSPEND -> DOZE switch
+		*/
+		if (ds_rec_fpd || doze_rec_fpd) {
+			DISPCHECK("AOD power mode DOZE_SUSPEND skip\n");
+			ds_rec_fpd = false;
+			doze_rec_fpd = false;
+			return 0;
+		}
+		#endif
 		if (primary_display_is_sleepd() &&
 			primary_display_get_lcm_power_state()) {
 			primary_display_set_power_mode(DOZE);
@@ -1108,6 +1164,12 @@ static int mtkfb_ioctl(struct fb_info *info, unsigned int cmd,
 		enum mtkfb_aod_power_mode aod_pm = MTKFB_AOD_POWER_MODE_ERROR;
 
 		aod_pm = (enum mtkfb_aod_power_mode)arg;
+		//#ifdef OPLUS_BUG_STABILITY
+		/*
+		* add resume to doze for tp gesture.
+		*/
+		notify_suspend_to_tp(info,aod_pm);
+		//#endif /* VENDOR_EDIT */
 		ret = mtkfb_aod_mode_switch(arg);
 		break;
 	}
@@ -2138,6 +2200,11 @@ unsigned int ext_vramsize;
 phys_addr_t ext_fb_base;
 #endif
 
+/* #ifdef OPLUS_BUG_STABILITY */
+extern unsigned int is_dvt_panel;
+extern void get_panel_state(void);
+/* #endif */ /* OPLUS_BUG_STABILITY */
+
 static int __parse_tag_videolfb_extra(struct device_node *node)
 {
 	void *prop;
@@ -2457,6 +2524,25 @@ static struct fb_info *allocate_fb_by_index(struct device *dev)
 }
 #endif
 
+//#ifdef OPLUS_BUG_STABILITY
+/*
+* add resume to doze for tp gesture.
+*/
+void notify_suspend_to_tp(struct fb_info *info, enum mtkfb_aod_power_mode aod_pm) {
+	enum mtkfb_power_mode prev_pm = primary_display_get_power_mode();
+
+	if (aod_pm == MTKFB_AOD_DOZE && prev_pm == FB_RESUME) {
+		int blank_mode = FB_BLANK_POWERDOWN;
+		struct fb_event event;
+
+		event.info  = info;
+		event.data = &blank_mode;
+		pr_info("%s for gesture\n", __func__);
+		fb_notifier_call_chain(FB_EVENT_BLANK, &event);
+	}
+}
+//#endif
+
 static int mtkfb_probe(struct platform_device *pdev)
 {
 	struct mtkfb_device *fbdev = NULL;
@@ -2469,6 +2555,10 @@ static int mtkfb_probe(struct platform_device *pdev)
 	int init_state;
 	int ret = 0;
 	size_t temp_va = 0;
+
+	/* #ifdef OPLUS_BUG_STABILITY */
+	int of_ret = 0;
+	/* #endif */ /* OPLUS_BUG_STABILITY */
 
 	/* struct platform_device *pdev; */
 	long dts_gpio_state = 0;
@@ -2486,6 +2576,36 @@ static int mtkfb_probe(struct platform_device *pdev)
 	_parse_tag_videolfb();
 
 	init_state = 0;
+
+	/* #ifdef OPLUS_BUG_STABILITY */
+	oplus_display_fppress_support = of_property_read_bool(pdev->dev.of_node, "oplus_display_fppress_support");
+	oplus_display_meta_idle_support = of_property_read_bool(pdev->dev.of_node, "oplus_display_meta_idle_support");
+	oplus_display_panelnum_support = of_property_read_bool(pdev->dev.of_node, "oplus_display_panelnum_support");
+	oplus_display_aodlight_support = of_property_read_bool(pdev->dev.of_node, "oplus_display_aodlight_support");
+	oplus_display_tenbits_support = of_property_read_bool(pdev->dev.of_node, "oplus_display_tenbits_support");
+	oplus_display_elevenbits_support = of_property_read_bool(pdev->dev.of_node, "oplus_display_elevenbits_support");
+	oplus_display_twelvebits_support = of_property_read_bool(pdev->dev.of_node, "oplus_display_twelvebits_support");
+	oplus_display_hbm_support = of_property_read_bool(pdev->dev.of_node, "oplus_display_hbm_support");
+	oplus_display_panelid_support = of_property_read_bool(pdev->dev.of_node, "oplus_display_panelid_support");
+	oplus_display_sau_support = of_property_read_bool(pdev->dev.of_node, "oplus_display_sau_support");
+	of_ret = of_property_read_u32(pdev->dev.of_node, "oplus_display_normal_max_brightness", &oplus_display_normal_max_brightness);
+	if (!of_ret)
+		dev_err(&pdev->dev, "read property oplus_display_normal_max_brightness failed.");
+	else
+		DISPMSG("%s:oplus_display_normal_max_brightness=%u\n", __func__, oplus_display_normal_max_brightness);
+	get_panel_state();
+
+	if (oplus_display_hbm_support) {
+		disp_helper_set_option(DISP_OPT_LCM_HBM, 1);
+	}
+
+	//#ifdef OPLUS_FEATURE_RAMLESS_AOD
+	oplus_display_aod_ramless_support = of_property_read_bool(pdev->dev.of_node, "oplus_display_aod_ramless_support");
+	if (oplus_display_aod_ramless_support) {
+		oplus_display_aodlight_support = 1;
+	}
+	//#endif /* OPLUS_FEATURE_RAMLESS_AOD */
+	/* #endif */ /* OPLUS_BUG_STABILITY */
 
 	/* pdev = to_platform_device(dev); */
 	/* repo call DTS gpio module, if not necessary, invoke nothing */
@@ -2647,6 +2767,14 @@ static int mtkfb_remove(struct platform_device *pdev)
 
 	fbdev->state = MTKFB_DISABLED;
 	mtkfb_free_resources(fbdev, saved_state);
+
+	/* #ifdef OPLUS_FEATURE_MIPICLKCHANGE */
+	/*
+	 * add for mipi clk change
+	 */
+	register_ccci_sys_call_back(MD_SYS1, MD_DISPLAY_DYNAMIC_MIPI, primary_display_ccci_mipi_callback);
+	pr_info("mtkfb_probe: mipi_clk_change is regist ok\n");
+	/* #endif */ /*OPLUS_FEATURE_MIPICLKCHANGE*/
 
 	MSG_FUNC_LEAVE();
 	return 0;

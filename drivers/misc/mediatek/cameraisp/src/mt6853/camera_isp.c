@@ -11674,7 +11674,6 @@ irqreturn_t ISP_Irq_CAM(
 			       (sof_count[module]) ? (sof_count[module] - 1)
 						   : (sof_count[module]));
 	}
-
 	/* Seamless switch. process align hw p1 done*/
 	spin_lock(&(SpinLockCqCnt[module]));
 	if (IrqStatus & SW_PASS1_DON_ST) {
@@ -12535,7 +12534,6 @@ EXIT_CQ_RECOVER:
 	}
 #endif
 }
-
 
 static void ISP_CAMSV_VFON(unsigned int irqModule)
 {

@@ -256,6 +256,10 @@ struct ion_mm_data {
 /* Exported global variables */
 extern struct ion_device *g_ion_device;
 
+#ifdef CONFIG_OPLUS_ION_BOOSTPOOL
+extern struct proc_dir_entry *boost_root_dir;
+#endif /* CONFIG_OPLUS_ION_BOOSTPOOL */
+
 /* Exported functions */
 long ion_kernel_ioctl(struct ion_client *client, unsigned int cmd,
 		      unsigned long arg);

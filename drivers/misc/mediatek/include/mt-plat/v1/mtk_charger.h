@@ -42,6 +42,9 @@ struct charger_consumer {
 	struct notifier_block *pnb;
 	struct list_head list;
 	bool hv_charging_disabled;
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	bool support_ntc_01c_precision;
+#endif
 };
 
 /* ============================================= */

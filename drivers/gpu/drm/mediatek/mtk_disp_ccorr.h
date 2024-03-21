@@ -13,6 +13,11 @@ int ccorr_interface_for_color(unsigned int ccorr_idx,
 	unsigned int ccorr_coef[3][3], void *handle);
 void disp_ccorr_on_end_of_frame(struct mtk_ddp_comp *comp);
 void disp_pq_notify_backlight_changed(int bl_1024);
+/*#ifdef OPLUS_BUG_STABILITY*/
+int disp_set_dc_default_color_matrix(void);
+int disp_set_dl_default_color_matrix(void);
+int disp_ccorr_set_RGB_matrix(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle, int32_t matrix[16], bool flag);
+/*#endif*/
 int disp_ccorr_set_color_matrix(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, int32_t matrix[16], int32_t hint, bool fte_flag);
 int disp_ccorr_set_RGB_Gain(struct mtk_ddp_comp *comp,

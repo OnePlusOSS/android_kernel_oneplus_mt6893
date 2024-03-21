@@ -132,9 +132,15 @@ int usb_choose_configuration(struct usb_device *udev)
 		 */
 
 		/* Rule out configs that draw too much bus current */
+#ifdef OPLUS_FEATURE_CHG_BASIC
+		pr_info("usb_choose_configuration max_power %u, bus_mA %u \n",
+			usb_get_max_power(udev, c), udev->bus_mA);
+#endif
 		if (usb_get_max_power(udev, c) > udev->bus_mA) {
+#ifndef OPLUS_FEATURE_CHG_BASIC
 			insufficient_power++;
 			continue;
+#endif
 		}
 
 		/* When the first config's first interface is one of Microsoft's

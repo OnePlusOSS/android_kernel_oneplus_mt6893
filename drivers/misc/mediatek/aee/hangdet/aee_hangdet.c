@@ -556,9 +556,9 @@ static void kwdt_process_kick(int local_bit, int cpu,
 				pm_system_wakeup();
 				aee_dump_timer_t = sched_clock();
 				g_change_tmo = 1;
-				spin_unlock_bh(&lock);
 				aee_dump_timer.expires = jiffies + CHG_TMO_DLY_SEC * HZ;
 				add_timer(&aee_dump_timer);
+                                spin_unlock_bh(&lock);
 				return;
 			}
 			spin_unlock_bh(&lock);
@@ -742,7 +742,7 @@ static int wdt_pm_notify(struct notifier_block *notify_block,
 		lastsuspend_syst = cnt;
 
 		spin_lock_bh(&lock);
-		del_timer_sync(&aee_dump_timer);
+		del_timer(&aee_dump_timer);
 		aee_dump_timer_t = 0;
 		g_hang_detected = 0;
 		spin_unlock_bh(&lock);

@@ -243,6 +243,8 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_RT5512 if I2C
 	select SND_SOC_MT6660 if I2C
 	select SND_SOC_TFA9874 if I2C
+	select SND_SOC_CODEC_AW88264 if I2C
+	select SND_SOC_CODEC_AW882XX if I2C
         help
           Normally ASoC codec drivers are only built if a machine driver which
           uses them is also built since they are only usable with a machine
@@ -1325,6 +1327,18 @@ config SND_SOC_AW87339
 	  PMIC device which has no speaker protection
 	  function.
 
+config SND_SOC_CODEC_AW88264
+	tristate "SoC Audio for awinic aw88264series"
+	depends on I2C
+	help
+	  This option enables support for aw88264series Smart PA.
+
+config SND_SOC_CODEC_AW882XX
+	tristate "SoC Audio for awinic aw882xxseries"
+	depends on I2C
+	help
+	  This option enables support for aw882xxseries Smart PA.
+
 config SND_SOC_LM4857
 	tristate
 
@@ -1449,3 +1463,7 @@ config SND_SOC_SMARTPAINFO
 source "sound/soc/codecs/cs35l43/Kconfig"
 
 endmenu
+
+#ifdef OPLUS_ARCH_EXTENDS
+source "sound/soc/codecs/audio/Kconfig"
+#endif /* OPLUS_ARCH_EXTENDS */

@@ -32,7 +32,9 @@
 /****************************************************************************
  * variables
  ***************************************************************************/
-
+#ifdef OPLUS_BUG_STABILITY
+	int max_brightness_custom = 0;
+#endif
 struct led_debug_info {
 	unsigned long long current_t;
 	unsigned long long last_t;
@@ -230,11 +232,114 @@ static void led_debug_log(struct mtk_led_data *s_led, int level)
 /****************************************************************************
  * driver functions
  ***************************************************************************/
+#ifdef OPLUS_BUG_COMPATIBILITY
+#if defined(CONFIG_DRM_PANEL_BOE_BOE_ILI7807S_VDO) || \
+	defined(CONFIG_DRM_PANEL_BOE_ILI7807S_60HZ_VDO) || \
+	defined(CONFIG_DRM_PANEL_TM_NT36672C_60HZ_VDO)
+ static int blmap_table[] = {
+	27,2,
+	12,8,
+	16,6,
+	16,7,
+	16,7,
+	16,8,
+	16,9,
+	20,1,
+	20,1,
+	18,6,
+	18,6,
+	18,6,
+	24,16,
+	26,24,
+	30,42,
+	33,56,
+	35,67,
+	35,67,
+	35,67,
+	35,68,
+	46,136,
+	47,141,
+	55,196,
+	65,270,
+	70,308,
+	75,348,
+	80,390,
+	90,475,
+	100,564,
+	110,656,
+	120,752,
+	130,850,
+	150,1055,
+	168,1246,
+	180,1379,
+	198,1582,
+	220,1837,
+	239,2065,
+	260,2322,
+	280,2574,
+	310,2958,
+	340,3352,
+	370,3756,
+	390,4032
+};
+#define PMIC_BRIGHTNESS_MAX	1728
+#define PMIC_BRIGHTNESS_MIN	2
+#define NORMAL_BRIGHTNESS_MAX 1390
+
+static int backlight_remapping_into_pmic_reg(int level_brightness)
+{
+	int level_temp = 0, value_a = 0, value_b = 0;
+	int level = level_brightness;
+	int blmap_size = sizeof(blmap_table)/sizeof(blmap_table[0]);
+
+	if (level_brightness <= 0) {
+		level = 0;
+	} else if (level_brightness < NORMAL_BRIGHTNESS_MAX ) {
+		if (level_brightness % 32 > 0)
+			level_temp = level_brightness/32;
+		else
+			level_temp = level_brightness/32 - 1;
+		if((level_temp*2 + 1) > blmap_size){
+			pr_debug("level_brightness is more than 2047 or LCM blmap_size is %d short than 96!\n", blmap_size);
+			return 0;
+		}
+		value_a = blmap_table[level_temp*2];
+		value_b = blmap_table[level_temp*2 + 1];
+		if (level_brightness < 385)
+			level = value_a*level_brightness/100 + value_b;
+		else
+			level = value_a*level_brightness/100 - value_b;
+		if (level < 0) {
+			level = 0;
+		} else if (level < PMIC_BRIGHTNESS_MIN) {
+			level = PMIC_BRIGHTNESS_MIN;
+		} else if (level > NORMAL_BRIGHTNESS_MAX) {
+			level = NORMAL_BRIGHTNESS_MAX;
+		}
+	} else if (level_brightness < PMIC_BRIGHTNESS_MAX) {
+		level = level_brightness;
+	} else {
+		level = PMIC_BRIGHTNESS_MAX;
+	}
+	printk("original_level:%d value_a:%d value_b:%d level_temp:%d remapped_level:%d\n",
+		level_brightness, value_a, value_b, level_temp, level);
+	return level;
+}
+#endif
+#endif
+
 static int led_level_i2c_set(struct mtk_led_data *s_led, int level)
 {
 	int level_l, level_h;
 
 	level = min(level, s_led->conf.max_level);
+#ifdef OPLUS_BUG_COMPATIBILITY
+#if defined(CONFIG_DRM_PANEL_BOE_BOE_ILI7807S_VDO) || \
+	defined(CONFIG_DRM_PANEL_BOE_ILI7807S_60HZ_VDO) || \
+	defined(CONFIG_DRM_PANEL_TM_NT36672C_60HZ_VDO)
+	level = backlight_remapping_into_pmic_reg(level);
+#endif
+#endif
 	if (s_led->hw_level == level)
 		return 0;
 
@@ -249,6 +354,14 @@ static int led_level_i2c_set(struct mtk_led_data *s_led, int level)
 	led_debug_log(s_led, level);
 #ifdef CONFIG_MTK_GATE_IC
 	_gate_ic_backlight_set(level);
+#endif
+
+#ifdef OPLUS_BUG_COMPATIBILITY
+#if defined(CONFIG_LEDS_MTK_I2C) && (defined(CONFIG_DRM_PANEL_BOE_BOE_ILI7807S_VDO) || \
+	defined(CONFIG_DRM_PANEL_BOE_ILI7807S_60HZ_VDO) || \
+	defined(CONFIG_DRM_PANEL_TM_NT36672C_60HZ_VDO))
+	_gate_ic_backlight_set(level);
+#endif
 #endif
 
 	s_led->hw_level = level;
@@ -269,7 +382,14 @@ static int led_level_set(struct led_classdev *led_cdev, enum led_brightness brig
 		return 0;
 
 	trans_level = brightness_maptolevel(led_conf, brightness);
-
+#ifdef OPLUS_BUG_STABILITY
+	if (max_brightness_custom)
+		trans_level = brightness;
+#endif
+#ifdef MET_USER_EVENT_SUPPORT
+	if (enable_met_backlight_tag())
+		output_met_backlight_tag(brightness);
+#endif
 	pr_debug("set brightness: %d, %d", brightness, trans_level);
 
 	led_data->last_brightness = brightness;
@@ -278,7 +398,9 @@ static int led_level_set(struct led_classdev *led_cdev, enum led_brightness brig
 	call_notifier(1, led_conf);
 #endif
 
-#ifndef CONFIG_MTK_AAL_SUPPORT
+#ifdef CONFIG_MTK_AAL_SUPPORT
+	disp_pq_notify_backlight_changed(trans_level);
+#else
 	led_level_i2c_set(led_data, trans_level);
 	led_data->last_level = trans_level;
 #endif
@@ -314,6 +436,13 @@ static int led_data_init(struct device *dev, struct mtk_led_data *s_led,
 
 	s_led->last_brightness = brightness;
 	s_led->last_level = level;
+#ifdef OPLUS_BUG_COMPATIBILITY
+#if defined(CONFIG_DRM_PANEL_BOE_BOE_ILI7807S_VDO) || \
+	defined(CONFIG_DRM_PANEL_BOE_ILI7807S_60HZ_VDO) || \
+	defined(CONFIG_DRM_PANEL_TM_NT36672C_60HZ_VDO)
+	level = NORMAL_BRIGHTNESS_MAX;
+#endif
+#endif
 	led_level_i2c_set(s_led, level);
 
 	return 0;
@@ -355,7 +484,13 @@ static int mtk_leds_parse_dt(struct device *dev, struct mtk_leds_info *m_leds)
 			dev_info(dev, "No led-bits, use default value 8\n");
 			s_led->conf.cdev.max_brightness = (1 << s_led->conf.led_bits) - 1;
 		}
-
+#ifdef OPLUS_BUG_STABILITY
+		ret = of_property_read_u32(child, "max_brightness_custom", &max_brightness_custom);
+		if (ret) {
+			max_brightness_custom = 0;
+			pr_info("not support max_brightness_custom property = 0\n");
+		}
+#endif
 		ret = of_property_read_u32(child, "trans-bits", &(s_led->conf.trans_bits));
 		if (ret) {
 			dev_info(dev, "No trans-bits, use default value 10\n");

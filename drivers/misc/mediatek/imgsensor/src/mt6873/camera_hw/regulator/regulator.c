@@ -5,6 +5,9 @@
 
 #include "regulator.h"
 
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+#include "imgsensor.h"
+#endif
 
 static const int regulator_voltage[] = {
 	REGULATOR_VOLTAGE_0,
@@ -27,6 +30,24 @@ struct REGULATOR_CTRL regulator_control[REGULATOR_TYPE_MAX_NUM] = {
 };
 
 static struct REGULATOR reg_instance;
+
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+extern struct IMGSENSOR gimgsensor;
+struct regulator *regulator_get_regVCAMAF(void)
+{
+	struct IMGSENSOR *pimgsensor = &gimgsensor;
+	return regulator_get(&((pimgsensor->hw.common.pplatform_device)->dev), "vcammainaf");
+}
+EXPORT_SYMBOL(regulator_get_regVCAMAF);
+struct regulator *regulator_get_regVCAMAF_19040(int sensor_idx)
+{
+	struct IMGSENSOR *pimgsensor = &gimgsensor;
+	char str_regulator_name[LENGTH_FOR_SNPRINTF];
+	snprintf(str_regulator_name, sizeof(str_regulator_name), "cam%d_%s", sensor_idx, "vcamaf");
+	return regulator_get(&((pimgsensor->hw.common.pplatform_device)->dev), str_regulator_name);
+}
+EXPORT_SYMBOL(regulator_get_regVCAMAF_19040);
+#endif
 
 static enum IMGSENSOR_RETURN regulator_init(
 	void *pinstance,
@@ -114,6 +135,13 @@ static enum IMGSENSOR_RETURN regulator_set(
 
 	enable_cnt = &preg->enable_cnt[(unsigned int)sensor_idx][
 		reg_type_offset + pin - IMGSENSOR_HW_PIN_AVDD];
+	pregulator =
+		preg->pregulator[sensor_idx][
+			reg_type_offset + pin - IMGSENSOR_HW_PIN_AVDD];
+
+	enable_cnt =
+		&preg->enable_cnt[sensor_idx][
+			reg_type_offset + pin - IMGSENSOR_HW_PIN_AVDD];
 
 	if (pregulator) {
 		if (pin_state != IMGSENSOR_HW_PIN_STATE_LEVEL_0) {

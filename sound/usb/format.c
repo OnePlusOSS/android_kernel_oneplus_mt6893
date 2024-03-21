@@ -217,6 +217,16 @@ static int parse_audio_format_rates_v1(struct snd_usb_audio *chip, struct audiof
 			    (chip->usb_id == USB_ID(0x041e, 0x4064) ||
 			     chip->usb_id == USB_ID(0x041e, 0x4068)))
 				rate = 8000;
+			/*Some digital headphones do not support high sample rate playback and recording at the same time */
+			if (chip->usb_id == USB_ID(0x12d1, 0x3a07) ||
+			    chip->usb_id == USB_ID(0x2717, 0x3802) ||
+			    chip->usb_id == USB_ID(0x2a45, 0x020f)) {
+				if (rate > 48000)
+					continue;
+				if (!(fp->formats & (SNDRV_PCM_FORMAT_U16_BE | SNDRV_PCM_FORMAT_U16_LE
+					| SNDRV_PCM_FORMAT_S16_LE | SNDRV_PCM_FORMAT_S16_BE)))
+					continue;
+			}
 
 			fp->rate_table[fp->nr_rates] = rate;
 			if (!fp->rate_min || rate < fp->rate_min)

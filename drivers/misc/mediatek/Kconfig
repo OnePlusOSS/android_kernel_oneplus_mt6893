@@ -34,6 +34,11 @@ config MTK_LM_MODE
 	  more than 4GB DRAM mapping.
 	  If you are not sure about this, set n
 
+config GC_GC6133_YUV
+        bool "camera QVGA module 1"
+        help
+          Used for camera QVGA module 1
+
 menu "Storage"
 source "drivers/misc/mediatek/blocktag/Kconfig"
 source "drivers/misc/mediatek/pidmap/Kconfig"
@@ -328,6 +333,7 @@ config MTK_SENSOR_ARCHITECTURE
 	  If unsure, set dummy.
 
 source "drivers/misc/mediatek/sensors-1.0/Kconfig"
+source "drivers/misc/mediatek/sensor/2.0/Kconfig"
 endmenu # Sensors
 
 menu "Modem & Connectivity"
@@ -514,6 +520,7 @@ config MTK_GKI_COMPAT
 	  It's testing only, no any guarantee.
 	  Select "Y" if you want to use.
 	  Select "N" if you are not sure.
+
 config MTK_HIGH_FRAME_RATE
 	bool "high frame rate,for 90hz or 120hz display"
 	default n
@@ -549,6 +556,10 @@ source "drivers/misc/mediatek/mcupm/Kconfig"
 source "drivers/misc/mediatek/rt-regmap/Kconfig"
 source "drivers/misc/mediatek/selinux_warning/Kconfig"
 source "drivers/misc/mediatek/log_store/Kconfig"
+#ifdef OPLUS_BUG_STABILITY
+source "drivers/misc/mediatek/boot/Kconfig"
+#endif
+source "drivers/misc/mediatek/boot_reason/Kconfig"
 source "drivers/misc/mediatek/dfd/Kconfig"
 source "drivers/misc/mediatek/dbgtop/Kconfig"
 source "drivers/misc/mediatek/vow/Kconfig"
@@ -560,4 +571,5 @@ menu "Misc"
 source "drivers/misc/mediatek/ext_gic/Kconfig"
 source "drivers/misc/mediatek/cirq/Kconfig"
 source "drivers/misc/mediatek/timer/Kconfig"
+source "drivers/misc/mediatek/camera_ldo/Kconfig"
 endmenu # Misc

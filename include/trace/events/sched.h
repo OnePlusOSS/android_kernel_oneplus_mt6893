@@ -475,15 +475,27 @@ TRACE_EVENT(sched_blocked_reason,
 		__field( pid_t,	pid	)
 		__field( void*, caller	)
 		__field( bool, io_wait	)
+#if defined(OPLUS_FEATURE_SCHED_ASSIST)
+		__array( unsigned long, backtrace, 4)
+#endif /* defined(OPLUS_FEATURE_SCHED_ASSIST) */
 	),
 
 	TP_fast_assign(
 		__entry->pid	= tsk->pid;
 		__entry->caller = (void*)get_wchan(tsk);
 		__entry->io_wait = tsk->in_iowait;
+#if defined(OPLUS_FEATURE_SCHED_ASSIST)
+		memcpy(__entry->backtrace, get_backtrace(tsk), 4 * sizeof(unsigned long));
+#endif /* defined(OPLUS_FEATURE_SCHED_ASSIST) */
 	),
 
+#if defined(OPLUS_FEATURE_SCHED_ASSIST)
+	TP_printk("pid=%d iowait=%d caller=%pS layer1=%pS layer2=%pS layer3=%pS layer4=%pS",
+	__entry->pid, __entry->io_wait, __entry->caller, __entry->backtrace[0],
+	__entry->backtrace[1], __entry->backtrace[2], __entry->backtrace[3] )
+#else  /* defined(OPLUS_FEATURE_SCHED_ASSIST) */
 	TP_printk("pid=%d iowait=%d caller=%pS", __entry->pid, __entry->io_wait, __entry->caller)
+#endif /* defined(OPLUS_FEATURE_SCHED_ASSIST) */
 );
 
 /*
@@ -1095,6 +1107,165 @@ TRACE_EVENT(sched_overutilized,
 		__entry->overutilized)
 );
 
+#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_SCHED_WALT)
+extern unsigned int walt_ravg_window;
+extern bool walt_disabled;
+
+#define walt_util(util_var, demand_sum) {\
+	u64 sum = demand_sum << SCHED_CAPACITY_SHIFT;\
+	do_div(sum, walt_ravg_window);\
+	util_var = (typeof(util_var))sum;\
+	}
+
+TRACE_EVENT(walt_update_history,
+
+	TP_PROTO(struct rq *rq, struct task_struct *p, u32 runtime, u32 avg, int samples,
+			int evt),
+
+	TP_ARGS(rq, p, runtime, avg, samples, evt),
+
+	TP_STRUCT__entry(
+		__array(	char,	comm,   TASK_COMM_LEN	)
+		__field(	pid_t,	pid			)
+		__field(unsigned int,	runtime			)
+		__field(unsigned int,	avg			)
+		__field(	 int,	samples			)
+		__field(	 int,	evt			)
+		__field(	 u64,	demand			)
+		__field(unsigned int,	walt_avg		)
+		__field(unsigned int,	pelt_avg		)
+		__array(	 u32,	hist, RAVG_HIST_SIZE_MAX)
+		__field(	 int,	cpu			)
+	),
+
+	TP_fast_assign(
+		memcpy(__entry->comm, p->comm, TASK_COMM_LEN);
+		__entry->pid            = p->pid;
+		__entry->runtime        = runtime;
+		__entry->avg        = avg;
+		__entry->samples        = samples;
+		__entry->evt            = evt;
+		__entry->demand         = p->ravg.demand;
+		walt_util(__entry->walt_avg,__entry->demand);
+		__entry->pelt_avg	= p->se.avg.util_avg;
+		memcpy(__entry->hist, p->ravg.sum_history,
+					RAVG_HIST_SIZE_MAX * sizeof(u32));
+		__entry->cpu            = rq->cpu;
+	),
+
+	TP_printk("pid=%d comm=%s runtime=%u avg=%u samples=%d event=%d demand=%llu ravg_window=%u"
+		" walt=%u pelt=%u hist0=%u hist1=%u hist2=%u hist3=%u hist4=%u cpu=%d",
+		__entry->pid, __entry->comm,
+		__entry->runtime, __entry->avg,
+		__entry->samples, __entry->evt,
+		__entry->demand,
+		walt_ravg_window,
+		__entry->walt_avg,
+		__entry->pelt_avg,
+		__entry->hist[0], __entry->hist[1],
+		__entry->hist[2], __entry->hist[3],
+		__entry->hist[4], __entry->cpu)
+);
+
+struct rq;
+
+TRACE_EVENT(walt_update_task_ravg,
+
+	TP_PROTO(struct task_struct *p, struct rq *rq, int evt,
+						u64 wallclock, u64 irqtime),
+
+	TP_ARGS(p, rq, evt, wallclock, irqtime),
+
+	TP_STRUCT__entry(
+		__array(	char,	comm,   TASK_COMM_LEN	)
+		__field(	pid_t,	pid			)
+		__field(	pid_t,	cur_pid			)
+		__field(	u64,	wallclock		)
+		__field(	u64,	mark_start		)
+		__field(	u64,	delta_m			)
+		__field(	u64,	win_start		)
+		__field(	u64,	delta			)
+		__field(	u64,	irqtime			)
+		__array(    char,   evt, 16			)
+		__field(unsigned int,	demand			)
+		__field(unsigned int,	sum			)
+		__field(	 int,	cpu			)
+		__field(	u32,	curr_window		)
+		__field(	u32,	prev_window		)
+		__field(	u32,	active_windows		)
+	),
+
+	TP_fast_assign(
+			static const char* walt_event_names[] =
+			{
+				"PUT_PREV_TASK",
+				"PICK_NEXT_TASK",
+				"TASK_WAKE",
+				"TASK_MIGRATE",
+				"TASK_UPDATE",
+				"IRQ_UPDATE"
+			};
+		__entry->wallclock      = wallclock;
+		__entry->win_start      = rq->window_start;
+		__entry->delta          = (wallclock - rq->window_start);
+		strcpy(__entry->evt, walt_event_names[evt]);
+		__entry->cpu            = rq->cpu;
+		__entry->cur_pid        = rq->curr->pid;
+		memcpy(__entry->comm, p->comm, TASK_COMM_LEN);
+		__entry->pid            = p->pid;
+		__entry->mark_start     = p->ravg.mark_start;
+		__entry->delta_m        = (wallclock - p->ravg.mark_start);
+		__entry->demand         = p->ravg.demand;
+		__entry->sum            = p->ravg.sum;
+		__entry->irqtime        = irqtime;
+		__entry->curr_window	= p->ravg.curr_window;
+		__entry->prev_window	= p->ravg.prev_window;
+		__entry->active_windows	= p->ravg.active_windows;
+	),
+
+	TP_printk("wallclock=%llu window_start=%llu delta=%llu event=%s cpu=%d cur_pid=%d pid=%d comm=%s"
+		" mark_start=%llu delta_m=%llu demand=%u sum=%u irqtime=%llu"
+		" cur_window=%u prev_window=%u  active_windows=%u",
+		__entry->wallclock, __entry->win_start, __entry->delta,
+		__entry->evt, __entry->cpu, __entry->cur_pid,
+		__entry->pid, __entry->comm, __entry->mark_start,
+		__entry->delta_m, __entry->demand,
+		__entry->sum, __entry->irqtime,
+		__entry->curr_window, __entry->prev_window,
+		__entry->active_windows
+		)
+);
+
+TRACE_EVENT(walt_task_util,
+
+		TP_PROTO(struct task_struct *p),
+
+		TP_ARGS(p),
+
+		TP_STRUCT__entry(
+			__array(	char,	comm,   TASK_COMM_LEN	)
+			__field(	pid_t,	pid			)
+			__field(unsigned long,	util_demand		)
+			__field(unsigned long,	util_sum		)
+			__field(unsigned long,	util_curr_window	)
+			__field(unsigned long,	util_prev_window		)
+		),
+
+		TP_fast_assign(
+			memcpy(__entry->comm, p->comm, TASK_COMM_LEN);
+			__entry->pid            = p->pid;
+			walt_util(__entry->util_demand, p->ravg.demand);
+			walt_util(__entry->util_sum, p->ravg.sum);
+			walt_util(__entry->util_curr_window, p->ravg.curr_window);
+			walt_util(__entry->util_prev_window, p->ravg.prev_window);
+		),
+
+	TP_printk("pid=%d comm=%s util_demand=%lu util_sum=%lu util_curr_window=%lu util_prev_window=%lu",
+			__entry->pid, __entry->comm, __entry->util_demand, __entry->util_sum,
+			__entry->util_curr_window, __entry->util_prev_window)
+);
+#endif /* defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_SCHED_WALT) */
+
 #endif /* CONFIG_SMP */
 
 #ifdef CONFIG_UCLAMP_TASK
@@ -1128,6 +1299,26 @@ TRACE_EVENT(schedutil_uclamp_util,
 		  __entry->util_max)
 );
 #endif /* CONFIG_UCLAMP_TASK */
+
+#ifdef CONFIG_OPLUS_FEATURE_GAME_OPT
+TRACE_EVENT(game_opt_info,
+	TP_PROTO(char * str, unsigned long frame_util),
+
+	TP_ARGS(str, frame_util),
+
+	TP_STRUCT__entry(
+                __array(char, name, TASK_COMM_LEN)
+		__field(unsigned long,            frame_util)
+	),
+
+	TP_fast_assign(
+		__entry->frame_util           = frame_util;
+                memcpy(__entry->name, str, strlen(str));
+	),
+
+	TP_printk("name = %s, val =%lu",__entry->name, __entry->frame_util)
+);
+#endif
 #endif /* _TRACE_SCHED_H */
 
 /* This part must be outside protection */

@@ -9,18 +9,47 @@
 #include <linux/platform_device.h>
 #include <linux/pm.h>
 #include <linux/workqueue.h>
-
+#include <soc/oplus/system/oplus_project.h>
 #include "../inc/mt6360_pmu.h"
 #include "../inc/mt6360_pmu_rgbled.h"
 #include "../inc/mt_led_trigger.h"
+#include <mt-plat/mtk_boot.h>
+#include <mt-plat/mtk_boot_common.h>
+#include <linux/ktime.h>
 
+#define MAX_SEC_TIME 60
+
+enum lights_status {
+	LIGHTS_RED = 0,
+	LIGHTS_GREEN,
+	LIGHTS_BLUE,
+	LIGHTS_ON,
+	LIGHTS_OFF,
+	DEFAULT,
+};
+
+__attribute__((weak)) int fan53870_cam_ldo_set_voltage(unsigned int LDO_NUM, int set_mv)
+{
+    return 1;
+}
+
+__attribute__((weak)) void fan53870_ldo5_20817_disable(void)
+{
+    return;
+}
 struct mt6360_pmu_rgbled_info {
 	struct mt_led_info l_info; /* most be the first member */
 	struct device *dev;
 	struct mt6360_pmu_info *mpi;
 	int index;
 	struct delayed_work dwork;
+	unsigned int  rgb_isnk_on;
+	bool is_support;
+	struct mutex led_lock;
+	unsigned int boot_mode;
+	unsigned long long old_time;
 };
+extern int oplus_misc_healthinfo(int type, int para, int bright);
 
 static const struct mt6360_rgbled_platform_data def_platform_data = {
 };
@@ -94,6 +123,12 @@ static int mt6360_rgbled_parse_dt_data(struct device *dev,
 		pdata->led_name[name_cnt] = name;
 		name_cnt++;
 	}
+
+	ret = of_property_read_u32_array(np, "oplus,rgbleds_support", pdata->rgbleds_support, 2);
+	if (ret) {
+		pr_err("rgbleds_support not set!!");
+	}
+	pr_err("rgbleds_support-[%d]-[%d]", pdata->rgbleds_support[0], pdata->rgbleds_support[1]);
 
 	while (true) {
 		const char *name = NULL;
@@ -913,6 +948,29 @@ static inline void mt6360_led_enable_dwork(struct led_classdev *led)
 	schedule_delayed_work(&rgbled_info->dwork, msecs_to_jiffies(100));
 }
 
+static int
+set_lights_voltgae (struct mt6360_pmu_rgbled_info *rgbled_info,
+	enum led_brightness bright, bool enable)
+{
+	int ret = 0;
+	unsigned long long cnt = 0;
+
+	if (!bright && 0x00 == rgbled_info->rgb_isnk_on && enable == false) {
+		cnt = (ktime_to_ms(ktime_get()) / 1000) - rgbled_info->old_time;
+		pr_err("%s: cnd:%d, now:%d, old:%d", __func__, cnt, ktime_to_ms(ktime_get()) / 1000, rgbled_info->old_time);
+		if (cnt > MAX_SEC_TIME) {
+			pr_err("%s: disable fan53870", __func__);
+			fan53870_ldo5_20817_disable();
+		}
+	} else if (0x00 == rgbled_info->rgb_isnk_on && enable == true) {
+		rgbled_info->old_time = ktime_to_ms(ktime_get()) / 1000;
+		fan53870_cam_ldo_set_voltage(5, 3300);
+		pr_err("%s: enable fan53870, old:%d", __func__, rgbled_info->old_time);
+	}
+
+	return ret;
+}
+
 static void mt6360_led_bright_set(
 	struct led_classdev *led, enum led_brightness bright)
 {
@@ -922,18 +980,45 @@ static void mt6360_led_bright_set(
 	uint8_t reg_addr = 0, reg_mask = 0xf, reg_shift = 0, en_mask = 0;
 	int ret = 0;
 
+	if (rgbled_info->boot_mode == KERNEL_POWER_OFF_CHARGING_BOOT ||
+		rgbled_info->boot_mode == LOW_POWER_OFF_CHARGING_BOOT) {
+		return;
+	}
+	mutex_lock(&rgbled_info->led_lock);
+	set_lights_voltgae(rgbled_info, bright, true);
 	switch (led_index) {
 	case MT6360_LED_1:
 		reg_addr = MT6360_PMU_RGB1_ISNK;
 		en_mask = 0x80;
+		if (!bright) {
+			rgbled_info->rgb_isnk_on &= 0x0e;
+			oplus_misc_healthinfo(LIGHTS_RED, LIGHTS_OFF, bright);
+		} else {
+			rgbled_info->rgb_isnk_on |= 0x01;
+			oplus_misc_healthinfo(LIGHTS_RED, LIGHTS_ON, bright);
+		}
 		break;
 	case MT6360_LED_2:
 		reg_addr = MT6360_PMU_RGB2_ISNK;
 		en_mask = 0x40;
+		if (!bright) {
+			rgbled_info->rgb_isnk_on &= 0x0d;
+			oplus_misc_healthinfo(LIGHTS_GREEN, LIGHTS_OFF, bright);
+		} else {
+			rgbled_info->rgb_isnk_on |= 0x02;
+			oplus_misc_healthinfo(LIGHTS_GREEN, LIGHTS_ON, bright);
+		}
 		break;
 	case MT6360_LED_3:
 		reg_addr = MT6360_PMU_RGB3_ISNK;
 		en_mask = 0x20;
+		if (!bright) {
+			rgbled_info->rgb_isnk_on &= 0x0b;
+			oplus_misc_healthinfo(LIGHTS_BLUE, LIGHTS_OFF, bright);
+		} else {
+			rgbled_info->rgb_isnk_on |= 0x04;
+			oplus_misc_healthinfo(LIGHTS_BLUE, LIGHTS_ON, bright);
+		}
 		break;
 	case MT6360_LED_MOONLIGHT:
 		reg_addr = MT6360_PMU_RGB_ML_ISNK;
@@ -942,10 +1027,13 @@ static void mt6360_led_bright_set(
 		break;
 	}
 
+	set_lights_voltgae(rgbled_info, bright, false);
+	pr_err("%s: led[%d] brightness is %d, rgb_isnk_on is 0x%x", __func__, led_index, bright, rgbled_info->rgb_isnk_on);
 	ret = mt6360_pmu_reg_update_bits(rgbled_info->mpi, reg_addr,
 			reg_mask, (bright & reg_mask) << reg_shift);
 	if (ret < 0) {
 		dev_err(led->dev, "update brightness fail\n");
+		mutex_unlock(&rgbled_info->led_lock);
 		return;
 	}
 
@@ -957,6 +1045,7 @@ static void mt6360_led_bright_set(
 			dev_err(led->dev, "update enable bit fail\n");
 	} else
 		mt6360_led_enable_dwork(led);
+	mutex_unlock(&rgbled_info->led_lock);
 }
 
 static enum led_brightness mt6360_led_bright_get(struct led_classdev *led)
@@ -1204,7 +1293,22 @@ static ssize_t mt6360_rgbled_disable_write(struct device *dev,
 	return cnt;
 }
 
+static ssize_t oplus_support_regbleds_read(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct mt6360_pmu_rgbled_info *rgbled_info =
+				dev_get_drvdata(dev->parent);
+
+	snprintf(buf, PAGE_SIZE, "%s-10\n",
+		rgbled_info->is_support ? "support" : "not support");
+
+	pr_err("rgbled : is_support is %d", rgbled_info->is_support);
+
+	return strlen(buf);
+}
 static const struct device_attribute mt6360_rgbled_attrs[] = {
+	__ATTR(support, 0644,
+		oplus_support_regbleds_read, NULL),
 	__ATTR(disable, 0644,
 		mt6360_rgbled_disable_read, mt6360_rgbled_disable_write),
 };
@@ -1216,7 +1320,10 @@ static int mt6360_pmu_rgbled_probe(struct platform_device *pdev)
 			dev_get_platdata(&pdev->dev);
 	struct mt6360_pmu_rgbled_info *mpri;
 	bool use_dt = pdev->dev.of_node;
-	int ret = 0, i = 0;
+	int ret = 0, i = 0, j = 0;
+	int prj_id = 0;
+
+	prj_id = get_project();
 
 	dev_dbg(&pdev->dev, "%s\n", __func__);
 	if (use_dt) {
@@ -1248,6 +1355,16 @@ static int mt6360_pmu_rgbled_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
+	mpri->is_support = false;
+	while (0 != pdata->rgbleds_support[i]) {
+		if (prj_id == pdata->rgbleds_support[i]) {
+			mpri->is_support = true;
+			pr_err("%s:prj_id == support == %d, (%d)",
+				__func__, pdata->rgbleds_support[i], mpri->is_support);
+		}
+		i++;
+	}
+
 	ret = mt_led_trigger_register(&mt6360_led_ops);
 	if (ret < 0) {
 		dev_err(mpri->dev, "mt6360 rgbled trigger register fail\n");
@@ -1265,11 +1382,14 @@ static int mt6360_pmu_rgbled_probe(struct platform_device *pdev)
 			dev_err(&pdev->dev, "register led %d fail\n", i);
 			goto out_led_register;
 		}
-		ret = device_create_file(mt6360_led_info[i].l_info.led.dev,
-				mt6360_rgbled_attrs);
-		if (ret < 0) {
-			dev_err(&pdev->dev, "register led disable fail\n");
-			goto out_led_disable;
+
+		for (j = 0; j < ARRAY_SIZE(mt6360_rgbled_attrs); j++) {
+			device_create_file(mt6360_led_info[i].l_info.led.dev, mt6360_rgbled_attrs + j);
+			if (ret < 0) {
+				dev_err(&pdev->dev, "register led disable fail\n");
+				goto out_led_disable;
+			}
+
 		}
 	}
 
@@ -1281,6 +1401,10 @@ static int mt6360_pmu_rgbled_probe(struct platform_device *pdev)
 	}
 	/* irq register */
 	mt6360_pmu_rgbled_irq_register(pdev);
+	mpri->rgb_isnk_on = 0x00;
+	mpri->boot_mode = get_boot_mode();
+	pr_err("%s : set mutex_init ", __func__);
+	mutex_init(&mpri->led_lock);
 	dev_info(&pdev->dev, "%s: successfully probed\n", __func__);
 	return 0;
 

@@ -20,7 +20,11 @@ static struct ppm_policy_data sysboost_policy = {
 	.name			= __stringify(PPM_POLICY_SYS_BOOST),
 	.lock			= __MUTEX_INITIALIZER(sysboost_policy.lock),
 	.policy			= PPM_POLICY_SYS_BOOST,
+#if defined(OPLUS_FEATURE_CHG_BASIC)
+	.priority		= PPM_POLICY_PRIO_USER_SPECIFY_BASE,
+#else
 	.priority		= PPM_POLICY_PRIO_PERFORMANCE_BASE,
+#endif
 	.update_limit_cb	= ppm_sysboost_update_limit_cb,
 	.status_change_cb	= ppm_sysboost_status_change_cb,
 };
@@ -280,6 +284,86 @@ void mt_ppm_sysboost_set_freq_limit(enum ppm_sysboost_user user,
 	mt_ppm_main();
 }
 EXPORT_SYMBOL(mt_ppm_sysboost_set_freq_limit);
+
+#if defined(OPLUS_FEATURE_CHG_BASIC)
+static void clear_timer_work(struct work_struct *work);
+int ppm_sys_boost_min_cpu_freq_clear(void);
+
+static bool is_clear_timer_clear = true;
+static struct delayed_work clear_timer;
+static DECLARE_DELAYED_WORK(clear_timer, clear_timer_work);
+unsigned long last_jiffies = 0;
+
+static DEFINE_MUTEX(charger_boost);
+
+static void clear_timer_work(struct work_struct *work)
+{
+	if (!is_clear_timer_clear) {
+		ppm_err("ppm_sys_boost_min_cpu_freq_set_clear\n");
+		ppm_sys_boost_min_cpu_freq_clear();
+	}
+	return;
+}
+
+bool get_ppm_freq_info(void)
+{
+	return is_clear_timer_clear;
+}
+EXPORT_SYMBOL(get_ppm_freq_info);
+
+int ppm_sys_boost_min_cpu_freq_set(int freq_min, int freq_mid, int freq_max, unsigned int clear_time)
+{
+	int i;
+
+	for_each_ppm_clusters(i) {
+		switch(i){
+			case 0:
+				mt_ppm_sysboost_set_freq_limit(BOOST_BY_UT, i, freq_min, -1);
+				break;
+			case 1:
+				mt_ppm_sysboost_set_freq_limit(BOOST_BY_UT, i, freq_mid, -1);
+				break;
+			case 2:
+				mt_ppm_sysboost_set_freq_limit(BOOST_BY_UT, i, freq_max, -1);
+				break;
+		}
+	}
+	clear_time = clear_time > 15000 ? 15000 : clear_time;
+	cancel_delayed_work(&clear_timer);
+
+	mutex_lock(&charger_boost);
+
+	is_clear_timer_clear = false;
+	last_jiffies = jiffies + msecs_to_jiffies(clear_time);
+	schedule_delayed_work(&clear_timer, msecs_to_jiffies(clear_time));
+
+	mutex_unlock(&charger_boost);
+
+	ppm_dbg(SYS_BOOST, "min:%d\tmid:%d\tmax:%d\tclear_time:%d\n", freq_min, freq_mid, freq_max, clear_time);
+	return 0;
+}
+EXPORT_SYMBOL(ppm_sys_boost_min_cpu_freq_set);
+
+int ppm_sys_boost_min_cpu_freq_clear(void)
+{
+	int i;
+
+	for_each_ppm_clusters(i) {
+		mt_ppm_sysboost_set_freq_limit(BOOST_BY_UT, i, -1, -1);
+	}
+
+	mutex_lock(&charger_boost);
+
+	is_clear_timer_clear = true;
+	if (jiffies < last_jiffies)
+		cancel_delayed_work(&clear_timer);
+
+	mutex_unlock(&charger_boost);
+
+	return 0;
+}
+EXPORT_SYMBOL(ppm_sys_boost_min_cpu_freq_clear);
+#endif /* defined(OPLUS_FEATURE_CHG_BASIC) */
 
 static void ppm_sysboost_update_limit_cb(void)
 {
@@ -564,7 +648,11 @@ static int __init ppm_sysboost_policy_init(void)
 	ppm_info("@%s: register %s done!\n", __func__, sysboost_policy.name);
 
 out:
+#if defined(OPLUS_FEATURE_CHG_BASIC)
+	sysboost_policy.is_enabled = true;
+#else
 	sysboost_policy.is_enabled = false;
+#endif
 	FUNC_EXIT(FUNC_LV_POLICY);
 
 	return ret;

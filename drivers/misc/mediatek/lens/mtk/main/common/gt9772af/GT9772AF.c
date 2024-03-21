@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2019 MediaTek Inc.
  */
 
 /*
@@ -131,13 +130,19 @@ static int initAF(void)
 	if (*g_pAF_Opened == 1) {
 
 		int ret = 0;
+		int SDC_C_ret = 0;
+		int PRESC_ret = 0;
+		int SDTC_ret  = 0;
+
 		unsigned char Temp;
 
 		s4AF_ReadReg(0x00, &Temp);  //ic info
 		LOG_INF("GT Check HW version: %x\n", Temp); //should be 0xF2
 		ret = s4AF_WriteReg(0, 0xED, 0xAB); //advance mode
-		LOG_INF("Advance mode ret: %x\n", ret);
-
+		SDC_C_ret = s4AF_WriteReg(0, 0x06, 0x88); //SDC enable and SDC_C set
+		PRESC_ret = s4AF_WriteReg(0, 0x07, 0x01); //PRESC[1:0]=01
+		SDTC_ret = s4AF_WriteReg(0, 0x08, 0x49); //SDTC[6:0]=1001001
+		LOG_INF("Advance mode ret: %x SDC_C ret: %x PRESC ret: %x SDTC ret: %x\n", ret,SDC_C_ret,PRESC_ret,SDTC_ret);
 
 		spin_lock(g_pAF_SpinLock);
 		*g_pAF_Opened = 2;
@@ -227,6 +232,15 @@ int GT9772AF_Release(struct inode *a_pstInode, struct file *a_pstFile)
 	int Ret = 0;
 
 	LOG_INF("Start\n");
+
+	if (*g_pAF_Opened == 2) {
+		setPosition(300);
+		mdelay(15);
+		s4AF_WriteReg(0, 0x06, 0x8A);
+		setPosition(0);
+		mdelay(30);
+		LOG_INF("apply\n");
+	}
 
 	if (*g_pAF_Opened) {
 		LOG_INF("Free\n");

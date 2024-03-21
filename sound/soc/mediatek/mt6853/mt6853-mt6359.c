@@ -18,16 +18,21 @@
 #include "../common/mtk-sp-spk-amp.h"
 #include "../common/mtk-afe-platform-driver.h"
 
-#ifdef CONFIG_SND_SOC_AW87339
-#include "aw87339.h"
-#endif
-
 /*
  * if need additional control for the ext spk amp that is connected
  * after Lineout Buffer / HP Buffer on the codec, put the control in
  * mt6853_mt6359_spk_amp_event()
  */
 #define EXT_SPK_AMP_W_NAME "Ext_Speaker_Amp"
+#ifdef OPLUS_BUG_COMPATIBILITY
+#include "../../codecs/audio/sia81xx/sia81xx_aux_dev_if.h"
+#endif  /*OPLUS_BUG_COMPATIBILITY*/
+
+#ifdef OPLUS_ARCH_EXTENDS
+/*2022/07/12, Add for oplus extend audio*/
+extern void extend_codec_i2s_be_dailinks(struct snd_soc_dai_link *dailink, size_t size);
+extern bool extend_codec_i2s_compare(struct snd_soc_dai_link *dailink, int dailink_num);
+#endif
 
 static const char *const mt6853_spk_type_str[] = {MTK_SPK_NOT_SMARTPA_STR,
 						  MTK_SPK_RICHTEK_RT5509_STR,
@@ -53,7 +58,84 @@ static const struct soc_enum mt6853_spk_type_enum[] = {
 	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(mt6853_spk_i2s_type_str),
 			    mt6853_spk_i2s_type_str),
 };
+#ifdef OPLUS_BUG_COMPATIBILITY
 
+
+enum oplus_pa_type_def {
+	OPLUS_PA_NXP = 0,
+	OPLUS_PA_AWINIC,
+	OPLUS_PA_SIA,
+	OPLUS_PA_TYPE_NUM
+};
+static int oplus_pa_type = OPLUS_PA_NXP;
+
+//if more config values, set a bigger number
+#define AUDIO_EXTERN_CONFIG_MAX_NUM  4
+#define OPLUS_PA_TYPE_OFFSET 0
+int audio_extern[AUDIO_EXTERN_CONFIG_MAX_NUM] = {0};
+
+static int read_audio_extern_config_dts(struct platform_device *pdev)
+{
+	int ret;
+	int count, i;
+
+	count = of_property_count_u32_elems(pdev->dev.of_node, "audio_extern_config");
+	dev_err(&pdev->dev, "%s  count=%d \n",__func__,count);
+	if (count <= 0) {
+		dev_err(&pdev->dev, "%s: no property match audio_extern_config\n", __func__);
+		return -ENODATA;
+	} else if (count > AUDIO_EXTERN_CONFIG_MAX_NUM) {
+		dev_err(&pdev->dev, "%s: audio_extern_config num=%d > %d(max numbers)\n",
+				__func__, count, AUDIO_EXTERN_CONFIG_MAX_NUM);
+		return -EINVAL;
+	}
+
+	ret = of_property_read_u32_array(pdev->dev.of_node, "audio_extern_config",
+			audio_extern, count);
+	if (ret) {
+		dev_err(&pdev->dev, "%s: read audio_extern_config error = %d\n", __func__, ret);
+		return ret;
+	}
+
+	for (i = 0; i < count; i++) {
+		dev_info(&pdev->dev, "%s: audio_extern[%d] = %d\n",
+				__func__, i ,audio_extern[i]);
+	}
+
+	if (OPLUS_PA_TYPE_OFFSET < count) {
+		oplus_pa_type = audio_extern[OPLUS_PA_TYPE_OFFSET];
+		dev_info(&pdev->dev, "%s: pa_type = audio_extern[%d] = %d\n",
+				__func__, OPLUS_PA_TYPE_OFFSET , oplus_pa_type);
+	}
+
+	return ret;
+}
+
+static int mt6853_audio_extern_config_get(struct snd_kcontrol *kcontrol,
+			       struct snd_ctl_elem_value *ucontrol)
+{
+	int i;
+
+	for (i = 0; i < AUDIO_EXTERN_CONFIG_MAX_NUM; i++) {
+		ucontrol->value.integer.value[i] = audio_extern[i];
+		pr_info("%s(), OPLUS_AUDIO_EXTERN_CONFIG get value(%d) = %d",
+				__func__, i, audio_extern[i]);
+	}
+
+	return 0;
+}
+
+static int mt6853_audio_extern_config_ctl(struct snd_kcontrol *kcontrol,
+			       struct snd_ctl_elem_info *uinfo)
+{
+	uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
+	uinfo->count = AUDIO_EXTERN_CONFIG_MAX_NUM;
+	uinfo->value.integer.min = 0;
+	uinfo->value.integer.max = 0x7fffffff; /* 32 bit value,  */
+
+	return 0;
+}
+#endif  /*OPLUS_BUG_COMPATIBILITY*/ 
 static int mt6853_spk_type_get(struct snd_kcontrol *kcontrol,
 			       struct snd_ctl_elem_value *ucontrol)
 {
@@ -83,7 +165,47 @@ static int mt6853_spk_i2s_in_type_get(struct snd_kcontrol *kcontrol,
 	ucontrol->value.integer.value[0] = idx;
 	return 0;
 }
+#ifdef OPLUS_FEATURE_SPEAKER_MUTE
+static int speaker_mute_control = 0;
+static int kspk_enable_spk_pa_state = 0;
 
+static const char *const spk_mute_function[] = { "Off", "On" };
+
+static const struct soc_enum spkmute_snd_enum[] = {
+    SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(spk_mute_function), spk_mute_function),
+};
+
+static int speaker_mute_get_status(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = speaker_mute_control;
+	pr_err("%s(), speaker_mute_control = %d\n", __func__, speaker_mute_control);
+	return 0;
+}
+
+static int speaker_mute_put_status(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+
+	if(ucontrol->value.integer.value[0] == speaker_mute_control)
+		return 1;
+	speaker_mute_control = ucontrol->value.integer.value[0];
+
+	if(speaker_mute_control)
+	{
+		if (OPLUS_PA_AWINIC == oplus_pa_type) {
+		} else if (OPLUS_PA_SIA == oplus_pa_type) {
+			sia81xx_stop();
+		}
+	} else {
+		if((kspk_enable_spk_pa_state)&&(OPLUS_PA_AWINIC == oplus_pa_type)) {
+		} else if ((kspk_enable_spk_pa_state)&&(OPLUS_PA_SIA == oplus_pa_type)) {
+			sia81xx_start();
+		}
+	}
+
+	pr_err("%s(), speaker_mute_control = %d\n", __func__, ucontrol->value.integer.value[0]);
+	return 0;
+}
+#endif /* OPLUS_FEATURE_SPEAKER_MUTE */
 static int mt6853_mt6359_spk_amp_event(struct snd_soc_dapm_widget *w,
 				       struct snd_kcontrol *kcontrol,
 				       int event)
@@ -96,15 +218,32 @@ static int mt6853_mt6359_spk_amp_event(struct snd_soc_dapm_widget *w,
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
 		/* spk amp on control */
-#ifdef CONFIG_SND_SOC_AW87339
-		aw87339_spk_enable_set(true);
-#endif
+
+#ifdef OPLUS_FEATURE_SPEAKER_MUTE
+		if(speaker_mute_control){
+			dev_err(card->dev, "%s(), speaker force mute\n", __func__);
+			return 0;
+		}
+		kspk_enable_spk_pa_state = 1;
+#endif /* OPLUS_FEATURE_SPEAKER_MUTE */
+#ifdef OPLUS_BUG_COMPATIBILITY
+        if (OPLUS_PA_SIA == oplus_pa_type) {
+	        dev_err(card->dev, "%s(), line = %d event %d\n", __func__, __LINE__, event);
+            sia81xx_start();
+	    }
+#endif  /*OPLUS_BUG_COMPATIBILITY*/
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
 		/* spk amp off control */
-#ifdef CONFIG_SND_SOC_AW87339
-		aw87339_spk_enable_set(false);
-#endif
+#ifdef OPLUS_FEATURE_SPEAKER_MUTE
+		kspk_enable_spk_pa_state = 0;
+#endif /* OPLUS_FEATURE_SPEAKER_MUTE */
+#ifdef OPLUS_BUG_COMPATIBILITY
+        if (OPLUS_PA_SIA == oplus_pa_type) {
+	        dev_err(card->dev, "%s(), line = %d event %d\n", __func__, __LINE__, event);
+            sia81xx_stop();
+	    }
+#endif  /*OPLUS_BUG_COMPATIBILITY*/
 		break;
 	default:
 		break;
@@ -123,6 +262,18 @@ static const struct snd_soc_dapm_route mt6853_mt6359_routes[] = {
 	{EXT_SPK_AMP_W_NAME, NULL, "Headphone R Ext Spk Amp"},
 };
 
+#ifdef CONFIG_OPLUS_FEATURE_MM_FEEDBACK
+/* 2020/10/10, add for audiohal feedback */
+#define HAL_FEEDBACK_MAX_BYTES         (512)
+extern int hal_feedback_config_get(struct snd_kcontrol *kcontrol,
+			unsigned int __user *bytes,
+			unsigned int size);
+extern int hal_feedback_config_set(struct snd_kcontrol *kcontrol,
+			const unsigned int __user *bytes,
+			unsigned int size);
+#endif  /*CONFIG_OPLUS_FEATURE_MM_FEEDBACK*/
+
+
 static const struct snd_kcontrol_new mt6853_mt6359_controls[] = {
 	SOC_DAPM_PIN_SWITCH(EXT_SPK_AMP_W_NAME),
 	SOC_ENUM_EXT("MTK_SPK_TYPE_GET", mt6853_spk_type_enum[0],
@@ -131,6 +282,24 @@ static const struct snd_kcontrol_new mt6853_mt6359_controls[] = {
 		     mt6853_spk_i2s_out_type_get, NULL),
 	SOC_ENUM_EXT("MTK_SPK_I2S_IN_TYPE_GET", mt6853_spk_type_enum[1],
 		     mt6853_spk_i2s_in_type_get, NULL),
+	#ifdef CONFIG_OPLUS_FEATURE_MM_FEEDBACK
+	/* 2020/10/10, add for audiohal feedback */
+	SND_SOC_BYTES_TLV("HAL FEEDBACK",
+			  HAL_FEEDBACK_MAX_BYTES,
+			  hal_feedback_config_get, hal_feedback_config_set),
+	#endif //CONFIG_OPLUS_FEATURE_MM_FEEDBACK
+	#ifdef OPLUS_BUG_COMPATIBILITY
+	#ifdef OPLUS_FEATURE_SPEAKER_MUTE
+	SOC_ENUM_EXT("Speaker_Mute_Switch", spkmute_snd_enum[0], speaker_mute_get_status, speaker_mute_put_status),
+	#endif /* OPLUS_FEATURE_SPEAKER_MUTE */
+	{
+		.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+		.name = "OPLUS_AUDIO_EXTERN_CONFIG",
+		.access = SNDRV_CTL_ELEM_ACCESS_READ,
+		.info = mt6853_audio_extern_config_ctl,
+		.get = mt6853_audio_extern_config_get
+	},
+	#endif //OPLUS_BUG_COMPATIBILITY
 };
 
 /*
@@ -1140,6 +1309,9 @@ static int mt6853_mt6359_dev_probe(struct platform_device *pdev)
 	int ret, i;
 	int spk_out_dai_link_idx, spk_iv_dai_link_idx;
 	const char *name;
+#ifdef OPLUS_BUG_COMPATIBILITY
+	read_audio_extern_config_dts(pdev);
+#endif  /*OPLUS_BUG_COMPATIBILITY*/
 
 	ret = mtk_spk_update_info(card, pdev,
 				  &spk_out_dai_link_idx, &spk_iv_dai_link_idx,
@@ -1209,15 +1381,35 @@ static int mt6853_mt6359_dev_probe(struct platform_device *pdev)
 			"Property 'audio-codec' missing or invalid\n");
 		return -EINVAL;
 	}
+
+#ifdef OPLUS_ARCH_EXTENDS
+	/*2022/07/12, Add for oplus extend audio*/
+	extend_codec_i2s_be_dailinks(mt6853_mt6359_dai_links, ARRAY_SIZE(mt6853_mt6359_dai_links));
+#endif /* OPLUS_ARCH_EXTENDS */
+
 	for (i = 0; i < card->num_links; i++) {
 		if (mt6853_mt6359_dai_links[i].codec_name ||
 		    i == spk_out_dai_link_idx ||
 		    i == spk_iv_dai_link_idx)
 			continue;
+#ifdef OPLUS_ARCH_EXTENDS
+		/*2022/07/12, Add for oplus extend
+		 * audio*/
+		if (extend_codec_i2s_compare(mt6853_mt6359_dai_links, i))
+			continue;
+#endif /* OPLUS_ARCH_EXTENDS */
 		mt6853_mt6359_dai_links[i].codec_of_node = codec_node;
 	}
 
 	card->dev = &pdev->dev;
+#ifdef OPLUS_BUG_COMPATIBILITY
+	ret = soc_aux_init_only_sia81xx(pdev, card);
+        dev_err(&pdev->dev, "%s soc_aux_init_only_sia8108 %d\n",
+            __func__, ret);
+	if (ret)
+		dev_err(&pdev->dev, "%s soc_aux_init_only_sia8108 fail %d\n",
+			__func__, ret);
+#endif  /*OPLUS_BUG_COMPATIBILITY*/
 
 	ret = devm_snd_soc_register_card(&pdev->dev, card);
 	if (ret)

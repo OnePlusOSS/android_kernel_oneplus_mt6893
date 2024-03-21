@@ -6,7 +6,7 @@
 #ifndef _OV05A20MIPI_SENSOR_H
 #define _OV05A20MIPI_SENSOR_H
 
-/*#define VENDOR_EDIT*/
+/*#define OPLUS_FEATURE_CAMERA_COMMON*/
 
 enum IMGSENSOR_MODE {
 	IMGSENSOR_MODE_INIT,
@@ -79,7 +79,7 @@ struct imgsensor_struct {
 /* SENSOR PRIVATE STRUCT FOR CONSTANT*/
 struct imgsensor_info_struct {
 	kal_uint32 sensor_id;
-/*#ifdef VENDOR_EDIT*/
+/*#ifdef OPLUS_FEATURE_CAMERA_COMMON*/
 /*zhaozhengtao 2016/02/19,modify for different module*/
 	kal_uint16 module_id;
 /*#endif*/

@@ -70,6 +70,8 @@
 
 #define OCCUPIED_BW_RATIO 1330
 
+extern bool oplus_display_mt6382_support;
+
 /* device and driver */
 static dev_t disp_devno;
 static struct cdev *disp_cdev;
@@ -555,8 +557,12 @@ static int disp_probe_1(void)
 	disp_m4u_init();
 
 #ifdef CONFIG_MTK_MT6382_BDG
+	if (!oplus_display_mt6382_support) {
+	pr_info("even run\n");
+	} else {
+	pr_info("even NO\n");
 	if (bdg_is_bdg_connected() == 1)
-		disp_init_bdg_gce_obj();
+		disp_init_bdg_gce_obj();}
 #endif
 
 	pr_info("disp driver(1) %s end\n", __func__);

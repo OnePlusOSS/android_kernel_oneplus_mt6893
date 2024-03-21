@@ -1,0 +1,42 @@
+
+/* Copyright (c) 2018, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&sound {
+	/* this dtsi config for product's special config, AudioHal read ctl 'OPLUS_AUDIO_EXTERN_CONFIG' get the values*
+	 * 1st value --> PA type: 0:NXP Pa, 1:Awinic Pa 2:sia81xx Pa*/
+	audio_extern_config = <2>;
+};
+
+//#ifdef OPLUS_ARCH_EXTENDS
+//2012/07/12, add for SIA PA ALGO
+&sia81xx_L{
+	si,sia_boost_vol_support = <1>;
+};
+//endif
+
+/*OPLUS_ARCH_EXTENDS*/
+/*2022/07/12, add for sia pa
+ * Modify for sia I2C & gpio config */
+&i2c6 {
+    #address-cells = <1>;
+    #size-cells = <0>;
+    clock-frequency = <400000>;
+    mediatek,use-open-drain;
+    sia81xx_i2c_L: sia81xx_i2c@L {
+        compatible = "si,sia81xx-i2c";
+        reg = <0x28>;
+        si,sia81xx-dev = <&sia81xx_L>;
+    };
+};
+/*OPLUS_ARCH_EXTENDS*/
+

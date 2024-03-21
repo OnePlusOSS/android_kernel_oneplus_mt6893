@@ -55,3 +55,6 @@ enum {
 extern void mt_usb_connect_v1(void);
 extern void mt_usb_disconnect_v1(void);
 #endif //ADAPT_PSY_V1
+#ifndef CONFIG_TCPC_CLASS
+extern void oplus_usb_extcon_set_role(unsigned int role);
+#endif

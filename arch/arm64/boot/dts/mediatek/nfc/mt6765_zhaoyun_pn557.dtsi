@@ -1,0 +1,23 @@
+/**********************************************************************************
+* Copyright (c)  2008-2020  Guangdong oplus Mobile Comm Corp., Ltd
+*
+***********************************************************************************/
+&odm {
+	nfc_chipset:nfc_chipset {
+		compatible = "oplus-nfc-chipset";
+		chipset-21336 = "PN557";
+		chipset-21338 = "PN557";
+	};
+};
+
+&i2c3 {
+       status = "okay";
+       nfc_nxp@28 {
+               compatible = "nxp,pn544";
+               reg = <0x28>;
+               nxp,pn544-irq = <&pio 10 0x0>;
+               nxp,pn544-ven = <&pio 172 0x0>;
+               nxp,pn544-fw-dwnld = <&pio 109 0x0>;
+               interrupt-parent = <&pio>;
+       };
+};

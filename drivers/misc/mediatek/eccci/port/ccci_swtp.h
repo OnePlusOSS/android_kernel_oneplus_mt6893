@@ -41,4 +41,10 @@ struct swtp_t {
 /*****************************************************************************/
 extern int swtp_init(int md_id);
 extern void inject_pin_status_event(int pin_value, const char pin_name[]);
+extern int ccci_get_swtp_gpio_value(void);
+extern unsigned int is_project(int project);
+/* 映射 GPIO 编号到 IRQ 编号 */
+int gpio_to_irq(unsigned gpio);
+/* 映射 IRQ 编号到 GPIO 编号 (尽量避免使用) */
+int irq_to_gpio(unsigned irq);
 #endif				/* __SWTP_H__ */

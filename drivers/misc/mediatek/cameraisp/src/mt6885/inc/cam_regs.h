@@ -309,6 +309,9 @@ enum{
 #define CAM_REG_CTL_SEL2(module)                (isp_devs[module].regs + 0x0044)
 #define CAM_REG_CTL_FMT_SEL(module)             (isp_devs[module].regs + 0x0048)
 #define CAM_REG_CTL_FMT2_SEL(module)            (isp_devs[module].regs + 0x004C)
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+#define CAM_REG_CTL_FBC_GROUP(module)           (isp_devs[module].regs + 0x0060)
+#endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 
 #define CAM_REG_CTL_START(module)               (isp_devs[module].regs + 0x0074)
 #define CAM_REG_CTL_START_ST(module)            (isp_devs[module].regs + 0x0078)

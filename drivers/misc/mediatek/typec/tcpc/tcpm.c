@@ -249,7 +249,11 @@ int tcpm_typec_change_role(
 	int ret = 0;
 
 	tcpci_lock_typec(tcpc);
+#ifndef OPLUS_FEATURE_CHG_BASIC
 	ret = tcpc_typec_change_role(tcpc, typec_role, false);
+#else
+	ret = tcpc_typec_change_role(tcpc, typec_role, true);
+#endif
 	tcpci_unlock_typec(tcpc);
 
 	return ret;

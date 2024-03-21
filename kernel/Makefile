@@ -15,7 +15,7 @@ obj-y     = fork.o exec_domain.o panic.o \
 
 obj-$(CONFIG_MODULES) += kmod.o
 obj-$(CONFIG_MULTIUSER) += groups.o
-
+obj-y += panic_flush.o
 ifdef CONFIG_FUNCTION_TRACER
 # Do not trace internal ftrace files
 CFLAGS_REMOVE_irq_work.o = $(CC_FLAGS_FTRACE)
@@ -49,6 +49,12 @@ obj-y += irq/
 obj-y += rcu/
 obj-y += livepatch/
 obj-y += dma/
+
+
+#ifdef CONFIG_OPLUS_SECURE_GUARD
+obj-$(CONFIG_OPLUS_SECURE_GUARD) += keventupload/
+#endif /* CONFIG_OPLUS_SECURE_GUARD */
+
 
 obj-$(CONFIG_CHECKPOINT_RESTORE) += kcmp.o
 obj-$(CONFIG_FREEZER) += freezer.o
@@ -123,6 +129,10 @@ obj-$(CONFIG_HAS_IOMEM) += iomem.o
 obj-$(CONFIG_ZONE_DEVICE) += memremap.o
 obj-$(CONFIG_RSEQ) += rseq.o
 
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+obj-y += sched_assist/
+#endif /* OPLUS_FEATURE_SCHED_ASSIST */
+
 $(obj)/configs.o: $(obj)/config_data.h
 
 targets += config_data.gz
@@ -142,3 +152,5 @@ $(obj)/kheaders_data.tar.xz: FORCE
 	$(call cmd,genikh)
 
 clean-files := kheaders_data.tar.xz kheaders.md5
+
+obj-$(CONFIG_OPLUS_FEATURE_SIGKILL_DIAGNOSIS) += sigkill_diagnosis/

@@ -107,6 +107,13 @@
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/task.h>
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+#include <linux/sched_assist/sched_assist_fork.h>
+#endif /* OPLUS_FEATURE_SCHED_ASSIST */
+
+#if defined (OPLUS_FEATURE_HEALTHINFO) && defined (CONFIG_OPLUS_JANK_INFO)
+#include <linux/healthinfo/jank_monitor.h>
+#endif /* OPLUS_FEATURE_HEALTHINFO */
 
 #include <mt-plat/mtk_pidmap.h>
 #ifdef CONFIG_MTK_TASK_TURBO
@@ -122,6 +129,10 @@
  * Maximum number of threads
  */
 #define MAX_THREADS FUTEX_TID_MASK
+
+#if defined(OPLUS_FEATURE_MEMLEAK_DETECT) && defined(CONFIG_ION) && defined(CONFIG_DUMP_TASKS_MEM)
+extern void update_user_tasklist(struct task_struct *tsk);
+#endif
 
 /*
  * Protected counters by write_lock_irq(&tasklist_lock)
@@ -173,6 +184,10 @@ static inline void free_task_struct(struct task_struct *tsk)
 #endif
 
 #ifndef CONFIG_ARCH_THREAD_STACK_ALLOCATOR
+
+#ifdef CONFIG_OPLUS_FEATURE_UID_PERF
+extern void uid_perf_work_add(struct task_struct *task, bool force);
+#endif
 
 /*
  * Allocate pages if THREAD_SIZE is >= PAGE_SIZE, otherwise use a
@@ -926,6 +941,9 @@ static struct task_struct *dup_task_struct(struct task_struct *orig, int node)
 #ifdef CONFIG_MEMCG
 	tsk->active_memcg = NULL;
 #endif
+#ifdef CONFIG_OPLUS_FEATURE_ABNORMAL_FLAG
+	tsk->abnormal_flag = 0;
+#endif
 	return tsk;
 
 free_stack:
@@ -1030,6 +1048,7 @@ static struct mm_struct *mm_init(struct mm_struct *mm, struct task_struct *p,
 		goto fail_nocontext;
 
 	mm->user_ns = get_user_ns(user_ns);
+	lru_gen_init_mm(mm);
 	return mm;
 
 fail_nocontext:
@@ -1072,6 +1091,7 @@ static inline void __mmput(struct mm_struct *mm)
 	}
 	if (mm->binfmt)
 		module_put(mm->binfmt->module);
+	lru_gen_del_mm(mm);
 	mmdrop(mm);
 }
 
@@ -2027,9 +2047,21 @@ static __latent_entropy struct task_struct *copy_process(
 	p->sequential_io	= 0;
 	p->sequential_io_avg	= 0;
 #endif
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+	init_task_ux_info(p);
+#endif /* OPLUS_FEATURE_SCHED_ASSIST */
+#if defined (OPLUS_FEATURE_HEALTHINFO) && defined (CONFIG_OPLUS_JANK_INFO)
+	p->jank_trace = 0;
+	memset(&p->jank_info, 0, sizeof(struct jank_monitor_info));
+#endif /* OPLUS_FEATURE_HEALTHINFO */
+
 #ifdef CONFIG_MTK_TASK_TURBO
 	init_turbo_attr(p, current);
 #endif
+#if defined(OPLUS_FEATURE_TASK_CPUSTATS) && defined(CONFIG_OPLUS_SCHED)
+	p->wake_tid = 0;
+	p->running_start_time = 0;
+#endif /* defined(OPLUS_FEATURE_TASK_CPUSTATS) && defined(CONFIG_OPLUS_SCHED) */
 	/* Perform scheduler related setup. Assign this task to a CPU. */
 	retval = sched_fork(clone_flags, p);
 	if (retval)
@@ -2204,8 +2236,18 @@ static __latent_entropy struct task_struct *copy_process(
 		goto bad_fork_cancel_cgroup;
 	}
 
-
 	init_task_pid_links(p);
+#ifdef CONFIG_OPLUS_FEATURE_UID_PERF
+	/* should init uid pevents before task added into any link */
+	memset(p->uid_pevents, 0, sizeof(struct perf_event *) * UID_PERF_EVENTS);
+	memset(p->uid_counts, 0, sizeof(long long) * UID_PERF_EVENTS);
+	memset(p->uid_prev_counts, 0, sizeof(long long) * UID_PERF_EVENTS);
+	memset(p->uid_leaving_counts, 0, sizeof(long long) * UID_PERF_EVENTS);
+	memset(p->uid_group, 0, sizeof(long long) * UID_GROUP_SIZE);
+	memset(p->uid_group_prev_counts, 0, sizeof(long long) * UID_GROUP_SIZE);
+	memset(p->uid_group_snapshot_prev_counts, 0, sizeof(long long) * UID_GROUP_SIZE);
+#endif
+
 	if (likely(p->pid)) {
 		ptrace_init_task(p, (clone_flags & CLONE_PTRACE) || trace);
 
@@ -2230,6 +2272,11 @@ static __latent_entropy struct task_struct *copy_process(
 							 p->real_parent->signal->is_child_subreaper;
 			list_add_tail(&p->sibling, &p->real_parent->children);
 			list_add_tail_rcu(&p->tasks, &init_task.tasks);
+
+#if defined(OPLUS_FEATURE_MEMLEAK_DETECT) && defined(CONFIG_ION) && defined(CONFIG_DUMP_TASKS_MEM)
+			INIT_LIST_HEAD(&p->user_tasks);
+			update_user_tasklist(p);
+#endif
 			attach_pid(p, PIDTYPE_TGID);
 			attach_pid(p, PIDTYPE_PGID);
 			attach_pid(p, PIDTYPE_SID);
@@ -2261,8 +2308,12 @@ static __latent_entropy struct task_struct *copy_process(
 	trace_task_newtask(p, clone_flags);
 	uprobe_copy_process(p, clone_flags);
 
-	copy_oom_score_adj(clone_flags, p);
+        copy_oom_score_adj(clone_flags, p);
 
+#ifdef CONFIG_OPLUS_FEATURE_UID_PERF
+	if (!IS_ERR(p))
+		uid_perf_work_add(p, false);
+#endif
 	return p;
 
 bad_fork_cancel_cgroup:
@@ -2404,6 +2455,9 @@ long _do_fork(unsigned long clone_flags,
 
 	pid = get_task_pid(p, PIDTYPE_PID);
 	nr = pid_vnr(pid);
+#if defined(OPLUS_FEATURE_MEMLEAK_DETECT) && defined(CONFIG_ION) && defined(CONFIG_DUMP_TASKS_MEM)
+	atomic64_set(&p->ions, 0);
+#endif
 
 	if (clone_flags & CLONE_PARENT_SETTID)
 		put_user(nr, parent_tidptr);
@@ -2412,6 +2466,13 @@ long _do_fork(unsigned long clone_flags,
 		p->vfork_done = &vfork;
 		init_completion(&vfork);
 		get_task_struct(p);
+
+		if (IS_ENABLED(CONFIG_LRU_GEN) && !(clone_flags & CLONE_VM)) {
+			/* lock the task to synchronize with memcg migration */
+			task_lock(p);
+			lru_gen_add_mm(p->mm);
+			task_unlock(p);
+		}
 	}
 
 	wake_up_new_task(p);

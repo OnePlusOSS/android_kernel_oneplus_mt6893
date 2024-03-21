@@ -28,6 +28,17 @@
 #if defined(CONFIG_MEDIATEK_MT6577_AUXADC)
 #include <linux/iio/consumer.h>
 #endif
+
+#ifdef CONFIG_OPLUS_TEMP_NTC
+#include "oplus_tempntc.h"
+#endif
+
+#ifdef CONFIG_HORAE_THERMAL_SHELL
+#include "mtk_ts_ntc_cust.h"
+#endif
+extern int mtkts_bts_get_hw_temp(void);
+extern int fg_read_dts_val(const struct device_node *np, const char *node_srting, int *param, int unit);
+
 /*=============================================================
  *Weak functions
  *=============================================================
@@ -140,6 +151,10 @@ static int g_btsmdpa_TemperatureR;
 
 static struct BTSMDPA_TEMPERATURE *BTSMDPA_Temperature_Table;
 static int ntc_tbl_size;
+
+static int g_user_project = 0;
+#define PROJECT_SPACE_D		21690
+#define PROJECT_SPACE_B		21684
 
 /* AP_NTC_BL197 */
 static struct BTSMDPA_TEMPERATURE BTSMDPA_Temperature_Table1[] = {
@@ -598,7 +613,10 @@ static __s32 mtk_ts_btsmdpa_volt_to_temp(__u32 dwVolt)
 
 	return BTSMDPA_TMP;
 }
-
+#ifndef CONFIG_OPLUS_TEMP_NTC
+extern int get_pa_ntc_volt(void);
+extern bool is_kthread_get_adc(void);
+#endif
 static int get_hw_btsmdpa_temp(void)
 {
 #if defined(CONFIG_MEDIATEK_MT6577_AUXADC)
@@ -616,11 +634,20 @@ static int get_hw_btsmdpa_temp(void)
 		return ret;
 	}
 	ret = iio_read_channel_processed(thermistor_ch1, &val);
-	mtkts_btsmdpa_dprintk("%s val=%d\n", __func__, val);
+#ifndef CONFIG_OPLUS_TEMP_NTC
+	if (!is_kthread_get_adc()) {
+		ret = iio_read_channel_processed(thermistor_ch1, &val);
+#endif
+		mtkts_btsmdpa_dprintk("%s val=%d\n", __func__, val);
 
-	if (ret < 0) {
-		mtkts_btsmdpa_printk("IIO channel read failed %d\n", ret);
-		return ret;
+		if (ret < 0) {
+			mtkts_btsmdpa_printk("IIO channel read failed %d\n", ret);
+			return ret;
+#ifndef CONFIG_OPLUS_TEMP_NTC
+		}
+	} else {
+		val = get_pa_ntc_volt();
+#endif
 	}
 
 #ifdef APPLY_PRECISE_BTS_TEMP
@@ -757,7 +784,22 @@ int mtkts_btsmdpa_get_hw_temp(void)
 
 static int mtkts_btsmdpa_get_temp(struct thermal_zone_device *thermal, int *t)
 {
+#ifdef CONFIG_OPLUS_TEMP_NTC
+	if (is_ntc_switch_projects()) {
+		*t = oplus_get_pa1_con_temp();
+	} else {
+		*t = mtkts_btsmdpa_get_hw_temp();
+	}
+#else
 	*t = mtkts_btsmdpa_get_hw_temp();
+#endif
+
+	if ((g_user_project == PROJECT_SPACE_D) || (g_user_project == PROJECT_SPACE_B)) {
+		if((int)*t < 0) {
+			*t = mtkts_bts_get_hw_temp();
+		}
+		mtkts_btsmdpa_printk("dvt1 stage mtkts_btsmdpa_get_temp_hzl: temp_01=%d\n", *t);
+	}
 
 	if ((int)*t > 52000)
 		mtkts_btsmdpa_dprintk("T=%d\n", (int)*t);
@@ -1208,6 +1250,13 @@ struct file *file, const char __user *buffer, size_t count, loff_t *data)
 
 	if (ptr_param_data == NULL)
 		return -ENOMEM;
+#ifdef CONFIG_HORAE_THERMAL_SHELL
+	if(mtk_ts_ntc_cust_get(NTC_CUST_SUPPORT, NTC_BTSMDPA) == 1){
+		pr_err("mtkts_btsmdpa_param_write: ntc cust support, force return. ntc_index: %d\n", NTC_BTSMDPA);
+		kfree(ptr_param_data);
+		return count;
+	}
+#endif
 
 	len = (count < (sizeof(ptr_param_data->desc) - 1)) ?
 				count : (sizeof(ptr_param_data->desc) - 1);
@@ -1380,6 +1429,7 @@ static int mtkts_btsmdpa_probe(struct platform_device *pdev)
 	struct proc_dir_entry *mtkts_btsmdpa_dir = NULL;
 	int err = 0;
 	int ret = 0;
+	static unsigned int val = 0;
 
 	mtkts_btsmdpa_dprintk("[%s]\n", __func__);
 
@@ -1389,6 +1439,20 @@ static int mtkts_btsmdpa_probe(struct platform_device *pdev)
 		__func__);
 		return -ENODEV;
 	}
+
+	if (!of_property_read_u32(pdev->dev.of_node, "THERMAL_VAL_PROJECT", &val)) {
+		g_user_project = (int)val*1;
+		mtkts_btsmdpa_dprintk("%s, g_user_project:%d\n", __func__, g_user_project);
+	}
+
+#ifdef CONFIG_HORAE_THERMAL_SHELL
+	mtk_ts_ntc_cust_parse_dt(pdev->dev.of_node, NTC_BTSMDPA);
+	mtk_ts_ntc_overide_by_cust_if_needed(&g_RAP_pull_up_R, PULL_UP_R_INDEX, NTC_BTSMDPA);
+	mtk_ts_ntc_overide_by_cust_if_needed(&g_TAP_over_critical_low, OVER_CRITICAL_LOW_INDEX, NTC_BTSMDPA);
+	mtk_ts_ntc_overide_by_cust_if_needed(&g_RAP_pull_up_voltage, PULL_UP_VOLTAGE_INDEX, NTC_BTSMDPA);
+	mtk_ts_ntc_overide_by_cust_if_needed(&g_RAP_ntc_table, NTC_TABLE_INDEX, NTC_BTSMDPA);
+	mtk_ts_ntc_overide_by_cust_if_needed(&g_RAP_ADC_channel, ADC_CHANNEL_INDEX, NTC_BTSMDPA);
+#endif
 
 	thermistor_ch1 = devm_kzalloc(&pdev->dev, sizeof(*thermistor_ch1),
 		GFP_KERNEL);

@@ -23,7 +23,7 @@
 	atag,videolfb-fps= <6000>;
 	atag,videolfb-vramSize= <0x017e8000>;
 	atag,videolfb-lcmname=
-		"nt35695_fhd_dsi_cmd_truly_rt5081_drv";
+		"oplus20730_samsung_ams643xy04_lcm_drv";
 };
 
 
@@ -225,15 +225,29 @@
 	mtkfb_pins_lcm_dsi_te: lcm_dsi_te {
 		pins_cmd_dat {
 			pinmux = <PINMUX_GPIO43__FUNC_DSI_TE>;
+			input-enable;
 		};
 	};
+	mtkfb_pins_lcm_dsi_te_bk: lcm_dsi_te_bk {
+	pins_cmd_dat {
+		pinmux = <PINMUX_GPIO15__FUNC_GPIO15>;
+		slew-rate = <0>;
+		bias-disable;
+		};
+	};
+};
+
+&dsi_te {
+	interrupt-parent = <&pio>;
+	interrupts = <43 IRQ_TYPE_EDGE_RISING 43 1>;
+	status = "okay";
 };
 
 &mtkfb {
 	pinctrl-names = "lcd_bias_enp1_gpio", "lcd_bias_enp0_gpio",
 		"lcd_bias_enn1_gpio", "lcd_bias_enn0_gpio",
 		"lcm_rst_out1_gpio", "lcm_rst_out0_gpio",
-		"mode_te_te";
+		"mode_te_te",  "mode_te_bk_gpio15";
 	pinctrl-0 = <&mtkfb_pins_lcd_bias_enp1>;
 	pinctrl-1 = <&mtkfb_pins_lcd_bias_enp0>;
 	pinctrl-2 = <&mtkfb_pins_lcd_bias_enn1>;
@@ -241,7 +255,14 @@
 	pinctrl-4 = <&mtkfb_pins_lcm_rst_out1_gpio>;
 	pinctrl-5 = <&mtkfb_pins_lcm_rst_out0_gpio>;
 	pinctrl-6 = <&mtkfb_pins_lcm_dsi_te>;
+	pinctrl-7 = <&mtkfb_pins_lcm_dsi_te_bk>;
 	status = "okay";
+	oplus_display_twelvebits_support;
+	oplus_display_hbm_support;
+	oplus_display_aod_support;
+	oplus_display_fppress_support;
+	oplus_display_aodlight_support;
+	oplus_display_aod_ramless_support;
 };
 
 /* DISPSYS GPIO standardization end */

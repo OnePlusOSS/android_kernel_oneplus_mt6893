@@ -336,13 +336,41 @@ void mtk_sync_timeline_inc(struct sync_timeline *obj, u32 value, ktime_t time)
 
 int mtk_sync_fence_create(struct sync_timeline *obj, struct fence_data *data)
 {
+#ifdef OPLUS_BUG_STABILITY
+	int fd = 0;
+#else
 	int fd = get_unused_fd_flags(O_CLOEXEC);
+#endif
 	int err;
 	struct sync_pt *pt;
 	struct sync_file *sync_file;
+#ifdef OPLUS_BUG_STABILITY
+	char filename[] = "/dev/null";
+	struct file *fd_file = NULL;
+#endif
 
+#ifdef OPLUS_BUG_STABILITY
+repeat:
+	fd = get_unused_fd_flags(O_CLOEXEC);
 	if (fd < 0)
 		return fd;
+
+	/* fd=0,1,2 is for stdin,stdout, stderr */
+	if (fd >= 0 && fd < 3) {
+		fd_file = filp_open(filename, O_RDONLY, 0777);
+		if (IS_ERR(fd_file)) {
+			pr_err("file open error:%s\n", filename);
+			err = -1;
+			goto err;
+		}
+		fd_install(fd, fd_file);
+		pr_err("fd(%d) has been close, force install to /dev/null\n", fd);
+		goto repeat;
+	}
+#else
+	if (fd < 0)
+		return fd;
+#endif
 
 	pt = mtk_sync_pt_create(obj, data->value);
 	if (!pt) {

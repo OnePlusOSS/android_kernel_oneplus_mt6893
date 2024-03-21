@@ -639,7 +639,6 @@ static void write_shutter(kal_uint32 shutter)
 {
 	kal_uint16 realtime_fps = 0;
 	#ifdef LONG_EXP
-	/*Yijun.Tan@camera.driver,20180116,add for slow shutter */
 	int longexposure_times = 0;
 	static int long_exposure_status;
 	#endif

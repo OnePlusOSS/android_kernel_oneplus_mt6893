@@ -783,6 +783,18 @@ int mtk_memif_set_addr(struct mtk_base_afe *afe, int id,
 	unsigned int phys_buf_addr = lower_32_bits(dma_addr);
 	unsigned int phys_buf_addr_upper_32 = upper_32_bits(dma_addr);
 
+    //#ifdef OPLUS_ARCH_EXTENDS
+	unsigned int value = 0;
+
+	/* check the memif already disable */
+	regmap_read(afe->regmap, memif->data->enable_reg, &value);
+	if (value & 0x1 << memif->data->enable_shift) {
+		mtk_memif_set_disable(afe, id);
+		pr_info("%s memif[%d] is enabled before set_addr, en:0x%x\n",
+			__func__, id, value);
+	}
+    //#endif
+
 	memif->dma_area = dma_area;
 	memif->dma_addr = dma_addr;
 	memif->dma_bytes = dma_bytes;

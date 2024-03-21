@@ -114,6 +114,8 @@ bool mtk_unregister_gpu_power_change(const char *name);
 /* GPU POWER NOTIFY should be called by GPU only */
 void mtk_notify_gpu_power_change(int power_on);
 
+void mtk_gpu_fence_debug_dump(int fd, int pid, int type);
+
 #ifdef CONFIG_MTK_GED_SUPPORT
 
 /* Quality Tuner */

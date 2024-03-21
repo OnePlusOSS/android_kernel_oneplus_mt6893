@@ -71,7 +71,26 @@ static struct gpio_item gpio_mapping_table[] = {
 
 static int get_md_gpio_val(unsigned int num)
 {
-	return gpio_get_value(num);
+    //#ifdef OPLUS_FEATURE_THREESTATE_GPIO
+    if(is_project(20375) || is_project(20376) || is_project(20377) || is_project(20378) || is_project(20379) || is_project(0x2037A)
+        || is_project(20361) || is_project(20362) || is_project(20363) || is_project(20364) || is_project(20365) || is_project(20366)
+        || is_project(20271) || is_project(20272) || is_project(20273) || is_project(20274)
+        || is_project(20730) || is_project(20731) || is_project(20732)
+        || is_project(0x2027A) || is_project(0x2027B) || is_project(0x2027C) || is_project(0x2027D)
+        || is_project(21281) || is_project(21282) || is_project(21283)
+        || is_project(21331) || is_project(21332) || is_project(21333) || is_project(21334) || is_project(21335) || is_project(21336) || is_project(21337) || is_project(21338) || is_project(21339)||is_project(21361) || is_project(21362) || is_project(21363) || is_project(21107) || is_project(22875) || is_project(22876)
+        || is_project(22603) || is_project(22604) || is_project(22609) || is_project(22669) || is_project(0x2266A) || is_project(0x2266B) || is_project(0x2266C) || is_project(0x2260A) || is_project(0x2260B)|| is_project(22631)|| is_project(22632)|| is_project(23602)
+        || is_project(21711) || is_project(21712) || is_project(0x216C9) || is_project(0x2162E) || is_project(0x2169E) || is_project(0x2169F) || is_project(0x216CA) || is_project(0x216AF) || is_project(0x2167A)
+        || is_project(0x2167B) || is_project(0x2167C) || is_project(0x2167D)  || is_project(0x226AD) || is_project(0x226AE) || is_project(0x226AF) || is_project(0x226B0) || is_project(20761) || is_project(20762) || is_project(20764) || is_project(20766) || is_project(20767) || is_project(0x216B0) || is_project(0x216B1) || is_project(20730) || is_project(20731) || is_project(20732) || is_project(0x226BC) || is_project(0x226BD) || is_project(0x226BE) || is_project(0x226BF)
+        || is_project(22301) || is_project(22302) || is_project(22303) || is_project(22304) || is_project(22309))
+    {
+        return gpio_get_tristate_input(num);
+    }
+    else
+    {
+        return gpio_get_value(num);
+    }
+    //#endif OPLUS_FEATURE_THREESTATE_GPIO
 }
 
 static int get_md_adc_val(__attribute__((unused))unsigned int num)
@@ -190,29 +209,6 @@ static int get_md_gpio_info(char *gpio_name,
 	}
 	gpio_id = get_gpio_id_from_dt(node, gpio_name, md_view_gpio_id);
 	return gpio_id;
-}
-
-static void md_drdi_gpio_status_scan(void)
-{
-	int i;
-	int size;
-	int gpio_id;
-	int gpio_md_view;
-	char *curr;
-	int val;
-
-	CCCI_BOOTUP_LOG(0, RPC, "scan didr gpio status\n");
-	for (i = 0; i < ARRAY_SIZE(gpio_mapping_table); i++) {
-		curr = gpio_mapping_table[i].gpio_name_from_md;
-		size = strlen(curr) + 1;
-		gpio_md_view = -1;
-		gpio_id = get_md_gpio_info(curr, size, &gpio_md_view);
-		if (gpio_id >= 0) {
-			val = get_md_gpio_val(gpio_id);
-			CCCI_BOOTUP_LOG(0, RPC, "GPIO[%s]%d(%d@md),val:%d\n",
-					curr, gpio_id, gpio_md_view, val);
-		}
-	}
 }
 
 static int get_dram_type_clk(int *clk, int *type)
@@ -1377,7 +1373,6 @@ static int port_rpc_init(struct port_t *port)
 	if (first_init) {
 		get_dtsi_eint_node(port->md_id);
 		get_md_dtsi_debug();
-		md_drdi_gpio_status_scan();
 		first_init = 0;
 	}
 	return 0;

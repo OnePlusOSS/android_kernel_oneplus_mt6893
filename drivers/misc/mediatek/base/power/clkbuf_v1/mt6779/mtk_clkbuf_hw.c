@@ -1463,11 +1463,14 @@ void clk_buf_post_init(void)
 	CLK_BUF7_STATUS = CLOCK_BUFFER_DISABLE;
 #endif
 
-#ifndef CONFIG_NFC_CHIP_SUPPORT
-	/* no need to use XO_NFC if no NFC */
-	clk_buf_ctrl_internal(CLK_BUF_NFC, CLK_BUF_FORCE_OFF);
-	CLK_BUF3_STATUS = CLOCK_BUFFER_DISABLE;
-#endif
+//#ifdef VENDOR_EDIT
+//Remove for: adaption nfc
+//#ifndef CONFIG_NFC_CHIP_SUPPORT
+//	/* no need to use XO_NFC if no NFC */
+//	clk_buf_ctrl_internal(CLK_BUF_NFC, CLK_BUF_FORCE_OFF);
+//	CLK_BUF3_STATUS = CLOCK_BUFFER_DISABLE;
+//#endif
+//#endif /* VENDOR_EDIT */
 #ifdef CLKBUF_USE_BBLPM
 	if (bblpm_switch == 2) {
 		clk_buf_ctrl_bblpm_mask(CLK_BUF_BB_MD, true);

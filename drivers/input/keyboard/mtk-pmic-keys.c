@@ -30,6 +30,11 @@
 #include <linux/mfd/mt6357/registers.h>
 #include <linux/mfd/mt6357/core.h>
 
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_THEIA)
+#include <soc/oplus/system/oplus_bscheck.h>
+#include <soc/oplus/system/oplus_brightscreen_check.h>
+#endif
+
 #define MTK_PMIC_PWRKEY_INDEX	0
 #define MTK_PMIC_HOMEKEY_INDEX	1
 #define MTK_PMIC_MAX_KEY_COUNT	2
@@ -50,6 +55,12 @@
 #define HOMEKEY_RST_EN			0x1
 #define RST_DU_MASK				0x3
 #define INVALID_VALUE			0
+
+
+#ifdef OPLUS_BUG_STABILITY
+extern int aee_kpd_enable;
+extern void kpd_aee_handler(u32 keycode, u16 pressed);
+#endif /*OPLUS_BUG_STABILITY*/
 
 struct mtk_pmic_keys_regs {
 	u32 deb_reg;
@@ -226,6 +237,13 @@ static irqreturn_t mtk_pmic_keys_release_irq_handler_thread(
 	dev_dbg(info->keys->dev, "release key =%d using PMIC\n",
 			info->keycode);
 
+#ifdef OPLUS_BUG_STABILITY
+	if (aee_kpd_enable && (info->keycode == KEY_VOLUMEUP)) {
+		pr_info("pmic volup key triggered, pressed is %u\n", 0);
+		kpd_aee_handler(KEY_VOLUMEUP, 0);
+	}
+#endif /*OPLUS_BUG_STABILITY*/
+
 	return IRQ_HANDLED;
 }
 
@@ -245,8 +263,23 @@ static irqreturn_t mtk_pmic_keys_irq_handler_thread(int irq, void *data)
 	input_report_key(info->keys->input_dev, info->keycode, pressed);
 	input_sync(info->keys->input_dev);
 
+        #if IS_ENABLED(CONFIG_OPLUS_FEATURE_THEIA)
+        if(pressed){
+            //we should canel per work
+            black_screen_timer_restart();
+            bright_screen_timer_restart();
+        }
+        #endif
+
 	dev_dbg(info->keys->dev, "(%s) key =%d using PMIC\n",
 		 pressed ? "pressed" : "released", info->keycode);
+
+#ifdef OPLUS_BUG_STABILITY
+	if (aee_kpd_enable && (info->keycode == KEY_VOLUMEUP)) {
+		pr_info("pmic volup key triggered, pressed is %u\n", pressed);
+		kpd_aee_handler(KEY_VOLUMEUP, pressed);
+	}
+#endif /*OPLUS_BUG_STABILITY*/
 
 	return IRQ_HANDLED;
 }

@@ -25,7 +25,7 @@
 #include <linux/slab.h>
 #include "tzbatt_initcfg.h"
 #include <linux/power_supply.h>
-
+#include <soc/oplus/system/oplus_project.h>
 
 /* ************************************ */
 /* Function prototype*/
@@ -423,7 +423,12 @@ struct thermal_cooling_device *cdev, unsigned long state)
 		/* To trigger data abort to reset the system
 		 * for thermal protection.
 		 */
-		BUG();
+#ifndef OPLUS_FEATURE_CHG_BASIC
+		if (get_eng_version() != HIGH_TEMP_AGING)
+			BUG();
+		else
+			pr_info("%s should reset but bypass\n", __func__);
+#endif
 	}
 	return 0;
 }

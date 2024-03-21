@@ -557,8 +557,15 @@ static void tcpc_event_init_work(struct work_struct *work)
 #else
 	tcpc->chg_psy = devm_power_supply_get_by_phandle(
 		tcpc->dev.parent, "charger");
-#endif
-	if (!tcpc->chg_psy) {
+#endif /* ADAPT_CHARGER_V1 */
+
+#ifdef CONFIG_CHARGER_BQ2560X
+	if (IS_ERR_OR_NULL(tcpc->chg_psy)) {
+		tcpc->chg_psy = power_supply_get_by_name("bq2560x");
+		TCPC_ERR("%s get charger psy\n", __func__);
+	}
+#endif /* CONFIG_CHARGER_BQ2560X */
+	if (IS_ERR_OR_NULL(tcpc->chg_psy)) {
 		tcpci_unlock_typec(tcpc);
 		TCPC_ERR("%s get charger psy fail\n", __func__);
 		return;

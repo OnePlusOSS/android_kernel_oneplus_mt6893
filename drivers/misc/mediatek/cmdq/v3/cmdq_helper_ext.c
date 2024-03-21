@@ -45,7 +45,6 @@
 #define CMDQ_PROFILE_LIMIT_0	3000000
 #define CMDQ_PROFILE_LIMIT_1	10000000
 #define CMDQ_PROFILE_LIMIT_2	20000000
-
 struct cmdq_cmd_struct {
 	void *p_va_base;	/* VA: denote CMD virtual address space */
 	dma_addr_t mva_base;	/* PA: denote the PA for CMD */
@@ -3127,7 +3126,6 @@ static void cmdq_core_dump_dbg(const char *tag)
 		}
 		dbg2[i] = CMDQ_REG_GET32(GCE_DBG2);
 	}
-
 	CMDQ_LOG("[%s]dbg0:%#x %#x %#x dbg2:%#x %#x %#x %#x %#x %#x\n",
 		tag, dbg0[0], dbg0[1], dbg0[2],
 		dbg2[0], dbg2[1], dbg2[2], dbg2[3], dbg2[4], dbg2[5]);
@@ -3211,7 +3209,6 @@ u32 *cmdq_core_dump_pc(const struct cmdqRecStruct *handle,
 	dma_addr_t curr_pc = 0;
 	u32 tmp_insts[2] = { 0 };
 	struct cmdq_client *client;
-
 	if (!handle)
 		return NULL;
 
@@ -3230,7 +3227,6 @@ u32 *cmdq_core_dump_pc(const struct cmdqRecStruct *handle,
 
 	if (pcVA) {
 		const u32 op = (insts[1] & 0xFF000000) >> 24;
-
 		cmdq_core_parse_instruction(pcVA,
 			parsedInstruction, sizeof(parsedInstruction));
 

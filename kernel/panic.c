@@ -33,6 +33,18 @@
 
 #define PANIC_TIMER_STEP 100
 #define PANIC_BLINK_SPD 18
+extern void panic_flush_device_cache_handler(int timeout);
+#ifdef OPLUS_FEATURE_PHOENIX
+#include "../drivers/soc/oplus/system/oplus_phoenix/oplus_phoenix.h"
+#include <linux/timer.h>
+#include <linux/timex.h>
+#include <linux/rtc.h>
+int kernel_panic_happened = 0;
+int hwt_happened = 0;
+#endif
+#ifdef OPLUS_BUG_STABILITY
+int is_kernel_panic = 0;
+#endif
 
 int panic_on_oops = CONFIG_PANIC_ON_OOPS_VALUE;
 static unsigned long tainted_mask =
@@ -69,6 +81,33 @@ void __weak panic_smp_self_stop(void)
 	while (1)
 		cpu_relax();
 }
+
+#ifdef OPLUS_FEATURE_PHOENIX
+void deal_fatal_err(void)
+{
+    if(!phx_is_phoenix_boot_completed()) {
+
+        if(kernel_panic_happened) {
+            phx_set_boot_error(ERROR_KERNEL_PANIC);
+        } else if(hwt_happened) {
+            phx_set_boot_error(ERROR_HWT);
+        }
+
+    } else {
+        struct timespec ts;
+        struct rtc_time tm;
+        char err_info[60] = {0};
+
+        getnstimeofday(&ts);
+        rtc_time_to_tm(ts.tv_sec, &tm);
+
+        sprintf(err_info, "panic after bootup @%d-%d-%d %d:%d:%d",
+                tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+        pr_err("panic after bootup @%d-%d-%d %d:%d:%d\n",
+               tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+    }
+}
+#endif /*OPLUS_FEATURE_PHOENIX*/
 
 /*
  * Stop ourselves in NMI context if another CPU has already panicked. Arch code
@@ -181,6 +220,7 @@ void panic(const char *fmt, ...)
 	va_end(args);
 	if (vendor_panic_cb)
 		vendor_panic_cb(0);
+        panic_flush_device_cache_handler(2000);
 	pr_emerg("Kernel panic - not syncing: %s\n", buf);
 #ifdef CONFIG_DEBUG_BUGVERBOSE
 	/*
@@ -257,6 +297,10 @@ void panic(const char *fmt, ...)
 
 	if (!panic_blink)
 		panic_blink = no_blink;
+
+#ifdef OPLUS_BUG_STABILITY
+	is_kernel_panic = 1;
+#endif
 
 	if (panic_timeout > 0) {
 		/*
@@ -473,6 +517,10 @@ int oops_may_print(void)
  */
 void oops_enter(void)
 {
+#ifdef OPLUS_BUG_STABILITY
+	is_kernel_panic = 1;
+#endif
+
 	tracing_off();
 	/* can't trust the integrity of the kernel anymore: */
 	debug_locks_off();

@@ -268,10 +268,10 @@ unsigned int __spm_output_wake_reason(
 	WARN_ON(log_size >= LOG_BUF_OUT_SZ);
 
 	if (!suspend)
-		printk_deferred("[name:spm&][SPM] %s", log_buf);
+		no_printk("[name:spm&][SPM] %s", log_buf);
 	else {
 		aee_sram_printk("%s", log_buf);
-		printk_deferred("[name:spm&][SPM] %s", log_buf);
+		no_printk("[name:spm&][SPM] %s", log_buf);
 	}
 
 	return wr;

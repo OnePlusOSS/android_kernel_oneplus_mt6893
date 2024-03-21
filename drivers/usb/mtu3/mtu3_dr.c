@@ -504,8 +504,15 @@ static int ssusb_role_sw_set(struct device *dev, enum usb_role role)
 			ssusb_set_force_mode(ssusb, MTU3_DR_FORCE_DEVICE);
 			if (ssusb->clk_mgr) {
 				/* unregister host driver */
+#ifdef OPLUS_FEATURE_CHG_BASIC
+#if defined(CONFIG_MACH_MT6785)
+				ssusb_set_mailbox(otg_sx, MTU3_ID_FLOAT);
+				of_platform_depopulate(dev);
+#else
 				of_platform_depopulate(dev);
 				ssusb_set_mailbox(otg_sx, MTU3_ID_FLOAT);
+#endif
+#endif
 				ssusb_ip_sleep(ssusb);
 				ssusb_phy_power_off(ssusb);
 				ssusb_clks_disable(ssusb);

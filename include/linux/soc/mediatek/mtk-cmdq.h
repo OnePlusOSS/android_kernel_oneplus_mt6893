@@ -409,7 +409,9 @@ void cmdq_buf_cmd_parse(u64 *buf, u32 cmd_nr, dma_addr_t buf_pa,
 s32 cmdq_pkt_dump_buf(struct cmdq_pkt *pkt, dma_addr_t curr_pa);
 
 int cmdq_dump_pkt(struct cmdq_pkt *pkt, dma_addr_t pc, bool dump_inst);
-
+#ifdef CONFIG_MTK_MT6382_BDG
+void cmdq_pkt_sleep_by_poll(struct cmdq_pkt *pkt, u32 tick);
+#endif
 void cmdq_pkt_set_err_cb(struct cmdq_pkt *pkt,
 	cmdq_async_flush_cb cb, void *data);
 

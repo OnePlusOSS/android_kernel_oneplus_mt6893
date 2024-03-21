@@ -1,0 +1,1 @@
+bringup lcm for project 226AF,and this panel is nt36672c_tm_fhd_dsi_vdo_dphy.c

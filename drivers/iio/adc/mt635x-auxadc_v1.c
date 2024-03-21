@@ -101,6 +101,14 @@ static struct auxadc_channels auxadc_chans[] = {
 	MT635x_AUXADC_CHANNEL(HPOFS_CAL, 9, 15),
 	MT635x_AUXADC_CHANNEL(DCXO_TEMP, 10, 15),
 	MT635x_AUXADC_CHANNEL(VBIF, 11, 12),
+#if defined(CONFIG_MACH_MT6785)
+	MT635x_AUXADC_CHANNEL(IMP, 0, 15),
+	[AUXADC_IMIX_R] = {
+		.type = IIO_RESISTANCE,
+		.info_mask = BIT(IIO_CHAN_INFO_RAW),
+		.ch_name = "IMIX_R",
+	}
+#endif
 };
 
 struct auxadc_regs {
@@ -470,11 +478,17 @@ static int mt635x_auxadc_read_raw(struct iio_dev *indio_dev,
 	default:
 		return -EINVAL;
 	}
+
+        // do not print this for user version as ALPS06371092
+        if (strstr(saved_command_line, "buildvariant=userdebug") ||
+            strstr(saved_command_line, "buildvariant=eng")) {
+
 	if (__ratelimit(&ratelimit)) {
 		dev_info(adc_dev->dev,
 			"name:%s, channel=%d, adc_out=0x%x, adc_result=%d\n",
 			auxadc_chan->ch_name, auxadc_chan->ch_num,
 			auxadc_out, *val);
+	}
 	}
 	return ret;
 

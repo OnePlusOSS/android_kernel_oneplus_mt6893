@@ -560,7 +560,7 @@ static struct tcf_block *tcf_block_find(struct net *net, struct Qdisc **q,
 			*q = dev->qdisc;
 			*parent = (*q)->handle;
 		} else {
-			*q = qdisc_lookup(dev, TC_H_MAJ(*parent));
+			*q = qdisc_lookup_rcu(dev, TC_H_MAJ(*parent));
 			if (!*q) {
 				NL_SET_ERR_MSG(extack, "Parent Qdisc doesn't exists");
 				return ERR_PTR(-EINVAL);

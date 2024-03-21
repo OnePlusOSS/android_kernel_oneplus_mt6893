@@ -286,6 +286,8 @@ static s32 cmdq_clk_enable(struct cmdq *cmdq)
 #if IS_ENABLED(CONFIG_MACH_MT6873) || IS_ENABLED(CONFIG_MACH_MT6853)
 		writel((0x7 << 16) + 0x7, cmdq->base + GCE_GCTL_VALUE);
 		writel(0, cmdq->base + GCE_DEBUG_START_ADDR);
+#else
+		writel(0, cmdq->base + GCE_GCTL_VALUE);
 #endif
 		/* make sure pm not suspend */
 		cmdq_lock_wake_lock(cmdq, true);
@@ -330,6 +332,8 @@ static void cmdq_clk_disable(struct cmdq *cmdq)
 		/* clear tpr mask */
 		writel(0, cmdq->base + CMDQ_TPR_MASK);
 #if IS_ENABLED(CONFIG_MACH_MT6873) || IS_ENABLED(CONFIG_MACH_MT6853)
+		writel(0x7, cmdq->base + GCE_GCTL_VALUE);
+#else
 		writel(0x7, cmdq->base + GCE_GCTL_VALUE);
 #endif
 		/* now allow pm suspend */

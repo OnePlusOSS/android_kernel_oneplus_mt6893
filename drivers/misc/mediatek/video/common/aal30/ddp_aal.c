@@ -1416,18 +1416,28 @@ static void disp_aal_notify_backlight_log(int bl_1024)
 void disp_aal_notify_backlight_changed(int bl_1024)
 {
 	unsigned long flags;
-	int max_backlight;
+	/* #ifndef OPLUS_BUG_STABILITY */
+	/*
+	JianBin.Zhang@PSW.MultiMedia.Display.LCD.Machine, 2020/06/12,
+	modify for multibits backlight.
+	*/
+	/* int max_backlight; */
+	/* #endif */ /* OPLUS_BUG_STABILITY */
 	unsigned int service_flags;
 
 	/* pr_debug("disp_aal_notify_backlight_changed: %d/1023", bl_1024); */
 	disp_aal_notify_backlight_log(bl_1024);
 
 	disp_aal_exit_idle(__func__, 1);
-
-	max_backlight = disp_pwm_get_max_backlight(DISP_PWM0);
+	/* #ifndef OPLUS_BUG_STABILITY */
+	/*
+	Jianbin.Zhang@PSW.MultiMedia.Display.LCD.Machine, 2020/06/12,
+	modify for multibits backlight.
+	*/
+	/* max_backlight = disp_pwm_get_max_backlight(DISP_PWM0);
 	if (bl_1024 > max_backlight)
-		bl_1024 = max_backlight;
-
+		bl_1024 = max_backlight; */
+	/* #endif */ /* OPLUS_BUG_STABILITY */
 	atomic_set(&g_aal_backlight_notified, bl_1024);
 
 	service_flags = 0;
@@ -1456,14 +1466,21 @@ void disp_aal_notify_backlight_changed(int bl_1024)
 	g_aal_hist.serviceFlags |= service_flags;
 	spin_unlock_irqrestore(&g_aal_hist_lock, flags);
 
-	if (atomic_read(&g_aal_is_init_regs_valid) == 1) {
+	/* #ifndef OPLUS_BUG_STABILITY */
+	/*
+	* modify for support aod state.
+	*/
+	/* if (atomic_read(&g_aal_is_init_regs_valid) == 1) {
 		spin_lock_irqsave(&g_aal_irq_en_lock, flags);
 		atomic_set(&g_aal_force_enable_irq, 1);
 		disp_aal_set_interrupt(1);
-		spin_unlock_irqrestore(&g_aal_irq_en_lock, flags);
+		spin_unlock_irqrestore(&g_aal_irq_en_lock, flags); */
 		/* Backlight latency should be as smaller as possible */
-		disp_aal_trigger_refresh(AAL_REFRESH_17MS);
-	}
+		/* disp_aal_trigger_refresh(AAL_REFRESH_17MS);
+	} */
+	/* #else */
+	backlight_brightness_set_with_lock(bl_1024);
+	/* #endif */
 }
 
 
@@ -1730,8 +1747,22 @@ int disp_aal_set_param(struct DISP_AAL_PARAM __user *param,
 	AAL_DBG("(latency = %d): ret = %d",
 		g_aal_param.refreshLatency, ret);
 
-	backlight_brightness_set(backlight_value);
+	/* #ifdef OPLUS_BUG_STABILITY */
+	/*
+	Yongpeng.Yi@PSW.MultiMedia.Display.LCD.Machine, 2017/12/08,
+	modify for multibits backlight.
+	*/
+	if (backlight_value > LED_FULL) {
+		backlight_value = LED_FULL;
+	}
+	/* #endif */ /* OPLUS_BUG_STABILITY */
 
+	/* #ifndef OPLUS_BUG_STABILITY */
+	/*
+	* modify for support aod state.
+	*/
+	/* backlight_brightness_set(backlight_value); */
+	/* #endif */
 	disp_aal_flip_sram(cmdq, __func__);
 	disp_aal_trigger_refresh(g_aal_param.refreshLatency);
 

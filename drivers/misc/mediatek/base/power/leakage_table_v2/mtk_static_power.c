@@ -499,6 +499,7 @@ int mt_spower_init(void)
 		err_flag = 1;
 		goto efuse_end;
 	}
+
 	pdev = of_device_alloc(node, NULL, NULL);
 	if (pdev == NULL) {
 		pr_notice("%s fail to create pdev 1 (eem_fsm)\n", __func__);
@@ -508,6 +509,7 @@ int mt_spower_init(void)
 			err_flag = 1;
 			goto efuse_end;
 		}
+
 		pdev = of_device_alloc(node, NULL, NULL);
 		if (pdev == NULL) {
 			pr_notice("%s fail to create pdev 1 (lkg)\n", __func__);

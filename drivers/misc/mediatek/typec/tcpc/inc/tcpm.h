@@ -137,7 +137,13 @@ enum {
 	TCP_NOTIFY_REQUEST_BAT_INFO,
 	TCP_NOTIFY_WD_STATUS,
 	TCP_NOTIFY_CABLE_TYPE,
-	TCP_NOTIFY_MISC_END = TCP_NOTIFY_CABLE_TYPE,
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	TCP_NOTIFY_PLUG_OUT,
+	TCP_NOTIFY_CHRDET_STATE,
+	TCP_NOTIFY_SWITCH_GET_STATE,
+	TCP_NOTIFY_SWITCH_SET_STATE,
+	TCP_NOTIFY_MISC_END = TCP_NOTIFY_SWITCH_SET_STATE,
+#endif
 };
 
 struct tcp_ny_pd_state {
@@ -295,6 +301,25 @@ enum tcpc_cable_type {
 struct tcp_ny_cable_type {
 	enum tcpc_cable_type type;
 };
+#ifdef OPLUS_FEATURE_CHG_BASIC
+struct tcp_ny_chrdet_state {
+	bool chrdet;
+};
+
+struct tcp_ny_switch_set_status {
+	bool	 state;		/* 0: DP/DM state;  1: fastchg state */
+	bool 	(*pfunc)(int);	/* recevier call the pfunc to ack.*/
+};
+
+struct tcp_ny_switch_get_status {
+	bool	(*pfunc)(int);  /*recevier call the pfunc to ack.
+				* 0: default DP/DM state
+				* 1: fastchg state
+				* 2: audio state
+				* 3: unknow state
+				*/
+};
+#endif
 
 struct tcp_notify {
 	union {
@@ -314,6 +339,11 @@ struct tcp_notify {
 		struct tcp_ny_request_bat request_bat;
 		struct tcp_ny_wd_status wd_status;
 		struct tcp_ny_cable_type cable_type;
+#ifdef OPLUS_FEATURE_CHG_BASIC
+		struct tcp_ny_chrdet_state chrdet_state;
+		struct tcp_ny_switch_set_status switch_set_status;
+		struct tcp_ny_switch_get_status switch_get_status;
+#endif
 	};
 };
 
@@ -425,7 +455,9 @@ enum pd_cable_current_limit {
 #define DPM_CAP_ATTEMP_ENTER_DP_MODE		(1<<13)
 #define DPM_CAP_ATTEMP_DISCOVER_CABLE		(1<<14)
 #define DPM_CAP_ATTEMP_DISCOVER_ID		(1<<15)
+#ifdef OPLUS_FEATURE_CHG_BASIC
 #define DPM_CAP_ATTEMP_DISCOVER_SVID		(1<<16)
+#endif
 
 enum dpm_cap_pr_check_prefer {
 	DPM_CAP_PR_CHECK_DISABLE = 0,
@@ -433,12 +465,14 @@ enum dpm_cap_pr_check_prefer {
 	DPM_CAP_PR_CHECK_PREFER_SRC = 2,
 };
 
-#define DPM_CAP_PR_CHECK_PROP(cap)		((cap & 0x03) << 18)
+#ifdef OPLUS_FEATURE_CHG_BASIC
+#define DPM_CAP_PR_CHECK_PROP(cap)			((cap & 0x03) << 18)
 #define DPM_CAP_EXTRACT_PR_CHECK(raw)		((raw >> 18) & 0x03)
 #define DPM_CAP_PR_SWAP_REJECT_AS_SRC		(1<<20)
 #define DPM_CAP_PR_SWAP_REJECT_AS_SNK		(1<<21)
 #define DPM_CAP_PR_SWAP_CHECK_GP_SRC		(1<<22)
 #define DPM_CAP_PR_SWAP_CHECK_GP_SNK		(1<<23)
+#endif
 #define DPM_CAP_PR_SWAP_CHECK_GOOD_POWER	\
 	(DPM_CAP_PR_SWAP_CHECK_GP_SRC | DPM_CAP_PR_SWAP_CHECK_GP_SNK)
 

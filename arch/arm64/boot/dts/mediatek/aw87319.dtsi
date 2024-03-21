@@ -1,0 +1,10 @@
+/* AWINIC AW87319 Smart PA */
+&i2c3 {
+    aw87319@58 {
+        compatible = "awinic,aw87319_pa";
+        reg = <0x58>;
+        reset-gpio = <&pio 164 0>;
+        status = "okay";
+    };
+};
+/* AWINIC AW87319 Smart PA END*/

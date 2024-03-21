@@ -1,6 +1,14 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2019 MediaTek Inc.
+ * Copyright (C) 2016 MediaTek Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See http://www.gnu.org/licenses/gpl-2.0.html for more details.
  */
 
 #define PFX "IMX586_pdafotp"
@@ -33,7 +41,7 @@
 
 
 #define MTK_IDENTITY_VALUE 0x010B00FF
-#define LRC_SIZE 384
+#define LRC_SIZE 140
 #define DCC_SIZE 96
 
 struct EEPROM_PDAF_INFO {
@@ -57,9 +65,9 @@ static struct EEPROM_PDAF_INFO eeprom_pdaf_info[] = {
 		.DCC_size = DCC_SIZE
 	},
 	{/* OP_FMT */
-		.LRC_addr = 0x1620,
+		.LRC_addr = 0x700,
 		.LRC_size = LRC_SIZE,
-		.DCC_addr = 0x18D0,
+		.DCC_addr = 0xB06,
 		.DCC_size = DCC_SIZE
 	},
 };

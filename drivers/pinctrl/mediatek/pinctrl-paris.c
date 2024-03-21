@@ -15,6 +15,12 @@
 #include <dt-bindings/pinctrl/mt65xx.h>
 #include "pinctrl-paris.h"
 
+/*****************************************************************/
+#ifdef OPLUS_FEATURE_CHG_BASIC
+#include <soc/oplus/system/oplus_project.h>
+#endif
+/*****************************************************************/
+
 #define PINCTRL_PINCTRL_DEV	KBUILD_MODNAME
 
 /* Custom pinconf parameters */
@@ -908,6 +914,94 @@ static int mtk_gpio_set_config(struct gpio_chip *chip, unsigned int offset,
 	return mtk_eint_set_debounce(hw->eint, desc->eint.eint_n, debounce);
 }
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+//TODO:temporary solution, use gpio instead.
+static int pinctrl_inited = 0;
+static DEFINE_MUTEX(Oplus_gpio_lock);
+struct mtk_pinctrl *g_pctl;
+static inline int is_projects_supported(void)
+{
+	unsigned int project = get_project();
+
+	switch (project) {
+	case 21331:
+	case 21332:
+	case 21333:
+	case 21334:
+	case 21335:
+	case 21336:
+	case 21337:
+	case 21338:
+	case 22261:
+	case 22262:
+	case 22263:
+	case 22264:
+	case 22265:
+	case 22266:
+		return 1;
+
+	default:
+		return 0;
+	}
+}
+
+void oplus_gpio_switch_lock(void)
+{
+	if (!is_projects_supported())
+		return;
+	return mutex_lock(&Oplus_gpio_lock);
+}
+
+void oplus_gpio_switch_unlock(void)
+{
+	if (!is_projects_supported())
+		return;
+	return mutex_unlock(&Oplus_gpio_lock);
+}
+
+void oplus_gpio_value_switch(unsigned int pin, unsigned int val)
+{
+	struct pinctrl_dev *pctldev;
+
+	if (!is_projects_supported())
+		return;
+
+	if (!pinctrl_inited)
+		return;
+
+	if (!g_pctl)
+		return;
+
+	pctldev = g_pctl->pctrl;
+
+	mtk_pinmux_gpio_set_direction(pctldev, NULL, pin, false);
+	mtk_gpio_set(&g_pctl->chip, pin, !!val);
+	pr_err("%s, output value is %d\n", __func__, mtk_gpio_get(&g_pctl->chip, pin));
+}
+
+#ifndef CONFIG_TCPC_CLASS
+void oplus_gpio_set_direction(unsigned int pin)
+{
+	struct pinctrl_dev *pctldev;
+
+	if (!is_projects_supported())
+		return;
+
+	if (!pinctrl_inited)
+		return;
+
+	if (!g_pctl)
+		return;
+
+	pctldev = g_pctl->pctrl;
+
+	mtk_pinmux_gpio_set_direction(pctldev, NULL, pin, true);
+
+	pr_err("%s,set pinctl input\n", __func__);
+}
+#endif
+#endif
+
 static int mtk_build_gpiochip(struct mtk_pinctrl *hw, struct device_node *np)
 {
 	struct gpio_chip *chip = &hw->chip;
@@ -1076,6 +1170,13 @@ int mtk_paris_pinctrl_probe(struct platform_device *pdev,
 
 	platform_set_drvdata(pdev, hw);
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+#ifndef CONFIG_TCPC_CLASS
+//add for id_gpio switch.
+	pinctrl_inited = 1;
+	g_pctl = hw;
+#endif
+#endif
 	return 0;
 }
 EXPORT_SYMBOL_GPL(mtk_paris_pinctrl_probe);

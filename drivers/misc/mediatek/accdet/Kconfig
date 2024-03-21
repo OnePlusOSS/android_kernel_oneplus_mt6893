@@ -21,3 +21,7 @@ config ACCDET_SUPPORT_EINT0
 	  If you just want to use MediaTek PMIC ACCDET EINT0,
 	  say Y.
 	  If unsure, say N.
+#2019/09/27,add for SIA PA ALGO
+config HSKEY_BLOCK
+	bool "Block hskey for 1s"
+	default n

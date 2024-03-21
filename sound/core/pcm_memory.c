@@ -385,7 +385,11 @@ int snd_pcm_lib_free_pages(struct snd_pcm_substream *substream)
 	runtime = substream->runtime;
 	if (runtime->dma_area == NULL)
 		return 0;
+#ifdef OPLUS_ARCH_EXTENDS
+	if ((runtime->dma_buffer_p != NULL) && (runtime->dma_buffer_p != &substream->dma_buffer)) {
+#else
 	if (runtime->dma_buffer_p != &substream->dma_buffer) {
+#endif
 		/* it's a newly allocated buffer.  release it now. */
 		snd_dma_free_pages(runtime->dma_buffer_p);
 		kfree(runtime->dma_buffer_p);

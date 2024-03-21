@@ -1,0 +1,144 @@
+// SPDX-License-Identifier: GPL-2.0+
+/*
+ * Copyright (c) 2019 MediaTek Inc.
+ *
+ */
+
+&spi2 {
+    #address-cells = <1>;
+    #size-cells = <0>;
+    status = "ok";
+
+	touch_ts@0 {
+		compatible = "ilitek,ili7807s","novatek,nf_nt36672c";
+		reg = <0>;
+		chip-name = "OPLUS_TP_NOFLASH";
+		status = "ok";
+
+		spi-max-frequency = <12000000>;    //4800000,9600000,10000000,15000000,19200000
+		reset-gpio = <&pio 34 0x00>;
+		interrupt-parent = <&pio>;
+		interrupts = <1 0x0>;
+		irq-gpio = <&pio 1 0x2002>;
+
+		/*tp-pinctrl*/
+		pinctrl-names = "default", "pin_set_low", "pin_set_high";
+		pinctrl-0 = <&ctp_tp_spi_mode>;
+		pinctrl-1 = <&ctp_ts_cs_poweroff &ctp_ts_int_poweroff &ctp_ts_reset_poweroff>;
+		pinctrl-2 = <&ctp_ts_cs_poweron  &ctp_ts_int_poweron  &ctp_ts_reset_poweron>;
+
+		touchpanel,max-num-support = <10>;
+		touchpanel,tx-rx-num = <16 36>;
+		touchpanel,panel-coords = <4320 9600>;
+		touchpanel,display-coords = <1080 2400>;
+		touchpanel,touchmajor-limit = <0 54>;
+		touchpanel,button-type = <4>;
+		touchpanel.button-TRx = <0 0>;
+
+		platform_support_project = <22351 22352 22353>;
+		platform_support_project_dir = <22351 22351 22351>;
+		platform_support_project_commandline = "default_commandline","default_commandline","default_commandline";
+
+		touchpanel,smooth-level = <255 5 4 3 2 1>;
+		touchpanel,sensitive-level = <255 1 2 3 4 5>;
+		touchpanel,single-optimized-time = <8>;
+		touchpanel,msecs-to-jiffies-time = <500>;
+
+		incell_screen;
+		fw_edge_limit_support;
+		black_gesture_support;
+		charger_pump_support;
+		esd_handle_support;
+		black_gesture_test_support;
+		noflash_support;
+		smart_gesture_support;
+		fw_update_app_support;
+		pressure_report_support;
+		new_set_irq_wake_support;
+		lcd_trigger_load_tp_fw_support;
+		fw_update_in_probe_with_headfile;
+		health_monitor_v2_support;
+		exception_upload_support;
+		irq_need_dev_resume_ok;
+		ili7807s {
+			label = "ILI7807S_HX";
+			tx-rx-num = <16 36>;
+			panel-coords = <4320 9600>;
+			display-coords = <1080 2400>;
+			touchmajor-limit = <0 54>;
+			single-optimized-time = <8>;
+			smooth-level = <255 5 4 3 2 1>;
+			sensitive-level = <255 1 2 3 4 5>;
+		};
+		nf_nt36672c {
+			label = "NT36672C_TM";
+			tx-rx-num = <16 36>;
+			panel-coords = <4320 9600>;
+			display-coords = <1080 2400>;
+			touchmajor-limit = <0 54>;
+			single-optimized-time = <8>;
+			smooth-level = <255 0 96 192 223 254>;
+			sensitive-level = <255 20 15 10 6 3>;
+		};
+	};
+};
+
+&pio {
+	ctp_tp_spi_mode:ctp_tp_spi_mode{
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO28__FUNC_SPI2_MI>,
+				<PINMUX_GPIO26__FUNC_SPI2_MO>,
+				<PINMUX_GPIO27__FUNC_SPI2_CLK>,
+				<PINMUX_GPIO25__FUNC_SPI2_CSB>;
+			drive-strength = <2>;
+		};
+	};
+	ctp_ts_cs_poweroff: ctp_ts_cs_poweroff {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO25__FUNC_GPIO25>;
+			slew-rate = <1>;
+			output-low;
+			bias-disable;
+		};
+	};
+	ctp_ts_cs_poweron: ctp_ts_cs_poweron {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO25__FUNC_SPI2_CSB>;
+			drive-strength = <2>;
+		};
+	};
+	ctp_ts_int_poweroff: ctp_ts_int_poweroff {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO1__FUNC_GPIO1>;
+			slew-rate = <1>;
+			output-low;
+			bias-disable;
+		};
+	};
+	ctp_ts_int_poweron: ctp_ts_int_poweron {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO1__FUNC_GPIO1>;
+			slew-rate = <0>;
+			input-enable;
+			bias-pull-up = <00>;
+		};
+	};
+	ctp_ts_reset_poweroff: ctp_ts_reset_poweroff {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO34__FUNC_GPIO34>;
+			slew-rate = <1>;
+			output-low;
+			bias-disable;
+		};
+	};
+
+	ctp_ts_reset_poweron: ctp_ts_reset_poweron {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO34__FUNC_GPIO34>;
+			slew-rate = <1>;
+			output-high;
+			bias-disable;
+		};
+	};
+};
+/* TOUCH end */

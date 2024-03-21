@@ -442,6 +442,9 @@ struct mt_i2c {
 	const struct mtk_i2c_compatible *dev_comp;
 	struct mtk_i2c_pll *i2c_pll_info;
 	struct i2c_info rec_info[I2C_RECORD_LEN];
+#ifdef OPLUS_FEATURE_CHG_BASIC
+		struct pinctrl *pctrl;
+#endif /*OPLUS_FEATURE_CHG_BASIC*/
 };
 
 #if defined(CONFIG_MTK_FPGA) || defined(CONFIG_FPGA_EARLY_PORTING)

@@ -21,6 +21,7 @@ obj-y += ../common/$(COMMON_VERSION)/eeprom_utils.o
 
 # Platform code
 obj-y += eeprom_i2c_custom_driver.o
+obj-y += otp_insensor_dev.o
 
 
 define INC_CUSTOM_SRC

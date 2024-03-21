@@ -60,6 +60,10 @@
 #include "mtk_pd.h"
 #include "mtk_charger_algorithm_class.h"
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+#include <tcpm.h>
+#endif
+
 static int pd_dbg_level = PD_DEBUG_LEVEL;
 #define PD_VBUS_IR_DROP_THRESHOLD 1200
 
@@ -469,6 +473,57 @@ int __mtk_pdc_setup(struct chg_alg_device *alg, int idx)
 	return ret;
 }
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+int oplus_pdc_setup(int *vbus_mv, int *ibus_ma)
+{
+	int ret = 0;
+	int vbus_mv_t = 0;
+	int ibus_ma_t = 0;
+	struct tcpc_device *tcpc = NULL;
+
+	tcpc = tcpc_dev_get_by_name("type_c_port0");
+	if (tcpc == NULL) {
+		printk(KERN_ERR "%s:get type_c_port0 fail\n", __func__);
+		return -EINVAL;
+	}
+
+	ret = tcpm_dpm_pd_request(tcpc, *vbus_mv, *ibus_ma, NULL);
+	if (ret != TCPM_SUCCESS) {
+		printk(KERN_ERR "%s: tcpm_dpm_pd_request fail\n", __func__);
+		return -EINVAL;
+	}
+
+	ret = tcpm_inquire_pd_contract(tcpc, &vbus_mv_t, &ibus_ma_t);
+	if (ret != TCPM_SUCCESS) {
+		printk(KERN_ERR "%s: inquire current vbus_mv and ibus_ma fail\n", __func__);
+		return -EINVAL;
+	}
+
+	printk(KERN_ERR "%s: request vbus_mv[%d], ibus_ma[%d]\n", __func__, vbus_mv_t, ibus_ma_t);
+
+	return 0;
+}
+
+int oplus_pdc_get(int *vbus_mv, int *ibus_ma)
+{
+	int ret = 0;
+	struct tcpc_device *tcpc = NULL;
+
+	tcpc = tcpc_dev_get_by_name("type_c_port0");
+	if (tcpc == NULL) {
+		printk(KERN_ERR "%s:get type_c_port0 fail\n", __func__);
+		return -EINVAL;
+	}
+
+	ret = tcpm_inquire_pd_contract(tcpc, vbus_mv, ibus_ma);
+	if (ret != TCPM_SUCCESS) {
+		printk(KERN_ERR "%s: inquire current vbus_mv and ibus_ma fail\n", __func__);
+		return -EINVAL;
+	}
+	printk(KERN_ERR "%s: default vbus_mv[%d], ibus_ma[%d]\n", __func__, *vbus_mv, *ibus_ma);
+	return 0;
+}
+#endif /* OPLUS_FEATURE_CHG_BASIC */
 
 void mtk_pdc_reset(struct chg_alg_device *alg)
 {

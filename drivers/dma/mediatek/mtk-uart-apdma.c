@@ -142,8 +142,33 @@ static void mtk_uart_apdma_start_tx(struct mtk_chan *c)
 				to_mtk_uart_apdma_dev(c->vc.chan.device);
 	struct mtk_uart_apdma_desc *d = c->desc;
 	unsigned int wpt, vff_sz;
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/*BSP.CHG.Basic 2022/12/2 add for FTM lost 2 characters*/
+	unsigned int rst_status;
+#endif
 
 	vff_sz = c->cfg.dst_port_window_size;
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/*BSP.CHG.Basic 2022/12/2 add for FTM lost 2 characters*/
+	wpt = mtk_uart_apdma_read(c, VFF_ADDR);
+	if (wpt == ((unsigned int)d->addr)) {
+		pr_info("%s: d->addr[%d] \n", __func__, (unsigned int)d->addr);
+		mtk_uart_apdma_write(c, VFF_ADDR, 0);
+		mtk_uart_apdma_write(c, VFF_THRE, 0);
+		mtk_uart_apdma_write(c, VFF_LEN, 0);
+		mtk_uart_apdma_write(c, VFF_RST, VFF_WARM_RST_B);
+		/* Make sure cmd sequence */
+		mb();
+		udelay(1);
+		rst_status = mtk_uart_apdma_read(c, VFF_RST);
+		if (rst_status != 0) {
+			udelay(5);
+			pr_info("%s: apdma: rst_status: 0x%x, new rst_status: 0x%x!\n",
+				__func__, rst_status, mtk_uart_apdma_read(c, VFF_RST));
+		}
+	}
+#endif
+
 	if (!mtk_uart_apdma_read(c, VFF_LEN)) {
 		mtk_uart_apdma_write(c, VFF_ADDR, d->addr);
 		mtk_uart_apdma_write(c, VFF_LEN, vff_sz);

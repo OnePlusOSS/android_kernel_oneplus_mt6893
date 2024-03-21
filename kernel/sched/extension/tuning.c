@@ -46,10 +46,17 @@ EXPORT_SYMBOL(set_sched_rotation_enable);
 enum {
 	SCHED_NO_BOOST = 0,
 	SCHED_ALL_BOOST,
+#ifdef CONFIG_OPLUS_FG_BOOST
+	SCHED_FG_BOOST,
+#endif /* CONFIG_OPLUS_FG_BOOST */
 };
 
 /*global variable for recording customer's setting type*/
+#ifdef CONFIG_OPLUS_FG_BOOST
+/*static*/ int sched_boost_type = SCHED_NO_BOOST;
+#else
 static int sched_boost_type = SCHED_NO_BOOST;
+#endif /* CONFIG_OPLUS_FG_BOOST */
 
 int get_task_group_path(struct task_group *tg, char *buf, size_t buf_len)
 {
@@ -63,11 +70,19 @@ int get_task_group_path(struct task_group *tg, char *buf, size_t buf_len)
  */
 int set_sched_boost_type(int type)
 {
-	if (type < SCHED_NO_BOOST || type > SCHED_ALL_BOOST) {
+#ifdef CONFIG_OPLUS_FG_BOOST
+	if (type < SCHED_NO_BOOST || type > SCHED_FG_BOOST) {
 		pr_info("Sched boost type should between %d-%d but your valuse is %d\n",
-		       SCHED_NO_BOOST, SCHED_ALL_BOOST, type);
+			SCHED_NO_BOOST, SCHED_FG_BOOST, type);
 		return -1;
 	}
+#else
+	if (type < SCHED_NO_BOOST || type > SCHED_ALL_BOOST) {
+	pr_info("Sched boost type should between %d-%d but your valuse is %d\n",
+			SCHED_NO_BOOST, SCHED_ALL_BOOST, type);
+		return -1;
+	}
+#endif /* CONFIG_OPLUS_FG_BOOST */
 
 	sched_boost_type = type;
 

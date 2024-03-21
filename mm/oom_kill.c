@@ -60,6 +60,10 @@
 int sysctl_panic_on_oom;
 int sysctl_oom_kill_allocating_task;
 int sysctl_oom_dump_tasks = 1;
+int sysctl_reap_mem_on_sigkill = 1;
+
+static int panic_on_adj_zero;
+module_param(panic_on_adj_zero, int, 0644);
 
 /*
  * Serializes oom killer invocations (out_of_memory()) from all contexts to
@@ -437,6 +441,11 @@ static void dump_tasks(struct mem_cgroup *memcg, const nodemask_t *nodemask)
 	}
 	rcu_read_unlock();
 }
+/* show tasks' memory usage */
+void show_task_mem(void)
+{
+	dump_tasks(NULL, NULL);
+}
 
 /* dump extra info: HW memory usage */
 static void oom_dump_extra_info(void)
@@ -684,6 +693,16 @@ static inline void wake_oom_reaper(struct task_struct *tsk)
 }
 #endif /* CONFIG_MMU */
 
+static void __mark_oom_victim(struct task_struct *tsk)
+{
+	struct mm_struct *mm = tsk->mm;
+
+	if (!cmpxchg(&tsk->signal->oom_mm, NULL, mm)) {
+		mmgrab(tsk->signal->oom_mm);
+		set_bit(MMF_OOM_VICTIM, &mm->flags);
+	}
+}
+
 /**
  * mark_oom_victim - mark the given task as OOM victim
  * @tsk: task to mark
@@ -696,18 +715,13 @@ static inline void wake_oom_reaper(struct task_struct *tsk)
  */
 static void mark_oom_victim(struct task_struct *tsk)
 {
-	struct mm_struct *mm = tsk->mm;
-
 	WARN_ON(oom_killer_disabled);
 	/* OOM killer might race with memcg OOM */
 	if (test_and_set_tsk_thread_flag(tsk, TIF_MEMDIE))
 		return;
 
 	/* oom_mm is bound to the signal struct life time. */
-	if (!cmpxchg(&tsk->signal->oom_mm, NULL, mm)) {
-		mmgrab(tsk->signal->oom_mm);
-		set_bit(MMF_OOM_VICTIM, &mm->flags);
-	}
+	 __mark_oom_victim(tsk);
 
 	/*
 	 * Make sure that the task is woken up from uninterruptible sleep
@@ -1182,4 +1196,45 @@ void pagefault_out_of_memory(void)
 		return;
 	out_of_memory(&oc);
 	mutex_unlock(&oom_lock);
+}
+
+void add_to_oom_reaper(struct task_struct *p)
+{
+	static DEFINE_RATELIMIT_STATE(reaper_rs, DEFAULT_RATELIMIT_INTERVAL,
+						DEFAULT_RATELIMIT_BURST);
+
+	if (!sysctl_reap_mem_on_sigkill)
+		return;
+
+	p = find_lock_task_mm(p);
+	if (!p)
+		return;
+
+	get_task_struct(p);
+	if (task_will_free_mem(p)) {
+		__mark_oom_victim(p);
+		wake_oom_reaper(p);
+	}
+	task_unlock(p);
+
+	if (!strcmp(current->comm, ULMK_MAGIC) && __ratelimit(&reaper_rs)
+			&& p->signal->oom_score_adj == 0) {
+		show_mem(SHOW_MEM_FILTER_NODES, NULL);
+	}
+
+	put_task_struct(p);
+}
+
+/*
+ * Should be called prior to sending sigkill. To guarantee that the
+ * process to-be-killed is still untouched.
+ */
+void check_panic_on_foreground_kill(struct task_struct *p)
+{
+	if (unlikely(!strcmp(current->comm, ULMK_MAGIC)
+			&& p->signal->oom_score_adj == 0
+			&& panic_on_adj_zero)) {
+		show_mem(SHOW_MEM_FILTER_NODES, NULL);
+		panic("Attempt to kill foreground task: %s", p->comm);
+	}
 }

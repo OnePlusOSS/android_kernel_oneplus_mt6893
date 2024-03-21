@@ -1486,11 +1486,22 @@ static void musb_shutdown(struct platform_device *pdev)
 	#endif
 
 	DBG(0, "shut down\n");
+
+	#ifdef OPLUS_FEATURE_CHG_BASIC
+	DBG(0, "Disable musb irq.\n");
+	disable_irq_nosync(musb->nIrq);
+	#endif
+
 	pr_debug("%s, start to shut down\n", __func__);
 	pm_runtime_get_sync(musb->controller);
 
 	musb_platform_prepare_clk(musb);
 	/* musb_gadget_cleanup(musb); */
+	musb_gadget_cleanup(musb);
+	#ifdef CONFIG_MTK_MUSB_QMU_SUPPORT
+	musb_disable_q_all(musb);
+	musb_qmu_exit(musb);
+	#endif
 
 	#ifndef CONFIG_MTK_MUSB_PORT0_LOWPOWER_MODE
 	spin_lock_irqsave(&musb->lock, flags);

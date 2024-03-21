@@ -25,6 +25,9 @@ static const char *this_state_name[DTS_GPIO_STATE_MAX] = {
 	"mode_te_gpio",
 	"mode_te_te",
 	"mode_te1_te",
+#ifdef OPLUS_BUG_STABILITY
+	"mode_te_bk_gpio15",
+#endif /* OPLUS_BUG_STABILITY */
 #ifdef CONFIG_MTK_MT6382_BDG
 	"6382_rst_out1_gpio",
 	"6382_rst_out0_gpio",

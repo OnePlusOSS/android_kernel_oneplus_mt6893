@@ -30,12 +30,19 @@ typedef enum {
 	attr_feature,
 	attr_pointer_ui,
 	attr_pointer_atomic,
+#ifdef CONFIG_OPLUS_FEATURE_EXT4_FSYNC
+	attr_fsync_nobarrier,
+	attr_fsync_protect,
+#endif
 } attr_id_t;
 
 typedef enum {
 	ptr_explicit,
 	ptr_ext4_sb_info_offset,
 	ptr_ext4_super_block_offset,
+#if defined(CONFIG_EXT4_ASYNC_DISCARD_SUPPORT)
+	ptr_discard_cmd_control_offset,
+#endif
 } attr_ptr_t;
 
 static const char proc_dirname[] = "fs/ext4";
@@ -150,6 +157,10 @@ static struct ext4_attr ext4_attr_##_name = {			\
 
 #define EXT4_RW_ATTR_SBI_UI(_name,_elname)	\
 	EXT4_ATTR_OFFSET(_name, 0644, pointer_ui, ext4_sb_info, _elname)
+#if defined(CONFIG_EXT4_ASYNC_DISCARD_SUPPORT)
+#define EXT4_RW_ATTR_DCC_UI(_name,_elname)	\
+	EXT4_ATTR_OFFSET(_name, 0644, pointer_ui, discard_cmd_control, _elname)
+#endif
 
 #define EXT4_ATTR_PTR(_name,_mode,_id,_ptr) \
 static struct ext4_attr ext4_attr_##_name = {			\
@@ -185,6 +196,16 @@ EXT4_RW_ATTR_SBI_UI(warning_ratelimit_interval_ms, s_warning_ratelimit_state.int
 EXT4_RW_ATTR_SBI_UI(warning_ratelimit_burst, s_warning_ratelimit_state.burst);
 EXT4_RW_ATTR_SBI_UI(msg_ratelimit_interval_ms, s_msg_ratelimit_state.interval);
 EXT4_RW_ATTR_SBI_UI(msg_ratelimit_burst, s_msg_ratelimit_state.burst);
+#if defined(CONFIG_EXT4_ASYNC_DISCARD_SUPPORT)
+EXT4_RW_ATTR_DCC_UI(DCC_dpolicy_param_tune, dpolicy_param_tune);
+EXT4_RW_ATTR_DCC_UI(DCC_discard_granularity, discard_granularity);
+EXT4_RW_ATTR_DCC_UI(Dpolicy_min_interval, dpolicy.min_interval);
+EXT4_RW_ATTR_DCC_UI(Dpolicy_mid_interval, dpolicy.mid_interval);
+EXT4_RW_ATTR_DCC_UI(Dpolicy_max_interval, dpolicy.max_interval);
+EXT4_RW_ATTR_DCC_UI(Dpolicy_io_aware_gran, dpolicy.io_aware_gran);
+EXT4_RW_ATTR_DCC_UI(Dpolicy_current_discard_gran, dpolicy.granularity);
+EXT4_RW_ATTR_DCC_UI(Dpolicy_max_requests, dpolicy.max_requests);
+#endif
 EXT4_RO_ATTR_ES_UI(errors_count, s_error_count);
 EXT4_ATTR(first_error_time, 0444, first_error_time);
 EXT4_ATTR(last_error_time, 0444, last_error_time);
@@ -217,6 +238,16 @@ static struct attribute *ext4_attrs[] = {
 	ATTR_LIST(errors_count),
 	ATTR_LIST(first_error_time),
 	ATTR_LIST(last_error_time),
+#if defined(CONFIG_EXT4_ASYNC_DISCARD_SUPPORT)
+	ATTR_LIST(DCC_dpolicy_param_tune),
+	ATTR_LIST(DCC_discard_granularity),
+	ATTR_LIST(Dpolicy_min_interval),
+	ATTR_LIST(Dpolicy_mid_interval),
+	ATTR_LIST(Dpolicy_max_interval),
+	ATTR_LIST(Dpolicy_io_aware_gran),
+	ATTR_LIST(Dpolicy_current_discard_gran),
+	ATTR_LIST(Dpolicy_max_requests),
+#endif
 	NULL,
 };
 
@@ -235,6 +266,12 @@ EXT4_ATTR_FEATURE(casefold);
 EXT4_ATTR_FEATURE(verity);
 #endif
 EXT4_ATTR_FEATURE(metadata_csum_seed);
+#ifdef CONFIG_OPLUS_FEATURE_EXT4_FSYNC
+extern bool ext4_fsync_nobarrier;
+extern bool ext4_fsync_protect;
+EXT4_ATTR(fsync_nobarrier, 0666, fsync_nobarrier);
+EXT4_ATTR(fsync_protect, 0666, fsync_protect);
+#endif
 
 static struct attribute *ext4_feat_attrs[] = {
 	ATTR_LIST(lazy_itable_init),
@@ -251,6 +288,10 @@ static struct attribute *ext4_feat_attrs[] = {
 	ATTR_LIST(verity),
 #endif
 	ATTR_LIST(metadata_csum_seed),
+#ifdef CONFIG_OPLUS_FEATURE_EXT4_FSYNC
+	ATTR_LIST(fsync_nobarrier),
+	ATTR_LIST(fsync_protect),
+#endif
 	NULL,
 };
 
@@ -263,6 +304,14 @@ static void *calc_ptr(struct ext4_attr *a, struct ext4_sb_info *sbi)
 		return (void *) (((char *) sbi) + a->u.offset);
 	case ptr_ext4_super_block_offset:
 		return (void *) (((char *) sbi->s_es) + a->u.offset);
+#if defined(CONFIG_EXT4_ASYNC_DISCARD_SUPPORT)
+	case ptr_discard_cmd_control_offset:
+		if (!test_opt(sbi->s_buddy_cache->i_sb, ASYNC_DISCARD)){
+            return 0;
+        }
+
+        return (void *) (((char *) sbi->dcc_info) + a->u.offset);
+#endif
 	}
 	return NULL;
 }
@@ -318,6 +367,12 @@ static ssize_t ext4_attr_show(struct kobject *kobj,
 		return print_tstamp(buf, sbi->s_es, s_first_error_time);
 	case attr_last_error_time:
 		return print_tstamp(buf, sbi->s_es, s_last_error_time);
+#ifdef CONFIG_OPLUS_FEATURE_EXT4_FSYNC
+	case attr_fsync_nobarrier:
+		return snprintf(buf, PAGE_SIZE, "%d\n", ext4_fsync_nobarrier);
+	case attr_fsync_protect:
+		return snprintf(buf, PAGE_SIZE, "%d\n", ext4_fsync_protect);
+#endif
 	}
 
 	return 0;
@@ -352,6 +407,20 @@ static ssize_t ext4_attr_store(struct kobject *kobj,
 		return inode_readahead_blks_store(sbi, buf, len);
 	case attr_trigger_test_error:
 		return trigger_test_error(sbi, buf, len);
+#ifdef CONFIG_OPLUS_FEATURE_EXT4_FSYNC
+	case attr_fsync_nobarrier:
+		ret = kstrtoul(skip_spaces(buf), 0, &t);
+		if (ret)
+			return ret;
+		ext4_fsync_nobarrier = !!t;
+		return len;
+	case attr_fsync_protect:
+		ret = kstrtoul(skip_spaces(buf), 0, &t);
+		if (ret)
+			return ret;
+		ext4_fsync_protect = !!t;
+		return len;
+#endif
 	}
 	return 0;
 }
@@ -406,6 +475,11 @@ int ext4_register_sysfs(struct super_block *sb)
 		proc_create_single_data("es_shrinker_info", S_IRUGO,
 				sbi->s_proc, ext4_seq_es_shrinker_info_show,
 				sb);
+#if defined(CONFIG_EXT4_ASYNC_DISCARD_SUPPORT)
+		proc_create_single_data("discard_info", S_IRUGO,
+				sbi->s_proc, ext4_seq_discard_info_show,
+				sb);
+#endif
 		proc_create_seq_data("mb_groups", S_IRUGO, sbi->s_proc,
 				&ext4_mb_seq_groups_ops, sb);
 	}

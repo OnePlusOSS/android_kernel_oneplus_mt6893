@@ -167,6 +167,11 @@ int set_shutdown_cond(int shutdown_cond)
 		now_is_kpoc, now_current, now_is_charging,
 		shutdown_cond_flag, vbat);
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	pr_err("%s: vooc_project, return directly\n", __func__);
+	return 0;
+#endif /*OPLUS_FEATURE_CHG_BASIC*/
+
 	if (shutdown_cond_flag == 1)
 		return 0;
 
@@ -175,6 +180,14 @@ int set_shutdown_cond(int shutdown_cond)
 
 	if (shutdown_cond_flag == 3 && shutdown_cond != DLPT_SHUTDOWN)
 		return 0;
+
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/* Add for remove dlpt shutdown */
+	if (shutdown_cond == DLPT_SHUTDOWN) {
+		bm_err("[%s], DLPT_SHUTDOWN, return directly\n", __func__);
+		return 0;
+	}
+#endif /* OPLUS_FEATURE_CHG_BASIC */
 
 	switch (shutdown_cond) {
 	case OVERHEAT:
@@ -348,9 +361,12 @@ static int shutdown_event_handler(struct shutdown_controller *sdd)
 		polling++;
 		if (duraction.tv_sec >= SHUTDOWN_TIME) {
 			bm_err("dlpt shutdown\n");
+#ifndef OPLUS_FEATURE_CHG_BASIC
+/* remove dlpt shutdown */
 			mutex_lock(&system_transition_mutex);
 			kernel_power_off();
 			mutex_unlock(&system_transition_mutex);
+#endif
 			return next_waketime(polling);
 		}
 	}
@@ -553,9 +569,10 @@ void mtk_power_misc_init(struct platform_device *pdev)
 	init_waitqueue_head(&sdc.wait_que);
 
 	kthread_run(power_misc_routine_thread, &sdc, "power_misc_thread");
-
+#ifndef CONFIG_OPLUS_CHARGER_MTK6893
 	sdc.psy_nb.notifier_call = mtk_power_misc_psy_event;
 	power_supply_reg_notifier(&sdc.psy_nb);
+#endif /*CONFIG_OPLUS_CHARGER_MTK6893*/
 	b_power_misc_init = true;
 	bm_err("%s INIT done, init:%d\n", __func__, b_power_misc_init);
 }

@@ -89,8 +89,10 @@ struct flashlight_device_id {
 	int channel;                     /* device channel */
 	int decouple;                    /* device decouple */
 };
+#ifndef OPLUS_FEATURE_CAMERA_COMMON
 extern const struct flashlight_device_id flashlight_id[];
 extern const int flashlight_device_num;
+#endif
 
 struct flashlight_dev {
 	struct list_head node;

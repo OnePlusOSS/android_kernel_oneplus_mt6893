@@ -19,6 +19,9 @@
 #include <mt-plat/turbo_common.h>
 #endif
 
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+#include <linux/sched_assist/sched_assist_common.h>
+#endif
 /*
  * pidlists linger the following amount before being destroyed.  The goal
  * is avoiding frequent destruction in the middle of consecutive read calls
@@ -540,6 +543,11 @@ static ssize_t __cgroup1_procs_write(struct kernfs_open_file *of,
 		goto out_finish;
 
 	ret = cgroup_attach_task(cgrp, task, threadgroup);
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+	if (!ret)
+		cgroup_set_sched_assist_boost_task(task);
+#endif
+
 #ifdef CONFIG_MTK_TASK_TURBO
 	if (!ret)
 		cgroup_set_turbo_task(task);

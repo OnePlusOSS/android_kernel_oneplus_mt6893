@@ -35,6 +35,10 @@
 
 #include <video/mipi_display.h>
 
+#ifdef OPLUS_BUG_STABILITY
+u32 dsi_channel_num = 3;
+#endif
+
 /**
  * DOC: dsi helpers
  *
@@ -214,7 +218,11 @@ mipi_dsi_device_register_full(struct mipi_dsi_host *host,
 		return ERR_PTR(-EINVAL);
 	}
 
+	#ifdef OPLUS_BUG_STABILITY
+	if (info->channel > dsi_channel_num) {
+	#else
 	if (info->channel > 3) {
+	#endif
 		dev_err(dev, "invalid virtual channel: %u\n", info->channel);
 		return ERR_PTR(-EINVAL);
 	}

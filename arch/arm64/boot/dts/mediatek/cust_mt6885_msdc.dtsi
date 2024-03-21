@@ -30,7 +30,11 @@
 
 &mmc1 {
 	host-index = <1>;
-	status = "okay";
+	/* #ifndef OPLUS_BUG_STABILITY */
+	/* status = "okay"; */
+	/* #else */
+	status = "disabled";
+	/* #endif */
 	pinctrl-names = "default", "state_uhs";
 	pinctrl-0 = <&mmc1_pins_default>;
 	pinctrl-1 = <&mmc1_pins_uhs>;

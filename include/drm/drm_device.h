@@ -8,6 +8,10 @@
 
 #include <drm/drm_hashtab.h>
 #include <drm/drm_mode_config.h>
+/* #ifdef OPLUS_FEATURE_DISPLAY */
+#include <linux/kthread.h>
+#include <uapi/linux/sched/types.h>
+/* endif */
 
 struct drm_driver;
 struct drm_minor;
@@ -28,6 +32,14 @@ struct pci_controller;
  * DRM device structure. This structure represent a complete card that
  * may contain multiple heads.
  */
+
+/* #ifdef OPLUS_FEATURE_DISPLAY */
+struct oplus_rmfb_work {
+	struct kthread_worker rmfb_worker;
+	struct task_struct *rmfb_worker_thread;
+};
+/* endif */
+
 struct drm_device {
 	struct list_head legacy_dev_list;/**< list of devices per driver for stealth attach cleanup */
 	int if_version;			/**< Highest interface version set */
@@ -227,6 +239,10 @@ struct drm_device {
 	 * Set by drm_fb_helper_init() and cleared by drm_fb_helper_fini().
 	 */
 	struct drm_fb_helper *fb_helper;
+
+	/* #ifdef OPLUS_FEATURE_DISPLAY */
+	struct oplus_rmfb_work o_rmfb_work;
+	/* endif */
 };
 
 #endif

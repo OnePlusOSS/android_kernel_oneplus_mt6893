@@ -21,6 +21,9 @@
 #include "scp_excep.h"
 #include "scp_feature_define.h"
 #include "scp_l1c.h"
+#ifdef OPLUS_FEATURE_SENSOR
+#include <soc/oplus/system/kernel_fb.h>
+#endif
 
 #if IS_ENABLED(CONFIG_OF_RESERVED_MEM)
 #include <linux/of_reserved_mem.h>
@@ -673,6 +676,9 @@ end:
 void scp_aed(enum SCP_RESET_TYPE type, enum scp_core_id id)
 {
 	char *scp_aed_title = NULL;
+#ifdef OPLUS_FEATURE_SENSOR
+	unsigned char fb_str[256] = "";
+#endif
 	size_t timeout = msecs_to_jiffies(SCP_COREDUMP_TIMEOUT_MS);
 	size_t expire = jiffies + timeout;
 	int ret;
@@ -742,8 +748,21 @@ void scp_aed(enum SCP_RESET_TYPE type, enum scp_core_id id)
 	aed_common_exception_api("scp", NULL, 0, NULL, 0,
 			scp_dump.detail_buff, DB_OPT_DEFAULT);
 #endif
-
+#ifndef OPLUS_FEATURE_SENSOR
+	unsigned char fb_str[256] = "";
 	pr_debug("[SCP] scp exception dump is done\n");
+#else
+	pr_info("[SCP] scp exception dump is done\n");
+	if (scpreg.core_nums == 2) {
+		scnprintf(fb_str,sizeof(fb_str),
+			"%s: core0 pc:0x%08x,lr:0x%08x;core1 pc:0x%08x,lr:0x%08x:",
+			scp_aed_title,c0_m->pc,c0_m->lr,c1_m->pc,c1_m->lr);
+	} else {
+		scnprintf(fb_str,sizeof(fb_str),"%s: core0 pc:0x%08x,lr:0x%08x;",
+			scp_aed_title,c0_m->pc,c0_m->lr);
+	}
+	oplus_kevent_fb_str(FB_SENSOR,FB_SENSOR_ID_CRASH,fb_str);
+#endif
 
 }
 

@@ -150,6 +150,9 @@ struct task_struct init_task
 	.pi_waiters	= RB_ROOT_CACHED,
 	.pi_top_task	= NULL,
 #endif
+#ifdef CONFIG_KERNEL_LOCK_OPT
+	.own_rwsem	= LIST_HEAD_INIT(init_task.own_rwsem),
+#endif
 	INIT_PREV_CPUTIME(init_task)
 #ifdef CONFIG_VIRT_CPU_ACCOUNTING_GEN
 	.vtime.seqcount	= SEQCNT_ZERO(init_task.vtime_seqcount),

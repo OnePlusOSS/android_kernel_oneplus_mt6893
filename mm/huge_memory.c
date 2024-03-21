@@ -48,11 +48,18 @@
  * for all hugepage allocations.
  */
 unsigned long transparent_hugepage_flags __read_mostly =
+#ifndef CONFIG_CONT_PTE_HUGEPAGE
+		/* XXX:
+		 * cont_pte is thp-like and api compatible with thp, but it doesn't
+		 * require collapse and doesn't co-work with collapse either
+		 */
+
 #ifdef CONFIG_TRANSPARENT_HUGEPAGE_ALWAYS
 	(1<<TRANSPARENT_HUGEPAGE_FLAG)|
 #endif
 #ifdef CONFIG_TRANSPARENT_HUGEPAGE_MADVISE
 	(1<<TRANSPARENT_HUGEPAGE_REQ_MADV_FLAG)|
+#endif
 #endif
 	(1<<TRANSPARENT_HUGEPAGE_DEFRAG_REQ_MADV_FLAG)|
 	(1<<TRANSPARENT_HUGEPAGE_DEFRAG_KHUGEPAGED_FLAG)|
@@ -62,6 +69,7 @@ static struct shrinker deferred_split_shrinker;
 
 static atomic_t huge_zero_refcount;
 struct page *huge_zero_page __read_mostly;
+unsigned long huge_zero_pfn __read_mostly = ~0UL;
 
 bool transparent_hugepage_enabled(struct vm_area_struct *vma)
 {
@@ -81,7 +89,11 @@ retry:
 		return READ_ONCE(huge_zero_page);
 
 	zero_page = alloc_pages((GFP_TRANSHUGE | __GFP_ZERO) & ~__GFP_MOVABLE,
+#ifndef CONFIG_CONT_PTE_HUGEPAGE
 			HPAGE_PMD_ORDER);
+#else
+			HPAGE_CONT_PTE_ORDER);
+#endif
 	if (!zero_page) {
 		count_vm_event(THP_ZERO_PAGE_ALLOC_FAILED);
 		return NULL;
@@ -94,6 +106,7 @@ retry:
 		goto retry;
 	}
 
+	WRITE_ONCE(huge_zero_pfn, page_to_pfn(zero_page));
 	/* We take additional reference here. It will be put back by shrinker */
 	atomic_set(&huge_zero_refcount, 2);
 	preempt_enable();
@@ -129,6 +142,7 @@ void mm_put_huge_zero_page(struct mm_struct *mm)
 		put_huge_zero_page();
 }
 
+#ifndef CONFIG_CONT_PTE_HUGEPAGE
 static unsigned long shrink_huge_zero_page_count(struct shrinker *shrink,
 					struct shrink_control *sc)
 {
@@ -154,6 +168,7 @@ static struct shrinker huge_zero_page_shrinker = {
 	.scan_objects = shrink_huge_zero_page_scan,
 	.seeks = DEFAULT_SEEKS,
 };
+#endif
 
 #ifdef CONFIG_SYSFS
 static ssize_t enabled_show(struct kobject *kobj,
@@ -173,6 +188,8 @@ static ssize_t enabled_store(struct kobject *kobj,
 {
 	ssize_t ret = count;
 
+		/* Read XXX */
+#ifndef CONFIG_CONT_PTE_HUGEPAGE
 	if (sysfs_streq(buf, "always")) {
 		clear_bit(TRANSPARENT_HUGEPAGE_REQ_MADV_FLAG, &transparent_hugepage_flags);
 		set_bit(TRANSPARENT_HUGEPAGE_FLAG, &transparent_hugepage_flags);
@@ -190,6 +207,7 @@ static ssize_t enabled_store(struct kobject *kobj,
 		if (err)
 			ret = err;
 	}
+#endif
 	return ret;
 }
 static struct kobj_attribute enabled_attr =
@@ -411,12 +429,15 @@ static int __init hugepage_init(void)
 	if (err)
 		goto err_slab;
 
+#ifndef CONFIG_CONT_PTE_HUGEPAGE
 	err = register_shrinker(&huge_zero_page_shrinker);
 	if (err)
 		goto err_hzp_shrinker;
+
 	err = register_shrinker(&deferred_split_shrinker);
 	if (err)
 		goto err_split_shrinker;
+#endif
 
 	/*
 	 * By default disable transparent hugepages on smaller systems,
@@ -434,10 +455,12 @@ static int __init hugepage_init(void)
 
 	return 0;
 err_khugepaged:
+#ifndef CONFIG_CONT_PTE_HUGEPAGE
 	unregister_shrinker(&deferred_split_shrinker);
 err_split_shrinker:
 	unregister_shrinker(&huge_zero_page_shrinker);
 err_hzp_shrinker:
+#endif
 	khugepaged_destroy();
 err_slab:
 	hugepage_exit_sysfs(hugepage_kobj);
@@ -451,6 +474,8 @@ static int __init setup_transparent_hugepage(char *str)
 	int ret = 0;
 	if (!str)
 		goto out;
+		/* Read XXX */
+#ifndef CONFIG_CONT_PTE_HUGEPAGE
 	if (!strcmp(str, "always")) {
 		set_bit(TRANSPARENT_HUGEPAGE_FLAG,
 			&transparent_hugepage_flags);
@@ -470,6 +495,7 @@ static int __init setup_transparent_hugepage(char *str)
 			  &transparent_hugepage_flags);
 		ret = 1;
 	}
+#endif
 out:
 	if (!ret)
 		pr_warn("transparent_hugepage= cannot parse, ignored\n");
@@ -497,9 +523,22 @@ void prep_transhuge_page(struct page *page)
 	 * as list_head: assuming THP order >= 2
 	 */
 
+#ifndef CONFIG_CONT_PTE_HUGEPAGE
 	INIT_LIST_HEAD(page_deferred_list(page));
+#endif
 	set_compound_page_dtor(page, TRANSHUGE_PAGE_DTOR);
 }
+
+bool is_transparent_hugepage(struct page *page)
+{
+	if (!PageCompound(page))
+		return false;
+
+	page = compound_head(page);
+	return is_huge_zero_page(page) ||
+	       page[1].compound_dtor == TRANSHUGE_PAGE_DTOR;
+}
+EXPORT_SYMBOL_GPL(is_transparent_hugepage);
 
 static unsigned long __thp_get_unmapped_area(struct file *filp,
 		unsigned long addr, unsigned long len,
@@ -1668,7 +1707,7 @@ bool madvise_free_huge_pmd(struct mmu_gather *tlb, struct vm_area_struct *vma,
 	struct mm_struct *mm = tlb->mm;
 	bool ret = false;
 
-	tlb_remove_check_page_size_change(tlb, HPAGE_PMD_SIZE);
+	tlb_change_page_size(tlb, HPAGE_PMD_SIZE);
 
 	ptl = pmd_trans_huge_lock(pmd, vma);
 	if (!ptl)
@@ -1744,7 +1783,7 @@ int zap_huge_pmd(struct mmu_gather *tlb, struct vm_area_struct *vma,
 	pmd_t orig_pmd;
 	spinlock_t *ptl;
 
-	tlb_remove_check_page_size_change(tlb, HPAGE_PMD_SIZE);
+	tlb_change_page_size(tlb, HPAGE_PMD_SIZE);
 
 	ptl = __pmd_trans_huge_lock(pmd, vma);
 	if (!ptl)
@@ -2415,6 +2454,50 @@ void vma_adjust_trans_huge(struct vm_area_struct *vma,
 	}
 }
 
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+void vma_adjust_cont_pte_trans_huge(struct vm_area_struct *vma,
+				    unsigned long start,
+				    unsigned long end,
+				    long adjust_next)
+{
+	/*
+	 * If the new start address isn't hpage aligned and it could
+	 * previously contain an hugepage: check if we need to split
+	 * an huge pmd.
+	 */
+	if (start & ~HPAGE_CONT_PTE_MASK &&
+	    (start & HPAGE_CONT_PTE_MASK) >= vma->vm_start &&
+	    (start & HPAGE_CONT_PTE_MASK) + HPAGE_CONT_PTE_SIZE <= vma->vm_end)
+		split_huge_cont_pte_address(vma, start, false, NULL);
+
+	/*
+	 * If the new end address isn't hpage aligned and it could
+	 * previously contain an hugepage: check if we need to split
+	 * an huge pmd.
+	 */
+	if (end & ~HPAGE_CONT_PTE_MASK &&
+	    (end & HPAGE_CONT_PTE_MASK) >= vma->vm_start &&
+	    (end & HPAGE_CONT_PTE_MASK) + HPAGE_CONT_PTE_SIZE <= vma->vm_end)
+		split_huge_cont_pte_address(vma, end, false, NULL);
+
+	/*
+	 * If we're also updating the vma->vm_next->vm_start, if the new
+	 * vm_next->vm_start isn't hpage aligned and it could previously
+	 * contain an hugepage: check if we need to split an huge pmd.
+	 */
+	if (adjust_next > 0) {
+		struct vm_area_struct *next = vma->vm_next;
+		unsigned long nstart = next->vm_start;
+
+		nstart += adjust_next << PAGE_SHIFT;
+		if (nstart & ~HPAGE_CONT_PTE_MASK &&
+		    (nstart & HPAGE_CONT_PTE_MASK) >= next->vm_start &&
+		    (nstart & HPAGE_CONT_PTE_MASK) + HPAGE_CONT_PTE_SIZE <= next->vm_end)
+			split_huge_cont_pte_address(next, nstart, false, NULL);
+	}
+}
+#endif
+
 static void unmap_page(struct page *page)
 {
 	enum ttu_flags ttu_flags = TTU_IGNORE_MLOCK | TTU_IGNORE_ACCESS |
@@ -2465,7 +2548,8 @@ static void __split_huge_page_tail(struct page *head, int tail,
 			 (1L << PG_workingset) |
 			 (1L << PG_locked) |
 			 (1L << PG_unevictable) |
-			 (1L << PG_dirty)));
+			 (1L << PG_dirty) |
+			 LRU_GEN_MASK | LRU_REFS_MASK));
 
 	/* ->mapping in first tail page is compound_mapcount */
 	VM_BUG_ON_PAGE(tail > 2 && page_tail->mapping != TAIL_MAPPING,
@@ -2511,7 +2595,13 @@ static void __split_huge_page(struct page *page, struct list_head *list,
 	struct lruvec *lruvec;
 	int i;
 
-	lruvec = mem_cgroup_page_lruvec(head, zone->zone_pgdat);
+	/* FIXME: no care! */
+#if defined(CONFIG_CONT_PTE_HUGEPAGE) && CONFIG_CONT_PTE_HUGEPAGE_LRU
+	if (ContPteCMAHugePageHead(page))
+		lruvec = mem_cgroup_chp_page_lruvec(head, zone->zone_pgdat);
+	else
+#endif
+		lruvec = mem_cgroup_page_lruvec(head, zone->zone_pgdat);
 
 	/* complete memcg works before add pages to LRU */
 	mem_cgroup_split_huge_fixup(head);
@@ -2568,7 +2658,7 @@ static void __split_huge_page(struct page *page, struct list_head *list,
 
 int total_mapcount(struct page *page)
 {
-	int i, compound, ret;
+	int i, compound, nr, ret;
 
 	VM_BUG_ON_PAGE(PageTail(page), page);
 
@@ -2576,16 +2666,17 @@ int total_mapcount(struct page *page)
 		return atomic_read(&page->_mapcount) + 1;
 
 	compound = compound_mapcount(page);
+	nr = thp_nr_pages(page);
 	if (PageHuge(page))
 		return compound;
 	ret = compound;
-	for (i = 0; i < HPAGE_PMD_NR; i++)
+	for (i = 0; i < nr; i++)
 		ret += atomic_read(&page[i]._mapcount) + 1;
 	/* File pages has compound_mapcount included in _mapcount */
 	if (!PageAnon(page))
-		return ret - compound * HPAGE_PMD_NR;
+		return ret - compound * nr;
 	if (PageDoubleMap(page))
-		ret -= HPAGE_PMD_NR;
+		ret -= nr;
 	return ret;
 }
 
@@ -2630,14 +2721,14 @@ int page_trans_huge_mapcount(struct page *page, int *total_mapcount)
 	page = compound_head(page);
 
 	_total_mapcount = ret = 0;
-	for (i = 0; i < HPAGE_PMD_NR; i++) {
+	for (i = 0; i < thp_nr_pages(page); i++) {
 		mapcount = atomic_read(&page[i]._mapcount) + 1;
 		ret = max(ret, mapcount);
 		_total_mapcount += mapcount;
 	}
 	if (PageDoubleMap(page)) {
 		ret -= 1;
-		_total_mapcount -= HPAGE_PMD_NR;
+		_total_mapcount -= thp_nr_pages(page);
 	}
 	mapcount = compound_mapcount(page);
 	ret += mapcount;
@@ -2654,9 +2745,9 @@ bool can_split_huge_page(struct page *page, int *pextra_pins)
 
 	/* Additional pins from radix tree */
 	if (PageAnon(page))
-		extra_pins = PageSwapCache(page) ? HPAGE_PMD_NR : 0;
+		extra_pins = PageSwapCache(page) ? thp_nr_pages(page) : 0;
 	else
-		extra_pins = HPAGE_PMD_NR;
+		extra_pins = thp_nr_pages(page);
 	if (pextra_pins)
 		*pextra_pins = extra_pins;
 	return total_mapcount(page) == page_count(page) - extra_pins - 1;
@@ -2698,6 +2789,11 @@ int split_huge_page_to_list(struct page *page, struct list_head *list)
 
 	if (PageWriteback(page))
 		return -EBUSY;
+
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+	dump_page(head, "split hugepage");
+	CHP_BUG_ON(1);
+#endif
 
 	if (PageAnon(head)) {
 		/*
@@ -2773,18 +2869,24 @@ int split_huge_page_to_list(struct page *page, struct list_head *list)
 			goto fail;
 	}
 
+#ifndef CONFIG_CONT_PTE_HUGEPAGE
 	/* Prevent deferred_split_scan() touching ->_refcount */
 	spin_lock(&pgdata->split_queue_lock);
+#endif
 	count = page_count(head);
 	mapcount = total_mapcount(head);
 	if (!mapcount && page_ref_freeze(head, 1 + extra_pins)) {
+#ifndef CONFIG_CONT_PTE_HUGEPAGE
 		if (!list_empty(page_deferred_list(head))) {
 			pgdata->split_queue_len--;
 			list_del(page_deferred_list(head));
 		}
+#endif
 		if (mapping)
 			__dec_node_page_state(page, NR_SHMEM_THPS);
+#ifndef CONFIG_CONT_PTE_HUGEPAGE
 		spin_unlock(&pgdata->split_queue_lock);
+#endif
 		__split_huge_page(page, list, end, flags);
 		if (PageSwapCache(head)) {
 			swp_entry_t entry = { .val = page_private(head) };
@@ -2801,7 +2903,9 @@ int split_huge_page_to_list(struct page *page, struct list_head *list)
 			dump_page(page, "total_mapcount(head) > 0");
 			BUG();
 		}
+#ifndef CONFIG_CONT_PTE_HUGEPAGE
 		spin_unlock(&pgdata->split_queue_lock);
+#endif
 fail:		if (mapping)
 			xa_unlock(&mapping->i_pages);
 		spin_unlock_irqrestore(zone_lru_lock(page_zone(head)), flags);
@@ -2823,6 +2927,7 @@ out:
 
 void free_transhuge_page(struct page *page)
 {
+#ifndef CONFIG_CONT_PTE_HUGEPAGE
 	struct pglist_data *pgdata = NODE_DATA(page_to_nid(page));
 	unsigned long flags;
 
@@ -2832,6 +2937,7 @@ void free_transhuge_page(struct page *page)
 		list_del(page_deferred_list(page));
 	}
 	spin_unlock_irqrestore(&pgdata->split_queue_lock, flags);
+#endif
 	free_compound_page(page);
 }
 

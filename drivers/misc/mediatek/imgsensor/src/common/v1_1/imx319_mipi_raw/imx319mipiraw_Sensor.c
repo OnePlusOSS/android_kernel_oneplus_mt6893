@@ -21,7 +21,7 @@
 #include "imx319mipiraw_Sensor.h"
 
 
-#undef VENDOR_EDIT
+#undef OPLUS_FEATURE_CAMERA_COMMON
 
 /***************Modify Following Strings for Debug**********************/
 #define PFX "IMX319_camera_sensor"
@@ -37,7 +37,7 @@
 #endif
 
 
-#ifdef VENDOR_EDIT
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
 #define MODULE_ID_OFFSET 0x0000
 #endif
 
@@ -4259,7 +4259,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 	case SENSOR_FEATURE_SET_NIGHTMODE:
 		/* night_mode((BOOL) *feature_data); */
 		break;
-#ifdef VENDOR_EDIT
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
 	case SENSOR_FEATURE_CHECK_MODULE_ID:
 		*feature_return_para_32 = imgsensor_info.module_id;
 		break;

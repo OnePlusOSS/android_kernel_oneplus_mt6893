@@ -272,7 +272,14 @@ struct display_primary_path_context {
 	cmdqBackupSlotHandle hrt_idx_id;
 	cmdqBackupSlotHandle trigger_record_slot;
 	/*ToDo: ARR whether need free these slot*/
-
+#ifdef OPLUS_BUG_STABILITY
+	/* #ifdef OPLUS_FEATURE_ONSCREENFINGERPRINT */
+	/*
+	* add for fingerprint notify frigger
+	*/
+	cmdqBackupSlotHandle fpd_fence;
+	/* #endif */ /* OPLUS_FEATURE_ONSCREENFINGERPRINT */
+#endif
 	int is_primary_sec;
 	int primary_display_scenario;
 #ifdef CONFIG_MTK_DISPLAY_120HZ_SUPPORT
@@ -367,6 +374,11 @@ int primary_display_get_lcm_corner_en(void);
 int primary_display_get_corner_pattern_width(void);
 int primary_display_get_corner_pattern_height(void);
 #endif
+
+#ifdef OPLUS_BUG_STABILITY
+int _ioctl_get_lcm_module_info(unsigned long arg);
+#endif
+
 int primary_display_get_pages(void);
 int primary_display_set_overlay_layer(struct primary_disp_input_config *input);
 int primary_display_is_alive(void);
@@ -456,7 +468,21 @@ int do_primary_display_switch_mode(int sess_mode, unsigned int session,
 int primary_display_check_test(void);
 void _primary_path_switch_dst_lock(void);
 void _primary_path_switch_dst_unlock(void);
-
+#ifdef OPLUS_BUG_STABILITY
+/* #ifdef OPLUS_FEATURE_ONSCREENFINGERPRINT */
+/*
+* add for get dimming layer hbm state
+*/
+int primary_display_set_lcm_hbm(bool en);
+int primary_display_hbm_wait(bool en);
+int notify_display_fpd(bool mode);
+/*
+* add for fingerprint notify frigger
+*/
+void fpd_notify_check_trig(void);
+void fpd_notify(void);
+/* #endif */ /* OPLUS_FEATURE_ONSCREENFINGERPRINT */
+#endif
 /* AOD */
 enum lcm_power_state primary_display_set_power_state(
 enum lcm_power_state new_state);
@@ -468,7 +494,11 @@ enum mtkfb_power_mode primary_display_check_power_mode(void);
 void debug_print_power_mode_check(enum mtkfb_power_mode prev,
 				  enum mtkfb_power_mode cur);
 bool primary_is_aod_supported(void);
-
+#ifdef OPLUS_BUG_STABILITY
+/* #ifdef OPLUS_FEATURE_AOD */
+int primary_display_set_aod_mode_nolock(unsigned int mode);
+/* #endif */ /* OPLUS_FEATURE_AOD */
+#endif
 /* legancy */
 struct LCM_PARAMS *DISP_GetLcmPara(void);
 struct LCM_DRIVER *DISP_GetLcmDrv(void);
@@ -546,10 +576,6 @@ int lcm_fps_ctx_init(struct lcm_fps_ctx_t *fps_ctx);
 int lcm_fps_ctx_reset(struct lcm_fps_ctx_t *fps_ctx);
 int lcm_fps_ctx_update(struct lcm_fps_ctx_t *fps_ctx,
 		unsigned long long cur_ns);
-
-int primary_display_set_lcm_hbm(bool en, struct disp_frame_cfg_t *cfg);
-int primary_display_hbm_wait(bool en);
-int primary_display_hbm_delay(bool en, struct disp_frame_cfg_t *cfg);
 
 #ifdef CONFIG_MTK_HIGH_FRAME_RATE
 /**************function for DynFPS start************************/

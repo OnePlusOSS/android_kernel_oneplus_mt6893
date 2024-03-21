@@ -11,6 +11,8 @@
 #define UFS_MTK_TW_AWAYS_ON
 
 static int ufstw_create_sysfs(struct ufsf_feature *ufsf, struct ufstw_lu *tw);
+static int create_wbfn_enable(void);
+static void remove_wbfn_enable(void);
 static int ufstw_clear_lu_flag(struct ufstw_lu *tw, u8 idn, bool *flag_res);
 static int ufstw_read_lu_attr(struct ufstw_lu *tw, u8 idn, u32 *attr_val);
 
@@ -796,6 +798,7 @@ out:
 	ufstw_lu_put(tw);
 }
 
+extern int ufsplus_tw_status;
 void ufstw_init(struct ufsf_feature *ufsf)
 {
 	unsigned int lun;
@@ -815,6 +818,7 @@ void ufstw_init(struct ufsf_feature *ufsf)
 		tw_lun = lun;
 		INIT_INFO("UFSTW LU %d working", lun);
 		tw_enabled_lun++;
+		ufsplus_tw_status = 1;
 	}
 #else
 	seq_scan_lu(lun) {
@@ -832,6 +836,8 @@ void ufstw_init(struct ufsf_feature *ufsf)
 
 		INIT_INFO("UFSTW LU %d working", lun);
 		tw_enabled_lun++;
+		if(tw_enabled_lun)
+			ufsplus_tw_status = 1;
 	}
 #endif
 
@@ -870,6 +876,7 @@ void ufstw_init(struct ufsf_feature *ufsf)
 			goto out;
 	}
 #endif
+	create_wbfn_enable();
 	return;
 out_free_mem:
 	seq_scan_lu(lun) {
@@ -985,6 +992,8 @@ void ufstw_release(struct kref *kref)
 
 	ret = cancel_work_sync(&ufsf->tw_reset_work);
 	RELEASE_INFO("cancel_work_sync(tw_reset_work) = %d", ret);
+
+	remove_wbfn_enable();
 
 	seq_scan_lu(lun) {
 		tw = ufsf->tw_lup[lun];
@@ -1712,3 +1721,83 @@ static int ufstw_create_sysfs(struct ufsf_feature *ufsf, struct ufstw_lu *tw)
 	ufstw_lu_put(tw);
 	return err;
 }
+
+static inline void wbfn_enable_ctrl(struct ufstw_lu *tw, long val)
+{
+
+	//mutex_lock(&tw->mode_lock);
+
+	//if (atomic_read(&tw->tw_mode) == TW_MODE_MANUAL) {
+		switch (val) {
+		case 0:
+			ufstw_clear_lu_flag(tw, QUERY_FLAG_IDN_TW_EN,
+					    &tw->tw_enable);
+			break;
+		case 1:
+			ufstw_set_lu_flag(tw, QUERY_FLAG_IDN_TW_EN,
+					  &tw->tw_enable);
+			break;
+		default:
+			break;
+		}
+	//}
+
+	//mutex_unlock(&tw->mode_lock);
+	return;
+}
+
+static ssize_t wbfn_enable_write(struct file *filp, const char *ubuf,
+				 size_t cnt, loff_t *data)
+{
+	char buf[64] = {0};
+	long val = 0;
+	int ret = 0;
+	int lun;
+
+	if (!ufsf_para.ufsf)
+		return -EFAULT;
+	if (cnt >= sizeof(buf))
+		return -EINVAL;
+	if (copy_from_user(&buf, ubuf, cnt))
+		return -EFAULT;
+	buf[cnt] = 0;
+
+	ret = kstrtoul(buf, 0, (unsigned long *)&val);
+	if (ret < 0)
+		return ret;
+
+	seq_scan_lu(lun) {
+		if (ufsf_para.ufsf->tw_lup[lun])
+			wbfn_enable_ctrl(ufsf_para.ufsf->tw_lup[lun], val);
+	}
+
+	return cnt;
+}
+
+static const struct file_operations wbfn_enable_fops = {
+	.write = wbfn_enable_write,
+};
+
+static int create_wbfn_enable(void)
+{
+	struct proc_dir_entry *d_entry;
+
+	if (!ufsf_para.ctrl_dir)
+		return -EFAULT;
+
+	d_entry = proc_create("wbfn_enable", S_IWUGO, ufsf_para.ctrl_dir,
+			      &wbfn_enable_fops);
+	if(!d_entry)
+		return -ENOMEM;
+
+	return 0;
+}
+
+static void remove_wbfn_enable(void)
+{
+	if (ufsf_para.ctrl_dir)
+		remove_proc_entry("wbfn_enable", ufsf_para.ctrl_dir);
+
+	return;
+}
+

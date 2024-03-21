@@ -1,0 +1,19 @@
+
+&bat_gm30 {
+
+	DIFFERENCE_FULLOCV_ITH = <(250)>;
+	SHUTDOWN_1_TIME = <(60)>;
+	KEEP_100_PERCENT = <(2)>;
+	EMBEDDED_SEL = <(1)>;
+
+	g_FG_PSEUDO100_T0 = <(98)>;
+	g_FG_PSEUDO100_T1 = <(96)>;
+	g_FG_PSEUDO100_T2 = <(96)>;
+	g_FG_PSEUDO100_T3 = <(93)>;
+	g_FG_PSEUDO100_T4 = <(93)>;
+
+#include "mt6893_battery_table_ext_cupid.dtsi"
+#include "mt6893_battery_prop_dim2_ext_cupid.dtsi"
+
+};
+

@@ -35,6 +35,7 @@ static int *g_pAF_Opened;
 static spinlock_t *g_pAF_SpinLock;
 
 static unsigned long g_u4AF_INF;
+static unsigned long g_u4AF_SetInitPos;
 static unsigned long g_u4AF_MACRO = 1023;
 static unsigned long g_u4CurrPosition;
 #define Min_Pos 0
@@ -94,6 +95,7 @@ static int setPosition(unsigned short UsPosition)
 	TarPos = UsPosition;
 
 	/* LOG_INF("DAC(%04d) -> %03x\n", UsPosition, TarPos); */
+	LOG_INF("setPosition g_u4CurrPosition%d\n" ,UsPosition);
 
 	UcPosH = (unsigned char)((TarPos >> 8) & 0x03);
 	UcPosL = (unsigned char)(TarPos & 0x00FF);
@@ -135,6 +137,7 @@ static int initAF(void)
 
 	//wait driver ic ready
 	mdelay(5);
+	g_u4AF_SetInitPos = 1;
 
 	if (*g_pAF_Opened == 1) {
 
@@ -145,9 +148,11 @@ static int initAF(void)
 
 		s4AF_ReadReg(0x00, &Temp);  //ic info
 		LOG_INF("Check HW version: 0x00 is %x\n", Temp);
-		ret = s4AF_WriteReg(0, 0x02, 0x00); //CONTROL
-
-
+		ret = s4AF_WriteReg(0, 0x02, 0x00);
+		msleep(1);
+		ret = s4AF_WriteReg(0, 0x02, 0x02);
+		ret = s4AF_WriteReg(0, 0x06, 0x40);
+		ret = s4AF_WriteReg(0, 0x07, 0x0C);
 
 		spin_lock(g_pAF_SpinLock);
 		*g_pAF_Opened = 2;
@@ -163,6 +168,16 @@ static int initAF(void)
 static inline int moveAF(unsigned long a_u4Position)
 {
 	int ret = 0;
+	LOG_INF("moveAF a_u4Position%d\n" ,a_u4Position);
+	if (g_u4AF_SetInitPos == 1) {
+		if (a_u4Position < 512) {
+			setPosition(430);
+			msleep(8);
+			setPosition(400);
+			msleep(8);
+		}
+		g_u4AF_SetInitPos = 0;
+	}
 
 	if (setPosition((unsigned short)a_u4Position) == 0) {
 		g_u4CurrPosition = a_u4Position;

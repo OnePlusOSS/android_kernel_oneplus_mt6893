@@ -1202,7 +1202,11 @@ static struct freq_attr *_mt_cpufreq_attr[] = {
 };
 
 static struct cpufreq_driver _mt_cpufreq_driver = {
+#if defined(OPLUS_FEATURE_SCHEDUTIL_USE_TL) && defined(CONFIG_SCHEDUTIL_USE_TL)
+	.flags = CPUFREQ_ASYNC_NOTIFICATION | CPUFREQ_HAVE_GOVERNOR_PER_POLICY,
+#else
 	.flags = CPUFREQ_ASYNC_NOTIFICATION,
+#endif
 	.verify = _mt_cpufreq_ver_dbgify,
 	.target = _mt_cpufreq_target,
 	.init = _mt_cpufreq_init,

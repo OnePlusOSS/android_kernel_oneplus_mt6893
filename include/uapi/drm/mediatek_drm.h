@@ -478,6 +478,9 @@ struct DISP_PQ_PARAM {
 #define DRM_MTK_HDMI_AUDIO_CONFIG	0x3C
 #define DRM_MTK_HDMI_GET_CAPABILITY	0x3D
 
+#define DRM_MTK_GET_PQ_CAPS 0x54
+#define DRM_MTK_SET_PQ_CAPS 0x55
+
 #define DRM_MTK_DEBUG_LOG			0x3E
 #define DRM_MTK_GET_PANELS_INFO 0x5a
 
@@ -713,6 +716,16 @@ struct DRM_DISP_WRITE_REG {
 	unsigned int mask;
 };
 
+struct drm_mtk_ccorr_caps {
+	unsigned int ccorr_bit;
+	unsigned int ccorr_number;
+	unsigned int ccorr_linear;//1st byte:high 4 bit:CCORR1,low 4 bit:CCORR0
+};
+
+struct mtk_drm_pq_caps_info {
+	struct drm_mtk_ccorr_caps ccorr_caps;
+};
+
 #define GET_PANELS_STR_LEN 64
 struct mtk_drm_panels_info {
 	int connector_cnt;
@@ -891,6 +904,9 @@ struct DISP_AAL_INITREG {
 	int blk_cnt_y_end;
 	int last_tile_x_flag;
 	int last_tile_y_flag;
+	bool isdual;
+	int width;
+	int height;
 };
 
 struct DISP_AAL_PARAM {
@@ -933,6 +949,7 @@ struct DISP_AAL_HIST {
 	unsigned int aal1_yHist[AAL_HIST_BIN];
 	unsigned int MaxHis_denominator_pipe0[AAL_DRE_BLK_NUM];
 	unsigned int MaxHis_denominator_pipe1[AAL_DRE_BLK_NUM];
+	bool need_config;
 };
 
 #define DRM_IOCTL_MTK_AAL_INIT_REG	DRM_IOWR(DRM_COMMAND_BASE + \

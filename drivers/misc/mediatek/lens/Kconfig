@@ -18,7 +18,43 @@ config MTK_LENS_DUMMYLENS_SUPPORT
 	  This config is used to enable the corresponding
 	  lens driver for the camera sensor module
 	  Set as y if the driver is used in this project
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+config MTK_LENS_DW9718TAF_SUPPORT
+	tristate "DW9718TAF Lens Driver"
+        depends on MTK_LENS
+	help
+	  DW9718TAF Lens Driver
+	  This config is used to enable the corresponding
+	  lens driver for the camera sensor module
+	  Set as y if the driver is used in this project
 
+config MTK_LENS_BU64235AF_SUPPORT
+	tristate "BU64235AF Lens Driver"
+        depends on MTK_LENS
+	help
+	  BU64235AF Lens Driver
+	  This config is used to enable the corresponding
+	  lens driver for the camera sensor module
+	  Set as y if the driver is used in this project
+
+config MTK_LENS_BU64235TEAF_SUPPORT
+	tristate "BU64235TEAF Lens Driver"
+        depends on MTK_LENS
+	help
+	  BU64235TEAF Lens Driver
+	  This config is used to enable the corresponding
+	  lens driver for the camera sensor module
+	  Set as y if the driver is used in this project
+
+config MTK_LENS_JD5516WE4_SUPPORT
+	tristate "JD5516WE4 Lens Driver"
+        depends on MTK_LENS
+	help
+	  JD5516WE4 Lens Driver
+	  This config is used to enable the corresponding
+	  lens driver for the camera sensor module
+	  Set as y if the driver is used in this project
+#endif
 config MTK_LENS_BU63165AF_SUPPORT
 	tristate "BU63165AF Lens Driver"
         depends on MTK_LENS
@@ -154,6 +190,24 @@ config MTK_LENS_DW9714A_SUPPORT
 	  lens driver for the camera sensor module
 	  Set as y if the driver is used in this project
 
+config MTK_LENS_DW9827AF_SUPPORT
+	tristate "DW9827AF Lens Driver"
+        depends on MTK_LENS
+	help
+	  DW9827AF Lens Driver
+	  This config is used to enable the corresponding
+	  lens driver for the camera sensor module
+	  Set as y if the driver is used in this project
+
+config MTK_LENS_AK7316AF_SUPPORT
+	tristate "AK7316AF Lens Driver"
+        depends on MTK_LENS
+	help
+	  AK7316AF Lens Driver
+	  This config is used to enable the corresponding
+	  lens driver for the camera sensor module
+	  Set as y if the driver is used in this project
+
 config MTK_LENS_DW9814AF_SUPPORT
 	tristate "DW9814AF Lens Driver"
         depends on MTK_LENS
@@ -274,6 +328,33 @@ config MTK_LENS_WV511AAF_SUPPORT
         depends on MTK_LENS
 	help
 	  WV511AAF Lens Driver
+	  This config is used to enable the corresponding
+	  lens driver for the camera sensor module
+	  Set as y if the driver is used in this project
+
+config MTK_LENS_FP5513E4AF_SUPPORT
+	tristate "FP5513E4AF Lens Driver"
+        depends on MTK_LENS
+	help
+	  FM50AF Lens Driver
+	  This config is used to enable the corresponding
+	  lens driver for the camera sensor module
+	  Set as y if the driver is used in this project
+
+config MTK_LENS_AW8601_SUPPORT
+	tristate "AW8601 Lens Driver"
+        depends on MTK_LENS
+	help
+	  AW8601 Lens Driver
+	  This config is used to enable the corresponding
+	  lens driver for the camera sensor module
+	  Set as y if the driver is used in this project
+
+config MTK_LENS_DW9800S_SUPPORT
+	tristate "DW9800S Lens Driver"
+        depends on MTK_LENS
+	help
+	  DW9800S Lens Driver
 	  This config is used to enable the corresponding
 	  lens driver for the camera sensor module
 	  Set as y if the driver is used in this project

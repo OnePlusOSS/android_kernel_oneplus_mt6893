@@ -43,6 +43,11 @@ extern int wake_up_scp(void);
 
 extern unsigned char *scp_send_buff[SCP_CORE_TOTAL];
 extern unsigned char *scp_recv_buff[SCP_CORE_TOTAL];
+
+#ifdef OPLUS_FEATURE_SENSOR
+extern unsigned char *ipi_buff[SCP_CORE_TOTAL];
+#endif
+
 extern char *core_ids[SCP_CORE_TOTAL];
 
 extern void scp_reset_awake_counts(void);

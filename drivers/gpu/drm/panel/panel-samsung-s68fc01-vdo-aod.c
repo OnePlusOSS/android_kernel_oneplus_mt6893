@@ -768,7 +768,6 @@ static int panel_doze_post_disp_on(struct drm_panel *panel,
 	int cmd = 0;
 
 #ifdef VENDOR_EDIT
-/* Hujie@PSW.MM.DisplayDriver.AOD, 2019/12/10, add for keylog*/
 	pr_info("debug for lcm %s\n", __func__);
 #endif
 

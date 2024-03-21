@@ -7,6 +7,12 @@
 
 extern void set_lcm(struct LCM_setting_table_V3 *para_tbl,
 			unsigned int size, bool hs);
+
+#ifdef OPLUS_FEATURE_DISPLAY
+extern void set_lcm_nolock(struct LCM_setting_table_V3 *para_tbl,
+			unsigned int size, bool hs);
+#endif
+
 extern int read_lcm(unsigned char cmd, unsigned char *buf,
 		unsigned char buf_size, bool sendhs);
 

@@ -99,13 +99,19 @@ int get_charger_exist(void)
 
 int get_charger_status(struct mtk_battery *gm)
 {
+#ifndef OPLUS_FEATURE_CHG_BASIC
 	int charger_status = 0;
+#else
+	int charger_status = -1;
+#endif
 
+#ifndef OPLUS_FEATURE_CHG_BASIC
 	if (gm->bs_data.bat_status ==
 				POWER_SUPPLY_STATUS_NOT_CHARGING)
 		charger_status = -1;
 	else
 		charger_status = 0;
+#endif
 
 	return charger_status;
 }

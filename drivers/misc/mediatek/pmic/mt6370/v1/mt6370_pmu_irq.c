@@ -18,6 +18,23 @@
 
 #define MT6370_PMU_IRQ_EVT_MAX (128)
 
+#ifdef CONFIG_OPLUS_CHARGER_MTK6781
+/* Add for charging */
+extern int oplus_chg_get_mmi_status(void);
+extern bool mt6370_get_vbus_status(void);
+extern int mt6370_chg_enable(bool en);
+extern int mt6370_chg_enable_wdt(bool enable);
+extern bool oplus_chg_wake_update_work(void);
+extern bool oplus_vooc_get_fastchg_started(void);
+extern int oplus_vooc_get_adapter_update_status(void);
+extern void oplus_vooc_reset_fastchg_after_usbout(void);
+extern void oplus_chg_clear_chargerid_info(void);
+extern void oplus_chg_set_chargerid_switch_val(int);
+extern bool oplus_vooc_get_fastchg_to_normal(void);
+extern bool oplus_vooc_get_fastchg_to_warm(void);
+extern void oplus_chg_set_charger_type_unknown(void);
+extern void oplus_wake_up_usbtemp_thread(void);
+#endif
 struct irq_mapping_tbl {
 	const char *name;
 	const int id;
@@ -190,6 +207,10 @@ static const struct irq_domain_ops mt6370_pmu_irq_domain_ops = {
 	.xlate = irq_domain_xlate_onetwocell,
 };
 
+#ifdef CONFIG_OPLUS_CHARGER_MTK6781
+extern void charger_plug_out_check(void);
+#endif
+
 static irqreturn_t mt6370_pmu_irq_handler(int irq, void *priv)
 {
 	struct mt6370_pmu_chip *chip = (struct mt6370_pmu_chip *)priv;
@@ -201,6 +222,9 @@ static irqreturn_t mt6370_pmu_irq_handler(int irq, void *priv)
 	u8 valid_chg[16] = { 0 };
 	int i = 0, j = 0, ret = 0;
 
+#ifdef CONFIG_OPLUS_CHARGER_MTK6781
+	bool vbus_status = false;
+#endif
 	pr_info_ratelimited("%s\n", __func__);
 	pm_runtime_get_sync(chip->dev);
 	ret = mt6370_pmu_reg_write(chip, MT6370_PMU_REG_IRQMASK, 0xFE);
@@ -268,6 +292,50 @@ static irqreturn_t mt6370_pmu_irq_handler(int irq, void *priv)
 				dev_info_ratelimited(chip->dev,
 				"%s: handler irq_domain = (%d, %d)\n",
 				__func__, i, j);
+#ifdef CONFIG_OPLUS_CHARGER_MTK6781
+/* Modify for charging */
+				if (i == 7) {
+					vbus_status = mt6370_get_vbus_status();
+					mt6370_chg_enable_wdt(vbus_status);
+					if (oplus_vooc_get_fastchg_started() == true
+						&& oplus_vooc_get_adapter_update_status() != 1) {
+						if (vbus_status) {
+							/*vooc adapters MCU vbus reset time is about 800ms(default standard),
+							 * but some adapters reset time is about 350ms, so when vbus plugin irq
+							 * was trigger, fastchg_started is true(default standard is false).
+							 */
+							mt6370_chg_enable(false);
+						}
+					} else {
+						if (!vbus_status) {
+							oplus_vooc_reset_fastchg_after_usbout();
+							if (oplus_vooc_get_fastchg_started() == false) {
+								oplus_chg_set_chargerid_switch_val(0);
+								oplus_chg_clear_chargerid_info();
+							}
+							oplus_chg_set_charger_type_unknown();
+						} else {
+							if ((oplus_vooc_get_fastchg_to_normal() == true)
+								|| (oplus_vooc_get_fastchg_to_warm() == true)
+								|| (oplus_chg_get_mmi_status() == 0)) {
+								mt6370_chg_enable(false);
+							}
+						}
+							oplus_chg_wake_update_work();
+					}
+					if (vbus_status) {
+						oplus_wake_up_usbtemp_thread();
+					}
+				} else if ((i == 8) && (j == 4)) {
+					vbus_status = mt6370_get_vbus_status();
+					if (!vbus_status) {
+						charger_plug_out_check();
+					}
+					dev_dbg(chip->dev, "handle_irq [%d,%d] vbus_status %d\n", i, j, vbus_status);
+				} else {
+					dev_dbg(chip->dev, "handle_irq [%d,%d]\n", i, j);
+				}
+#endif /*CONFIG_OPLUS_CHARGER_MTK6781*/
 				handle_nested_irq(ret);
 			} else
 				dev_err(chip->dev, "unmapped %d %d\n", i, j);

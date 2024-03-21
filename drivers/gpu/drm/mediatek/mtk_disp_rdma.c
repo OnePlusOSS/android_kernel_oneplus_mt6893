@@ -25,6 +25,13 @@
 #include "mtk_layering_rule.h"
 #include "mtk_drm_trace.h"
 #include "swpm_me.h"
+#ifdef CONFIG_OPLUS_OFP_V2
+/* add for ui ready */
+#include "oplus_display_onscreenfingerprint.h"
+#endif
+#ifdef OPLUS_BUG_STABILITY
+#include <soc/oplus/system/oplus_mm_kevent_fb.h>
+#endif
 
 #define DISP_REG_RDMA_INT_ENABLE 0x0000
 #define DISP_REG_RDMA_INT_STATUS 0x0004
@@ -257,6 +264,16 @@ static inline struct mtk_disp_rdma *comp_to_rdma(struct mtk_ddp_comp *comp)
 	return container_of(comp, struct mtk_disp_rdma, ddp_comp);
 }
 
+#ifndef CONFIG_OPLUS_OFP_V2
+/* modify for fpd_notify timing */
+extern int hbm_eof_flag;
+extern void fingerprint_send_notify(unsigned int fingerprint_op_mode);
+#endif
+
+#ifdef OPLUS_BUG_STABILITY
+extern int mtk_drm_session_created;
+#endif /* OPLUS_BUG_STABILITY */
+
 static irqreturn_t mtk_disp_rdma_irq_handler(int irq, void *dev_id)
 {
 	struct mtk_disp_rdma *priv = dev_id;
@@ -315,15 +332,36 @@ static irqreturn_t mtk_disp_rdma_irq_handler(int irq, void *dev_id)
 		}
 		if (!mtk_drm_is_idle(&(rdma->mtk_crtc->base)))
 			mtk_drm_refresh_tag_end(&priv->ddp_comp);
+
+#ifdef CONFIG_OPLUS_OFP_V2
+		if (oplus_ofp_is_support()) {
+			oplus_ofp_pressed_icon_status_update(OPLUS_OFP_FRAME_DONE);
+		}
+#endif
 	}
 
 	if (val & (1 << 1)) {
-		if (rdma->id == DDP_COMPONENT_RDMA0)
+		if (rdma->id == DDP_COMPONENT_RDMA0) {
 			DRM_MMP_EVENT_START(rdma0, val, 0);
+			mtk_drm_trace_c("%d|rdmastart|%d", hwc_pid, 1);
+			mtk_drm_trace_c("%d|rdmastart|%d", hwc_pid, 0);
+		}
 		DDPINFO("[IRQ] %s: frame start!\n", mtk_dump_comp_str(rdma));
+#ifndef CONFIG_OPLUS_OFP_V2
+		/* add for accurate time notify fp to take effect*/
+		if(hbm_eof_flag){
+			fingerprint_send_notify(0);
+			hbm_eof_flag = 0;
+		}
+#endif
 
+		#ifdef OPLUS_BUG_STABILITY
+		if (mtk_crtc && mtk_drm_session_created &&
+			mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
+		#else /* OPLUS_BUG_STABILITY */
 		if (mtk_crtc &&
 			mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
+		#endif /* OPLUS_BUG_STABILITY */
 			state = to_mtk_crtc_state(mtk_crtc->base.state);
 			if (state &&
 				!state->prop_val[CRTC_PROP_DOZE_ACTIVE]) {
@@ -368,6 +406,11 @@ static irqreturn_t mtk_disp_rdma_irq_handler(int irq, void *dev_id)
 				DDPAEE("%s: underflow! cnt=%d\n",
 				       mtk_dump_comp_str(rdma),
 				       priv->underflow_cnt);
+				#ifdef OPLUS_BUG_STABILITY
+				if ((priv->underflow_cnt) < 5) {
+					mm_fb_display_kevent("DisplayDriverID@@502$$", MM_FB_KEY_RATELIMIT_1H, "underflow cnt=%d", priv->underflow_cnt);
+				}
+				#endif
 			}
 		}
 
@@ -375,11 +418,19 @@ static irqreturn_t mtk_disp_rdma_irq_handler(int irq, void *dev_id)
 	}
 	if (val & (1 << 5)) {
 		DDPIRQ("[IRQ] %s: target line!\n", mtk_dump_comp_str(rdma));
+		#ifdef OPLUS_BUG_STABILITY
+		if (mtk_crtc && mtk_drm_session_created &&
+		    !mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
+			atomic_set(&mtk_crtc->sf_pf_event, 1);
+			wake_up_interruptible(&mtk_crtc->sf_present_fence_wq);
+		}
+		#else /* OPLUS_BUG_STABILITY */
 		if (mtk_crtc &&
 			!mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
 			atomic_set(&mtk_crtc->sf_pf_event, 1);
 			wake_up_interruptible(&mtk_crtc->sf_present_fence_wq);
 		}
+		#endif /* OPLUS_BUG_STABILITY */
 		if (rdma->mtk_crtc && rdma->mtk_crtc->esd_ctx &&
 			(!(val & (1 << 2)))) {
 			atomic_set(&rdma->mtk_crtc->esd_ctx->target_time, 1);
@@ -591,8 +642,19 @@ void mtk_rdma_cal_golden_setting(struct mtk_ddp_comp *comp,
 	/* DISP_RDMA_FIFO_CON */
 	if (gsc->is_vdo_mode)
 		gs[GS_RDMA_OUTPUT_VALID_FIFO_TH] = 0;
+	#ifndef OPLUS_BUG_STABILITY
 	else
 		gs[GS_RDMA_OUTPUT_VALID_FIFO_TH] = gs[GS_RDMA_PRE_ULTRA_TH_LOW];
+	#else
+	else {
+		struct mtk_panel_params *panel_ext =
+			mtk_drm_get_lcm_ext_params(&comp->mtk_crtc->base);
+		if (panel_ext &&  panel_ext->output_mode == MTK_PANEL_DSC_SINGLE_PORT)
+			gs[GS_RDMA_OUTPUT_VALID_FIFO_TH] = 0;
+		else
+			gs[GS_RDMA_OUTPUT_VALID_FIFO_TH] = gs[GS_RDMA_PRE_ULTRA_TH_LOW];
+	}
+	#endif
 	gs[GS_RDMA_FIFO_SIZE] = fifo_size;
 	gs[GS_RDMA_FIFO_UNDERFLOW_EN] = 0;
 
@@ -826,7 +888,7 @@ static void mtk_rdma_config(struct mtk_ddp_comp *comp,
 	//for dual pipe one layer
 	if (comp->mtk_crtc->is_dual_pipe) {
 		w = cfg->w / 2;
-		DDPFUNC();
+		DDPDBG("%s: line:%d",__func__,__LINE__);
 	} else
 		w = cfg->w;
 	cmdq_pkt_write(handle, comp->cmdq_base,

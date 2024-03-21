@@ -8,6 +8,9 @@
 #include <mt-plat/turbo_common.h>
 #endif
 #include "../../drivers/misc/mediatek/base/power/include/mtk_upower.h"
+#if defined(OPLUS_FEATURE_TASK_CPUSTATS) && defined(CONFIG_OPLUS_SCHED)
+#include <linux/task_sched_info.h>
+#endif /* defined(OPLUS_FEATURE_TASK_CPUSTATS) && defined(CONFIG_OPLUS_SCHED) */
 
 DEFINE_PER_CPU(struct task_struct*, migrate_task);
 static int idle_pull_cpu_stop(void *data)
@@ -288,6 +291,9 @@ inline int hinted_cpu_prefer(int task_prefer)
 	return 1;
 }
 
+#ifdef CONFIG_OPLUS_FG_BOOST
+extern oplus_task_sched_boost(struct task_struct *p, int *task_prefer);
+#endif /* CONFIG_OPLUS_FG_BOOST */
 int select_task_prefer_cpu(struct task_struct *p, int new_cpu)
 {
 	int task_prefer;
@@ -303,6 +309,9 @@ int select_task_prefer_cpu(struct task_struct *p, int new_cpu)
 
 	task_prefer = cpu_prefer(p);
 
+#ifdef CONFIG_OPLUS_FG_BOOST
+	oplus_task_sched_boost(p, &task_prefer);
+#endif /* CONFIG_OPLUS_FG_BOOST */
 	if (!hinted_cpu_prefer(task_prefer) && !cpu_isolated(new_cpu))
 		return new_cpu;
 
@@ -312,8 +321,17 @@ int select_task_prefer_cpu(struct task_struct *p, int new_cpu)
 	}
 
 	for (i = 0; i < domain_cnt; i++) {
+#ifdef CONFIG_OPLUS_FG_BOOST
+		if (task_prefer == SCHED_PREFER_BIG)
+			iter_domain = domain_cnt - i - 1;
+		else if (task_prefer == SCHED_PREFER_MEDIUM)
+			iter_domain = (i < domain_cnt -1) ? i + 1 : 0;
+		else
+			iter_domain = i;
+#else
 		iter_domain = (task_prefer == SCHED_PREFER_BIG) ?
 				domain_cnt-i-1 : i;
+#endif /* CONFIG_OPLUS_FG_BOOST */
 		domain = tmp_domain[iter_domain];
 
 #ifdef CONFIG_MTK_TASK_TURBO
@@ -1167,6 +1185,9 @@ int _sched_isolate_cpu(int cpu)
 
 out:
 	cpu_maps_update_done();
+#if defined(OPLUS_FEATURE_TASK_CPUSTATS) && defined(CONFIG_OPLUS_SCHED)
+	update_cpu_isolate_info(cpu, cpu_isolate);
+#endif /* defined(OPLUS_FEATURE_TASK_CPUSTATS) && defined(CONFIG_OPLUS_SCHED) */
 	trace_sched_isolate(cpu, cpumask_bits(cpu_isolated_mask)[0],
 			    start_time, 1);
 	printk_deferred("%s:cpu=%d, isolation_cpus=0x%lx\n",
@@ -1214,7 +1235,9 @@ int __sched_deisolate_cpu_unlocked(int cpu)
 out:
 	trace_sched_isolate(cpu, cpumask_bits(cpu_isolated_mask)[0],
 			    start_time, 0);
-
+#if defined(OPLUS_FEATURE_TASK_CPUSTATS) && defined(CONFIG_OPLUS_SCHED)
+	update_cpu_isolate_info(cpu, cpu_unisolate);
+#endif /* defined(OPLUS_FEATURE_TASK_CPUSTATS) && defined(CONFIG_OPLUS_SCHED) */
 	printk_deferred("%s:cpu=%d, isolation_cpus=0x%lx\n",
 			__func__, cpu, cpu_isolated_mask->bits[0]);
 	return ret_code;

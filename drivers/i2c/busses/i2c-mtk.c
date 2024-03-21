@@ -821,6 +821,84 @@ void dump_i2c_status(int id)
 }
 EXPORT_SYMBOL(dump_i2c_status);
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+#include <linux/pinctrl/consumer.h>
+#define I2C_RESET_BUS		7
+#define FG_DEVICE_ADDR		0x55
+#define DEVICE_TYPE_ZY0602	3
+#define I2C_STATE "i2c-state"
+#define OUTPUT_LOW_STATE "output-low-state"
+static int fg_device_type = 0;
+static void i2c_gpio_reset(struct mt_i2c *i2c)
+{
+	int ret = 0;
+	static bool i2c_reset_processing = false;
+	struct pinctrl *pctrl = NULL;
+	struct pinctrl_state *i2c_state = NULL;
+	struct pinctrl_state *output_low_state = NULL;
+
+	//pr_err("%s: test i2c id=%d\n", __func__, i2c->id);   /*for debug*/
+	if ((i2c == NULL) || (i2c->id != I2C_RESET_BUS))
+		return;
+
+	pctrl = i2c->pctrl;
+	if (IS_ERR_OR_NULL(pctrl)) {
+		pr_err("%s: no pinctrl setting! id=%d\n", __func__, i2c->id);
+		return;
+	}
+
+	if (i2c_reset_processing == true) {
+		pr_err("%s: i2c_reset is processing, return\n", __func__);
+		return;
+	}
+	i2c_reset_processing = true;
+
+	i2c_state = pinctrl_lookup_state(pctrl, I2C_STATE);
+	if (IS_ERR_OR_NULL(i2c_state)) {
+		pr_err("%s: get pinctrl state: %s failed! id=%d\n", __func__, I2C_STATE, i2c->id);
+		return;
+	}
+
+	output_low_state = pinctrl_lookup_state(pctrl, OUTPUT_LOW_STATE);
+	if (IS_ERR_OR_NULL(output_low_state)) {
+		pr_err("%s: get pinctrl state: %s failed! id=%d\n", __func__, OUTPUT_LOW_STATE, i2c->id);
+		return;
+	}
+
+	ret = pinctrl_select_state(pctrl, output_low_state);
+	if (ret < 0) {
+		pr_err("%s: set pinctrl state: %s failed! id=%d\n", __func__, OUTPUT_LOW_STATE, i2c->id);
+		return;
+	}
+
+	mdelay(2500);
+
+	ret = pinctrl_select_state(pctrl, i2c_state);
+	if (ret < 0) {
+		pr_err("%s: set pinctrl state: %s failed! id=%d\n", __func__, I2C_STATE, i2c->id);
+		return;
+	}
+
+	i2c_reset_processing = false;
+	pr_err("%s: gpio reset successful id=%d\n", __func__, i2c->id);
+}
+
+int oplus_get_fg_device_type(void)
+{
+	pr_err("oplus_get_fg_device_type  fg_device_type[%d]\n", fg_device_type);
+	return fg_device_type;
+}
+EXPORT_SYMBOL(oplus_get_fg_device_type);
+
+void oplus_set_fg_device_type(int device_type)
+{
+	pr_err("oplus_set_fg_device_type  fg_device_type[%d]\n", fg_device_type);
+	fg_device_type = device_type;
+	return;
+}
+EXPORT_SYMBOL(oplus_set_fg_device_type);
+#endif /*OPLUS_FEATURE_CHG_BASIC*/
+
 static int mt_i2c_do_transfer(struct mt_i2c *i2c)
 {
 	u16 addr_reg = 0;
@@ -835,6 +913,11 @@ static int mt_i2c_do_transfer(struct mt_i2c *i2c)
 	u8 *ptr;
 	int ret = 0;
 	/* u16 ch_offset; */
+
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	const char * chg_i2c = "i2c-7";
+	static int err_count_for_reset = 0;
+#endif
 
 	i2c->trans_stop = false;
 	i2c->irq_stat = 0;
@@ -1172,6 +1255,22 @@ static int mt_i2c_do_transfer(struct mt_i2c *i2c)
 			dev_info(i2c->dev, "bus channel transferred\n");
 		}
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+		if (!strcmp(dev_name(i2c->dev), chg_i2c) && i2c->addr == FG_DEVICE_ADDR) {
+			dev_err(i2c->dev, "[OPLUS_TEST] %s, %x \n", dev_name(i2c->dev), i2c->addr);
+			if (oplus_get_fg_device_type() == DEVICE_TYPE_ZY0602) {
+				if (err_count_for_reset >= 5) {
+					i2c_gpio_reset(i2c);
+					err_count_for_reset = 0;
+				} else {
+					err_count_for_reset++;
+				}
+			} else {
+				i2c_gpio_reset(i2c);
+			}
+		}
+#endif /*OPLUS_FEATURE_CHG_BASIC*/
+
 		if (start_reg & I2C_TRANSAC_START) {
 			dev_info(i2c->dev, "bus tied low/high(0x%x)\n",
 				start_reg);
@@ -1179,6 +1278,11 @@ static int mt_i2c_do_transfer(struct mt_i2c *i2c)
 		}
 		return -ETIMEDOUT;
 	}
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	else {
+		err_count_for_reset = 0;
+	}
+#endif /*OPLUS_FEATURE_CHG_BASIC*/
 	if (i2c->irq_stat & (I2C_HS_NACKERR | I2C_ACKERR |
 	    I2C_TIMEOUT | I2C_BUS_ERR | I2C_IBI)) {
 		dev_info(i2c->dev,
@@ -1791,6 +1895,10 @@ static int mt_i2c_probe(struct platform_device *pdev)
 	of_id = of_match_node(mtk_i2c_of_match, pdev->dev.of_node);
 	if (!of_id)
 		return -EINVAL;
+
+#ifdef OPLUS_FEATURE_CHG_BASIC
+		i2c->pctrl = devm_pinctrl_get(&pdev->dev);
+#endif
 
 	i2c->dev_comp = of_id->data;
 	i2c->i2c_pll_info = &i2c_pll_info;

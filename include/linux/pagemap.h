@@ -220,6 +220,43 @@ static inline int page_cache_add_speculative(struct page *page, int count)
 	return 1;
 }
 
+/**
+ * attach_page_private - Attach private data to a page.
+ * @page: Page to attach data to.
+ * @data: Data to attach to page.
+ *
+ * Attaching private data to a page increments the page's reference count.
+ * The data must be detached before the page will be freed.
+ */
+static inline void attach_page_private(struct page *page, void *data)
+{
+	get_page(page);
+	set_page_private(page, (unsigned long)data);
+	SetPagePrivate(page);
+}
+
+/**
+ * detach_page_private - Detach private data from a page.
+ * @page: Page to detach data from.
+ *
+ * Removes the data that was previously attached to the page and decrements
+ * the refcount on the page.
+ *
+ * Return: Data that was attached to the page.
+ */
+static inline void *detach_page_private(struct page *page)
+{
+	void *data = (void *)page_private(page);
+
+	if (!PagePrivate(page))
+		return NULL;
+	ClearPagePrivate(page);
+	set_page_private(page, 0);
+	put_page(page);
+
+	return data;
+}
+
 #ifdef CONFIG_NUMA
 extern struct page *__page_cache_alloc(gfp_t gfp);
 #else
@@ -511,6 +548,35 @@ static inline __sched int lock_page_or_retry(struct page *page,
 	return trylock_page(page) || __lock_page_or_retry(page, mm, flags);
 }
 
+
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+static inline __sched int lock_nr_pages_or_retry(struct page **page, struct mm_struct *mm,
+				     unsigned int flags, int nr)
+{
+	int i, ret;
+
+	might_sleep();
+
+	for (i = 0; i < nr; i++) {
+		ret = trylock_page(page[i]);
+		if (ret)
+			continue;
+
+		ret = __lock_page_or_retry(page[i], mm, flags);
+		if (!ret)
+			break;
+	}
+
+	if (!ret && i) {
+		for (i--; i >= 0; i--) {
+			CHP_BUG_ON(!PageLocked(page[i]));
+			unlock_page(page[i]);
+		}
+	}
+
+	return ret;
+}
+#endif
 /*
  * This is exported only for wait_on_page_locked/wait_on_page_writeback, etc.,
  * and should not be used directly.

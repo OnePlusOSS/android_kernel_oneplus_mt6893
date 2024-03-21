@@ -14,6 +14,9 @@
 #include <linux/swap.h>
 #include <linux/sched/clock.h>
 #include "ion_priv.h"
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+#include "../../../mm/chp_ext.h"
+#endif
 
 static unsigned long long last_alloc_ts;
 
@@ -24,14 +27,23 @@ static unsigned long long last_alloc_ts;
  */
 static long nr_total_pages;
 
-static void *ion_page_pool_alloc_pages(struct ion_page_pool *pool)
+void *ion_page_pool_alloc_pages(struct ion_page_pool *pool)
 {
 	unsigned long long start, end;
 	struct page *page;
 	unsigned int i;
 
 	start = sched_clock();
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+	/*try get page from hugepage pool when order is HPAGE_CONT_PTE_ORDER*/
+	if (cont_pte_huge_page_enabled() && pool->order == HPAGE_CONT_PTE_ORDER){
+		page = alloc_chp_ext_wrapper(pool->gfp_mask | __GFP_COMP, CHP_EXT_DMABUF);
+	}else{
+		page = alloc_pages(pool->gfp_mask, pool->order);
+	}
+#else
 	page = alloc_pages(pool->gfp_mask, pool->order);
+#endif
 	end = sched_clock();
 
 	if ((end - start > 10000000ULL) &&
@@ -56,7 +68,11 @@ static void *ion_page_pool_alloc_pages(struct ion_page_pool *pool)
 static void ion_page_pool_free_pages(struct ion_page_pool *pool,
 				     struct page *page)
 {
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+	__free_pages_ext(page, pool->order);
+#else
 	__free_pages(page, pool->order);
+#endif
 	if (atomic64_sub_return((1 << pool->order), &page_sz_cnt) < 0) {
 		IONMSG("underflow!, total_now[%ld]free[%lu]\n",
 		       atomic64_read(&page_sz_cnt),
@@ -68,6 +84,10 @@ static void ion_page_pool_free_pages(struct ion_page_pool *pool,
 static int ion_page_pool_add(struct ion_page_pool *pool, struct page *page)
 {
 	mutex_lock(&pool->mutex);
+#ifdef OPLUS_FEATURE_HEALTHINFO
+	zone_page_state_add(1L << pool->order, page_zone(page),
+		NR_IONCACHE_PAGES);
+#endif  /*OPLUS_FEATURE_HEALTHINFO*/
 	if (PageHighMem(page)) {
 		list_add_tail(&page->lru, &pool->high_items);
 		pool->high_count++;
@@ -97,6 +117,10 @@ static struct page *ion_page_pool_remove(struct ion_page_pool *pool, bool high)
 		page = list_first_entry(&pool->low_items, struct page, lru);
 		pool->low_count--;
 	}
+#ifdef OPLUS_FEATURE_HEALTHINFO
+	zone_page_state_add(-(1L << pool->order), page_zone(page),
+			NR_IONCACHE_PAGES);
+#endif /*OPLUS_FEATURE_HEALTHINFO*/
 
 	list_del(&page->lru);
 	nr_total_pages -= 1 << pool->order;
@@ -119,7 +143,7 @@ struct page *ion_page_pool_alloc(struct ion_page_pool *pool)
 		page = ion_page_pool_remove(pool, false);
 	mutex_unlock(&pool->mutex);
 
-	if (!page)
+	if (!page && !pool->boost_flag)
 		page = ion_page_pool_alloc_pages(pool);
 
 	return page;
@@ -193,7 +217,7 @@ int ion_page_pool_shrink(struct ion_page_pool *pool, gfp_t gfp_mask,
 }
 
 struct ion_page_pool *ion_page_pool_create(gfp_t gfp_mask, unsigned int order,
-					   bool cached)
+					   bool cached, bool boost_flag)
 {
 	struct ion_page_pool *pool = kmalloc(sizeof(*pool), GFP_KERNEL);
 
@@ -207,6 +231,7 @@ struct ion_page_pool *ion_page_pool_create(gfp_t gfp_mask, unsigned int order,
 	INIT_LIST_HEAD(&pool->high_items);
 	pool->gfp_mask = gfp_mask | __GFP_COMP;
 	pool->order = order;
+	pool->boost_flag = boost_flag;
 	mutex_init(&pool->mutex);
 	plist_node_init(&pool->list, order);
 	if (cached)

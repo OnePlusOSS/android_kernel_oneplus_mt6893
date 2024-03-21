@@ -32,6 +32,8 @@ obj-$(CONFIG_MTK_ION) += ion_drv.o ion_mm_heap.o ion_fb_heap.o ion_sec_heap.o io
 obj-$(CONFIG_MTK_ION) += ion_history.o
 obj-$(CONFIG_MTK_ION) += ion_comm.o
 
+obj-$(CONFIG_OPLUS_ION_BOOSTPOOL) += oplus_ion_boost_pool.o
+
 ifeq ($(CONFIG_MTK_ENG_BUILD), y)
 ccflags-y += -DION_RUNTIME_DEBUGGER=1
 else

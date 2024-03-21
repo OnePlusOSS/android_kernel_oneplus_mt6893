@@ -6,14 +6,15 @@
  *	Stanley Chu <stanley.chu@mediatek.com>
  */
 
-#define DEBUG 1
 #define SECTOR_SHIFT 12
 #define UFS_MTK_BIO_TRACE_LATENCY (unsigned long long)(1000000000)
 #define UFS_MTK_BIO_TRACE_TIMEOUT ((UFS_BIO_TRACE_LATENCY)*10)
 
-#include <linux/debugfs.h>
+#include <linux/fs.h>
+#include <linux/f2fs_fs.h>
 #include <linux/kernel.h>
 #include <linux/slab.h>
+#include <linux/types.h>
 #include <linux/time.h>
 #include <linux/tick.h>
 #include <linux/sched.h>
@@ -22,8 +23,16 @@
 #include <linux/spinlock_types.h>
 #include <linux/vmalloc.h>
 #include <linux/smp.h>
+#include <linux/workqueue.h>
 #include <mt-plat/mtk_blocktag.h>
 #include "ufs-mtk-block.h"
+#include "ufs_quirks.h"
+#include "f2fs.h"
+#include "segment.h"
+#include "gc.h"
+#include "trace.h"
+
+#include <trace/events/f2fs.h>
 
 /* ring trace for debugfs */
 struct mtk_blocktag *ufs_mtk_btag;
@@ -449,7 +458,86 @@ static struct mtk_btag_vops ufs_mtk_btag_vops = {
 	.mictx_eval_wqd = ufs_mtk_bio_mictx_eval_wqd,
 };
 
-int ufs_mtk_biolog_init(bool qos_allowed)
+
+struct ufs_mtk_f2fs_gc_context {
+	struct f2fs_sb_info *sbi;
+	struct work_struct gc_work;
+	struct delayed_work gc_reset_work;
+	atomic64_t write_total;
+};
+
+static struct ufs_mtk_f2fs_gc_context ufs_mtk_gc_ctx = {0};
+static struct spinlock ufs_mtk_urgent_gc_lock = {0};
+#define GC_WRITE_DATA_THRESHOLD (1 * 1024 * 1024 * 1024ULL)
+#define GC_DIRTY_SEGMETNS_THRESHOLD (200)
+#define GC_RESET_DELAYED_TIME (60 * 1000) /* in ms */
+
+static void ufs_mtk_reset_gc(struct work_struct *work)
+{
+	struct ufs_mtk_f2fs_gc_context *gc_ctx = NULL;
+	unsigned long flags = 0;
+
+	gc_ctx = container_of(to_delayed_work(work),
+						 struct ufs_mtk_f2fs_gc_context, gc_reset_work);
+
+	spin_lock_irqsave(&ufs_mtk_urgent_gc_lock, flags);
+	if (gc_ctx && gc_ctx->sbi) {
+		pr_debug("reset gc policy to normal\n");
+		gc_ctx->sbi->gc_mode = GC_NORMAL;
+	}
+	spin_unlock_irqrestore(&ufs_mtk_urgent_gc_lock, flags);
+}
+
+static void ufs_mtk_trigger_urgent_gc(struct work_struct *work)
+{
+	struct ufs_mtk_f2fs_gc_context *gc_ctx = NULL;
+	struct f2fs_sb_info* sbi = NULL;
+	unsigned long flags = 0;
+
+	spin_lock_irqsave(&ufs_mtk_urgent_gc_lock, flags);
+	gc_ctx = container_of(work, struct ufs_mtk_f2fs_gc_context, gc_work);
+	sbi = gc_ctx->sbi;
+	if (!sbi) {
+		spin_unlock_irqrestore(&ufs_mtk_urgent_gc_lock, flags);
+		return;
+	}
+	if (sbi->gc_mode != GC_URGENT
+		&& (u64) atomic64_read(&gc_ctx->write_total) > GC_WRITE_DATA_THRESHOLD
+		&& dirty_segments(sbi) > GC_DIRTY_SEGMETNS_THRESHOLD) {
+		cancel_delayed_work_sync(&gc_ctx->gc_reset_work);
+		// trigger f2fs urgent gc
+		sbi->gc_mode = GC_URGENT;
+		if (sbi->gc_thread) {
+			pr_debug("trigger urgent gc by ufs-block\n");
+			sbi->gc_thread->gc_wake = 1;
+			wake_up_interruptible_all(&sbi->gc_thread->gc_wait_queue_head);
+			wake_up_discard_thread(sbi, true);
+		}
+		atomic64_set(&gc_ctx->write_total, 0);
+		schedule_delayed_work(&gc_ctx->gc_reset_work, msecs_to_jiffies(GC_RESET_DELAYED_TIME));
+	}
+	spin_unlock_irqrestore(&ufs_mtk_urgent_gc_lock, flags);
+	/* pending 10 seconds to avoid trigger urgent gc frequently */
+	msleep(10 * 1000);
+}
+
+static void ufs_mtk_trace_f2fs_write_end(void* data, struct inode *inode,
+										loff_t offset, unsigned len, unsigned copied)
+{
+	struct ufs_mtk_host *host = data;
+
+	if (!inode || !(host->hba->dev_quirks & UFS_DEVICE_QUIRK_URGENT_GC))
+		return;
+	atomic64_add(copied, &ufs_mtk_gc_ctx.write_total);
+	if (work_pending(&ufs_mtk_gc_ctx.gc_work)) {
+		pr_debug("gc work is pending, skip it\n");
+		return;
+	}
+	ufs_mtk_gc_ctx.sbi = F2FS_I_SB(inode);
+	schedule_work(&ufs_mtk_gc_ctx.gc_work);
+}
+
+int ufs_mtk_biolog_init(struct ufs_mtk_host *host, bool qos_allowed)
 {
 	struct mtk_blocktag *btag;
 
@@ -468,12 +556,20 @@ int ufs_mtk_biolog_init(bool qos_allowed)
 		ufs_mtk_btag = btag;
 		ctx = BTAG_CTX(ufs_mtk_btag);
 		ufs_mtk_bio_init_ctx(&ctx[0]);
+		INIT_WORK(&ufs_mtk_gc_ctx.gc_work, ufs_mtk_trigger_urgent_gc);
+		INIT_DELAYED_WORK(&ufs_mtk_gc_ctx.gc_reset_work, ufs_mtk_reset_gc);
+		register_trace_f2fs_write_end(ufs_mtk_trace_f2fs_write_end, host);
 	}
 	return 0;
 }
 
-int ufs_mtk_biolog_exit(void)
+int ufs_mtk_biolog_exit(struct ufs_mtk_host *host)
 {
+	if (ufs_mtk_btag) {
+		unregister_trace_f2fs_write_end(ufs_mtk_trace_f2fs_write_end, host);
+		cancel_work_sync(&ufs_mtk_gc_ctx.gc_work);
+		cancel_delayed_work(&ufs_mtk_gc_ctx.gc_reset_work);
+	}
 	mtk_btag_free(ufs_mtk_btag);
 	return 0;
 }

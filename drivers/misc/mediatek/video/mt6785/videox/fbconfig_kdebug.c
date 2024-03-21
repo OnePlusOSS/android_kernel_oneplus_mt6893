@@ -160,6 +160,33 @@ int fbconfig_get_esd_check(enum DSI_INDEX dsi_id, uint32_t cmd,
 	return 0;
 }
 
+#ifdef OPLUS_BUG_STABILITY
+/*
+* add for lcd serial
+*/
+
+//atomic_t LCMREG_byCPU = ATOMIC_INIT(0);
+extern unsigned int DSI_dcs_read_lcm_reg_v3_wrapper_DSI0(unsigned char cmd,
+		unsigned char *buffer, unsigned char buffer_size);
+extern unsigned int DSI_dcs_read_lcm_reg_v4_wrapper_DSI0(unsigned char cmd,
+		unsigned char *buffer, unsigned char buffer_size);
+extern bool oplus_flag_lcd_off;
+extern bool oplus_display_aod_ramless_support;
+extern bool oplus_display_aod_support;
+
+typedef struct panel_serial_info
+{
+	int reg_index;
+	uint64_t year;
+	uint64_t month;
+	uint64_t day;
+	uint64_t hour;
+	uint64_t minute;
+	uint64_t second;
+	uint64_t reserved[2];
+} PANEL_SERIAL_INFO;
+
+#endif /* OPLUS_BUG_STABILITY */
 /* RECORD_CMD = 0, */
 /* RECORD_MS = 1, */
 /* RECORD_PIN_SET        = 2, */

@@ -25,10 +25,26 @@ subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/typec/tcpc/inc
 subdir-ccflags-y += -I$(srctree)/drivers/power/supply/mediatek/misc/
 subdir-ccflags-y += -I$(srctree)/drivers/power/supply/mediatek/battery/
 
+ifeq (y, $(filter y, $(CONFIG_OPLUS_CHARGER_MTK6853) $(CONFIG_OPLUS_CHARGER_MTK6873) \
+					 $(CONFIG_OPLUS_CHARGER_MTK6885) $(CONFIG_OPLUS_CHARGER_MTK6889) \
+					 $(CONFIG_OPLUS_CHARGER_MTK6785) $(CONFIG_OPLUS_CHARGER_MTK6893) \
+					 $(CONFIG_OPLUS_CHARGER_MTK6877) $(CONFIG_OPLUS_CHARGER_MTK6833) \
+					 $(CONFIG_OPLUS_CHARGER_MTK6769R)))
+obj-y += charger_class.o mtk_switch_charging.o mtk_pdc_intf.o\
+         mtk_chg_type_det.o mtk_pe40_intf.o mtk_linear_charging.o\
+         adapter_class.o mtk_pd_adapter.o\
+         mtk_switch_charging2.o mtk_intf.o mtk_pe40.o mtk_pdc.o
+else ifeq ($(CONFIG_OPLUS_CHARGER_MTK6781),y)
+obj-y += charger_class.o mtk_switch_charging.o mtk_pdc_intf.o\
+	 mtk_chg_type_det.o mtk_pe40_intf.o mtk_linear_charging.o\
+	 adapter_class.o mtk_pd_adapter.o\
+	 mtk_switch_charging2.o mtk_intf.o mtk_pe40.o mtk_pdc.o
+else
 obj-y += charger_class.o mtk_charger.o mtk_switch_charging.o mtk_pdc_intf.o\
 	 mtk_chg_type_det.o mtk_pe40_intf.o mtk_linear_charging.o\
 	 adapter_class.o mtk_pd_adapter.o\
 	 mtk_switch_charging2.o mtk_intf.o mtk_pe40.o mtk_pdc.o
+endif
 
 obj-$(CONFIG_MTK_DUAL_CHARGER_SUPPORT) += mtk_dual_switch_charging.o
 obj-$(CONFIG_MTK_PUMP_EXPRESS_PLUS_SUPPORT) += mtk_pe_intf.o
@@ -39,8 +55,11 @@ obj-$(CONFIG_RT_PROP_CHGALGO) += prop_chgalgo_class.o pca_pps_ta.o \
 obj-$(CONFIG_CHARGER_RT9465) += rt9465.o
 obj-$(CONFIG_CHARGER_RT9466) += rt9466.o
 obj-$(CONFIG_CHARGER_RT9458) += rt9458.o
-obj-$(CONFIG_CHARGER_RT9467) += rt9467.o
-obj-$(CONFIG_CHARGER_RT9471) += rt9471.o
+#ifdef OPLUS_FEATURE_CHG_BASIC
+# use oplus/charger_ic oplus_rt9467_charger.c  oplus_rt9471_charger.c
+#obj-$(CONFIG_CHARGER_RT9467) += rt9467.o
+#obj-$(CONFIG_CHARGER_RT9471) += rt9471.o
+#endif
 obj-$(CONFIG_CHARGER_RT9759) += rt9759.o
 obj-$(CONFIG_CHARGER_HL7005) += hl7005.o
 obj-$(CONFIG_CHARGER_BQ25601) += bq25601.o

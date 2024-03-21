@@ -76,7 +76,7 @@ static unsigned int mtk_eint_can_en_debounce(struct mtk_eint *eint,
 	else
 		sens = MTK_EINT_EDGE_SENSITIVE;
 
-	if (eint_num < eint->hw->db_cnt && sens != MTK_EINT_EDGE_SENSITIVE)
+	if (sens != MTK_EINT_EDGE_SENSITIVE)
 		return 1;
 	else
 		return 0;
@@ -142,6 +142,53 @@ static unsigned int mtk_eint_get_mask(struct mtk_eint *eint,
 						eint->regs->mask);
 
 	return !!(readl(reg) & bit);
+}
+
+static void mtk_eint_set_sw_debounce(struct irq_data *d,
+		struct mtk_eint *eint, unsigned int debounce)
+{
+	unsigned int eint_num = d->hwirq;
+
+	eint->eint_sw_debounce_en[eint_num] = 1;
+	eint->eint_sw_debounce[eint_num] = debounce;
+}
+
+static void mtk_eint_sw_debounce_end(struct timer_list *t)
+{
+	unsigned long flags;
+	struct mtk_eint_timer * timer_index = from_timer(timer_index, t, eint_timer);
+	struct irq_data *d = timer_index->data;
+	struct mtk_eint *eint = irq_data_get_irq_chip_data(d);
+	void __iomem *reg = mtk_eint_get_offset(
+				eint, d->hwirq, eint->regs->stat);
+	unsigned int status;
+
+	local_irq_save(flags);
+
+	mtk_eint_unmask(d);
+	status = readl(reg) & (1 << (d->hwirq%32));
+	if (status)
+		generic_handle_irq(d->irq);
+
+	local_irq_restore(flags);
+}
+
+static void mtk_eint_sw_debounce_start(struct mtk_eint *eint,
+		struct irq_data *d, int index)
+{
+	struct  mtk_eint_timer * timer_index = &eint->eint_timers[index];
+	struct timer_list *t = &timer_index->eint_timer;
+	u32 debounce = eint->eint_sw_debounce[index];
+	unsigned long flags;
+
+	timer_setup(t, mtk_eint_sw_debounce_end, 0);
+
+	if (!timer_pending(t)) {
+        spin_lock_irqsave(&timer_index->lock, flags);
+        timer_index->data = d;
+		mod_timer(t, jiffies + usecs_to_jiffies(debounce));
+	}
+	spin_unlock_irqrestore(&timer_index->lock, flags);
 }
 
 static void mtk_eint_ack(struct irq_data *d)
@@ -396,8 +443,8 @@ int mtk_eint_set_debounce(struct mtk_eint *eint, unsigned long eint_num,
 	int virq, eint_offset;
 	unsigned int set_offset, bit, clr_bit, clr_offset, rst, i, unmask,
 		     dbnc;
-	static const unsigned int debounce_time[] = {500, 1000, 16000, 32000,
-						     64000, 128000, 256000};
+	static const unsigned int debounce_time[] = {125, 250, 500, 1000, 16000,
+		32000, 64000, 128000, 256000};
 	struct irq_data *d;
 
 	virq = irq_find_mapping(eint->domain, eint_num);

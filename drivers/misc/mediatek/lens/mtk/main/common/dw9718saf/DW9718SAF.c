@@ -1,9 +1,15 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2019 MediaTek Inc.
+ * Copyright (C) 2015 MediaTek Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
  */
-
-
 
 /*
  * DW9718SAF voice coil motor driver
@@ -70,6 +76,15 @@ static u8 read_data(u8 addr)
 	return get_byte;
 }
 
+#if 0
+static int s4DW9718SAF_ReadReg(unsigned short *a_pu2Result)
+{
+	*a_pu2Result = (read_data(0x02) << 8) + (read_data(0x03) & 0xff);
+
+	return 0;
+}
+#endif
+
 static int s4AF_WriteReg(u16 a_u2Data)
 {
 	int i4RetValue = 0;
@@ -123,25 +138,14 @@ static int initAF(void)
 
 		u8 data = 0xFF;
 		int i4RetValue = 0;
-		char puSendCmd0[2] = {0x00, 0x01}; /* Reset */
-		char puSendCmd1[2] = {0x00, 0x00}; /* Power on */
-
-		char puSendCmd2[2] = {0x02, 0x00};
-		char puSendCmd3[2] = {0x03, 0xD2}; /* Move 210 Code */
-
-		char puSendCmd4[2] = {0x01, 0x39}; /* sac3 Mode */
-		char puSendCmd5[2] = {0x05, 0x7C}; /* SAC period Setting */
+		char puSendCmd[2] = {0x00, 0x00}; /* soft power on */
+		char puSendCmd2[2] = {0x01, 0x39};
+		char puSendCmd3[2] = {0x05, 0x07};
 
 		g_pstAF_I2Cclient->addr = AF_I2C_SLAVE_ADDR;
 		g_pstAF_I2Cclient->addr = g_pstAF_I2Cclient->addr >> 1;
-		i4RetValue = i2c_master_send(g_pstAF_I2Cclient, puSendCmd0, 2);
-		if (i4RetValue < 0) {
-			LOG_INF("I2C send 0x00 failed!!\n");
-			return -1;
-		}
+		i4RetValue = i2c_master_send(g_pstAF_I2Cclient, puSendCmd, 2);
 
-		mdelay(1);
-		i4RetValue = i2c_master_send(g_pstAF_I2Cclient, puSendCmd1, 2);
 		if (i4RetValue < 0) {
 			LOG_INF("I2C send 0x00 failed!!\n");
 			return -1;
@@ -149,36 +153,24 @@ static int initAF(void)
 
 		data = read_data(0x00);
 		LOG_INF("Addr:0x00 Data:0x%x\n", data);
+
 		if (data != 0x0)
 			return -1;
 
-		mdelay(1);
 		i4RetValue = i2c_master_send(g_pstAF_I2Cclient, puSendCmd2, 2);
-		if (i4RetValue < 0) {
-			LOG_INF("I2C send 0x02 failed!!\n");
-			return -1;
-		}
 
-		mdelay(1);
-		i4RetValue = i2c_master_send(g_pstAF_I2Cclient, puSendCmd3, 2);
-		if (i4RetValue < 0) {
-			LOG_INF("I2C send 0x03 failed!!\n");
-			return -1;
-		}
-
-		mdelay(1);
-		i4RetValue = i2c_master_send(g_pstAF_I2Cclient, puSendCmd4, 2);
 		if (i4RetValue < 0) {
 			LOG_INF("I2C send 0x01 failed!!\n");
 			return -1;
 		}
 
-		mdelay(1);
-		i4RetValue = i2c_master_send(g_pstAF_I2Cclient, puSendCmd5, 2);
+		i4RetValue = i2c_master_send(g_pstAF_I2Cclient, puSendCmd3, 2);
+
 		if (i4RetValue < 0) {
 			LOG_INF("I2C send 0x05 failed!!\n");
 			return -1;
 		}
+
 		LOG_INF("driver init success!!\n");
 
 		spin_lock(g_pAF_SpinLock);
@@ -263,14 +255,21 @@ long DW9718SAF_Ioctl(struct file *a_pstFile, unsigned int a_u4Command,
 /* Q1 : Try release multiple times. */
 int DW9718SAF_Release(struct inode *a_pstInode, struct file *a_pstFile)
 {
-	/* power down mode */
-	char puSendCmd[2] = {0x00, 0x01};
-
 	LOG_INF("Start\n");
 
 	if (*g_pAF_Opened == 2) {
-		LOG_INF("apply +\n");
-		LOG_INF("apply -\n");
+		int i4RetValue = 0;
+		u8 data = 0x0;
+		char puSendCmd[2] = {0x00, 0x01};
+
+		LOG_INF("apply\n");
+
+		g_pstAF_I2Cclient->addr = AF_I2C_SLAVE_ADDR;
+		g_pstAF_I2Cclient->addr = g_pstAF_I2Cclient->addr >> 1;
+		i4RetValue = i2c_master_send(g_pstAF_I2Cclient, puSendCmd, 2);
+
+		data = read_data(0x00);
+		LOG_INF("Addr:0x00 Data:0x%x (%d)\n", data, i4RetValue);
 	}
 
 	if (*g_pAF_Opened) {
@@ -280,9 +279,6 @@ int DW9718SAF_Release(struct inode *a_pstInode, struct file *a_pstFile)
 		*g_pAF_Opened = 0;
 		spin_unlock(g_pAF_SpinLock);
 	}
-
-	if (i2c_master_send(g_pstAF_I2Cclient, puSendCmd, 2) < 0)
-		LOG_INF("DW9718S Power down mode fail!\n");
 
 	LOG_INF("End\n");
 

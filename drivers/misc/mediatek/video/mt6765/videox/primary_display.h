@@ -365,7 +365,10 @@ static inline char *power_mode_to_string(enum mtkfb_power_mode pm)
 }
 
 typedef int (*PRIMARY_DISPLAY_CALLBACK) (unsigned int user_data);
-
+#ifdef OPLUS_BUG_STABILITY
+int primary_display_shutdown(void);
+int primary_display_ccci_mipi_callback(int en, int usrdata);
+#endif
 struct display_primary_path_context *_get_context(void);
 void _primary_path_lock(const char *caller);
 void _primary_path_unlock(const char *caller);
@@ -447,10 +450,14 @@ int primary_display_get_original_width(void);
 int primary_display_get_original_height(void);
 int primary_display_lcm_ATA(void);
 int primary_display_setbacklight(unsigned int level);
+int primary_display_setbacklight_nolock(unsigned int level);
 int primary_display_pause(PRIMARY_DISPLAY_CALLBACK callback,
 	unsigned int user_data);
 int primary_display_switch_dst_mode(int mode);
 int primary_display_get_lcm_index(void);
+/* #ifdef OPLUS_BUG_STABILITY */
+int _ioctl_get_lcm_module_info(unsigned long arg);
+/* #endif */ /* OPLUS_BUG_STABILITY */
 int primary_display_force_set_fps(unsigned int keep, unsigned int skip);
 int primary_display_set_fps(int fps);
 int primary_display_get_lcm_max_refresh_rate(void);
@@ -566,6 +573,15 @@ unsigned int primary_display_get_current_cfg_id(void);
 
 void primary_display_dynfps_get_vfp_info(
 	unsigned int *vfp, unsigned int *vfp_for_lp);
+
+//#ifdef OPLUS_ARCH_EXTENDS
+void oplus_cmdq_flush_config_handle_mira(void *handle, int blocking);
+void oplus_cmdq_handle_clear_dirty(struct cmdqRecStruct *cmdq_handle);
+void oplus_delayed_trigger_kick_set(int params);
+enum DISP_POWER_STATE oplus_primary_set_state(enum DISP_POWER_STATE new_state);
+void oplus_cmdq_reset_config_handle(void);
+void oplus_cmdq_build_trigger_loop(void);
+//#endif
 
 extern unsigned int dump_output;
 extern unsigned int dump_output_comp;

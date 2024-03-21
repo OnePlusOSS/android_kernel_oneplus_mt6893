@@ -4,7 +4,7 @@
 */
 bat_gm30: battery{
 	compatible = "mediatek,bat_gm30";
-	DIFFERENCE_FULLOCV_ITH = <(200)>;
+	DIFFERENCE_FULLOCV_ITH = <(320)>;
 /*	Charging termination current*/
 	SHUTDOWN_1_TIME = <(30)>;
 /*	If ui_soc shows 1% more than X minites, system will shutdown*/
@@ -38,15 +38,15 @@ bat_gm30: battery{
 /*	Battery temperature T4*/
 	TEMPERATURE_T5 = <(-10)>;
 /*	Battery temperature T5*/
-	g_FG_PSEUDO100_T0 = <(100)>;
+	g_FG_PSEUDO100_T0 = <(97)>;
 /*	Pseudo 100% percentage at T0*/
-	g_FG_PSEUDO100_T1 = <(100)>;
+	g_FG_PSEUDO100_T1 = <(99)>;
 /*	Pseudo 100% percentage at T1*/
-	g_FG_PSEUDO100_T2 = <(100)>;
+	g_FG_PSEUDO100_T2 = <(94)>;
 /*	Pseudo 100% percentage at T2*/
-	g_FG_PSEUDO100_T3 = <(100)>;
+	g_FG_PSEUDO100_T3 = <(90)>;
 /*	Pseudo 100% percentage at T3*/
-	g_FG_PSEUDO100_T4 = <(100)>;
+	g_FG_PSEUDO100_T4 = <(90)>;
 /*	Pseudo 100% percentage at T4*/
 	Q_MAX_SYS_VOLTAGE_BAT0 = <(3350)>;
 /*	Pseudo1 for hide percentage*/
@@ -66,5 +66,8 @@ bat_gm30: battery{
 /* Table numbers per battery*/
 	MULTI_TEMP_GAUGE0 = <(1)>;
 /* Multi gauge0 enable*/
-#include "mt6768_battery_table.dtsi"
+#include "mt6769_atl_battery_table_ext.dtsi"
+#include "mt6769_sdi_battery_table_ext.dtsi"
+#include "mt6769_atl_6000mah_battery_table_ext.dtsi"
+#include "mt6769_sdi_6000mah_battery_table_ext.dtsi"
 };

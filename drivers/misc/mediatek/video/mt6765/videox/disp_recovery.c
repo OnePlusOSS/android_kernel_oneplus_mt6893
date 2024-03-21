@@ -78,6 +78,7 @@ static unsigned int esd_check_mode;
 static unsigned int esd_check_enable;
 unsigned int esd_checking;
 static int te_irq;
+extern unsigned int oplus_backlight_backup;
 
 #if defined(CONFIG_MTK_DUAL_DISPLAY_SUPPORT) && \
 	(CONFIG_MTK_DUAL_DISPLAY_SUPPORT == 2)
@@ -608,6 +609,12 @@ static int primary_display_check_recovery_worker_kthread(void *data)
 			DISPINFO("[ESD]check thread waked up accidently\n");
 			continue;
 		}
+		/* add for backlight of no esd recovery */
+		if (0 == oplus_backlight_backup) {
+			DISPINFO("[ESD]check thread waked up accidently because backlight off\n");
+			continue;
+		}
+		/* end */
 
 		_primary_path_switch_dst_lock();
 
@@ -722,7 +729,13 @@ int primary_display_esd_recovery(void)
 	DISPDBG("[POWER]lcm suspend[begin]\n");
 	/*after dsi_stop, we should enable the dsi basic irq.*/
 	dsi_basic_irq_enable(DISP_MODULE_DSI0, NULL);
+#ifdef OPLUS_BUG_STABILITY
+	disp_lcm_set_esd_flag(primary_get_lcm(),1);
+#endif
 	disp_lcm_suspend(primary_get_lcm());
+#ifdef OPLUS_BUG_STABILITY
+	disp_lcm_set_esd_flag(primary_get_lcm(),0);
+#endif
 	DISPCHECK("[POWER]lcm suspend[end]\n");
 
 	mmprofile_log_ex(mmp_r, MMPROFILE_FLAG_PULSE, 0, 7);

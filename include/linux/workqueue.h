@@ -145,7 +145,9 @@ struct workqueue_attrs {
 	 * @nice: nice level
 	 */
 	int nice;
-
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+	int ux_state;
+#endif
 	/**
 	 * @cpumask: allowed CPUs
 	 */
@@ -345,7 +347,9 @@ enum {
 	 * http://thread.gmane.org/gmane.linux.kernel/1480396
 	 */
 	WQ_POWER_EFFICIENT	= 1 << 7,
-
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+	WQ_UX	= 1 << 15,
+#endif
 	__WQ_DRAINING		= 1 << 16, /* internal: workqueue is draining */
 	__WQ_ORDERED		= 1 << 17, /* internal: workqueue is ordered */
 	__WQ_LEGACY		= 1 << 18, /* internal: create*_workqueue() */
@@ -390,6 +394,9 @@ enum {
  */
 extern struct workqueue_struct *system_wq;
 extern struct workqueue_struct *system_highpri_wq;
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+extern struct workqueue_struct *system_ux_wq;
+#endif
 extern struct workqueue_struct *system_long_wq;
 extern struct workqueue_struct *system_unbound_wq;
 extern struct workqueue_struct *system_freezable_wq;
@@ -501,7 +508,11 @@ extern __printf(1, 2) void set_worker_desc(const char *fmt, ...);
 extern void print_worker_info(const char *log_lvl, struct task_struct *task);
 extern void show_workqueue_state(void);
 extern void wq_worker_comm(char *buf, size_t size, struct task_struct *task);
-
+#ifdef CONFIG_OPLUS_FEATURE_MIDAS
+extern void get_worker_info(struct task_struct *task, char *buf);
+#else
+static inline void get_worker_info(struct task_struct *task, char *buf) { }
+#endif
 /**
  * queue_work - queue work on a workqueue
  * @wq: workqueue to use

@@ -35,7 +35,19 @@
 			page_owner=on loop.max_part=7";
 			kaslr-seed = <0 0>;
 	};
+	//#ifdef OPLUS_FEATURE_THERMAL_HORAE
+	shell_front {
+		compatible = "oplus,shell-temp";
+	};
 
+	shell_frame {
+		compatible = "oplus,shell-temp";
+	};
+
+	shell_back {
+		compatible = "oplus,shell-temp";
+	};
+	//#endif /* OPLUS_FEATURE_THERMAL_HORAE */
 	cluster0_opp: opp_table0 {
 		compatible = "operating-points-v2";
 		opp-shared;
@@ -1032,6 +1044,12 @@
 			mode-ddr-reserve = <BOOT_DDR_RSVD>;
 			mode-meta = <BOOT_META>;
 			mode-rpmbpk = <BOOT_RPMBPK>;
+			mode-kernel = <BOOT_KERNEL>;
+			mode-sau = <BOOT_SAU>;
+			mode-silence = <BOOT_SILENCE>;
+			mode-sblmemtest = <BOOT_AGINGTEST>;
+			mode-ftm = <BOOT_FACTORY>;
+			mode-edl = <BOOT_EDL>;
 		};
 	};
 
@@ -1239,6 +1257,10 @@
 
 	radio_md_cfg:radio_md_cfg {
 		compatible = "mediatek,radio_md_cfg";
+	};
+
+	swtp: swtp {
+		compatible = "mediatek, swtp-eint";
 	};
 
 	ddrphy@10015000 {
@@ -1681,9 +1703,16 @@
 		reg = <0 0x1023e000 0 0x1000>;
 	};
 
-	goodix_fp: fingerprint {
-		compatible = "mediatek,goodix-fp";
-	};
+
+//#ifdef OPLUS_FEATURE_BOOT_SECURITY
+    oplus_secure_common:oplus_secure_common {
+        compatible = "oplus,secure_common";
+        oplus,sec_reg_num = <0>;
+        oplus,sec_en_anti_reg = <0>;
+        oplus,sec_override1_reg = <0>;
+        oplus,override1_en_value = <0>;
+    };
+//#endif /* OPLUS_FEATURE_BOOT_SECURITY */
 
 	accdet: accdet {
 		compatible = "mediatek,pmic-accdet";
@@ -2071,7 +2100,6 @@
 		pu_cfg = <0xa0>;
 		rsel_cfg = <0xe0>;
 		aed = <0x1a>;
-		apdma_size = <255>;
 	};
 
 	i2c9: i2c9@11019000 {
@@ -2977,6 +3005,12 @@
 			<1>; /*MTK_DRM_OPT_SF_PF*/
 	};
 
+//#ifdef OPLUS_FEATURE_NFC_BRINGUP
+	irq_nfc: irq_nfc {
+		compatible = "mediatek,irq_nfc-eint";
+	};
+//#endif /* OPLUS_FEATURE_NFC_BRINGUP */
+
 	disp_mutex0: disp_mutex@14001000 {
 		compatible = "mediatek,disp_mutex0",
 					"mediatek,mt6781-disp-mutex";
@@ -3418,7 +3452,19 @@
 			pwm-names = "lcd-backlight";
 		};
 	};
-
+/* #ifdef OPLUS_BUG_COMPATIBILITY */
+        i2c_leds {
+                compatible = "mediatek,i2c-leds";
+                backlight {
+                        label = "lcd-backlight";
+                        max-brightness = <1728>;
+                        led-bits = <8>;
+                        trans-bits = <11>;
+                        default-state = "on";
+			max_brightness_custom = <1>;
+                };
+        };
+/* #endif */
 	ion: iommu {
 		compatible = "mediatek,ion";
 		iommus = <&iommu0 M4U_PORT_L0_DISP_FAKE0>;
@@ -4717,9 +4763,9 @@
 		svp-region-based-size = <0 0x10000000>;
 		iris-recognition-size = <0 0x10000000>;
 		2d_fr-size = <0 0>;
-		tui-size = <0 0x4000000>;
+		tui-size = <0 0>;
 		wfd-size = <0 0x4000000>;
-		prot-region-based-size = <0 0x8000000>;
+		prot-region-based-size = <0 0>;
 		ta-elf-size = <0 0x1000000>;
 		ta-stack-heap-size = <0 0x6000000>;
 		sdsp-tee-sharedmem-size = <0 0x1000000>;
@@ -4762,6 +4808,19 @@
 
 	touch: touch {
 		compatible = "goodix,touch", "mediatek,touch";
+	};
+
+	oplus_fp_common:oplus_fp_common {
+		compatible = "oplus,fp_common";
+	};
+
+	goodix_fp: goodix_fp {
+		compatible = "goodix,goodix_fp";
+	};
+
+	silead_fp: silead_fp {
+		status = "ok";
+		compatible = "sil,silead_fp-pins";
 	};
 
 	smart_pa: smart_pa {
@@ -5119,7 +5178,15 @@
 #include "mediatek/mt6370_pd.dtsi"
 #include "mediatek/mt6781-clkitg.dtsi"
 #include "mediatek/rt5133_for_6781.dtsi"
+#include "mediatek/sia8109-sia8152.dtsi"
+#include "mediatek/aw87319.dtsi"
+//#endif
 #ifdef CONFIG_MTK_ENABLE_GENIEZONE
 #include "mediatek/trusty.dtsi"
 #endif
+
+&mt6370_spd_ldo {
+    /* change name by yourself */
+    regulator-name = "dvdd";
+};
 

@@ -1,0 +1,5 @@
+config OPLUS_FEATURE_ABNORMAL_FLAG
+	tristate "task_overload"
+	default n
+	help
+	  abnormal thread detection

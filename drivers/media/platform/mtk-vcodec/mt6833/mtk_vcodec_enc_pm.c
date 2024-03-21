@@ -268,7 +268,7 @@ void mtk_venc_dvfs_begin(struct mtk_vcodec_ctx *ctx)
 #if ENC_DVFS
 static int mtk_venc_get_exec_cnt(struct mtk_vcodec_ctx *ctx)
 {
-	return (int)((readl(ctx->dev->enc_reg_base[VENC_SYS] + 0x17C) &
+	return (int)((readl(ctx->dev->enc_reg_base[VENC_SYS] + 0x1030) &
 			0x7FFFFFFF) / 1000);
 }
 #endif

@@ -278,7 +278,7 @@ tfaContNextLiveData(struct nxpTfaLiveDataList *livedata_idx);
  * @return Tfa98xx_Error
  */
 enum Tfa98xx_Error tfaRunWriteBitfield(struct tfa_device *tfa,
-				       struct nxpTfaBitfield bf);
+				       struct nxpTfaBitfield *bf);
 
 /**
  * Write a parameter file to the device

@@ -179,6 +179,13 @@ struct disp_iommu_device *disp_get_iommu_dev(void);
 #define DISP_IOCTL_OVL_ENABLE_CASCADE	_IOW(DISP_IOCTL_MAGIC, 90, int)
 #define DISP_IOCTL_OVL_DISABLE_CASCADE	_IOW(DISP_IOCTL_MAGIC, 91, int)
 
+/* #ifdef OPLUS_BUG_STABILITY */
+typedef struct {
+    char name[128];
+} LCM_MODULE_INFO;
+
+#define DISP_IOCTL_GET_LCM_MODULE_INFO	_IOR(DISP_IOCTL_MAGIC, 236, LCM_MODULE_INFO)
+/* #endif */ /* OPLUS_BUG_STABILITY */
 /*PQ setting*/
 #define DISP_IOCTL_PQ_GET_DS_PARAM \
 			_IOR(DISP_IOCTL_MAGIC, 100, struct DISP_PQ_DS_PARAM)

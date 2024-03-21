@@ -249,7 +249,10 @@ static ssize_t opp_logs_show(struct kobject *kobj,
 	return len;
 }
 
-static KOBJ_ATTR_RO(opp_logs);
+#ifdef CONFIG_MTK_GPU_OPP_STATS_SUPPORT
+static KOBJ_OPLUS_ATTR_RO(opp_logs);
+#endif
+
 #endif /* CONFIG_MTK_GPU_OPP_STATS_SUPPORT */
 
 //-----------------------------------------------------------------------------

@@ -1,0 +1,1 @@
+obj-y += gc02m1hlt_mipi_Sensor.o

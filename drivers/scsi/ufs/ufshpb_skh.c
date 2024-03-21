@@ -1973,6 +1973,8 @@ static void skhpb_init_lu_constant(struct skhpb_lu *hpb,
 	SKHPB_DRIVER_I("===================================\n");
 }
 
+extern int ufsplus_hpb_status;
+
 static int skhpb_lu_hpb_init(struct ufs_hba *hba, struct skhpb_lu *hpb,
 		struct skhpb_func_desc *func_desc,
 		struct skhpb_lu_desc *lu_desc, int lun,
@@ -1999,7 +2001,9 @@ static int skhpb_lu_hpb_init(struct ufs_hba *hba, struct skhpb_lu *hpb,
 	INIT_LIST_HEAD(&hpb->lh_map_ctx);
 
 	hpb->lu_hpb_enable = true;
-
+	ufsplus_hpb_status=1;
+	SKHPB_DRIVER_I("ufsplus_hpb_status = %d\n",
+	ufsplus_hpb_status);
 	skhpb_init_lu_constant(hpb, lu_desc, func_desc);
 
 	hpb->region_tbl = vzalloc(sizeof(struct skhpb_region) *	hpb->regions_per_lu);

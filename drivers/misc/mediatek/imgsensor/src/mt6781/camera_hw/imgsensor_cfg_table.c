@@ -9,6 +9,7 @@
 #include "mclk/mclk.h"
 #include "regulator/regulator.h"
 #include "gpio/gpio.h"
+#include "wl2864/wl2864.h"
 
 #include "imgsensor_hw.h"
 #include "imgsensor_cfg_table.h"
@@ -16,7 +17,10 @@ enum IMGSENSOR_RETURN (*hw_open[IMGSENSOR_HW_ID_MAX_NUM])
 	(struct IMGSENSOR_HW_DEVICE **) = {
 	imgsensor_hw_mclk_open,
 	imgsensor_hw_regulator_open,
-	imgsensor_hw_gpio_open
+	imgsensor_hw_gpio_open,
+	#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	imgsensor_hw_wl2864_open
+	#endif
 };
 
 struct IMGSENSOR_HW_CFG imgsensor_custom_config[] = {

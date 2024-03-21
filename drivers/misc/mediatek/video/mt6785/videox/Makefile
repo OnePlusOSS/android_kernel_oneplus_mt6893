@@ -76,6 +76,9 @@ ccflags-y += -I$(srctree)/drivers/misc/mediatek/video/include/		\
              -I$(srctree)/drivers/devfreq/ \
 	     -I$(srctree)/drivers/iommu/
 
+#ifdef OPLUS_ARCH_EXTEND
+ccflags-y += -I$(srctree)/drivers/misc/oplus/
+#endif
 subdir-ccflags-y += -I$(srctree)/drivers/staging/android/mtk_ion \
 		    -I$(srctree)/drivers/staging/android/mtk_ion/mtk
 

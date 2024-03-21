@@ -20,6 +20,19 @@
 #define PE40_MIN_WATT 5000000
 #define PE40_VBUS_IR_DROP_THRESHOLD 1200
 
+#if defined CONFIG_OPLUS_CHARGER_MTK6785
+/*resolve compile error */
+bool mtk_is_TA_support_pd_pps(struct charger_manager *pinfo)
+{
+	if (pinfo->enable_pe_4 == false && pinfo->enable_pe_5 == false)
+		return false;
+
+	if (pinfo->pd_type == MTK_PD_CONNECT_PE_READY_SNK_APDO)
+		return true;
+	return false;
+}
+#endif
+
 int mtk_pe40_set_mivr(struct charger_manager *pinfo, int uV)
 {
 	int ret = 0;

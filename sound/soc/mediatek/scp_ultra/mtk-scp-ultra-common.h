@@ -7,6 +7,9 @@
 #define _MTK_SCP_ULTRA_COMMON_H
 
 #include <linux/kernel.h>
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_FEEDBACK)
+#include "../feedback/oplus_audio_kernel_fb.h"
+#endif
 
 #ifdef scp_ultra_debug
 #undef scp_ultra_debug
@@ -19,14 +22,36 @@
 
 #if defined(CONFIG_MTK_AEE_FEATURE)
 #include <mt-plat/aee.h>
-
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_FEEDBACK)
+#ifndef AUDIO_AEE
+#define AUDIO_AEE(message) \
+	do { \
+		ratelimited_fb("payload@@AUDIO_AEE:"message); \
+		(aee_kernel_exception_api(__FILE__, \
+					  __LINE__, \
+					  DB_OPT_FTRACE, message, \
+					  "audio assert")); \
+	} while (0)
+#endif
+#else /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
 #define AUDIO_AEE(message) \
 	(aee_kernel_exception_api(__FILE__, \
 				  __LINE__, \
 				  DB_OPT_FTRACE, message, \
 				  "audio assert"))
+#endif /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
 #else
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_FEEDBACK)
+#ifndef AUDIO_AEE
+#define AUDIO_AEE(message) \
+	do { \
+		ratelimited_fb("payload@@AUDIO_AEE:"message); \
+		WARN_ON(true); \
+	} while (0)
+#endif
+#else /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
 #define AUDIO_AEE(message) WARN_ON(true)
+#endif /*CONFIG_OPLUS_FEATURE_MM_FEEDBACK*/
 #endif
 
 /* wake lock relate*/

@@ -63,14 +63,39 @@ int disp_lcm_validate_roi(struct disp_lcm_handle *plcm, int *x, int *y,
 			  int *w, int *h);
 int disp_lcm_aod(struct disp_lcm_handle *plcm, int enter);
 
+/* #ifdef OPLUS_FEATURE_AOD */
+/*
+* modify for support aod state.
+*/
+int disp_lcm_aod_from_display_on(struct disp_lcm_handle *plcm);
+int disp_lcm_set_aod_mode(struct disp_lcm_handle *plcm, void *handle, unsigned int mode);
+/*
+* add for Aod feature
+*/
+int disp_lcm_aod_doze_resume(struct disp_lcm_handle *plcm);
+/* #endif */ /* OPLUS_FEATURE_AOD */
 int disp_lcm_is_arr_support(struct disp_lcm_handle *plcm);
 
+#ifdef OPLUS_BUG_STABILITY
+/* Add for Porting cabc interface */
+int disp_lcm_oplus_set_lcm_cabc_cmd(struct disp_lcm_handle *plcm, void *handle, unsigned int level);
+int disp_lcm_poweron_before_ulps(struct disp_lcm_handle *plcm);
+int disp_lcm_poweroff_after_ulps(struct disp_lcm_handle *plcm);
+#endif
+/* #ifdef OPLUS_FEATURE_ONSCREENFINGERPRINT */
+/*
+* add for samsung lcd hbm node
+*/
+int disp_lcm_set_hbm(struct disp_lcm_handle *plcm, void *handle, unsigned int hbm_level);
+int mtk_disp_lcm_set_hbm(bool en, struct disp_lcm_handle *plcm, void *qhandle);
+//int disp_lcm_set_hbm_wait_ramless(bool wait, struct disp_lcm_handle *plcm, void *qhandle);
 /*hbm*/
-int disp_lcm_set_hbm(bool en, struct disp_lcm_handle *plcm, void *qhandle);
+int disp_lcm_set_hbm_ramless(bool en, struct disp_lcm_handle *plcm, void *qhandle);
 int disp_lcm_get_hbm_state(struct disp_lcm_handle *plcm);
 int disp_lcm_get_hbm_wait(struct disp_lcm_handle *plcm);
 int disp_lcm_set_hbm_wait(bool wait, struct disp_lcm_handle *plcm);
 unsigned int disp_lcm_get_hbm_time(bool en, struct disp_lcm_handle *plcm);
+/* #endif */ /* OPLUS_FEATURE_ONSCREENFINGERPRINT */
 
 #ifdef CONFIG_MTK_HIGH_FRAME_RATE
 /*-----------------------DynFPS start-----------------------------------*/

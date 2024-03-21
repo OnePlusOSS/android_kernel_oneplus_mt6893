@@ -79,7 +79,35 @@
 #include "frame_queue.h"
 #include "disp_lowpower.h"
 #include "ddp_rsz.h"
+/* #ifdef OPLUS_BUG_STABILITY */
+/*
+ * modify for fingerprint notify frigger
+ */
+#include "mtk_boot_common.h"
+/* #endif */
 
+//#ifdef OPLUS_FEATURE_ONSCREENFINGERPRINT
+/*
+ * modify for fingerprint notify frigger
+ */
+#include <linux/fb.h>
+extern bool oplus_fp_notify_down_delay;
+extern bool oplus_fp_notify_up_delay;
+extern void fingerprint_send_notify(struct fb_info *fbi, uint8_t fingerprint_op_mode);
+extern bool ds_rec_fpd;
+extern bool doze_rec_fpd;
+
+extern bool oplus_display_fppress_support;
+extern bool oplus_display_aod_ramless_support;
+//#endif /*OPLUS_FEATURE_ONSCREENFINGERPRINT*/
+
+/* #ifdef OPLUS_BUG_STABILITY */
+/*
+ * modify for fingerprint notify frigger
+ */
+extern unsigned long silence_mode;
+extern unsigned int fp_silence_mode;
+/* #endif */
 
 #define DDP_OUTPUT_LAYID 4
 
@@ -1094,6 +1122,25 @@ long __frame_config(unsigned long arg)
 	switch (DISP_SESSION_TYPE(cfg->session_id)) {
 	case DISP_SESSION_PRIMARY:
 		primary_display_frame_cfg(cfg);
+		/* #ifdef OPLUS_FEATURE_ONSCREENFINGERPRINT */
+		/*
+		* add for fingerprint notify frigger
+		*/
+		if (oplus_display_fppress_support) {
+			if (oplus_fp_notify_down_delay && ((cfg->hbm_en & 0x2) > 0)) {
+				/*
+				* modify for ramless aod fingerprint unlock,
+				* no uiready should be sent on ramless aod cmd mode
+				*/
+				if (oplus_display_aod_ramless_support && !primary_display_is_video_mode()) {
+					printk("ramless aod cmd mode, do not send uiready1\n");
+				} else {
+					oplus_fp_notify_down_delay = false;
+					fingerprint_send_notify(NULL, 1);
+				}
+			}
+		}
+		/* #endif */ /*OPLUS_FEATURE_ONSCREENFINGERPRINT*/
 		break;
 	case DISP_SESSION_EXTERNAL:
 #if ((defined CONFIG_MTK_HDMI_SUPPORT) || \
@@ -1106,6 +1153,15 @@ long __frame_config(unsigned long arg)
 		ovl2mem_frame_cfg(cfg);
 		break;
 	}
+/* #ifdef OPLUS_FEATURE_ONSCREENFINGERPRINT */
+	/*
+	* add for fingerprint notify frigger
+	*/
+	if (oplus_fp_notify_up_delay && ((cfg->hbm_en & 0x2) == 0)) {
+		oplus_fp_notify_up_delay = false;
+		fingerprint_send_notify(NULL, 0);
+	}
+/* #endif */
 
 	disp_input_free_dirty_roi(cfg);
 error1:
@@ -1641,6 +1697,10 @@ long mtk_disp_mgr_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		return _ioctl_get_info(arg);
 	case DISP_IOCTL_GET_DISPLAY_CAPS:
 		return _ioctl_get_display_caps(arg);
+/* #ifdef OPLUS_BUG_STABILITY */
+	case DISP_IOCTL_GET_LCM_MODULE_INFO:
+		return _ioctl_get_lcm_module_info(arg);
+/* #endif */ /* OPLUS_BUG_STABILITY */
 	case DISP_IOCTL_GET_VSYNC_FPS:
 		return _ioctl_get_vsync(arg);
 	case DISP_IOCTL_SET_VSYNC_FPS:
@@ -1888,6 +1948,15 @@ static int mtk_disp_mgr_probe(struct platform_device *pdev)
 	class_dev = (struct class_device *)device_create(mtk_disp_mgr_class,
 						NULL, mtk_disp_mgr_devno,
 						NULL, DISP_SESSION_DEVICE);
+/* #ifdef OPLUS_BUG_STABILITY */
+	if ((oplus_boot_mode == OPLUS_SILENCE_BOOT)
+			||(get_boot_mode() == OPLUS_SAU_BOOT))
+	{
+		printk("%s OPLUS_SILENCE_BOOT set silence_mode to 1\n", __func__);
+		silence_mode = 1;
+		fp_silence_mode = 1;
+	}
+/* #endif */
 	disp_sync_init();
 
 	external_display_control_init();

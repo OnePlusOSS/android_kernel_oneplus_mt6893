@@ -48,6 +48,10 @@ extern void mtk_pdc_plugout(struct charger_manager *info);
 extern void mtk_pdc_check_cable_impedance(struct charger_manager *info);
 extern void mtk_pdc_reset(struct charger_manager *info);
 extern bool mtk_pdc_check_leave(struct charger_manager *info);
+#ifdef OPLUS_FEATURE_CHG_BASIC
+extern int oplus_pdc_setup(int *vbus_mv, int *ibus_ma);
+extern int oplus_pdc_get(int *vbus_mv, int *ibus_ma);
+#endif
 
 #ifdef CONFIG_MTK_PUMP_EXPRESS_PLUS_SUPPORT
 

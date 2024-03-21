@@ -1,0 +1,75 @@
+
+&audio_extend {
+	//for nxp speaker
+	oplus,speaker-vendor = "awinic_digital";
+	oplus,speaker-i2s-id = <3>;
+	oplus,speaker-i2s-id-in = <0>;
+	oplus,speaker-codec-name = "aw882xx_smartpa.8-0037","aw882xx_smartpa.8-0034";
+	oplus,speaker-codec-dai-name = "aw882xx-aif-8-37","aw882xx-aif-8-34";
+};
+
+//#ifdef OPLUS_ARCH_EXTENDS
+/* 2021/01/04, for TFA9874 stereo VI signal */
+&i2c8 {
+	aw882xx_smartpa_0: aw882xx_smartpa@37 {
+		compatible = "awinic,aw882xx_smartpa";
+		#sound-dai-cells = <0>;
+		reg = <0x37>;
+		reset-gpio = <&pio 148 0>;
+		//irq-gpio = <&pio 37 0x0>;
+		dc-flag = <0>;
+		sync-flag = <0>;
+		sound-channel = <0>;
+		aw-re-min = <5000>;
+		aw-re-max= <8000>;
+		/*aw-cali-mode = "none";*/
+		status = "okay";
+	};
+
+	aw882xx_smartpa_1: aw882xx_smartpa@34 {
+		compatible = "awinic,aw882xx_smartpa";
+		#sound-dai-cells = <0>;
+		reg = <0x34>;
+		reset-gpio = <&pio 111 0>;
+		//irq-gpio = <&pio 37 0x0>;
+		dc-flag = <0>;
+		sync-flag = <0>;
+		sound-channel = <1>;
+		aw-re-min = <5000>;
+		aw-re-max= <8000>;
+		/*aw-cali-mode = "none";*/
+		status = "okay";
+	};
+};
+
+&sound {
+	mtk_spk_i2s_in = <9>;
+};
+//#endif /*OPLUS_ARCH_EXTENDS*/
+
+//#ifdef OPLUS_ARCH_EXTENDS
+/*2021/01/04, add for fsa4480 dts*/
+///delete-node/ &fsa4480;
+
+&i2c8 {
+	fsa4480: fsa4480@42 {
+		compatible = "qcom,fsa4480-i2c";
+		reg = <0x42>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&fsa_hs_det>;
+		fsa4480,hs-det-gpio = <&pio 54 0>;
+		fsa4480,hs-det-level = <0>;
+	};
+};
+
+&pio {
+	fsa_hs_det: fsa_hs_det {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO54__FUNC_GPIO54>;
+			slew-rate = <1>;  /*direction 0:in, 1:out*/
+			output-high;
+		};
+	};
+};
+//#endif /*OPLUS_ARCH_EXTENDS*/
+

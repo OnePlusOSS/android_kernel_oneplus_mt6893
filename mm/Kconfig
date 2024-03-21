@@ -647,6 +647,16 @@ config MAX_STACK_SIZE_MB
 
 	  A sane initial value is 80 MB.
 
+config BALANCE_ANON_FILE_RECLAIM
+	bool "During reclaim treat anon and file backed pages equally"
+	depends on SWAP
+	help
+	  When performing memory reclaim treat anonymous and file backed pages
+	  equally.
+	  Swapping anonymous pages out to memory can be efficient enough to justify
+	  treating anonymous and file backed pages equally.
+
+
 config DEFERRED_STRUCT_PAGE_INIT
 	bool "Defer initialisation of struct pages to kthreads"
 	default n
@@ -664,10 +674,19 @@ config DEFERRED_STRUCT_PAGE_INIT
 	  lifetime of the system until these kthreads finish the
 	  initialisation.
 
+config PAGE_IDLE_FLAG
+	bool "Add PG_idle and PG_young flags"
+	default y
+	help
+	  This feature adds PG_idle and PG_young flags in 'struct page'.  PTE
+	  Accessed bit writers can set the state of the bit in the flags to let
+	  other PTE Accessed bit readers don't disturbed.
+
 config IDLE_PAGE_TRACKING
 	bool "Enable idle page tracking"
 	depends on SYSFS && MMU
 	select PAGE_EXTENSION if !64BIT
+	select PAGE_IDLE_FLAG
 	help
 	  This feature allows to estimate the amount of user pages that have
 	  not been touched during a given period of time. This information can
@@ -752,6 +771,25 @@ config DEVICE_PUBLIC
 	  memory; i.e., memory that is accessible from both the device and
 	  the CPU
 
+#if defined(OPLUS_FEATURE_PROCESS_RECLAIM)
+#Support reclaim process inactive pages only
+config PROCESS_RECLAIM_ENHANCE
+	  bool "Enable process reclaim enchance"
+	  depends on PROCESS_RECLAIM
+	  default y
+	  help
+	  It allows to reclaim different type pages of the process by
+	  /proc/process_reclaim.
+
+	  (echo inactive_file > /proc/PID/reclaim) reclaims inactive file-backed
+	  pages only.
+	  (echo inactive_anon > /proc/PID/reclaim) reclaims inactive anonymous
+	  pages only.
+	  (echo inactive > /proc/PID/reclaim) reclaims inactive file-backed and
+	  anonymous pages only.
+	  Any other vaule, please reference PROCESS_RECLAIM.
+#endif
+
 config PROCESS_RECLAIM
 	bool "Enable process reclaim"
 	depends on PROC_FS
@@ -764,6 +802,12 @@ config PROCESS_RECLAIM
 	 (echo all > /proc/PID/reclaim) reclaims all pages.
 
 	 Any other value is ignored.
+
+config DYNAMIC_TUNNING_SWAPPINESS
+	bool "tunning swappiess depends on file_pages size"
+	default n
+	help
+	  tunning swappiess depends on file_pages size
 
 config ARCH_HAS_PTE_SPECIAL
 	bool
@@ -825,4 +869,99 @@ config MTK_MM_DEBUG
 	  type of errors. Wrap the debug code with this config,
 	  so we can remove the debug code by disabling it.
 
+source "mm/damon/Kconfig"
+
+# multi-gen LRU {
+config LRU_GEN
+	bool "Multi-Gen LRU"
+
+config LRU_GEN_ENABLED
+	bool "Disable by default, Need switch by sysfs control"
+
+config LRU_GEN_STATS
+	bool "Full stats for debugging"
+# }
+
 endmenu
+
+#ifdef OPLUS_FEATURE_HEALTHINFO
+source "mm/healthinfo/Kconfig"
+#endif /*OPLUS_FEATURE_HEALTHINFO*/
+
+#ifdef OPLUS_FEATURE_MULTI_FREEAREA
+config PHYSICAL_ANTI_FRAGMENTATION
+	bool "Physical memory anti-fragmentation"
+	default y
+	help
+		Turn on the function of Physical memory anti-fragmentation.
+#endif
+config OPLUS_UXMEM_OPT
+        bool "enable uxmem_opt"
+        depends on OPLUS_FEATURE_SCHED_ASSIST && FG_TASK_UID
+        default n
+        help
+          enable uxmem_opt
+
+#ifdef OPLUS_FEATURE_MEMLEAK_DETECT
+source "mm/malloc_track/Kconfig.compat"
+source "mm/task_mem/Kconfig"
+#endif
+
+config LOOK_AROUND
+	bool "look around"
+	default n
+	help
+	  look aroud pages when rmap lru page
+config MAPPED_PROTECT
+	bool "mapped protect"
+	default n
+	help
+	  protect multi-mapped pages
+
+config PROACTIVE_COMPACT
+	tristate "trigger memory compact based on fragmentation index"
+	default n
+	help
+	  trigger memory compact based on fragmentation index
+
+config SHRINK_LRU_TRYLOCK
+	bool "enable async shrink_lruvecd"
+	default n
+	help
+	  enable async shrink_lruvecd
+
+config OPLUS_DYNAMIC_READAHEAD
+	bool "dynamic page fault read-ahead size"
+	depends on OPLUS_FEATURE_SCHED_ASSIST && FG_TASK_UID
+	default n
+	help
+	  This feature dynamically set read-ahead size for performance.
+
+config CONT_PTE_HUGEPAGE
+	bool "Cont Pte Hugepage support"
+	select TRANSPARENT_HUGEPAGE
+	default y
+	help
+	  Try to THP-like Hugepages based on ARM64 cont-pte.
+
+config CONT_PTE_HUGEPAGE_ON_EXT4
+	bool "Cont Pte Hugepage support on EXT4"
+	default n
+	depends on CONT_PTE_HUGEPAGE
+	help
+	  Try to THP-like Hugepages based on ARM64 cont-pte on ext4
+
+config CONT_PTE_HUGEPAGE_ON_QEMU
+	bool "Cont Pte Hugepage support on QEMU"
+	default n
+	depends on CONT_PTE_HUGEPAGE
+	help
+	  QEMU debugging of ContPte hugepage
+
+config CONT_PTE_HUGEPAGE_64K_ZRAM
+	bool "Cont Pte Hugepage support 64K ZRAM"
+	default y
+	depends on CONT_PTE_HUGEPAGE
+	help
+	  Cont Pte Hugepage support 64K ZRAM
+

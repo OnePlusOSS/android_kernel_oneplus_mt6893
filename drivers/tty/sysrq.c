@@ -159,6 +159,18 @@ static struct sysrq_key_op sysrq_reboot_op = {
 	.enable_mask	= SYSRQ_ENABLE_BOOT,
 };
 
+extern int panic_flush_device_cache_handler(int timeout);
+static void sysrq_handle_flush(int key)
+{
+	panic_flush_device_cache_handler(0);
+}
+static struct sysrq_key_op sysrq_flush_op = {
+	.handler	= sysrq_handle_flush,
+ 	.help_msg	= "flush(y)",
+  	.action_msg	= "Emergency Flush",
+  	.enable_mask	= SYSRQ_ENABLE_SYNC,
+};
+
 static void sysrq_handle_sync(int key)
 {
 	emergency_sync();
@@ -482,7 +494,7 @@ static struct sysrq_key_op *sysrq_key_table[36] = {
 	/* x: May be registered on sparc64 for global PMU dump */
 	NULL,				/* x */
 	/* y: May be registered on sparc64 for global register dump */
-	NULL,				/* y */
+	&sysrq_flush_op,		/* y */
 	&sysrq_ftrace_dump_op,		/* z */
 };
 

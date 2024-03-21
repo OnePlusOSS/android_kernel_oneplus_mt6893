@@ -124,7 +124,7 @@
 };
 
 &mmc1 {
-	status = "okay";
+	status = "disabled";
 	host-index = <1>;
 	host-function = <MSDC_SD>;
 	pinctrl-names = "default", "state_uhs", "pull_down";

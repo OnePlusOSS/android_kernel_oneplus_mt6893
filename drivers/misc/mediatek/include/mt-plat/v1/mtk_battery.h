@@ -41,6 +41,10 @@ extern void gauge_coulomb_after_reset(void);
 extern void gauge_coulomb_set_log_level(int x);
 /* coulomb sub system end */
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/*add for MTK gauge patch REQ30010831429*/
+#include <linux/syscalls.h>
+#endif
 
 /* battery notify charger_consumer */
 enum {
@@ -62,6 +66,10 @@ extern signed int battery_get_bat_temperature(void);
 extern signed int battery_get_ibus(void);
 extern signed int battery_get_vbus(void);
 extern signed int battery_get_bat_avg_current(void);
+#ifdef OPLUS_FEATURE_CHG_BASIC
+int battery_type_check(void);
+bool is_fuelgauge_apply(void);
+#endif
 
 
 #endif /* End of _FUEL_GAUGE_GM_30_H */

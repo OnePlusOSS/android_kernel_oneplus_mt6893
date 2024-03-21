@@ -11,10 +11,14 @@
 
 #define IMGSENSOR_DEV_NAME "kd_camera_hw"
 
+#define MIPI_SWITCH
 
 #define IMGSENSOR_HW_POWER_INFO_MAX	12
 #define IMGSENSOR_HW_SENSOR_MAX_NUM	12
 
+#ifndef OPLUS_FEATURE_CAMERA_COMMON
+#define OPLUS_FEATURE_CAMERA_COMMON
+#endif
 enum IMGSENSOR_HW_PIN {
 	IMGSENSOR_HW_PIN_NONE = 0,
 	IMGSENSOR_HW_PIN_PDN,
@@ -22,9 +26,17 @@ enum IMGSENSOR_HW_PIN {
 	IMGSENSOR_HW_PIN_AVDD,
 	IMGSENSOR_HW_PIN_DVDD,
 	IMGSENSOR_HW_PIN_DOVDD,
+	#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	IMGSENSOR_HW_PIN_AVDD_1,
+	IMGSENSOR_HW_PIN_DVDD_1,
+	IMGSENSOR_HW_PIN_AFVDD,
+	#endif
 #ifdef MIPI_SWITCH
 	IMGSENSOR_HW_PIN_MIPI_SWITCH_EN,
 	IMGSENSOR_HW_PIN_MIPI_SWITCH_SEL,
+	#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	IMGSENSOR_HW_PIN_MCLK_SWITCH_EN,
+	#endif
 #endif
 	IMGSENSOR_HW_PIN_MCLK,
 	IMGSENSOR_HW_PIN_MAX_NUM,
@@ -59,7 +71,14 @@ enum IMGSENSOR_HW_PIN_STATE {
 #define VDD_None    IMGSENSOR_HW_PIN_NONE
 
 	/* For backward compatible */
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+#define AVDD_1      IMGSENSOR_HW_PIN_AVDD_1
+#define DVDD_1      IMGSENSOR_HW_PIN_DVDD_1
+#define AFVDD       IMGSENSOR_HW_PIN_AFVDD
+#else
 #define AFVDD       IMGSENSOR_HW_PIN_UNDEF
+#endif
+
 
 
 /* Voltage */
@@ -87,16 +106,33 @@ enum IMGSENSOR_HW_ID {
 
 #define IMGSENSOR_I2C_DRV_NAME_0  "kd_camera_hw"
 #define IMGSENSOR_I2C_DRV_NAME_1  "kd_camera_hw_bus2"
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+#define IMGSENSOR_I2C_DRV_NAME_2  "kd_camera_hw_bus3"
+#define IMGSENSOR_I2C_DRV_NAME_3  "kd_camera_hw_bus4"
+#define IMGSENSOR_I2C_DRV_NAME_4  "kd_camera_hw_bus5"
+#define IMGSENSOR_I2C_DRV_NAME_5  "kd_camera_hw_bus6"
+#else
 #define IMGSENSOR_I2C_DRV_NAME_2  "kd_camera_hw_trigger"
+#endif
 
 #define IMGSENSOR_I2C_OF_DRV_NAME_0 "mediatek,camera_main"
 #define IMGSENSOR_I2C_OF_DRV_NAME_1 "mediatek,camera_sub"
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+#define IMGSENSOR_I2C_OF_DRV_NAME_2 "mediatek,camera_main_two"  //i2c-4
+#define IMGSENSOR_I2C_OF_DRV_NAME_3 "mediatek,camera_sub_two"
+#define IMGSENSOR_I2C_OF_DRV_NAME_4 "mediatek,camera_main_three"  //i2c-6
+#define IMGSENSOR_I2C_OF_DRV_NAME_5 "mediatek,camera_sub_three"
+#else
 #define IMGSENSOR_I2C_OF_DRV_NAME_2 "mediatek,camera_main_hw"
+#endif
 
 enum IMGSENSOR_I2C_DEV {
 	IMGSENSOR_I2C_DEV_0,
 	IMGSENSOR_I2C_DEV_1,
 	IMGSENSOR_I2C_DEV_2,
+	IMGSENSOR_I2C_DEV_3,
+	IMGSENSOR_I2C_DEV_4,
+	IMGSENSOR_I2C_DEV_5,
 	IMGSENSOR_I2C_DEV_MAX_NUM,
 };
 

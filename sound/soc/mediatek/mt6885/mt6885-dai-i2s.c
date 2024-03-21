@@ -125,6 +125,41 @@ static struct mtk_afe_i2s_priv *get_i2s_priv_by_name(struct mtk_base_afe *afe,
 	return afe_priv->dai_priv[dai_id];
 }
 
+#ifdef OPLUS_ARCH_EXTENDS
+/*
+ * bit mask for i2s low power control
+ * such as bit0 for i2s0, bit1 for i2s1...
+ * if set 1, means i2s low power mode
+ * if set 0, means i2s low jitter mode
+ * 0 for all i2s bit in default
+ */
+static unsigned int i2s_low_power_mask;
+static int mtk_i2s_low_power_mask_get(struct snd_kcontrol *kcontrol,
+			     struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s(), mask: %x\n", __func__, i2s_low_power_mask);
+	ucontrol->value.integer.value[0] = i2s_low_power_mask;
+	return 0;
+}
+static int mtk_i2s_low_power_mask_set(struct snd_kcontrol *kcontrol,
+			     struct snd_ctl_elem_value *ucontrol)
+{
+	i2s_low_power_mask = ucontrol->value.integer.value[0];
+	pr_debug("%s(), mask: %x\n", __func__, i2s_low_power_mask);
+	return 0;
+}
+static int mtk_is_i2s_low_power(int i2s_num)
+{
+	int i2s_bit_shift;
+	i2s_bit_shift = i2s_num - MT6885_DAI_I2S_0;
+	if (i2s_bit_shift < 0 || i2s_bit_shift > MT6885_DAI_I2S_MAX_NUM) {
+		pr_debug("%s(), err i2s_num: %d\n", __func__, i2s_num);
+		return 0;
+	}
+	return (i2s_low_power_mask>>i2s_bit_shift) & 0x1;
+}
+#endif
+
 /* low jitter control */
 static const char * const mt6885_i2s_hd_str[] = {
 	"Normal", "Low_Jitter"
@@ -202,6 +237,11 @@ static const struct snd_kcontrol_new mtk_dai_i2s_controls[] = {
 		     mt6885_i2s_hd_get, mt6885_i2s_hd_set),
 	SOC_ENUM_EXT(MTK_AFE_I2S9_KCONTROL_NAME, mt6885_i2s_enum[0],
 		     mt6885_i2s_hd_get, mt6885_i2s_hd_set),
+#ifdef OPLUS_ARCH_EXTENDS
+	SOC_SINGLE_EXT("i2s_low_power_mask", SND_SOC_NOPM, 0, 0xffff, 0,
+		       mtk_i2s_low_power_mask_get,
+		       mtk_i2s_low_power_mask_set),
+#endif
 };
 
 /* dai component */
@@ -993,6 +1033,9 @@ static int mtk_afe_i2s_hd_connect(struct snd_soc_dapm_widget *source,
 	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
 	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
 	struct mtk_afe_i2s_priv *i2s_priv;
+#ifdef OPLUS_ARCH_EXTENDS
+	int i2s_num;
+#endif
 
 	i2s_priv = get_i2s_priv_by_name(afe, sink->name);
 
@@ -1001,16 +1044,30 @@ static int mtk_afe_i2s_hd_connect(struct snd_soc_dapm_widget *source,
 		return 0;
 	}
 
+#ifdef OPLUS_ARCH_EXTENDS
+	i2s_num = get_i2s_id_by_name(afe, source->name);
+	if (get_i2s_id_by_name(afe, sink->name) == i2s_num)
+		return !mtk_is_i2s_low_power(i2s_num) ||
+		       i2s_priv->low_jitter_en;
+#else
 	if (get_i2s_id_by_name(afe, sink->name) ==
 	    get_i2s_id_by_name(afe, source->name))
 		return i2s_priv->low_jitter_en;
+#endif
+
 
 	/* check if share i2s need hd en */
 	if (i2s_priv->share_i2s_id < 0)
 		return 0;
 
+#ifdef OPLUS_ARCH_EXTENDS
+	if (i2s_priv->share_i2s_id == i2s_num)
+		return !mtk_is_i2s_low_power(i2s_num) ||
+		       i2s_priv->low_jitter_en;
+#else
 	if (i2s_priv->share_i2s_id == get_i2s_id_by_name(afe, source->name))
 		return i2s_priv->low_jitter_en;
+#endif
 
 	return 0;
 }
@@ -1163,6 +1220,9 @@ static const struct snd_soc_dapm_route mtk_dai_i2s_routes[] = {
 	{"I2S1_CH1", "DL8_CH1", "DL8"},
 	{"I2S1_CH2", "DL8_CH2", "DL8"},
 
+	{"I2S1_CH1", "DL9_CH1", "DL9"},
+	{"I2S1_CH2", "DL9_CH2", "DL9"},
+
 	{"I2S1", NULL, "I2S1_CH1"},
 	{"I2S1", NULL, "I2S1_CH2"},
 	{"I2S1", NULL, "I2S3_TINYCONN_CH1_MUX"},
@@ -1274,6 +1334,9 @@ static const struct snd_soc_dapm_route mtk_dai_i2s_routes[] = {
 	{"I2S3_CH1", "DL7_CH1", "DL7"},
 	{"I2S3_CH2", "DL7_CH2", "DL7"},
 
+	{"I2S3_CH1", "DL9_CH1", "DL9"},
+	{"I2S3_CH2", "DL9_CH2", "DL9"},
+
 	{"I2S3", NULL, "I2S3_CH1"},
 	{"I2S3", NULL, "I2S3_CH2"},
 	{"I2S3", NULL, "I2S3_TINYCONN_CH1_MUX"},
@@ -1337,6 +1400,9 @@ static const struct snd_soc_dapm_route mtk_dai_i2s_routes[] = {
 
 	{"I2S5_CH1", "DL5_CH1", "DL5"},
 	{"I2S5_CH2", "DL5_CH2", "DL5"},
+
+	{"I2S5_CH1", "DL9_CH1", "DL9"},
+	{"I2S5_CH2", "DL9_CH2", "DL9"},
 
 	{"I2S5", NULL, "I2S5_CH1"},
 	{"I2S5", NULL, "I2S5_CH2"},

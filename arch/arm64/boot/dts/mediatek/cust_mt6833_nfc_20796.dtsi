@@ -1,0 +1,20 @@
+&odm {
+    nfc_chipset:nfc_chipset {
+            compatible = "oplus-nfc-chipset";
+            chipset-20795 = "ST21H";
+            chipset-20796 = "ST21H";
+            chipset-2070B = "ST21H";
+            chipset-2070E = "ST21H";
+            chipset-216A1 = "ST21H";
+            chipset-216B6 = "ST21H";
+            chipset-21748 = "ST21H";
+    };
+    nfc:nfc {
+           compatible = "mediatek,nfc-gpio-v2";
+           reg = <0x8>;
+           gpio-rst = <11>;
+           gpio-rst-std = <&pio 11 0x0>;
+           gpio-irq = <5>;
+           gpio-irq-std  = <&pio 5 0x0>;
+    };
+};

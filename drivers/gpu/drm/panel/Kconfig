@@ -28,6 +28,376 @@ config DRM_PANEL_SIMPLE
 	  that it can be automatically turned off when the panel goes into a
 	  low power state.
 
+config DRM_PANEL_OPLUS20625_BOE_NT35625B_DPHY_VDO
+        tristate "boe DPHY 720p vdo mode panel"
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for SAMSUNG DPHY vdo
+          mode Full HD Plus panel. The panel has a 1080x2400 resolution
+          and uses 24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_OPLUS20015_BOE_ILI9882N_DPHY_VDO
+        tristate "boe ili9882n 720p vdo mode panel"
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for SAMSUNG DPHY vdo
+          mode Full HD Plus panel. The panel has a 1080x2400 resolution
+          and uses 24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_OPLUS20015_TRULY_HX83102_DPHY_VDO
+        tristate "truly hx83102 720p vdo mode panel"
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for SAMSUNG DPHY vdo
+          mode Full HD Plus panel. The panel has a 1080x2400 resolution
+          and uses 24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_OPLUS20015_INNOLUX_ILI9882N_DPHY_VDO
+        tristate "innolux ili9882n 720p vdo mode panel"
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for SAMSUNG DPHY vdo
+          mode Full HD Plus panel. The panel has a 1080x2400 resolution
+          and uses 24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_OPLUS210A0_TIANMA_ILI7807S_CPHY_VDO
+        tristate "tianma ili7807s 1080p cphy vdo mode panel"
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for SAMSUNG DPHY vdo
+          mode Full HD Plus panel. The panel has a 1080x2400 resolution
+          and uses 24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_OPLUS21101_BOE_ILI9883A_DPHY_VDO
+        tristate "boe ili9883a 720p vdo mode panel"
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for SAMSUNG DPHY vdo
+          mode Full HD Plus panel. The panel has a 720x1680 resolution
+          and uses 24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_OPLUS20609_TIANMA_NT36672C_CPHY_VDO
+        tristate "tianma nt36672c 1080p cphy vdo mode panel"
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for SAMSUNG DPHY vdo
+          mode Full HD Plus panel. The panel has a 1080x2400 resolution
+          and uses 24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_OPLUS20609_TIANMA_ILI7807S_CPHY_VDO
+        tristate "tianma ili7807s 1080p cphy vdo mode panel"
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for SAMSUNG DPHY vdo
+          mode Full HD Plus panel. The panel has a 1080x2400 resolution
+          and uses 24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host
+
+config DRM_PANEL_OPLUS21101_INX_TD4160_DPHY_VDO
+        tristate "inx td4160 720p vdo mode panel"
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for SAMSUNG DPHY vdo
+          mode Full HD Plus panel. The panel has a 720x1612 resolution
+          and uses 24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+
+config DRM_PANEL_OPLUS21101_BOE_BI_ILI9883A_DPHY_VDO
+        tristate "boe ili9883a 720p vdo mode panel"
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for SAMSUNG DPHY vdo
+          mode Full HD Plus panel. The panel has a 720x1680 resolution
+          and uses 24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_OPLUS21101_JDI_ILI7807S_CPHY_VDO
+        tristate "jdi ili7807s 1080p cphy vdo mode panel"
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for SAMSUNG DPHY vdo
+          mode Full HD Plus panel. The panel has a 1080x2400 resolution
+          and uses 24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_OPLUS21639_NT36672C_TM_CPHY_DSI_VDO
+         tristate "tm nt36672c 720p vdo mode panel"
+ 	depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for TIANMA CPHY vdo
+          mode Full HD Plus panel. The panel has a 720x1612 resolution
+          and uses 24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_OPLUS21101_NT36672C_TM_CPHY_DSI_VDO
+        tristate "tm nt36672c 1080p vdo mode panel"
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for TIANMA CPHY vdo
+          mode Full HD Plus panel. The panel has a 1080x2408 resolution
+          and uses 24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_OPLUS21015_BOE_NT37701_1080P_DSI_CMD
+        tristate "oplus21015 boe nt37701 1080p dsi cmd "
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for boe nt37800 cmd
+          mode panel. The panel has a 1080x2400 resolution and uses
+
+config DRM_PANEL_OPLUS21015_TIANMA_NT37701_42_1080P_DSI_CMD
+        tristate "oplus21015 tianma nt37701 42 1080p dsi cmd "
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for boe nt37800 cmd
+          mode panel. The panel has a 1080x2400 resolution and uses
+          24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_OPLUS21015_BOE_NT37701_2FTP_1080P_DSI_CMD
+        tristate "oplus21015 boe nt37701 2ftp 1080p dsi cmd "
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for boe nt37800 cmd
+          mode panel. The panel has a 1080x2400 resolution and uses
+
+config DRM_PANEL_OPLUS21015_TIANMA_ILI7838_1080P_DSI_CMD
+        tristate "oplus21015 tianma ili7838 1080p dsi cmd "
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for boe nt37800 cmd
+          mode panel. The panel has a 1080x2400 resolution and uses
+          24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_OPLUS21015_BOE_B12_NT37701_1080P_DSI_CMD
+        tristate "oplus21015 boe b12 nt37701 1080p dsi cmd "
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for boe nt37800 cmd
+          mode panel. The panel has a 1080x2400 resolution and uses
+
+config DRM_PANEL_OPLUS2169E_SAMSUNG_AMS643AG01_1080P_DSI_CMD
+        tristate "oplus2169E samsung ams643ag01 1080p dsi cmd "
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for K6885V1 alpha
+          phone vdo mode panel. The panel has a 1080x2340 resolution and uses
+          24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_OPLUS22612_TIANMA_ILI7838A_FHD_DSI_CMD
+        tristate "oplus22612 TM FHD DPHY cmd mode panel"
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for ALPHA ILI7838A
+          DPHY vdo mode Full HD Plus 120HZ panel. The panel has a 1080x2412
+          resolution and uses 30-bits RGB per pixel. It provides a
+          MIPI DSI interface to host.
+
+config DRM_PANEL_OPLUS22612_TIANMA_ILI7838A_T7_PLUS_FHD_DSI_CMD
+        tristate "oplus22612 TM T7 plus FHD DPHY cmd mode panel"
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for ALPHA ILI7838A
+          DPHY vdo mode Full HD Plus 120HZ panel. The panel has a 1080x2412
+          resolution and uses 30-bits RGB per pixel. It provides a
+          MIPI DSI interface to host.
+
+config DRM_PANEL_OPLUS22629_TIANMA_ILI7838A_T7_PLUS_FHD_DSI_CMD
+        tristate "oplus22629 TM T7 plus FHD DPHY cmd mode panel"
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for ALPHA ILI7838A
+          DPHY vdo mode Full HD Plus 120HZ panel. The panel has a 1080x2412
+          resolution and uses 30-bits RGB per pixel. It provides a
+          MIPI DSI interface to host.
+
+
+config DRM_PANEL_OPLUS20181_SAMSUNG_AMS643YE01_1080P_DSI_CMD
+        tristate "oplus20181 samsung ams643ye01 1080p dsi cmd "
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for K6885V1 alpha
+          phone vdo mode panel. The panel has a 1080x2340 resolution and uses
+          24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_OPLUS21081_SAMSUNG_AMS643AG01_1080P_DSI_CMD
+        tristate "oplus21081 samsung ams643ag01 1080p dsi cmd "
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for K6885V1 alpha
+          phone vdo mode panel. The panel has a 1080x2340 resolution and uses
+          24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_OPLUS21851_SAMSUNG_AMS643AG01_1080P_DSI_CMD
+        tristate "oplus21851 samsung ams643ag01 1080p dsi cmd "
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for K6885V1 alpha
+          phone vdo mode panel. The panel has a 1080x2340 resolution and uses
+          24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_OPLUS20151_SAMSUNG_AMS643_1080P_DSI_VDO
+        tristate "oplus20151 samsung ams643 1080p dsi vdo "
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for boe nt37800 cmd
+          mode panel. The panel has a 1080x2400 resolution and uses
+          24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_OPLUS20391_SAMSUNG_AMS643_1080P_DSI_VDO
+        tristate "oplus20391 samsung ams643 1080p dsi vdo "
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for boe nt37800 cmd
+          mode panel. The panel has a 1080x2400 resolution and uses
+          24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_OPLUS20615_SAMSUNG_AMS643YE01_EVT_1080P_DSI_CMD
+        tristate "oplus20615 samsung ams64ye01 evt 1080p dsi cmd "
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for boe nt37800 cmd
+          mode panel. The panel has a 1080x2340 resolution and uses
+          24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_OPLUS20615_SAMSUNG_AMS643YE01_EVT2_1080P_DSI_CMD
+        tristate "oplus20615 samsung ams64ye01 evt2 1080p dsi cmd "
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for boe nt37800 cmd
+          mode panel. The panel has a 1080x2340 resolution and uses
+          24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_OPLUS20615_SAMSUNG_AMS643YE01_PVT_1080P_DSI_CMD
+        tristate "oplus20615 samsung ams64ye01 pvt 1080p dsi cmd "
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for boe nt37800 cmd
+          mode panel. The panel has a 1080x2340 resolution and uses
+          24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_OPLUS20131_BOE_NT37800_1080P_DSI_CMD
+        tristate "oplus20131 boe nt37800 1080p dsi cmd "
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for boe nt37800 cmd
+          mode panel. The panel has a 1080x2400 resolution and uses
+          24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_OPLUS20131_TIANMA_NT37701_32_1080P_DSI_CMD
+        tristate "oplus20131 tianma nt37701 32 1080p dsi cmd "
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for boe nt37800 cmd
+          mode panel. The panel has a 1080x2400 resolution and uses
+          24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_OPLUS20131_SAMSUNG_ANA6705_1080P_DSI_CMD
+        tristate "oplus20131 samsung ana6705 1080p dsi cmd "
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for K6885V1 alpha
+          phone vdo mode panel. The panel has a 1080x2400 resolution and uses
+          24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_OPLUS20131_TIANMA_NT37701_1080P_DSI_CMD
+        tristate "oplus20131 tianma nt37701 1080p dsi cmd "
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for boe nt37800 cmd
+          mode panel. The panel has a 1080x2400 resolution and uses
+          24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
 config DRM_PANEL_INNOLUX_P079ZCA
 	tristate "Innolux P079ZCA panel"
 	depends on OF
@@ -324,6 +694,61 @@ config DRM_PANEL_TRULY_FT8756_VDO
 	help
 	  Say Y here if you want to enable support for TRULY FT8756 VDO
 	  mode Full HD Plus panel. The panel has a 1080x2300 resolution
+	  and uses 24-bits RGB per pixel. It provides a MIPI DSI interface
+	  to host.
+
+config DRM_PANEL_BOE_BOE_ILI7807S_VDO
+	tristate "TRULY FHD+ vdo mode panel"
+	depends on OF
+	depends on DRM_MIPI_DSI
+	depends on BACKLIGHT_CLASS_DEVICE
+	help
+	  Say Y here if you want to enable support for RM ILI7807S 60HZ VDO
+	  mode Full HD Plus panel. The panel has a 1080x2400 resolution
+	  and uses 24-bits RGB per pixel. It provides a MIPI DSI interface
+	  to host.
+
+config DRM_PANEL_BOE_ILI7807S_60HZ_VDO
+	tristate "TRULY FHD+ vdo mode panel"
+	depends on OF
+	depends on DRM_MIPI_DSI
+	depends on BACKLIGHT_CLASS_DEVICE
+	help
+	  Say Y here if you want to enable support for RM ILI7807S 60HZ VDO
+	  mode Full HD Plus panel. The panel has a 1080x2400 resolution
+	  and uses 24-bits RGB per pixel. It provides a MIPI DSI interface
+	  to host.
+
+config DRM_PANEL_TM_NT36672C_60HZ_VDO
+	tristate "TRULY FHD+ vdo mode panel"
+	depends on OF
+	depends on DRM_MIPI_DSI
+	depends on BACKLIGHT_CLASS_DEVICE
+	help
+	  Say Y here if you want to enable support for RM NT36672C 60HZ VDO
+	  mode Full HD Plus panel. The panel has a 1080x2400 resolution
+	  and uses 24-bits RGB per pixel. It provides a MIPI DSI interface
+	  to host.
+
+config DRM_PANEL_TRULY_NT36672C_VDO
+	tristate "TRULY FHD+ vdo mode panel"
+	depends on OF
+	depends on DRM_MIPI_DSI
+	depends on BACKLIGHT_CLASS_DEVICE
+	help
+	  Say Y here if you want to enable support for TRULY NT36672C VDO
+	  mode Full HD Plus panel. The panel has a 1080x2400 resolution
+	  and uses 24-bits RGB per pixel. It provides a MIPI DSI interface
+	  to host.
+
+config DRM_PANEL_BOE_ILI7807S_VDO
+	tristate "BOE FHD+ vdo mode panel"
+	depends on OF
+	depends on DRM_MIPI_DSI
+	depends on BACKLIGHT_CLASS_DEVICE
+	help
+	  Say Y here if you want to enable support for BOE ILI7807S VDO
+	  mode Full HD Plus panel. The panel has a 1080x2400 resolution
 	  and uses 24-bits RGB per pixel. It provides a MIPI DSI interface
 	  to host.
 
@@ -714,6 +1139,81 @@ config DRM_PANEL_SC_NT36672C_VDO_120HZ
 	  resolution and uses 24-bits RGB per pixel. It provides a
 	  MIPI DSI interface to host.
 
+config DRM_PANEL_OPLUS20615_SAMSUNG_AMS643YE01_1080P_DSI_CMD
+        tristate "oplus20615 samsung ams64ye01 1080p dsi cmd "
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for boe nt37800 cmd
+          mode panel. The panel has a 1080x2340 resolution and uses
+          24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_OPLUS20615_SAMSUNG_AMS643YE05_1080P_DSI_CMD
+        tristate "oplus20615 samsung ams64ye05 1080p dsi cmd "
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for boe nt37800 cmd
+          mode panel. The panel has a 1080x2340 resolution and uses
+          24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_OPLUS20171_BOE_NT37701_1080P_DSI_CMD
+        tristate "oplus20171 boe nt37701 1080p dsi cmd "
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for boe nt37800 cmd
+          mode panel. The panel has a 1080x2400 resolution and uses
+
+config DRM_PANEL_OPLUS20171_TIANMA_NT37701_42_1080P_DSI_CMD
+        tristate "oplus20171 tianma nt37701 42 1080p dsi cmd "
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for boe nt37800 cmd
+          mode panel. The panel has a 1080x2400 resolution and uses
+          24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_OPLUS20171_SAMSUNG_ANA6705_1080P_DSI_CMD
+        tristate "oplus20171 samsung ana6705 1080p dsi cmd "
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for K6885V1 alpha
+          phone vdo mode panel. The panel has a 1080x2400 resolution and uses
+          24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_OPLUS21127_SAMSUNG_AMS643AG01_1080P_DSI_CMD
+        tristate "oplus21127 samsung ams643ag01 1080p dsi cmd "
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for K6885V1 alpha
+          phone vdo mode panel. The panel has a 1080x2400 resolution and uses
+          24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_OPLUS_SAMSUNG_AMS643YE04_1080P_DSI_CMD
+        tristate "oplus samsung ams64ye04 1080p dsi cmd "
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for boe ams643ye04 cmd
+          mode panel. The panel has a 1080x2400 resolution and uses
+          24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
 config DRM_PANEL_SC_NT36672C_VDO_90HZ
 	tristate "SC FHD+ vdo mode 90 HZ panel"
 	depends on OF
@@ -746,6 +1246,237 @@ config DRM_PANEL_SAMSUNG_S68FC01_VDO_AOD
 	  fhdp vdo aod panel. The panel has a 1080x2340 resolution
 	  and uses 24-bits RGB per pixel. It provides a MIPI DSI
 	  interface to host.
+
+config DRM_PANEL_OPLUS22604_TXD_ICNL9911C_DPHY_VDO
+        tristate "txd icnl9911c 720p vdo mode panel"
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for TXD DPHY vdo
+          mode HD Plus panel. The panel has a 720x1600 resolution
+          and uses 24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_OPLUS22609_TXD_HX83112F_CPHY_VDO
+        tristate "txd hx83112f 1080p vdo mode panel"
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for TXD CPHY vdo
+          mode Full HD Plus panel. The panel has a 2408x1080 resolution
+          and uses 24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_OPLUS22604_BOE_HX83102D_DPHY_VDO
+        tristate "boe hx83102d 720p vdo mode panel"
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for BOE DPHY vdo
+          mode HD Plus panel. The panel has a 720x1600 resolution
+          and uses 24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_OPLUS22083_HLT_ILI9883C_DPHY_VDO
+        tristate "hlt ili9883c 720p vdo mode panel"
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for SAMSUNG DPHY vdo
+          mode Full HD Plus panel. The panel has a 720x1680 resolution
+          and uses 24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_OPLUS22083_TRULY_TD4160_DPHY_VDO
+        tristate "hlt ili9883c 720p vdo mode panel"
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for SAMSUNG DPHY vdo
+          mode Full HD Plus panel. The panel has a 720x1680 resolution
+          and uses 24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_OPLUS22083_BOE_ILI9883C_DPHY_VDO
+        tristate "hlt ili9883c 720p vdo mode panel"
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for SAMSUNG DPHY vdo
+          mode Full HD Plus panel. The panel has a 720x1680 resolution
+          and uses 24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_OPLUS23053_BOE_ILI9883C_DPHY_VDO
+        tristate "boe ili9883c 720p vdo mode panel"
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for SAMSUNG DPHY vdo
+          mode Full HD Plus panel. The panel has a 720x1680 resolution
+          and uses 24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_OPLUS23053_TRULY_TD4160_DPHY_VDO
+        tristate "truly td4160 720p vdo mode panel"
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for SAMSUNG DPHY vdo
+          mode Full HD Plus panel. The panel has a 720x1680 resolution
+          and uses 24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_OPLUS22291_HLT_ILI9883C_DPHY_VDO
+        tristate "hlt ili9883c 720p vdo mode panel"
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for SAMSUNG DPHY vdo
+          mode Full HD Plus panel. The panel has a 720x1680 resolution
+          and uses 24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_OPLUS22291_TRULY_TD4160_DPHY_VDO
+        tristate "hlt ili9883c 720p vdo mode panel"
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for SAMSUNG DPHY vdo
+          mode Full HD Plus panel. The panel has a 720x1680 resolution
+          and uses 24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_OPLUS22291_BOE_ILI9883C_DPHY_VDO
+        tristate "hlt ili9883c 720p vdo mode panel"
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for SAMSUNG DPHY vdo
+          mode Full HD Plus panel. The panel has a 720x1680 resolution
+          and uses 24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_OPLUS22631_BOE_ICNL9911C_DPHY_VDO
+        tristate "boe icnl9911c 720p vdo mode panel"
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for BOE DPHY vdo
+          mode HD Plus panel. The panel has a 720x1600 resolution
+          and uses 24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_OPLUS22610_SAMSUNG_AMS643AG01_1080P_DSI_CMD
+        tristate "oplus22610 samsung ams643ag01 1080p dsi cmd"
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for K6885V1 alpha
+          phone cmd mode panel. The panel has a 1080x2400 resolution and uses
+          24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_OPLUS22277_BOE_NT37705_FHD_DSI_CMD
+        tristate "oplus22277 boe nt37705 fhd DPHY cmd mode panel"
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for boe nt37705 fhd dphy cmd
+          mode panel. The panel has a 1080x2412 resolution
+          and uses 30-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_OPLUS23031_VXN_ILI7838A_FHD_DSI_CMD
+        tristate "oplus23031 vxn ili7838a fhd DPHY cmd mode panel"
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for vxn ili7838a fhd dphy cmd
+          mode panel. The panel has a 1080x2412 resolution
+          and uses 30-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_AC138_P_3_A0004_CMD_PANEL
+        tristate "ac138 p_3 a0004 FHD DPHY cmd mode panel"
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for p_3 a0004
+          DPHY CMD mode FHD Plus 120HZ panel. The panel has a 1080x2412
+          resolution and uses 30-bits RGB per pixel. It provides a
+          MIPI DSI interface to host.
+
+config DRM_PANEL_AC102_P_7_A0007_DSC_VEDIO_MODE_PANEL
+        tristate "ac102 p 7 a0007 dsc vedio cmd panel"
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for K6885V1 alpha
+          phone cmd mode panel. The panel has a 1080x2400 resolution and uses
+          24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_AC102_P_3_A0010_FHDP_DSI_VDO
+        tristate "ac102 p 3 a0010 fhdp dsi vdo"
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for K6885V1 alpha
+          phone cmd mode panel. The panel has a 1080x2400 resolution and uses
+          24-bits RGB per pixel. It provides a MIPI DSI interface
+          to host.
+
+config DRM_PANEL_AC144_P_7_A0012_CMD_PANEL
+        tristate "ac144 p_7 a0012 FHD DPHY cmd mode panel"
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for p_7 a0012
+          DPHY CMD mode FHD Plus 120HZ panel. The panel has a 1080x2412
+          resolution and uses 30-bits RGB per pixel. It provides a
+          MIPI DSI interface to host.
+
+config DRM_PANEL_AC144_P_3_A0004_CMD_PANEL
+        tristate "ac144 p_3 a0004 FHD DPHY cmd mode panel"
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for p_3 a0004
+          DPHY CMD mode FHD Plus 120HZ panel. The panel has a 1080x2412
+          resolution and uses 30-bits RGB per pixel. It provides a
+          MIPI DSI interface to host.
+
+config DRM_PANEL_OPLUS23687_SAMSUNG_AMS667FK02_S6E8FC3_FHDP_DSI_VDO
+        tristate "oplus23687 samsung ams667fk02 s6e8fc3 fhdp dsi vdo"
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for oplus23687 samsung
+          ams667fk02 s6e8fc3 fhdp dsi vdo panel. The panel has a 1080x2400
+          resolution and uses 24-bits RGB per pixel. It provides a
+          MIPI DSI interface to host.
 
 config DRM_RT4831A_I2C
 	tristate "rt4831a use i2c control"

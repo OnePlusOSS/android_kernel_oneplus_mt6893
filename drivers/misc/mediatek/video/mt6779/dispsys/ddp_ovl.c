@@ -22,6 +22,13 @@
 #include <ion.h>
 #include <ion_sec_heap.h>
 
+//#ifdef OPLUS_BUG_STABILITY
+/*
+ * Add for MATE mode switch RGB display
+ */
+#include "mtk_boot_common.h"
+//#endif
+
 #define OVL_REG_BACK_MAX	(40)
 #define OVL_LAYER_OFFSET	(0x20)
 #define OVL_RDMA_DEBUG_OFFSET	(0x4)
@@ -303,6 +310,12 @@ static void _get_roi(enum DISP_MODULE_ENUM module,
 	*bg_w = ovl_bg_w[idx];
 	*bg_h = ovl_bg_h[idx];
 }
+//#ifdef OPLUS_BUG_STABILITY
+/*
+ * Add for MATE mode switch RGB display
+ */
+static int meta_mode_set_once = 0;
+//#endif
 
 int ovl_roi(enum DISP_MODULE_ENUM module, unsigned int bg_w, unsigned int bg_h,
 	    unsigned int bg_color, void *handle)
@@ -316,7 +329,21 @@ int ovl_roi(enum DISP_MODULE_ENUM module, unsigned int bg_w, unsigned int bg_h,
 	}
 
 	DISP_REG_SET(handle, baddr + DISP_REG_OVL_ROI_SIZE, bg_h << 16 | bg_w);
-	DISP_REG_SET(handle, baddr + DISP_REG_OVL_ROI_BGCLR, bg_color);
+//#ifndef OPLUS_BUG_STABILITY
+	/*
+	 * Add for MATE mode switch RGB display
+	*/
+	//DISP_REG_SET(handle, baddr + DISP_REG_OVL_ROI_BGCLR, bg_color);
+//#else /* OPLUS_BUG_STABILITY */
+	if (get_boot_mode() == META_BOOT) {
+		if (meta_mode_set_once == 0) {
+			DISP_REG_SET(handle, baddr + DISP_REG_OVL_ROI_BGCLR, bg_color);
+			meta_mode_set_once = 1;
+		}
+	} else {
+		DISP_REG_SET(handle, baddr + DISP_REG_OVL_ROI_BGCLR, bg_color);
+	}
+//#endif /* OPLUS_BUG_STABILITY */
 
 	DISP_REG_SET(handle, baddr + DISP_REG_OVL_LC_SRC_SIZE,
 		((bg_h << 16) + bg_w));
@@ -1997,6 +2024,14 @@ static int ovl_config_l(enum DISP_MODULE_ENUM module,
 	unsigned int Bpp, fps;
 	unsigned long long tmp_bw, ovl_bw, ovl_fbdc_bw;
 	struct sbch_bw sbch_bw_info;
+//#ifdef OPLUS_BUG_STABILITY
+	/*
+	* Add for MATE mode switch RGB display
+	*/
+		if (get_boot_mode() == META_BOOT) {
+			gOVL_bg_color = 0xFF00FF00;
+		}
+//#endif /* OPLUS_BUG_STABILITY */
 
 	if (pConfig->dst_dirty)
 		ovl_roi(module, pConfig->dst_w, pConfig->dst_h, gOVL_bg_color,

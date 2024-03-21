@@ -45,6 +45,7 @@
 #include "modem_secure_base.h"
 #include "modem_reg_base.h"
 #include "ap_md_reg_dump.h"
+#include "hif/ccci_hif_dpmaif.h"
 
 static struct regulator *reg_vmodem, *reg_vsram;
 #include "hif/ccci_hif_dpmaif.h"
@@ -895,4 +896,3 @@ int ccci_modem_resume_noirq(struct device *dev)
 {
 	return dpmaif_resume_noirq(dev);
 }
-

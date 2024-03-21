@@ -476,6 +476,14 @@ config SRAM
 config SRAM_EXEC
 	bool
 
+#change 'y' to 'n', if you want fo close this controller
+config OPLUS_GPIO
+    tristate "oplus gpio controller"
+    default n
+    help
+      define this config to control oplus gpio.
+
+
 config VEXPRESS_SYSCFG
 	bool "Versatile Express System Configuration driver"
 	depends on VEXPRESS_CONFIG
@@ -528,6 +536,26 @@ config UID_SYS_STATS_DEBUG
 	help
 	  Per TASK based io statistics exported to /proc/uid_io
 
+config OPLUS_FEATURE_UID_PERF
+	bool "Per-TASK perf_event statistics"
+	depends on UID_SYS_STATS
+	default n
+	help
+	  Per TASK based on perf_event
+
+#ifdef OPLUS_FEATURE_TP_BASIC
+config SIM_DETECT
+	tristate "SIM_DETECT system"
+	default n
+	help
+	  Say Y here to enable sim detect system support
+
+config HAPTIC_FEEDBACK
+    tristate "Haptic driver feedback for awinic aw8697 series"
+    help
+      This option enables support for aw8697 series Haptic Driver Feedback.
+#endif /* OPLUS_FEATURE_TP_BASIC */
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
@@ -543,4 +571,9 @@ source "drivers/misc/cxl/Kconfig"
 source "drivers/misc/ocxl/Kconfig"
 source "drivers/misc/cardreader/Kconfig"
 source "drivers/misc/mediatek/Kconfig"
+#ifdef CONFIG_OPLUS_TRIKEY_HALL
+source "drivers/misc/tri_state_key/Kconfig"
+#endif CONFIG_OPLUS_TRIKEY_HALL
+source "drivers/misc/aw8697_haptic/Kconfig"
+source "drivers/misc/oplus_misc_healthinfo/Kconfig"
 endmenu

@@ -194,6 +194,15 @@ config MTK_EXTERNAL_CHARGER_TYPE_DETECT
 	  Set y to enable it.
 	  Set n to disable it.
 
+config OPLUS_PMIC_COMMON
+	tristate "Oplus Power Management Common driver"
+	default n
+	---help---
+	  This selects for Oplus(R) PMIC common driver.
+	  This feature is mainly to separate to common and platform part from driver layer.
+	  Select y to support OPLUS PMIC COMMON feature.
+	  Set n and choose other chip.
+
 source "drivers/misc/mediatek/pmic/mt6370/Kconfig"
 source "drivers/misc/mediatek/pmic/mt6360/Kconfig"
 source "drivers/misc/mediatek/pmic/mt6397/Kconfig"

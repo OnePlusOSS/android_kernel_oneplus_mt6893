@@ -1438,7 +1438,8 @@ static int calc_hrt_num(struct disp_layer_info *disp_info)
 	int larb_hrt_level;
 #endif
 	int overlap_num;
-	bool scan_overlap = !!disp_helper_get_option(DISP_OPT_HRT_MODE);
+	/* bool scan_overlap = !!disp_helper_get_option(DISP_OPT_HRT_MODE); */
+	bool scan_overlap = true;
 
 	/* Calculate HRT for EMI level */
 	if (has_hrt_limit(disp_info, HRT_PRIMARY)) {

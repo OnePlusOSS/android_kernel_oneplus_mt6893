@@ -48,6 +48,11 @@ static unsigned int backlight_PWM_div_hal = CLK_DIV1;
 #include <mt-plat/met_drv.h>
 #endif
 
+/* #ifdef OPLUS_BUG_STABILITY */
+#include <mt-plat/mtk_boot_common.h>
+extern unsigned long silence_mode;
+/* #endif */ /*OPLUS_BUG_STABILITY*/
+
 #undef pr_fmt
 #define pr_fmt(fmt) KBUILD_MODNAME " %s(%d) :" fmt, __func__, __LINE__
 
@@ -665,6 +670,13 @@ int mt_mt65xx_led_set_cust(struct cust_mt65xx_led *cust, int level)
 	unsigned int BacklightLevelSupport =
 	    Cust_GetBacklightLevelSupport_byPWM();
 
+	/* #ifdef OPLUS_BUG_STABILITY */
+	if (silence_mode) {
+		printk("%s silence_mode is %ld, set backlight to 0\n",__func__, silence_mode);
+		level = 0;
+	}
+	/* #endif */ /*OPLUS_BUG_STABILITY*/
+
 	switch (cust->mode) {
 
 	case MT65XX_LED_MODE_PWM:
@@ -783,14 +795,31 @@ void mt_mt65xx_led_set(struct led_classdev *led_cdev, enum led_brightness level)
 				    255;
 			}
 			backlight_debug_log(led_data->level, level);
-			disp_pq_notify_backlight_changed((((1 <<
+
+			/* #ifndef OPLUS_BUG_STABILITY */
+			/*
+			Jianbin.Zhang@PSW.MultiMedia.Display.LCD.Machine, 2020/06/12,
+			modify for multibits backlight.
+			*/
+			/* disp_pq_notify_backlight_changed((((1 <<
 					MT_LED_INTERNAL_LEVEL_BIT_CNT)
 							    - 1) * level +
 							   127) / 255);
 			disp_aal_notify_backlight_changed((((1 <<
 					MT_LED_INTERNAL_LEVEL_BIT_CNT)
 							    - 1) * level +
-							   127) / 255);
+							   127) / 255);*/
+			/* #else */
+			/*
+			Yongpeng.Yi@PSW.MultiMedia.Display.LCD.Feature, 2018/09/10,
+			modify for silence mode.
+			*/
+			if (silence_mode) {
+				printk("%s silence_mode is %ld, set backlight to 0\n",__func__, silence_mode);
+				level = 0;
+			}
+			disp_aal_notify_backlight_changed(level);
+			/* #endif */ /* OPLUS_BUG_STABILITY */
 		}
 	}
 #else

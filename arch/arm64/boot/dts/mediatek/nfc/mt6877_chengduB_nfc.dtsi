@@ -1,0 +1,35 @@
+&odm {
+	nfc_chipset:nfc_chipset {
+		compatible = "oplus-nfc-chipset";
+		chipset-22713 = "PN557";
+	};
+};
+
+&pio {
+        i2c8_pin: i2c8_pin {
+                pins_cmd0_dat {
+                        pinmux = <PINMUX_GPIO136__FUNC_SCL8>;
+                        bias-pull-up;
+                };
+
+                pins_cmd1_dat {
+                        pinmux = <PINMUX_GPIO137__FUNC_SDA8>;
+                        bias-pull-up;
+                };
+        };
+};
+
+
+&i2c8 {
+       status = "okay";
+       nfc_nxp@28 {
+               compatible = "nxp,pn553";
+               reg = <0x28>;
+               nxp,pn544-irq = <&pio 11 0x0>;
+               nxp,pn544-ven = <&pio 190 0x0>;
+               nxp,pn544-fw-dwnld = <&pio 8 0x0>;
+               nxp,pn544-clkreq = <&pio 115 0x0>;
+               interrupt-parent = <&pio>;
+       };
+
+};

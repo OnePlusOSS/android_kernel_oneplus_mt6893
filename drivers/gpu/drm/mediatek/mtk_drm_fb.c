@@ -13,6 +13,9 @@
 #include "mtk_drm_drv.h"
 #include "mtk_drm_fb.h"
 #include "mtk_drm_gem.h"
+#ifdef OPLUS_BUG_STABILITY
+#include <soc/oplus/system/oplus_mm_kevent_fb.h>
+#endif
 
 /*
  * mtk specific framebuffer structure.
@@ -190,6 +193,9 @@ int mtk_fb_wait(struct drm_framebuffer *fb)
 		DDPAEE("%s:%d, invalid ret:%ld\n",
 			__func__, __LINE__,
 			ret);
+		#ifdef OPLUS_BUG_STABILITY
+		mm_fb_display_kevent("DisplayDriverID@@505$$", MM_FB_KEY_RATELIMIT_1H, "mtk_fb_wait invalid ret:%ld", ret);
+		#endif
 		return ret;
 	}
 

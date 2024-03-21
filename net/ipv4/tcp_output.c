@@ -43,6 +43,10 @@
 #include <linux/module.h>
 #include <linux/static_key.h>
 
+//#ifdef OPLUS_FEATURE_NWPOWER
+#include <net/oplus_nwpower.h>
+//#endif /* OPLUS_FEATURE_NWPOWER */
+
 #include <trace/events/tcp.h>
 
 static bool tcp_write_xmit(struct sock *sk, unsigned int mss_now, int nonagle,
@@ -1147,6 +1151,10 @@ static int __tcp_transmit_skb(struct sock *sk, struct sk_buff *skb,
 
 	err = icsk->icsk_af_ops->queue_xmit(sk, skb, &inet->cork.fl);
 
+	//#ifdef OPLUS_FEATURE_NWPOWER
+	oplus_match_tcp_output(sk);
+	//#endif /* OPLUS_FEATURE_NWPOWER */
+
 	if (unlikely(err > 0)) {
 		tcp_enter_cwr(sk);
 		err = net_xmit_eval(err);
@@ -2032,6 +2040,12 @@ static bool tcp_can_coalesce_send_queue_head(struct sock *sk, int len)
 	struct sk_buff *skb, *next;
 
 	skb = tcp_send_head(sk);
+	//#ifdef OPLUS_BUG_STABILITY
+	if ( !skb )
+	{
+		return false;
+	}
+	//endif OPLUS_BUG_STABILITY
 	tcp_for_write_queue_from_safe(skb, next, sk) {
 		if (len <= skb->len)
 			break;

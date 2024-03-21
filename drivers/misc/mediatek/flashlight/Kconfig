@@ -31,6 +31,42 @@ config MTK_FLASHLIGHT_AW3644
 
 	  Say M here if you want to compile this driver as a module.
 
+config MTK_FLASHLIGHT_ZHAOYUN
+	tristate "Mediatek flashlight with driver IC (ZHAOYUN)"
+	depends on MTK_FLASHLIGHT
+	default n
+        help
+	  This is for the flashlight driver IC (ZHAOYUN).
+
+	  Say Y here if you want a flashlight driver IC ZHAOYUN.
+	  Select this only if your board has this IC.
+
+	  Say M here if you want to compile this driver as a module.
+
+config MTK_FLASHLIGHT_PARKERB
+	tristate "Mediatek flashlight with driver IC (PARKERB)"
+	depends on MTK_FLASHLIGHT
+	default n
+        help
+	  This is for the flashlight driver IC (PARKERB).
+
+	  Say Y here if you want a flashlight driver IC PARKERB.
+	  Select this only if your board has this IC.
+
+	  Say M here if you want to compile this driver as a module.
+
+config MTK_FLASHLIGHT_PARKERA
+	tristate "Mediatek flashlight with driver IC (PARKERA)"
+	depends on MTK_FLASHLIGHT
+	default n
+        help
+	  This is for the flashlight driver IC (PARKERA).
+
+	  Say Y here if you want a flashlight driver IC PARKERA.
+	  Select this only if your board has this IC.
+
+	  Say M here if you want to compile this driver as a module.
+
 config MTK_FLASHLIGHT_LED191
 	tristate "Mediatek flashlight led191 gpio driver"
 	depends on MTK_FLASHLIGHT
@@ -203,3 +239,62 @@ config MTK_FLASHLIGHT_DLPT
 	  the current of battary dynamicly. It will start by request
 	  and notice user by kernel notifier.
 
+config MTK_FLASHLIGHT_LIMU
+	tristate "Mediatek flashlight dummy gpio driver"
+	depends on MTK_FLASHLIGHT
+	default n
+	help
+	  This is flashlight dummy gpio driver for camera.
+	  Say Y here if you want a dummy driver IC with GPIO interface.
+	  Select this only if your board has this IC.
+	  Say M here if you want to compile this driver as a module.
+
+config MTK_FLASHLIGHT_MIAMI
+	tristate "Mediatek flashlight dummy gpio driver"
+	depends on MTK_FLASHLIGHT
+	default n
+	help
+	  This is flashlight dummy gpio driver for camera.
+	  Say Y here if you want a dummy driver IC with GPIO interface.
+	  Select this only if your board has this IC.
+	  Say M here if you want to compile this driver as a module.
+
+config MTK_FLASHLIGHT_EVEN
+	tristate "Mediatek flashlight dummy gpio driver"
+	depends on MTK_FLASHLIGHT
+	default n
+	help
+	  This is flashlight dummy gpio driver for camera.
+	  Say Y here if you want a dummy driver IC with GPIO interface.
+	  Select this only if your board has this IC.
+	  Say M here if you want to compile this driver as a module.
+
+config MTK_FLASHLIGHT_ALADDIN
+	tristate "Mediatek flashlight dummy gpio driver"
+	depends on MTK_FLASHLIGHT
+	default n
+	help
+	  This is flashlight dummy gpio driver for camera.
+	  Say Y here if you want a dummy driver IC with GPIO interface.
+	  Select this only if your board has this IC.
+	  Say M here if you want to compile this driver as a module.
+
+config MTK_FLASHLIGHT_SY6560
+	tristate "Mediatek flashlight dummy gpio driver"
+	depends on MTK_FLASHLIGHT
+	default n
+	help
+	  This is flashlight dummy gpio driver for camera.
+	  Say Y here if you want a dummy driver IC with GPIO interface.
+	  Select this only if your board has this IC.
+	  Say M here if you want to compile this driver as a module.
+
+config MTK_FLASHLIGHT_ATOM
+	tristate "Mediatek flashlight dummy gpio driver"
+	depends on MTK_FLASHLIGHT
+	default n
+	help
+	  This is flashlight dummy gpio driver for camera.
+	  Say Y here if you want a dummy driver IC with GPIO interface.
+	  Select this only if your board has this IC.
+	  Say M here if you want to compile this driver as a module.

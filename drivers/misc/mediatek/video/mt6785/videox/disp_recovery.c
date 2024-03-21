@@ -104,7 +104,9 @@ static atomic_t esd_ext_te_1_event = ATOMIC_INIT(0);
 static unsigned int extd_esd_check_mode;
 static unsigned int extd_esd_check_enable;
 #endif
-
+#ifdef OPLUS_BUG_STABILITY
+unsigned int esd_recovery_backlight_level = 2;
+#endif
 atomic_t enable_ovl0_recovery = ATOMIC_INIT(0);
 atomic_t enable_ovl0_2l_recovery = ATOMIC_INIT(0);
 
@@ -829,6 +831,9 @@ static int primary_display_check_recovery_worker_kthread(void *data)
 	DISPFUNCEND();
 	return 0;
 }
+#ifdef OPLUS_BUG_STABILITY
+extern bool __attribute((weak)) oplus_flag_lcd_off;
+#endif
 
 /* ESD RECOVERY */
 int primary_display_esd_recovery(void)
@@ -998,6 +1003,9 @@ int primary_display_esd_recovery(void)
 #endif
 done:
 	primary_display_manual_unlock();
+#ifdef OPLUS_BUG_STABILITY
+	oplus_flag_lcd_off = false;
+#endif
 	DISPCHECK("[ESD]ESD recovery end\n");
 	mmprofile_log_ex(mmp_r, MMPROFILE_FLAG_END, 0, 0);
 	dprec_logger_done(DPREC_LOGGER_ESD_RECOVERY, 0, 0);

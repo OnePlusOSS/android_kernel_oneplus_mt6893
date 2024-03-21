@@ -26,6 +26,7 @@
 #include <linux/random.h>
 #include <linux/seq_file.h>
 
+#include <mtk_pbm.h>
 #include "mtk_gpufreq.h"
 #include "mtk_gpufreq_core.h"
 #include "mtk_pbm.h"

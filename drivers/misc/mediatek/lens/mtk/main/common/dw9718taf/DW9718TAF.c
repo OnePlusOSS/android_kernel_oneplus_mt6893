@@ -1,9 +1,15 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2019 MediaTek Inc.
+ * Copyright (C) 2015 MediaTek Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
  */
-
-
 
 /*
  * DW9718TAF voice coil motor driver
@@ -123,34 +129,54 @@ static int initAF(void)
 
 		u8 data = 0xFF;
 		int i4RetValue = 0;
-		char puSendCmd[2] = {0x00, 0x00}; /* soft power on */
+		char puSendCmd4[2] = {0x00, 0x01};
+		char puSendCmd1[2] = {0x00, 0x00}; /* soft power on */
+		char puSendCmd8[2] = {0x02, 0x00};
+		char puSendCmd6[2] = {0x03, 0xFF}; /* Move 255 Code */
 		char puSendCmd2[2] = {0x01, 0x39};
 		char puSendCmd3[2] = {0x05, 0x79};
 
 		g_pstAF_I2Cclient->addr = AF_I2C_SLAVE_ADDR;
 		g_pstAF_I2Cclient->addr = g_pstAF_I2Cclient->addr >> 1;
-		i4RetValue = i2c_master_send(g_pstAF_I2Cclient, puSendCmd, 2);
 
+		i4RetValue = i2c_master_send(g_pstAF_I2Cclient, puSendCmd4, 2);
 		if (i4RetValue < 0) {
 			LOG_INF("I2C send 0x00 failed!!\n");
 			return -1;
 		}
+		mdelay(1);
+
+		i4RetValue = i2c_master_send(g_pstAF_I2Cclient, puSendCmd1, 2);
+		if (i4RetValue < 0) {
+			LOG_INF("I2C send 0x00 failed!!\n");
+			return -1;
+		}
+		mdelay(1);
 
 		data = read_data(0x00);
 		LOG_INF("Addr:0x00 Data:0x%x\n", data);
-
 		if (data != 0x0)
 			return -1;
 
-		i4RetValue = i2c_master_send(g_pstAF_I2Cclient, puSendCmd2, 2);
+		i4RetValue = i2c_master_send(g_pstAF_I2Cclient, puSendCmd8, 2);
+		if (i4RetValue < 0) {
+			LOG_INF("I2C send 0x02 failed!!\n");
+			return -1;
+		}
 
+		i4RetValue = i2c_master_send(g_pstAF_I2Cclient, puSendCmd6, 2);
+		if (i4RetValue < 0) {
+			LOG_INF("I2C send 0x04 failed!!\n");
+			return -1;
+		}
+
+		i4RetValue = i2c_master_send(g_pstAF_I2Cclient, puSendCmd2, 2);
 		if (i4RetValue < 0) {
 			LOG_INF("I2C send 0x01 failed!!\n");
 			return -1;
 		}
 
 		i4RetValue = i2c_master_send(g_pstAF_I2Cclient, puSendCmd3, 2);
-
 		if (i4RetValue < 0) {
 			LOG_INF("I2C send 0x05 failed!!\n");
 			return -1;
@@ -172,7 +198,7 @@ static int initAF(void)
 static inline int moveAF(unsigned long a_u4Position)
 {
 	int ret = 0;
-
+	LOG_INF("move %d", a_u4Position);
 	if (s4AF_WriteReg((unsigned short)a_u4Position) == 0) {
 		g_u4CurrPosition = a_u4Position;
 		ret = 0;
@@ -245,13 +271,27 @@ int DW9718TAF_Release(struct inode *a_pstInode, struct file *a_pstFile)
 	if (*g_pAF_Opened == 2) {
 		int i4RetValue = 0;
 		u8 data = 0x0;
-		char puSendCmd[2] = {0x00, 0x01};
+		int pos = g_u4CurrPosition;
+		int interval = 15;
+		if (pos > 0 && pos <= 1023) {
+			while (pos >= 138) {
+				pos = pos * 10 / 13 + 10;
+				if (s4AF_WriteReg(pos) != 0) {
+					LOG_INF("AF DW9718TAF_Release I2C failed");
+				}
+				LOG_INF("DW9718T_Release p%d d%d", pos, interval);
+				mdelay(4);
+			}
+			s4AF_WriteReg(90);
+			mdelay(3);
+			s4AF_WriteReg(60);
+		}
 
 		LOG_INF("apply\n");
 
 		g_pstAF_I2Cclient->addr = AF_I2C_SLAVE_ADDR;
 		g_pstAF_I2Cclient->addr = g_pstAF_I2Cclient->addr >> 1;
-		i4RetValue = i2c_master_send(g_pstAF_I2Cclient, puSendCmd, 2);
+		//i4RetValue = i2c_master_send(g_pstAF_I2Cclient, puSendCmd, 2);
 
 		data = read_data(0x00);
 		LOG_INF("Addr:0x00 Data:0x%x (%d)\n", data, i4RetValue);

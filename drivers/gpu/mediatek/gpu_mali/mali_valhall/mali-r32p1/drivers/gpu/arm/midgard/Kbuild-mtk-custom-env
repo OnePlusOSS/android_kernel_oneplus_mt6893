@@ -24,6 +24,31 @@ $(info mtk-Kbuild CONFIG_MALI_PLATFORM_THIRDPARTY_NAME := $(CONFIG_MALI_PLATFORM
 
 CONFIG_MALI_DEBUG := y
 
+ifeq ($(CONFIG_MACH_MT6833),y)
+CONFIG_MALI_FENCE_DEBUG :=y
+CONFIG_MALI_FENCE_DEBUG_EXTEND :=y
+endif
+
+ifeq ($(CONFIG_MACH_MT6877),y)
+CONFIG_MALI_FENCE_DEBUG :=y
+CONFIG_MALI_FENCE_DEBUG_EXTEND :=y
+endif
+
+ifeq ($(CONFIG_MACH_MT6768),y)
+CONFIG_MALI_FENCE_DEBUG :=y
+CONFIG_MALI_FENCE_DEBUG_EXTEND :=y
+endif
+
+ifeq ($(CONFIG_MACH_MT6781),y)
+CONFIG_MALI_FENCE_DEBUG :=y
+CONFIG_MALI_FENCE_DEBUG_EXTEND :=y
+endif
+
+ccflags-$(CONFIG_MALI_DEBUG) += -DCONFIG_MALI_DEBUG
+ccflags-$(CONFIG_MALI_FENCE_DEBUG) += -DCONFIG_MALI_FENCE_DEBUG
+ccflags-$(CONFIG_MALI_FENCE_DEBUG_EXTEND) += -DCONFIG_MALI_FENCE_DEBUG_EXTEND
+
+
 ccflags-y += -I$(srctree)/include
 ccflags-y += -I$(srctree)/drivers/staging/android
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/include

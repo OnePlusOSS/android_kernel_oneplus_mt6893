@@ -555,7 +555,7 @@ config CHARGER_BQ24257
 	tristate "TI BQ24250/24251/24257 battery charger driver"
 	depends on I2C
 	depends on GPIOLIB || COMPILE_TEST
-	select REGMAP_I2C
+	depends on REGMAP_I2C
 	help
 	  Say Y to enable support for the TI BQ24250, BQ24251, and BQ24257 battery
 	  chargers.
@@ -566,6 +566,38 @@ config CHARGER_BQ24735
 	depends on GPIOLIB || COMPILE_TEST
 	help
 	  Say Y to enable support for the TI BQ24735 battery charger.
+
+config CHARGER_BQ2589X
+	tristate "TI BQ2589x battery charger driver"
+	depends on I2C
+	depends on GPIOLIB || COMPILE_TEST
+	select REGMAP_I2C
+	help
+	  Say Y to enable support for the TI BQ2589x battery charger.
+
+config CHARGER_BQ2591X
+	tristate "TI BQ2591X battery charger driver"
+	depends on I2C
+	depends on GPIOLIB || COMPILE_TEST
+	select REGMAP_I2C
+	help
+	  Say Y to enable support for the TI BQ2591X battery charger.
+
+config CHARGER_BQ2560X
+	tristate "TI BQ2560X battery charger driver"
+	depends on I2C
+	depends on GPIOLIB || COMPILE_TEST
+	select REGMAP_I2C
+	help
+	  Say Y to enable support for the TI BQ2560X battery charger.
+
+config CHARGER_SY6970
+	tristate "TI SY6970 battery charger driver"
+	depends on I2C
+	depends on GPIOLIB || COMPILE_TEST
+	select REGMAP_I2C
+	help
+		Say Y to enable support for the TI SY6970 battery charger.
 
 config CHARGER_BQ25890
 	tristate "TI BQ25890 battery charger driver"
@@ -664,11 +696,24 @@ config MTK_BATTERY
 	  battery information from hardware to calculate
 	  Battery percentage.
 
+#ifndef OPLUS_FEATURE_CHG_BASIC
+#config BATTERY_MT6357
+#	tristate "MT6357 fuel gauge support"
+#	depends on MFD_MT6397
+#	depends on NET
+#	default m
+#	help
+#	  Say Y to enable support for MT6357 battery driver.
+#	  it measure battery current and temperature to provide
+#	  battery information , It issues interrupt when trigger
+#	  threshold is met.
+#endif
+
 config BATTERY_MT6357
 	tristate "MT6357 fuel gauge support"
 	depends on MFD_MT6397
 	depends on NET
-	default m
+	default n
 	help
 	  Say Y to enable support for MT6357 battery driver.
 	  it measure battery current and temperature to provide
@@ -807,6 +852,15 @@ config CHARGER_RT9471
 	  which RT9470D and RT9471D support BC1.2
 	  It depends on config MTK_CHARGER.
 
+config CHARGER_SY6974
+	bool "Charger Driver for SY6974 Charger IC"
+	depends on MTK_CHARGER
+	help
+	  Say Yes to enable SY6974 driver.
+	  It supports SY6974,
+	  which SY6974 support BC1.2
+	  It depends on config MTK_CHARGER.
+
 config CHARGER_BQ25601
 	bool "CHARGER_BQ25601"
 	depends on MTK_CHARGER
@@ -825,6 +879,22 @@ config CUSTOM_BATTERY_EXTERNAL_CHANNEL
 	  Say Yes to enable support for Customer external gauge.
           It depends on MTK_PMIC_CHIP_MT6359P
           Added for Battery System test
+
+config CHARGER_SGM41512
+	bool "Charger Driver for Richtek SGM41512 Charger IC"
+	default n
+	depends on MTK_CHARGER
+	help
+	  Say Yes to enable SGM41512 driver.
+	  It depends on config MTK_CHARGER.
+
+config CHARGER_SC6607
+        bool "Charger Driver for SC6607 Charger IC"
+        default n
+        depends on MTK_CHARGER
+        help
+          Say Yes to enable SC6607 driver.
+          It depends on config MTK_CHARGER.
 
 if MACH_MT6768
 source "drivers/power/supply/mediatek/battery/Kconfig"

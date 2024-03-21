@@ -71,6 +71,14 @@
 
 #include "smi_public.h"
 
+#ifdef CONFIG_MTK_MT6382_BDG
+#include <linux/cpufreq.h>
+#include "mtk_ppm_api.h"
+#include "cpu_ctrl.h"
+#include <helio-dvfsrc-opp.h>
+#include <linux/soc/mediatek/mtk-pm-qos.h>
+#include "ddp_disp_bdg.h"
+#endif
 /* static variable */
 static u32 MTK_FB_XRES;
 static u32 MTK_FB_YRES;
@@ -87,7 +95,17 @@ static const struct timeval FRAME_INTERVAL = { 0, 30000 };	/* 33ms */
 static bool no_update;
 static struct disp_session_input_config session_input;
 long dts_gpio_state;
+int shut_down_flag = 0;
 
+#ifdef OPLUS_BUG_STABILITY
+extern int __attribute((weak)) oplus_mtkfb_custom_data_init(struct platform_device *pdev) { return 0; };
+#endif /* OPLUS_BUG_STABILITY */
+
+#ifdef CONFIG_MTK_MT6382_BDG
+struct mtk_pm_qos_request primary_display_ddr_req;
+struct cpu_ctrl_data *freq_to_set = NULL;
+struct cpu_ctrl_data *freq_to_release = NULL;
+#endif
 
 /* macro definiton */
 #define ALIGN_TO(x, n)  (((x) + ((n) - 1)) & ~((n) - 1))
@@ -162,6 +180,7 @@ unsigned int need_esd_check;
 unsigned int lcd_fps = 6000;
 wait_queue_head_t screen_update_wq;
 char mtkfb_lcm_name[256] = { 0 };
+extern bool oplus_display_cabc_cmdq_support;
 #if defined(CONFIG_MTK_DUAL_DISPLAY_SUPPORT) && \
 	(CONFIG_MTK_DUAL_DISPLAY_SUPPORT == 2)
 struct fb_info *ext_mtkfb_fb;
@@ -170,11 +189,21 @@ unsigned long ext_fb_pa;
 unsigned int ext_lcd_fps = 6000;
 char ext_mtkfb_lcm_name[256] = { 0 };
 #endif
-
+extern unsigned int oplus_display_normal_max_brightness;
+extern bool oplus_display_twelvebits_support;
+bool oplus_display_mt6382_support;
+bool oplus_display_mt6382_esd_check;
+#ifdef CONFIG_MTK_MT6382_BDG
+bool oplus_display_async_bl_support;
+unsigned int g_mininum_brightness = 14;
+#endif
 DEFINE_SEMAPHORE(sem_flipping);
 DEFINE_SEMAPHORE(sem_early_suspend);
 DEFINE_SEMAPHORE(sem_overlay_buffer);
 
+#ifdef OPLUS_BUG_STABILITY
+extern bool oplus_display_local_dre_support;
+#endif
 /* ------------------------------------------------------------------------- */
 /* local function declarations */
 /* ------------------------------------------------------------------------- */
@@ -226,6 +255,58 @@ static int mtkfb_release(struct fb_info *info, int user)
 	return 0;
 }
 
+#ifdef CONFIG_MTK_MT6382_BDG
+static int arch_get_nr_clusters(void)
+{
+	return arch_nr_clusters();
+}
+
+
+static int primary_display_boost_start(void)
+{
+	int i, cluster_num;
+
+	cluster_num = arch_get_nr_clusters();
+	if (!freq_to_set)
+		freq_to_set = kcalloc(cluster_num,
+				sizeof(struct ppm_limit_data), GFP_KERNEL);
+
+	mtk_pm_qos_update_request(&primary_display_ddr_req, DDR_OPP_0);
+	for (i = 0; i < cluster_num; i++) {
+		freq_to_set[i].min = 2001000;
+		freq_to_set[i].max = -1;
+	}
+
+	if (cluster_num > 0) {
+		update_userlimit_cpu_freq(CPU_KIR_BOOT, cluster_num, freq_to_set);
+		return 0;
+	}
+	return -1;
+}
+
+static int primary_display_boost_release(void)
+{
+	int i, cluster_num;
+
+	cluster_num = arch_get_nr_clusters();
+	if (!freq_to_release)
+		freq_to_release = kcalloc(cluster_num,
+				sizeof(struct ppm_limit_data), GFP_KERNEL);
+
+	mtk_pm_qos_update_request(&primary_display_ddr_req, DDR_OPP_UNREQ);
+	for (i = 0; i < cluster_num; i++) {
+		freq_to_release[i].min = -1;
+		freq_to_release[i].max = -1;
+	}
+
+	if (cluster_num > 0) {
+		update_userlimit_cpu_freq(CPU_KIR_BOOT, cluster_num, freq_to_release);
+		return 0;
+	}
+	return -1;
+}
+#endif
+
 #if defined(CONFIG_MTK_DUAL_DISPLAY_SUPPORT) && \
 	(CONFIG_MTK_DUAL_DISPLAY_SUPPORT == 2)
 static int mtkfb1_blank(int blank_mode, struct fb_info *info)
@@ -269,10 +350,14 @@ static int mtkfb_blank(int blank_mode, struct fb_info *info)
 				bypass_blank);
 			break;
 		}
-
+#ifdef CONFIG_MTK_MT6382_BDG
+		primary_display_boost_start();
+#endif
 		primary_display_set_power_mode(FB_RESUME);
 		mtkfb_late_resume();
-
+#ifdef CONFIG_MTK_MT6382_BDG
+		primary_display_boost_release();
+#endif
 		debug_print_power_mode_check(prev_pm, FB_RESUME);
 		break;
 	case FB_BLANK_VSYNC_SUSPEND:
@@ -2510,7 +2595,7 @@ static int mtkfb_probe(struct platform_device *pdev)
 #endif
 	int init_state;
 	int r = 0;
-
+	int of_ret = 0;
 	/* struct platform_device *pdev; */
 
 	DISPMSG("%s name [%s]  = [%s][%p]\n", __func__,
@@ -2522,11 +2607,56 @@ static int mtkfb_probe(struct platform_device *pdev)
 			return -EPROBE_DEFER;
 		}
 	}
-
+	#ifdef OPLUS_BUG_STABILITY
+	oplus_mtkfb_custom_data_init(pdev);
+	#endif
 	_parse_tag_videolfb();
 
 	init_state = 0;
 
+	oplus_display_twelvebits_support = of_property_read_bool(pdev->dev.of_node, "oplus_display_twelvebits_support");
+	of_ret = of_property_read_u32(pdev->dev.of_node, "oplus_display_normal_max_brightness", &oplus_display_normal_max_brightness);
+	if (!of_ret)
+		dev_err(&pdev->dev, "read property oplus_display_normal_max_brightness failed.");
+	else
+		DISPMSG("%s:oplus_display_normal_max_brightness=%u\n", __func__, oplus_display_normal_max_brightness);
+
+	oplus_display_mt6382_support = of_property_read_bool(pdev->dev.of_node, "oplus_display_mt6382_support");
+	if (!oplus_display_mt6382_support)
+		dev_err(&pdev->dev, "read bool oplus_display_mt6382_support failed.");
+	else
+		DISPMSG("%s:oplus_display_mt6382_support=%u\n", __func__, oplus_display_mt6382_support);
+
+	oplus_display_mt6382_esd_check = of_property_read_bool(pdev->dev.of_node, "oplus_display_mt6382_esd_check");
+	if (!oplus_display_mt6382_esd_check)
+		dev_err(&pdev->dev, "read bool oplus_display_mt6382_esd_check failed.");
+	else
+		DISPMSG("%s:oplus_display_mt6382_esd_check=%u\n", __func__, oplus_display_mt6382_esd_check);
+
+#ifdef CONFIG_MTK_MT6382_BDG
+	oplus_display_async_bl_support = of_property_read_bool(pdev->dev.of_node, "oplus_display_async_bl_support");
+	if (!oplus_display_async_bl_support)
+		dev_err(&pdev->dev, "read bool oplus_display_async_bl_support failed.");
+	else
+		DISPMSG("%s:oplus_display_async_bl_support=%u\n", __func__, oplus_display_async_bl_support);
+
+	of_ret = of_property_read_u32(pdev->dev.of_node, "mininum_brightness", &g_mininum_brightness);
+	if (!of_ret) {
+		g_mininum_brightness = 14;
+		dev_err(&pdev->dev, "read mininum_brightness failed.");
+	} else {
+		DISPMSG("%s:mininum_brightness=%u\n", __func__, g_mininum_brightness);
+	}
+#endif
+	oplus_display_cabc_cmdq_support = of_property_read_bool(pdev->dev.of_node, "oplus_display_cabc_cmdq_support");
+	if (!oplus_display_cabc_cmdq_support)
+		dev_err(&pdev->dev, "read bool oplus_display_cabc_cmdq_support failed.");
+	else
+		DISPMSG("%s:oplus_display_cabc_cmdq_support=%u\n", __func__, oplus_display_cabc_cmdq_support);
+
+#ifdef OPLUS_BUG_STABILITY
+	oplus_display_local_dre_support = of_property_read_bool(pdev->dev.of_node, "oplus_display_local_dre_support");
+#endif
 	/* pdev = to_platform_device(dev); */
 	/* repo call DTS gpio module, if not necessary, invoke nothing */
 	dts_gpio_state = disp_dts_gpio_init_repo(pdev);
@@ -2642,7 +2772,22 @@ static int mtkfb_probe(struct platform_device *pdev)
 		primary_display_diagnose();
 
 	fbdev->state = MTKFB_ACTIVE;
+#ifdef CONFIG_MTK_MT6382_BDG
+/*mt6382 mipi hopping clk register*/
+	if (!strcmp(mtkfb_find_lcm_driver(), "ili7807s_xxx_fhd_dsi_vdo_dphy_lcm_drv")
+		|| !strcmp(mtkfb_find_lcm_driver(),"nt36672c_tm_fhd_dsi_vdo_dphy_lcm_drv")) {
+		pr_info("[ZS] mipi_cll_change_register %s start\n", __func__);
+		if (oplus_display_mt6382_support) {
+			register_ccci_sys_call_back(MD_SYS1,
+				MD_DISPLAY_DYNAMIC_MIPI, primary_display_mipi_clk_change);
+		} else {
+			register_ccci_sys_call_back(MD_SYS1,
+				MD_DISPLAY_DYNAMIC_MIPI, mipi_clk_change);
+		}
+		pr_info("[ZS] mipi_cll_change_register %s start\n", __func__);
 
+	}
+#endif
 	if (!strcmp(mtkfb_find_lcm_driver(),
 		"nt35521_hd_dsi_vdo_truly_rt5081_drv")) {
 #ifdef CONFIG_MTK_CCCI_DRIVER
@@ -2650,6 +2795,25 @@ static int mtkfb_probe(struct platform_device *pdev)
 			MD_DISPLAY_DYNAMIC_MIPI, mipi_clk_change);
 #endif
 	}
+#ifdef OPLUS_BUG_STABILITY
+	if (!strcmp(mtkfb_find_lcm_driver(),"ilt9881h_txd_hdp_dsi_vdo_lcm_drv")
+      ||!strcmp(mtkfb_find_lcm_driver(),"ilt9881h_truly_hdp_dsi_vdo_lcm_drv")
+      ||!strcmp(mtkfb_find_lcm_driver(),"nt36525b_hlt_hdp_dsi_vdo_lcm_drv")
+      ||!strcmp(mtkfb_find_lcm_driver(),"nt36525b_hlt_psc_ac_boe_vdo")
+      ||!strcmp(mtkfb_find_lcm_driver(),"ilt9882n_truly_even_hdp_dsi_vdo_lcm")
+      ||!strcmp(mtkfb_find_lcm_driver(),"ilt7807s_hlt_even_hdp_dsi_vdo_lcm")
+      ||!strcmp(mtkfb_find_lcm_driver(),"nt36525b_hlt_psc_ac_vdo")
+      ||!strcmp(mtkfb_find_lcm_driver(),"ili7807s_xxx_fhd_dsi_vdo_dphy")
+      ||!strcmp(mtkfb_find_lcm_driver(),"ac112_p_7_a0009_fhd_dsi_vdo_lcm_drv")
+      ||!strcmp(mtkfb_find_lcm_driver(),"ac112_p_d_a0010_fhd_dsi_vdo_lcm_drv")
+      ||!strcmp(mtkfb_find_lcm_driver(),"ac114_p_3_a0013_video_panel")) {
+		register_ccci_sys_call_back(MD_SYS1,
+			MD_DISPLAY_DYNAMIC_MIPI, mipi_clk_change);
+	}
+#endif
+
+	if(shut_down_flag)
+		shut_down_flag = 0;
 
 	MSG_FUNC_LEAVE();
 	pr_info("disp driver(2) %s end\n", __func__);
@@ -2705,12 +2869,19 @@ static int mtkfb_resume(struct platform_device *pdev)
 static void mtkfb_shutdown(struct platform_device *pdev)
 {
 	MTKFB_LOG("[FB Driver] %s()\n", __func__);
+	shut_down_flag = 1;
 	if (primary_display_is_sleepd()) {
 		MTKFB_LOG("mtkfb has been power off\n");
+		#ifdef OPLUS_BUG_STABILITY
+		primary_display_shutdown();
+		#endif
 		return;
 	}
 	primary_display_set_power_mode(FB_SUSPEND);
 	primary_display_suspend();
+	#ifdef OPLUS_BUG_STABILITY
+	primary_display_shutdown();
+	#endif
 	MTKFB_LOG("[FB Driver] leave %s\n", __func__);
 }
 
@@ -2961,6 +3132,12 @@ int __init mtkfb_init(void)
 	PanelMaster_Init();
 	DBG_Init();
 	mtkfb_ipo_init();
+
+#ifdef CONFIG_MTK_MT6382_BDG
+	mtk_pm_qos_add_request(&primary_display_ddr_req,
+		MTK_PM_QOS_DDR_OPP, MTK_PM_QOS_DDR_OPP_DEFAULT_VALUE);
+#endif
+
 exit:
 	MSG_FUNC_LEAVE();
 	DISPCHECK("%s LEAVE\n", __func__);

@@ -120,6 +120,18 @@ config MTK_ION
 	  It set in xxxx_defconfig.mk
 	  default is on.
 
+config OPLUS_ION_BOOSTPOOL
+	bool "Support ION Boost pool"
+	default n
+	help
+	  This driver supports ION boost pool.
+
+config OPLUS_ION_BOOSTPOOL_SUPPORT_PRJ
+	bool "Support ION Boost pool"
+	default n
+	help
+	  This driver supports ION boost pool.
+
 config MTK_ION_FOLDER_NAME_UNDER_STAGING
 	string "MTK ion folder name under drivers/stanging/android/"
 	help
@@ -170,6 +182,14 @@ config ION_OF
 	  extensions
 
 	  If using Ion and devicetree, you should say Y here
+
+#ifdef OPLUS_FEATURE_HANS_FREEZE
+config OPLUS_HANS
+        bool "HANS kernel and HANS native communication channel"
+        default n
+        ---help---
+          Key events (signal/network package/binder) report to HAS native.
+#endif /*OPLUS_FEATURE_HANS_FREEZE*/
 
 endif # if ANDROID
 

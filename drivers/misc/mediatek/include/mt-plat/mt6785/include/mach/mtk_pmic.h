@@ -13,7 +13,7 @@
 
 #define PT_DLPT_BRINGUP 0
 
-#if defined(CONFIG_FPGA_EARLY_PORTING) || PT_DLPT_BRINGUP
+//#if defined(CONFIG_FPGA_EARLY_PORTING) || PT_DLPT_BRINGUP
 /* Define for disable low battery protect feature,
  * default no define for enable low battery protect.
  */
@@ -27,7 +27,7 @@
 
 /*Define for DLPT*/
 #define DISABLE_DLPT_FEATURE
-#endif /* defined(CONFIG_FPGA_EARLY_PORTING) || PT_DLPT_BRINGUP */
+//#endif /* defined(CONFIG_FPGA_EARLY_PORTING) || PT_DLPT_BRINGUP */
 
 /* if not support GM3, disable DLPT */
 #if defined(CONFIG_MTK_DISABLE_GAUGE)

@@ -346,6 +346,32 @@ void mtu3_dev_on_off(struct mtu3 *mtu, int is_on)
 		usb_speed_string(mtu->max_speed), is_on ? "+" : "-");
 }
 
+static void mtu3_gadget_set_ready(struct mtu3 *mtu)
+{
+	struct device_node *np = mtu->dev->of_node;
+	struct property *prop = NULL;
+	int ret = 0;
+
+	dev_info(mtu->dev, "update gadget-ready property\n");
+
+	prop = of_find_property(np, "gadget-ready", NULL);
+	if (!prop) {
+		dev_info(mtu->dev, "no gadget-ready node\n");
+
+		prop = kzalloc(sizeof(*prop), GFP_KERNEL);
+		if (!prop)
+			return;
+
+		prop->name = "gadget-ready";
+		ret = of_add_property(np, prop);
+		if (ret) {
+			pr_err("add prop failed\n");
+			return;
+		}
+	}
+}
+
+
 void mtu3_start(struct mtu3 *mtu)
 {
 	void __iomem *mbase = mtu->mac_base;
@@ -371,6 +397,8 @@ void mtu3_start(struct mtu3 *mtu)
 
 	if (mtu->softconnect)
 		mtu3_dev_on_off(mtu, 1);
+	else if (!mtu->is_gadget_ready)
+		ssusb_phy_dp_pullup(mtu->ssusb);
 }
 
 void mtu3_stop(struct mtu3 *mtu)
@@ -846,6 +874,7 @@ static int mtu3_hw_init(struct mtu3 *mtu)
 		return -ENOMEM;
 
 	mtu3_regs_init(mtu);
+	mtu3_gadget_set_ready(mtu);
 
 	return 0;
 }

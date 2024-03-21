@@ -113,6 +113,13 @@ struct mt63xx_accdet_data {
 	/* when eint issued, queue work: eint_work */
 	struct work_struct eint_work;
 	struct workqueue_struct *eint_workqueue;
+#ifdef OPLUS_BUG_COMPATIBILITY
+	struct delayed_work hp_detect_work;
+#ifdef CONFIG_HSKEY_BLOCK
+	struct delayed_work hskey_block_work;
+	bool g_hskey_block_flag;
+#endif /* CONFIG_HSKEY_BLOCK */
+#endif /* OPLUS_BUG_COMPATIBILITY */
 	u32 water_r;
 	u32 moisture_ext_r;
 	u32 moisture_int_r;
@@ -180,6 +187,11 @@ static struct task_struct *thread;
 
 static u32 button_press_debounce = 0x400;
 static u32 button_press_debounce_01 = 0x800;
+
+/* other external function declaration */
+#ifdef OPLUS_FEATURE_TP_BASIC
+//void switch_headset_state(int headset_state);
+#endif /* OPLUS_FEATURE_TP_BASIC */
 
 /* local function declaration */
 static void accdet_init_once(void);
@@ -880,6 +892,23 @@ static void send_key_event(u32 keycode, u32 flag)
 {
 	int report = 0;
 
+#ifdef OPLUS_BUG_COMPATIBILITY
+#ifdef CONFIG_HSKEY_BLOCK
+	pr_info("[accdet][send_key_event]g_hskey_block_flag = %d\n", accdet->g_hskey_block_flag);
+	if (accdet->g_hskey_block_flag) {
+		pr_info("[accdet][send_key_event]No key event in 1s after inserting 4-pole headsets\n");
+		return;
+	}
+#endif /* CONFIG_HSKEY_BLOCK */
+	pr_info("[accdet][send_key_event]eint_sync_flag = %d, cur_eint_state = %d\n",
+		accdet->eint_sync_flag, accdet->cur_eint_state);
+	if (((accdet->eint_sync_flag && (accdet->cur_eint_state == EINT_PLUG_OUT))
+		|| (!accdet->eint_sync_flag))
+		&& (keycode == MD_KEY)) {
+		pr_info("[accdet][send_key_event]No hook key release when plugging out\n");
+		return;
+	}
+#endif /* OPLUS_BUG_COMPATIBILITY */
 	switch (keycode) {
 	case DW_KEY:
 		if (flag != 0)
@@ -1700,7 +1729,9 @@ static void eint_work_callback(struct work_struct *work)
 		accdet->eint_sync_flag = false;
 		accdet->thing_in_flag = false;
 		mutex_unlock(&accdet->res_lock);
+#ifndef OPLUS_BUG_COMPATIBILITY
 		if (accdet_dts.moisture_detect_mode != 0x5)
+#endif //OPLUS_BUG_COMPATIBILITY
 			del_timer_sync(&micbias_timer);
 
 		/* disable accdet_sw_en=0
@@ -1719,6 +1750,14 @@ static void eint_work_callback(struct work_struct *work)
 	} else if (HAS_CAP(accdet->data->caps, ACCDET_AP_GPIO_EINT))
 		enable_irq(accdet->gpioirq);
 }
+
+#ifdef CONFIG_HSKEY_BLOCK
+static void disable_hskey_block_callback(struct work_struct *work)
+{
+	pr_info("[accdet][disable_hskey_block_callback]:\n");
+	accdet->g_hskey_block_flag = false;
+}
+#endif /* CONFIG_HSKEY_BLOCK */
 
 void accdet_set_debounce(int state, unsigned int debounce)
 {
@@ -1953,7 +1992,13 @@ static int pmic_eint_queue_work(int eintID)
 		pr_info("%s water in then plug out, handle plugout\r",
 			__func__);
 		accdet->cur_eint_state = EINT_PLUG_OUT;
+#ifndef OPLUS_BUG_COMPATIBILITY
 		ret = queue_work(accdet->eint_workqueue, &accdet->eint_work);
+#else /* OPLUS_BUG_COMPATIBILITY */
+		pr_info("%s water in no delayed work scheduled when plugging out\n", __func__);
+		cancel_delayed_work_sync(&accdet->hp_detect_work);
+		schedule_delayed_work(&accdet->hp_detect_work, 0);
+#endif /* OPLUS_BUG_COMPATIBILITY */
 		return 0;
 	}
 	if (HAS_CAP(accdet->data->caps, ACCDET_PMIC_EINT0)) {
@@ -1966,14 +2011,46 @@ static int pmic_eint_queue_work(int eintID)
 				if (accdet->eint_id != M_PLUG_OUT) {
 					accdet->cur_eint_state = EINT_PLUG_IN;
 					mode = accdet_dts.moisture_detect_mode;
+#ifndef OPLUS_BUG_COMPATIBILITY
 					if (mode != 0x5) {
 						mod_timer(&micbias_timer,
 						jiffies+MICBIAS_DISABLE_TIMER);
 					}
+#else //OPLUS_BUG_COMPATIBILITY
+					pr_info("%s delay work to disable micbias after 6s\n", __func__);
+					mod_timer(&micbias_timer,
+						jiffies + MICBIAS_DISABLE_TIMER);
+#endif //OPLUS_BUG_COMPATIBILITY
 				}
 			}
+#ifndef OPLUS_BUG_COMPATIBILITY
 			ret = queue_work(accdet->eint_workqueue,
 					&accdet->eint_work);
+#else /* OPLUS_BUG_COMPATIBILITY */
+			if (accdet->cur_eint_state == EINT_PLUG_IN) {
+				pr_info("%s delayed work 500ms scheduled when plugging in\n", __func__);
+#ifdef CONFIG_HSKEY_BLOCK
+				accdet->g_hskey_block_flag = true;
+				schedule_delayed_work(&accdet->hskey_block_work, msecs_to_jiffies(1500));
+#endif /* CONFIG_HSKEY_BLOCK */
+				schedule_delayed_work(&accdet->hp_detect_work, msecs_to_jiffies(500));
+#ifdef OPLUS_FEATURE_TP_BASIC
+				//pr_info("[TP] going to switch headset mode [%d] \n", 1);
+				//switch_headset_state(1);
+#endif/*OPLUS_FEATURE_TP_BASIC*/
+			} else {
+				pr_info("%s no delayed work scheduled when plugging out\n", __func__);
+#ifdef CONFIG_HSKEY_BLOCK
+				cancel_delayed_work_sync(&accdet->hskey_block_work);
+#endif /* CONFIG_HSKEY_BLOCK */
+				cancel_delayed_work_sync(&accdet->hp_detect_work);
+				schedule_delayed_work(&accdet->hp_detect_work, 0);
+#ifdef OPLUS_FEATURE_TP_BASIC
+				//pr_info("[TP] going to switch headset mode [%d] \n", 0);
+				//switch_headset_state(0);
+#endif/*OPLUS_FEATURE_TP_BASIC*/
+			}
+#endif /* OPLUS_BUG_COMPATIBILITY */
 		} else
 			pr_notice("%s invalid EINT ID!\n", __func__);
 	} else if (HAS_CAP(accdet->data->caps, ACCDET_PMIC_EINT1)) {
@@ -2905,9 +2982,13 @@ void accdet_modify_vref_volt(void)
 
 static void accdet_modify_vref_volt_self(void)
 {
+#ifndef OPLUS_BUG_COMPATIBILITY
+	/* make sure seq is disable micbias then connect vref2 */
 	u32 cur_AB, eintID;
+#endif /* OPLUS_BUG_COMPATIBILITY */
 
 	if (accdet_dts.moisture_detect_mode == 0x5) {
+#ifndef OPLUS_BUG_COMPATIBILITY
 		/* make sure seq is disable micbias then connect vref2 */
 
 		/* check EINT0 status, if plug out,
@@ -2943,6 +3024,7 @@ static void accdet_modify_vref_volt_self(void)
 				__func__, cur_AB, accdet->cable_type);
 			dis_micbias_done = true;
 		}
+#endif /* OPLUS_BUG_COMPATIBILITY */
 		/* disable comp1 delay window */
 		accdet_update_bit(RG_EINT0NOHYS_ADDR,
 			RG_EINT0NOHYS_SFT);
@@ -3223,6 +3305,12 @@ static int accdet_probe(struct platform_device *pdev)
 		ret = -1;
 		goto err_create_workqueue;
 	}
+#ifdef OPLUS_BUG_COMPATIBILITY
+	INIT_DELAYED_WORK(&accdet->hp_detect_work, eint_work_callback);
+#ifdef CONFIG_HSKEY_BLOCK
+	INIT_DELAYED_WORK(&accdet->hskey_block_work, disable_hskey_block_callback);
+#endif /* CONFIG_HSKEY_BLOCK */
+#endif /* OPLUS_BUG_COMPATIBILITY */
 	if (HAS_CAP(accdet->data->caps, ACCDET_AP_GPIO_EINT)) {
 		accdet->accdet_eint_type = IRQ_TYPE_LEVEL_LOW;
 		ret = ext_eint_setup(pdev);

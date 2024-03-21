@@ -66,6 +66,10 @@
 #define R_CHARGER_1	330
 #define R_CHARGER_2	39
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+extern bool oplus_vooc_get_fastchg_started(void);
+#endif /*OPLUS_FEATURE_CHG_BASIC*/
+
 struct mtk_charger_type {
 	struct mt6397_chip *chip;
 	struct regmap *regmap;
@@ -143,6 +147,11 @@ unsigned int bc11_get_register_value(struct regmap *map,
 		>> shift;
 	return value;
 }
+
+#ifdef CONFIG_OPLUS_CHARGER_MTK
+struct mtk_charger_type *pinfo;
+struct regmap *mt6357_regmap;
+#endif
 
 static void hw_bc11_init(struct mtk_charger_type *info)
 {
@@ -516,7 +525,10 @@ static int get_vbus_voltage(struct mtk_charger_type *info,
 {
 	int ret;
 
-	if (!IS_ERR(info->chan_vbus)) {
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	if (!info)
+		return -ENOMEM;
+	if (!IS_ERR_OR_NULL(info->chan_vbus)) {
 		ret = iio_read_channel_processed(info->chan_vbus, val);
 		if (ret < 0)
 			pr_notice("[%s]read fail,ret=%d\n", __func__, ret);
@@ -524,6 +536,7 @@ static int get_vbus_voltage(struct mtk_charger_type *info,
 		pr_notice("[%s]chan error %d\n", __func__, info->chan_vbus);
 		ret = -ENOTSUPP;
 	}
+#endif /*OPLUS_FEATURE_CHG_BASIC*/
 
 	*val = (((R_CHARGER_1 +
 			R_CHARGER_2) * 100 * *val) /
@@ -532,6 +545,40 @@ static int get_vbus_voltage(struct mtk_charger_type *info,
 	return ret;
 }
 
+#ifdef CONFIG_OPLUS_CHARGER_MTK
+int mt6357_get_vbus_voltage(void)
+{
+	int mt6357_vbus;
+	get_vbus_voltage(pinfo, &mt6357_vbus);
+	return mt6357_vbus;
+}
+
+#define NORMAL_CHARGER_MIN_VBUS 4100
+bool mt6357_get_vbus_status(void)
+{
+	int vbus;
+	vbus = mt6357_get_vbus_voltage();
+
+	if ((vbus > NORMAL_CHARGER_MIN_VBUS) || (oplus_vooc_get_fastchg_started() == true))
+		return true;
+	else
+		return false;
+}
+
+bool mt6357_chrdet_status(void){
+	u32 chrdet = 0;
+	if (mt6357_regmap) {
+		chrdet = bc11_get_register_value(mt6357_regmap,
+				PMIC_RGS_CHRDET_ADDR,PMIC_RGS_CHRDET_MASK, PMIC_RGS_CHRDET_SHIFT);
+	}
+	if ( 0 == chrdet) {
+		return false;
+	} else {
+		return true;
+	}
+}
+
+#endif
 
 void do_charger_detect(struct mtk_charger_type *info, bool en)
 {
@@ -555,12 +602,14 @@ void do_charger_detect(struct mtk_charger_type *info, bool en)
 				POWER_SUPPLY_PROP_TYPE, &prop_type);
 		ret = power_supply_get_property(info->psy,
 				POWER_SUPPLY_PROP_USB_TYPE, &prop_usb_type);
-		pr_notice("type:%d usb_type:%d\n", prop_type.intval, prop_usb_type.intval);
 	} else {
+		prop_type.intval = POWER_SUPPLY_TYPE_UNKNOWN;
+		prop_usb_type.intval = POWER_SUPPLY_USB_TYPE_UNKNOWN;
 		info->psy_desc.type = POWER_SUPPLY_TYPE_UNKNOWN;
 		info->type = POWER_SUPPLY_USB_TYPE_UNKNOWN;
-		pr_notice("%s type:0 usb_type:0\n", __func__);
 	}
+
+	pr_notice("%s type:%d usb_type:%d\n", __func__, prop_type.intval, prop_usb_type.intval);
 
 	power_supply_changed(info->psy);
 }
@@ -811,6 +860,10 @@ static int mt6357_charger_type_probe(struct platform_device *pdev)
 	info->pdev = pdev;
 	mutex_init(&info->ops_lock);
 
+#ifdef CONFIG_OPLUS_CHARGER_MTK
+	pinfo = info;
+	mt6357_regmap = info->regmap;
+#endif
 	check_boot_mode(info, &pdev->dev);
 
 	info->psy_desc.name = "mtk_charger_type";

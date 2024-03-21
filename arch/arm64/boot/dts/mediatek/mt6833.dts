@@ -175,6 +175,17 @@
 		};
 	};
 
+	shell_front {
+			compatible = "oplus,shell-temp";
+	};
+
+	shell_frame {
+			compatible = "oplus,shell-temp";
+	};
+
+	shell_back {
+			compatible = "oplus,shell-temp";
+	};
 
 	cpus {
 		#address-cells = <1>;
@@ -391,7 +402,7 @@
 		ccorr0 = &disp_ccorr0;
 	};
 
-	disp_leds {
+	disp_leds: disp_leds {
 		compatible = "mediatek,disp-leds";
 
 		backlight {
@@ -1108,7 +1119,7 @@
 			<0 0>;
 
 		vcc-supply = <&mt_pmic_vemc_ldo_reg>;
-		vccq2-supply = <&mt_pmic_vufs_ldo_reg>;
+		vcc-fixed-regulator;
 
 		resets = <&infracfg_rst 0>, <&infracfg_rst 1>,
 				 <&infracfg_rst 2>;
@@ -1343,7 +1354,7 @@
 			"syscon", "simple-mfd";
 		reg = <0 0x10007000 0 0x1000>;
 		interrupts = <GIC_SPI 433 IRQ_TYPE_LEVEL_HIGH>;
-		mediatek,rg_dfd_timeout = <0x1ffff>;
+		mediatek,rg_dfd_timeout = <0xa0>;
 		#reset-cells = <1>;
 		reboot-mode {
 			compatible = "syscon-reboot-mode";
@@ -1357,6 +1368,12 @@
 			mode-ddr-reserve = <BOOT_DDR_RSVD>;
 			mode-meta = <BOOT_META>;
 			mode-rpmbpk = <BOOT_RPMBPK>;
+			mode-kernel = <BOOT_KERNEL>;
+			mode-sau = <BOOT_SAU>;
+			mode-silence = <BOOT_SILENCE>;
+			mode-sblmemtest = <BOOT_AGINGTEST>;
+			mode-ftm = <BOOT_FACTORY>;
+			mode-edl = <BOOT_EDL>;
 		};
 	};
 
@@ -1885,12 +1902,50 @@
 		interrupts = <GIC_SPI 194 IRQ_TYPE_LEVEL_HIGH>;
 	};
 
-	goodix_fp: fingerprint {
-		compatible = "mediatek,goodix-fp";
+//#ifdef OPLUS_FEATURE_FINGERPRINT
+	oplus_fp_common:oplus_fp_common { //Slave driver and CS ID
+		compatible = "oplus,fp_common"; //Manufacture, and Model
 	};
+
+	goodix_fp: fingerprint {
+		compatible = "goodix,goodix_fp";
+	};
+
+	jiiov_fp: jiiov_fp {
+		compatible = "jiiov,fingerprint";
+		status = "okay";
+	};
+
+	chipone_fp: chipone_fp {
+		compatible = "mediatek,fingerprint";
+	};
+
+	chipone_int: chipone_int {
+		compatible = "mediatek,finger-fp";
+	};
+
+	fpc_interrupt:fpc_interrupt {
+		status        = "ok";
+		compatible    = "fpc,fpc_irq";
+	};
+
+	silead_fp: silead_fp {
+		status        = "ok";
+		compatible = "sil,silead_fp-pins";
+	};
+	
+	focaltech_fp: focaltech_fp {
+		compatible = "focaltech_fp,fingerprint";
+		status = "okay";
+	};
+//#endif /* OPLUS_FEATURE_FINGERPRINT */
 
 	accdet: accdet {
 		compatible = "mediatek,pmic-accdet";
+		//#ifdef OPLUS_BUG_COMPATIBILITY /* OPLUS_BUG_COMPATIBILITY */
+		io-channels = <&pmic_auxadc AUXADC_ACCDET>;
+		io-channel-names = "pmic_accdet";
+		//#endif /* OPLUS_BUG_COMPATIBILITY */
 	};
 
 	md_ccif0@1020a000 {
@@ -2826,19 +2881,19 @@
 				<30>; /* in_size */
 
 		/* feature, frequecy, coreid */
-		scp_feature_tbl = < 0   5 1>,	/* vow */
+		scp_feature_tbl = < 0   5 0>,	/* vow */
 				  < 1  29 0>,	/* sensor */
 				  < 2  26 0>,	/* flp */
 				  < 3   0 0>,	/* rtos */
-				  < 4 200 1>,	/* speaker */
+				  < 4 200 0>,	/* speaker */
 				  < 5   0 0>,	/* vcore */
-				  < 6 120 1>,	/* barge in */
-				  < 7  10 1>,	/* vow dump */
-				  < 8  80 1>,	/* vow vendor M */
-				  < 9  43 1>,	/* vow vendor A */
-				  <10  22 1>,	/* vow vendor G */
-				  <11  20 1>,	/* vow dual mic */
-				  <12 135 1>,	/* vow dual mic barge in */
+				  < 6 120 0>,	/* barge in */
+				  < 7  10 0>,	/* vow dump */
+				  < 8  80 0>,	/* vow vendor M */
+				  < 9  43 0>,	/* vow vendor A */
+				  <10  22 0>,	/* vow vendor G */
+				  <11  20 0>,	/* vow dual mic */
+				  <12 135 0>,	/* vow dual mic barge in */
 				  <13 200 0>;	/* ultrasound */
 
 		secure_dump = "disable";	/* disabled in default */
@@ -3123,6 +3178,17 @@
 		};
 	};
 
+/* camera gpio regulator*/
+	cam1_vcama:gpio-fixed {
+		compatible = "regulator-fixed";
+		regulator-name = "vcama_gpio_regulator";
+		regulator-min-microvolt = <2800000>;
+		regulator-max-microvolt = <2800000>;
+		gpio = <&pio 92 0x0>;
+		enable-active-high;
+		status = "okay";
+	};
+
 	imp_iic_wrap_w: imp_iic_wrap_w@11e03000 {
 		compatible = "mediatek,imp_iic_wrap_w",
 			"mediatek,mt6833-imp_iic_wrap_w", "syscon";
@@ -3145,6 +3211,9 @@
 		reg = <0 0x11210000 0 0x2000>;
 		pwr-regmap = <&sleep>;
 		#clock-cells = <1>;
+                /*#ifdef OLUS_ARCH_EXTENDS*/
+		mediatek,btcvsd_snd = <&btcvsd_snd>;
+                /*#endif OLUS_ARCH_EXTENDS*/
 	};
 
 	afe: mt6833-afe-pcm@11210000 {
@@ -3317,6 +3386,14 @@
 			"pmic_hpofs_cal",
 			"pmic_accdet";
 	};
+
+	sia81xx_L:sia81xx_L {
+
+	};
+
+	sia81xx_R:sia81xx_R {
+
+        };
 
 	sound: sound {
 		compatible = "mediatek,mt6833-mt6359-sound";
@@ -4106,7 +4183,7 @@
 			<0>, /*MTK_DRM_OPT_VDS_PATH_SWITCH*/
 			<0>, /*MTK_DRM_OPT_LAYER_REC*/
 			<1>, /*MTK_DRM_OPT_CLEAR_LAYER*/
-			<1>; /*MTK_DRM_OPT_SF_PF*/
+			<0>; /*MTK_DRM_OPT_SF_PF*/
 	};
 
 	disp_mutex0: disp_mutex@14001000 {
@@ -4305,8 +4382,8 @@
 	mt6382_nfc: mt6382_nfc {
 		compatible = "mediatek, mt6382_nfc-eint";
 		interrupt-parent = <&pio>;
-		interrupts = <25 IRQ_TYPE_EDGE_BOTH 25 0>;
-		mt6382_nfc_srclk = <&pio 25 0x0>;
+		interrupts = <81 IRQ_TYPE_EDGE_BOTH 81 0>;
+		mt6382_nfc_srclk = <&pio 81 0x0>;
 		status = "okay";
 	};
 
@@ -5586,6 +5663,10 @@
 		reg = <0 0x1f00e000 0 0x1000>;
 	};
 
+	irq_nfc: irq_nfc {
+		compatible = "mediatek,irq_nfc-eint";
+	};
+
 	gps: gps@18c00000 {
 		compatible = "mediatek,gps";
 	};
@@ -5593,7 +5674,24 @@
 	odm: odm {
 		compatible = "simple-bus";
 		/* reserved for overlay by odm */
+
+/* ifdef OPLUS_FEATURE_CHG_BASIC */
+/* add for usb eye pattern */
+	mediatek_phy_tuning:mediatek_phy_tuning {
+			/* add for tuning arg; */
+		};
+/* endif */
 	};
+
+//#ifdef OPLUS_FEATURE_SECURITY_COMMON
+	oplus_secure_common:oplus_secure_common {
+		compatible = "oplus,secure_common";
+		oplus,sec_reg_num = <0>;
+		oplus,sec_en_anti_reg = <0>;
+		oplus,sec_override1_reg = <0>;
+		oplus,override1_en_value = <0>;
+	};
+//#endif  OPLUS_FEATURE_SECURITY_COMMON
 
 	memory_ssmr_features: memory-ssmr-features {
 		compatible = "mediatek,memory-ssmr-features";
@@ -6206,7 +6304,7 @@
 		< 650000 750000	 2    0x204  400   3	 0       2>,
 		< 725000 750000	 3    0x302  624   1     0x3     1>;
 
-		scp-cores = <2>;
+		scp-cores = <1>;
 
 		/*pmic-sshub-support;*/
 		/*vow-lp-en-gear = <2>;*/
@@ -6233,10 +6331,6 @@
 #include "mediatek/mt6833-clkitg.dtsi"
 #include "mediatek/v1/mt6360.dtsi"
 
-&mt_pmic_vemc_ldo_reg {
-	regulator-min-microvolt = <3000000>;
-	regulator-max-microvolt = <3000000>;
-};
 
 &spmi_bus {
 	grpid = <11>;
@@ -6331,19 +6425,20 @@
 			bias-disable;
 		};
 	};
+	/* add for singlemic project remove miso1 */
 	aud_dat_miso1_off: aud_dat_miso1_off {
-		pins_cmd1_dat {
+		/*pins_cmd1_dat {
 			pinmux = <PINMUX_GPIO160__FUNC_GPIO160>;
 			input-enable;
 			bias-pull-down;
-		};
+		};*/
 	};
 	aud_dat_miso1_on: aud_dat_miso1_on {
-		pins_cmd1_dat {
+		/*pins_cmd1_dat {
 			pinmux = <PINMUX_GPIO160__FUNC_AUD_DAT_MISO1>;
 			input-schmitt-enable;
 			bias-disable;
-		};
+		};*/
 	};
 
 	vow_dat_miso_off: vow_dat_miso_off {
@@ -6458,6 +6553,12 @@
 	};
 	aud_gpio_i2s5_on: aud_gpio_i2s5_on {
 	};
+	//#ifdef OPLUS_VENDOR_SWTP
+        swtp: swtp {
+        };
+        swtp_1: swtp_1 {
+        };
+        //#endif  /*OPLUS_VENDOR_SWTP*/
 };
 
 #include "mediatek/mt6315_s3.dtsi"

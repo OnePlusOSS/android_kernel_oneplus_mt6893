@@ -311,12 +311,6 @@ static int set_freq_table_sorted(struct cpufreq_policy *policy)
 			continue;
 		}
 
-		if (pos->frequency == prev->frequency) {
-			pr_warn("Duplicate freq-table entries: %u\n",
-				pos->frequency);
-			return -EINVAL;
-		}
-
 		/* Frequency increased from prev to pos */
 		if (pos->frequency > prev->frequency) {
 			/* But frequency was decreasing earlier */

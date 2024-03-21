@@ -674,6 +674,12 @@ static struct sk_buff *pfifo_fast_dequeue(struct Qdisc *qdisc)
 		skb = __skb_array_consume(q);
 	}
 	if (likely(skb)) {
+		// #ifdef OPLUS_BUG_COMPABILITY
+		if ((!skb->head) || (!skb->dev)) {
+			pr_err("%s skb head invalid skb:0x%px\n", __FUNCTION__, skb);
+			return NULL;
+		}
+		//#endif /*OPLUS_BUG_COMPABILITY*/
 		qdisc_qstats_cpu_backlog_dec(qdisc, skb);
 		qdisc_bstats_cpu_update(qdisc, skb);
 		qdisc_qstats_atomic_qlen_dec(qdisc);
@@ -958,6 +964,24 @@ void qdisc_free(struct Qdisc *qdisc)
 	kfree((char *) qdisc - qdisc->padded);
 }
 
+void qdisc_put_unlocked(struct Qdisc *qdisc)
+{
+	if (qdisc->flags & TCQ_F_BUILTIN ||
+	    !refcount_dec_and_rtnl_lock(&qdisc->refcnt))
+		return;
+
+	qdisc_destroy(qdisc);
+	rtnl_unlock();
+}
+EXPORT_SYMBOL(qdisc_put_unlocked);
+
+static void qdisc_free_cb(struct rcu_head *head)
+{
+	struct Qdisc *q = container_of(head, struct Qdisc, rcu);
+
+	qdisc_free(q);
+}
+
 void qdisc_destroy(struct Qdisc *qdisc)
 {
 	const struct Qdisc_ops *ops;
@@ -995,7 +1019,8 @@ void qdisc_destroy(struct Qdisc *qdisc)
 		kfree_skb_list(skb);
 	}
 
-	qdisc_free(qdisc);
+	//qdisc_free(qdisc);
+	call_rcu(&qdisc->rcu, qdisc_free_cb);
 }
 EXPORT_SYMBOL(qdisc_destroy);
 

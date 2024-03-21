@@ -1,0 +1,61 @@
+&audio_extend {
+	//for nxp speaker
+	oplus,speaker-vendor = "nxp";
+	oplus,speaker-i2s-id = <3>;
+	oplus,speaker-i2s-id-in = <0>;
+	oplus,speaker-codec-name = "tfa98xx.8-0034","tfa98xx.8-0037";
+	oplus,speaker-codec-dai-name = "tfa98xx-aif-8-34","tfa98xx-aif-8-37";
+};
+
+//#ifdef OPLUS_ARCH_EXTENDS
+&i2c8 {
+	tfa98xx_R: tfa98xx@34 {
+		compatible = "nxp,tfa98xx";
+		reg = <0x34>;
+		reset-gpio = <&pio 111 0>;
+		tfa_min_range = <5000>;
+		tfa_max_range = <8000>;
+		tfa_channel = <1>;
+		status = "okay";
+	};
+
+	tfa98xx_L: tfa98xx@37 {
+		compatible = "nxp,tfa98xx";
+		reg = <0x37>;
+		reset-gpio = <&pio 148 0>;
+		tfa_min_range = <5000>;
+		tfa_max_range = <8000>;
+		tfa_channel = <0>;
+		status = "okay";
+	};
+};
+
+&sound {
+	mtk_spk_i2s_in = <9>;
+};
+//#endif /*OPLUS_ARCH_EXTENDS*/
+
+//#ifdef OPLUS_ARCH_EXTENDS
+///delete-node/ &fsa4480;
+
+&i2c8 {
+	fsa4480: fsa4480@42 {
+		compatible = "qcom,fsa4480-i2c";
+		reg = <0x42>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&fsa_hs_det>;
+		fsa4480,hs-det-gpio = <&pio 54 0>;
+		fsa4480,hs-det-level = <0>;
+	};
+};
+
+&pio {
+	fsa_hs_det: fsa_hs_det {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO54__FUNC_GPIO54>;
+			slew-rate = <1>;  /*direction 0:in, 1:out*/
+			output-high;
+		};
+	};
+};
+//#endif /*OPLUS_ARCH_EXTENDS*/

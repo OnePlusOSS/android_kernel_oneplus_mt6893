@@ -27,6 +27,7 @@
 #include "client.h"
 #include "mcp.h"	/* mcp_get_version */
 #include "protocol.h"
+#include "nq.h"
 
 /*
  * Get client object from file pointer
@@ -346,10 +347,20 @@ static long user_ioctl(struct file *file, unsigned int id, unsigned long arg)
 			break;
 		}
 
+		if (command.command_id == 0xF9147E18) {
+			mc_dev_info("invoke boost_tee");
+			boost_tee();
+		}
+
 		ret = client_gp_invoke_command(client, command.session_id,
 					       command.command_id,
 					       &command.operation,
 					       &command.ret);
+
+		if (command.command_id == 0xF9147E18) {
+			mc_dev_info("invoke deboost_tee");
+			deboost_tee();
+		}
 
 		if (copy_to_user(uarg, &command, sizeof(command))) {
 			ret = -EFAULT;

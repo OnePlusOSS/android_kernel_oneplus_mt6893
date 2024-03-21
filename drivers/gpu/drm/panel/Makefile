@@ -1,4 +1,19 @@
 # SPDX-License-Identifier: GPL-2.0
+# #ifdef OPLUS_BUG_COMPATIBILITY
+ifeq ($(CONFIG_MACH_MT6768),y)
+subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/pmic/mt6370/v1/inc
+else ifeq ($(CONFIG_MACH_MT6781),y)
+subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/pmic/mt6370/v1/inc
+else
+subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/pmic/mt6370/inc
+endif
+# #endif
+
+##ifdef OPLUS_BUG_STABILITY
+#oplus.Display.LCD, 2022/05/23, add for KPOC mode
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/
+##endif /* OPLUS_BUG_STABILITY */
+
 obj-$(CONFIG_DRM_PANEL_LVDS) += panel-lvds.o
 obj-$(CONFIG_DRM_PANEL_SIMPLE) += panel-simple.o
 obj-$(CONFIG_DRM_PANEL_INNOLUX_P079ZCA) += panel-innolux-p079zca.o
@@ -48,6 +63,28 @@ obj-$(CONFIG_DRM_PANEL_JDI_NT36672C_CPHY_VDO_90HZ_RT4801_HFP) += panel-jdi-nt366
 obj-$(CONFIG_DRM_PANEL_TIANMA_NT36672E_VDO_120HZ_HFP) += panel-tianma-nt36672e-vdo-120hz-hfp.o
 obj-$(CONFIG_DRM_PANEL_TIANMA_NT36672E_VDO_120HZ_VFP) += panel-tianma-nt36672e-vdo-120hz-vfp.o
 obj-$(CONFIG_DRM_PANEL_TIANMA_NT36672E_VDO_120HZ_VFP_6382) += panel-tianma-nt36672e-vdo-120hz-vfp-6382.o
+obj-$(CONFIG_DRM_PANEL_OPLUS20625_BOE_NT35625B_DPHY_VDO) += panel-oplus20625_boe_nt35625b3_vdo.o
+obj-$(CONFIG_DRM_PANEL_OPLUS20015_BOE_ILI9882N_DPHY_VDO) += panel-oplus20015_ili9882n_boe_dsi_vdo.o
+obj-$(CONFIG_DRM_PANEL_OPLUS20015_INNOLUX_ILI9882N_DPHY_VDO) += panel-oplus20015_ili9882n_innolux_dsi_vdo.o
+obj-$(CONFIG_DRM_PANEL_OPLUS20015_TRULY_HX83102_DPHY_VDO) += panel-oplus20015_hx83102_truly_dsi_vdo.o
+obj-$(CONFIG_DRM_PANEL_OPLUS210A0_TIANMA_ILI7807S_CPHY_VDO) += panel-oplus210a0_tianma_ili7807s_cphy_vdo.o
+obj-$(CONFIG_DRM_PANEL_OPLUS21101_BOE_ILI9883A_DPHY_VDO) += oplus21101_ili9883a_boe_dsi_vdo.o
+obj-$(CONFIG_DRM_PANEL_OPLUS21101_INX_TD4160_DPHY_VDO) += oplus21101_td4160_inx_dsi_vdo.o
+obj-$(CONFIG_DRM_PANEL_OPLUS21101_BOE_BI_ILI9883A_DPHY_VDO) += oplus21101_ili9883a_boe_bi_dsi_vdo.o
+obj-$(CONFIG_DRM_PANEL_OPLUS21101_JDI_ILI7807S_CPHY_VDO) += panel-oplus21101_jdi_ili7807s_cphy_vdo.o
+obj-$(CONFIG_DRM_PANEL_OPLUS21101_NT36672C_TM_CPHY_DSI_VDO) += panel-oplus21101_tianma_nt36672c_cphy_vdo.o
+obj-$(CONFIG_DRM_PANEL_OPLUS21015_BOE_NT37701_1080P_DSI_CMD) += oplus21015_boe_nt37701_1080p_dsi_cmd.o
+obj-$(CONFIG_DRM_PANEL_OPLUS21015_TIANMA_NT37701_42_1080P_DSI_CMD) += oplus21015_tianma_nt37701_42_1080p_dsi_cmd.o
+obj-$(CONFIG_DRM_PANEL_OPLUS21015_BOE_NT37701_2FTP_1080P_DSI_CMD) += oplus21015_boe_nt37701_2ftp_1080p_dsi_cmd.o
+obj-$(CONFIG_DRM_PANEL_OPLUS21015_TIANMA_ILI7838_1080P_DSI_CMD) += oplus21015_tianma_ili7838_1080p_dsi_cmd.o
+obj-$(CONFIG_DRM_PANEL_OPLUS21015_BOE_B12_NT37701_1080P_DSI_CMD) += oplus21015_boe_b12_nt37701_1080p_dsi_cmd.o
+obj-$(CONFIG_DRM_PANEL_OPLUS20181_SAMSUNG_AMS643YE01_1080P_DSI_CMD) += oplus20181_samsung_ams643ye01_1080p_dsi_cmd.o
+obj-$(CONFIG_DRM_PANEL_OPLUS21081_SAMSUNG_AMS643AG01_1080P_DSI_CMD) += oplus21081_samsung_ams643ag01_1080p_dsi_cmd.o
+obj-$(CONFIG_DRM_PANEL_OPLUS21851_SAMSUNG_AMS643AG01_1080P_DSI_CMD) += oplus21851_samsung_ams643ag01_1080p_dsi_cmd.o
+obj-$(CONFIG_DRM_PANEL_OPLUS2169E_SAMSUNG_AMS643AG01_1080P_DSI_CMD) += oplus2169E_samsung_ams643ag01_1080p_dsi_cmd.o
+obj-$(CONFIG_DRM_PANEL_OPLUS22612_TIANMA_ILI7838A_FHD_DSI_CMD) += oplus22612_tianma_ili7838a_fhd_dsi_cmd.o
+obj-$(CONFIG_DRM_PANEL_OPLUS22612_TIANMA_ILI7838A_T7_PLUS_FHD_DSI_CMD) += oplus22612_tianma_ili7838a_t7_plus_fhd_dsi_cmd.o
+obj-$(CONFIG_DRM_PANEL_OPLUS22629_TIANMA_ILI7838A_T7_PLUS_FHD_DSI_CMD) += oplus22629_tianma_ili7838a_t7_plus_fhd_dsi_cmd.o
 obj-$(CONFIG_DRM_PANEL_K6853V1_64_ALPHA_VDO_01) += k6853v1_64_alpha/panel-k6853v1-64-alpha-vdo-01.o
 obj-$(CONFIG_DRM_PANEL_K6853V1_64_ALPHA_VDO_02) += k6853v1_64_alpha/panel-k6853v1-64-alpha-vdo-02.o
 obj-$(CONFIG_DRM_PANEL_K6853V1_64_ALPHA_VDO_02) += k6853v1_64_alpha/panel-k6853v1-64-alpha-vdo-03.o
@@ -63,10 +100,59 @@ obj-$(CONFIG_DRM_PANEL_SC_NT36672C_VDO_120HZ) += panel-sc-nt36672c-vdo-120hz.o
 obj-$(CONFIG_DRM_PANEL_SC_NT36672C_VDO_90HZ) += panel-sc-nt36672c-vdo-90hz.o
 obj-$(CONFIG_DRM_PANEL_SC_NT36672C_VDO_60HZ) += panel-sc-nt36672c-vdo-60hz.o
 obj-$(CONFIG_DRM_PANEL_SAMSUNG_S68FC01_VDO_AOD) += panel-samsung-s68fc01-vdo-aod.o
+obj-$(CONFIG_DRM_PANEL_OPLUS20615_SAMSUNG_AMS643YE01_1080P_DSI_CMD) += oplus20615_samsung_ams643ye01_1080p_dsi_cmd.o
+obj-$(CONFIG_DRM_PANEL_OPLUS20615_SAMSUNG_AMS643YE05_1080P_DSI_CMD) += oplus20615_samsung_ams643ye05_1080p_dsi_cmd.o
+obj-$(CONFIG_DRM_PANEL_OPLUS20171_BOE_NT37701_1080P_DSI_CMD) += oplus20171_boe_nt37701_1080p_dsi_cmd.o
+obj-$(CONFIG_DRM_PANEL_OPLUS20171_TIANMA_NT37701_42_1080P_DSI_CMD) += oplus20171_tianma_nt37701_42_1080p_dsi_cmd.o
+obj-$(CONFIG_DRM_PANEL_OPLUS20171_SAMSUNG_ANA6705_1080P_DSI_CMD) += oplus20171_samsung_ana6705_1080p_dsi_cmd.o
+obj-$(CONFIG_DRM_PANEL_OPLUS21127_SAMSUNG_AMS643AG01_1080P_DSI_CMD) += oplus21127_samsung_ams643ag01_1080p_dsi_cmd.o
+obj-$(CONFIG_DRM_PANEL_OPLUS_SAMSUNG_AMS643YE04_1080P_DSI_CMD) += oplus_samsung_ams643ye04_1080p_dsi_cmd.o
+obj-$(CONFIG_DRM_PANEL_OPLUS20391_SAMSUNG_AMS643_1080P_DSI_VDO) += oplus20391_samsung_ams643_1080p_dsi_vdo.o
+obj-$(CONFIG_DRM_PANEL_OPLUS20151_SAMSUNG_AMS643_1080P_DSI_VDO) += oplus20151_samsung_ams643_1080p_dsi_vdo.o
+obj-$(CONFIG_DRM_PANEL_OPLUS20131_SAMSUNG_ANA6705_1080P_DSI_CMD) += oplus20131_samsung_ana6705_1080p_dsi_cmd.o
+obj-$(CONFIG_DRM_PANEL_OPLUS20131_BOE_NT37800_1080P_DSI_CMD) += oplus20131_boe_nt37800_1080p_dsi_cmd.o
+obj-$(CONFIG_DRM_PANEL_OPLUS20131_TIANMA_NT37701_1080P_DSI_CMD) += oplus20131_tianma_nt37701_1080p_dsi_cmd.o
+obj-$(CONFIG_DRM_PANEL_OPLUS20131_TIANMA_NT37701_32_1080P_DSI_CMD) += oplus20131_tianma_nt37701_32_1080p_dsi_cmd.o
 obj-$(CONFIG_DRM_PANEL_TRULY_FT8756_VDO) += panel-truly-ft8756-vdo.o
+obj-$(CONFIG_DRM_PANEL_BOE_BOE_ILI7807S_VDO) += panel-boe-boe-ili7807s-vdo.o
+obj-$(CONFIG_DRM_PANEL_BOE_ILI7807S_60HZ_VDO) += panel-boe-ili7807s-60hz-vdo.o
+obj-$(CONFIG_DRM_PANEL_TM_NT36672C_60HZ_VDO) += panel-tm-nt36672c-60hz-vdo.o
+obj-$(CONFIG_DRM_PANEL_TRULY_NT36672C_VDO) += panel-truly-nt36672c-vdo.o
+obj-$(CONFIG_DRM_PANEL_BOE_ILI7807S_VDO) += panel-boe-ili7807s-vdo.o
 obj-$(CONFIG_DRM_PANEL_TRULY_NT35595_CMD) += panel-truly-nt35595-cmd.o
 obj-$(CONFIG_DRM_PANEL_TRULY_NT35595_VDO) += panel-truly-nt35595-vdo.o
 obj-$(CONFIG_DRM_PANEL_TRULY_ILI9881H_VDO) += panel-truly-ili9881h-rt4801-vdo.o
 obj-$(CONFIG_DRM_PANEL_TRULY_ILI9882N_VDO_90HZ) += panel-truly-ili9882n-rt4801-vdo-90hz.o
+obj-$(CONFIG_DRM_PANEL_OPLUS22604_TXD_ICNL9911C_DPHY_VDO) += oplus22604_icnl9911c_txd_dsi_vdo.o
+obj-$(CONFIG_DRM_PANEL_OPLUS22609_TXD_HX83112F_CPHY_VDO) += oplus22609_hx83112f_txd_dsi_vdo.o
+obj-$(CONFIG_DRM_PANEL_OPLUS22604_BOE_HX83102D_DPHY_VDO) += oplus22604_hx83102d_boe_dsi_vdo.o
+obj-$(CONFIG_DRM_PANEL_OPLUS22083_HLT_ILI9883C_DPHY_VDO) += oplus22083_ili9883c_hlt_dsi_vdo.o
+obj-$(CONFIG_DRM_PANEL_OPLUS22083_TRULY_TD4160_DPHY_VDO) += oplus22083_td4160_truly_dsi_vdo.o
+obj-$(CONFIG_DRM_PANEL_OPLUS22083_BOE_ILI9883C_DPHY_VDO) += oplus22083_ili9883c_boe_dsi_vdo.o
+obj-$(CONFIG_DRM_PANEL_OPLUS23053_BOE_ILI9883C_DPHY_VDO) += oplus23053_ili9883c_boe_dsi_vdo.o
+obj-$(CONFIG_DRM_PANEL_OPLUS23053_TRULY_TD4160_DPHY_VDO) += oplus23053_td4160_truly_dsi_vdo.o
+obj-$(CONFIG_DRM_PANEL_OPLUS22291_HLT_ILI9883C_DPHY_VDO) += oplus22291_ili9883c_hlt_dsi_vdo.o
+obj-$(CONFIG_DRM_PANEL_OPLUS22291_TRULY_TD4160_DPHY_VDO) += oplus22291_td4160_truly_dsi_vdo.o
+obj-$(CONFIG_DRM_PANEL_OPLUS22291_BOE_ILI9883C_DPHY_VDO) += oplus22291_ili9883c_boe_dsi_vdo.o
+obj-$(CONFIG_DRM_PANEL_OPLUS22631_BOE_ICNL9911C_DPHY_VDO) += oplus22631_icnl9911c_boe_dsi_vdo.o
 obj-$(CONFIG_DRM_PANEL_RAYDIUM_RM692H0) += panel-raydium-rm692h0-cmd-120hz.o
-
+obj-$(CONFIG_DRM_PANEL_OPLUS21639_NT36672C_TM_CPHY_DSI_VDO) += panel-oplus21639_tianma_nt36672c_cphy_vdo.o
+obj-$(CONFIG_DRM_PANEL_OPLUS20615_SAMSUNG_AMS643YE01_EVT_1080P_DSI_CMD) += oplus20615_samsung_ams643ye01_evt_1080p_dsi_cmd.o
+obj-$(CONFIG_DRM_PANEL_OPLUS20615_SAMSUNG_AMS643YE01_EVT2_1080P_DSI_CMD) += oplus20615_samsung_ams643ye01_evt2_1080p_dsi_cmd.o
+obj-$(CONFIG_DRM_PANEL_OPLUS20615_SAMSUNG_AMS643YE01_PVT_1080P_DSI_CMD) += oplus20615_samsung_ams643ye01_pvt_1080p_dsi_cmd.o
+obj-$(CONFIG_DRM_PANEL_OPLUS20609_TIANMA_NT36672C_CPHY_VDO) += panel-oplus20609_tianma_nt36672c_cphy_vdo.o
+obj-$(CONFIG_DRM_PANEL_OPLUS20609_TIANMA_ILI7807S_CPHY_VDO) += panel-oplus20609_tianma_ili7807s_cphy_vdo.o
+obj-$(CONFIG_DRM_PANEL_OPLUS22610_SAMSUNG_AMS643AG01_1080P_DSI_CMD) += oplus22610_samsung_ams643ag01_1080p_dsi_cmd.o
+obj-$(CONFIG_DRM_PANEL_OPLUS22277_BOE_NT37705_FHD_DSI_CMD) += oplus22277_boe_nt37705_fhd_dsi_cmd.o
+obj-$(CONFIG_DRM_PANEL_OPLUS23031_VXN_ILI7838A_FHD_DSI_CMD) += oplus23031_vxn_ili7838a_fhd_dsi_cmd.o
+obj-$(CONFIG_DRM_PANEL_AC138_P_3_A0004_CMD_PANEL) += ac138_p_3_a0004_cmd_panel.o
+obj-$(CONFIG_DRM_PANEL_AC102_P_7_A0007_DSC_VEDIO_MODE_PANEL) += AC102_P_7_A0007_dsc_video_mode_panel.o
+obj-$(CONFIG_DRM_PANEL_AC102_P_3_A0010_FHDP_DSI_VDO) += AC102_P_3_A0010_fhdp_dsi_vdo.o
+obj-$(CONFIG_DRM_PANEL_AC144_P_7_A0012_CMD_PANEL) += ac144_p_7_a0012_cmd_panel.o
+obj-$(CONFIG_DRM_PANEL_AC144_P_3_A0004_CMD_PANEL) += ac144_p_3_a0004_cmd_panel.o
+obj-$(CONFIG_DRM_PANEL_OPLUS23687_SAMSUNG_AMS667FK02_S6E8FC3_FHDP_DSI_VDO) += oplus23687_samsung_ams667fk02_s6e8fc3_fhdp_dsi_vdo.o
+##ifdef OPLUS_BUG_STABILITY
+#oplus.Display.LCD, 2022/05/23, add for KPOC mode
+subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/
+subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/
+##endif /* OPLUS_BUG_STABILITY */

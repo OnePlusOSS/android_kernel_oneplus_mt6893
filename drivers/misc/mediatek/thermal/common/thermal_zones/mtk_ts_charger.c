@@ -19,6 +19,7 @@
 #include "mach/mtk_thermal.h"
 #include <linux/uidgid.h>
 #include <linux/slab.h>
+#include <soc/oplus/system/oplus_project.h>
 #include <linux/power_supply.h>
 
 
@@ -37,6 +38,10 @@ do { \
 
 #define mtktscharger_pr_notice(fmt, args...) \
 	pr_notice("[Thermal/tzcharger]" fmt, ##args)
+
+#ifdef OPLUS_FEATURE_CHG_BASIC
+extern bool oplus_tchg_01c_precision(void);
+#endif
 
 static kuid_t uid = KUIDT_INIT(0);
 static kgid_t gid = KGIDT_INIT(1000);
@@ -138,7 +143,14 @@ static int mtktscharger_get_hw_temp(void)
 	ret = power_supply_get_property(chg_psy,
 			POWER_SUPPLY_PROP_TEMP, &prop);
 	if (ret == 0) {
+#ifdef OPLUS_FEATURE_CHG_BASIC
+		if(oplus_tchg_01c_precision())
+			t = 100 * prop.intval;
+		else
+			t = 1000 * prop.intval;
+#else
 		t = 1000 * prop.intval;
+#endif
 		prev_temp = t;
 	} else
 		t = prev_temp;
@@ -341,7 +353,10 @@ struct thermal_cooling_device *cdev, unsigned long state)
 		/* To trigger data abort to reset the system
 		 * for thermal protection.
 		 */
-		BUG();
+		if (get_eng_version() != HIGH_TEMP_AGING)
+			BUG();
+		else
+			pr_info("%s should reset but bypass\n", __func__);
 	}
 
 	return 0;

@@ -335,8 +335,12 @@ struct disp_frame_cfg_t {
 	unsigned int hrt_weight;
 	unsigned int hrt_idx;
 
+	/* #ifndef OPLUS_FEATURE_ONSCREENFINGERPRINT */
 	/* for panel HBM (High Backlight Mode) control */
-	bool hbm_en;
+	/* bool hbm_en; */
+	/* #else */
+	unsigned int hbm_en;
+	/* #endif */
 	/*DynFPS*/
 	int active_config;
 };
@@ -540,7 +544,11 @@ struct dynamic_fps_levels {
 };
 
 /*DynFPS start*/
+#ifdef CONFIG_MTK_MT6382_BDG
+#define MULTI_CONFIG_NUM 3
+#else
 #define MULTI_CONFIG_NUM 2
+#endif
 struct dyn_config_info {
 	unsigned int vsyncFPS;
 	unsigned int vact_timing_fps;/*active timing fps*/

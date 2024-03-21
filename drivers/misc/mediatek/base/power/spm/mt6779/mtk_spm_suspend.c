@@ -8,6 +8,14 @@
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/delay.h>
+#include <linux/wakeup_reason.h>
+#include <linux/of.h>
+#include <linux/of_irq.h>
+#include <linux/of_address.h>
+#include <linux/io.h>
+#include <linux/interrupt.h>
+#include <linux/suspend.h>
+#include <linux/rtc.h>
 #include <asm/setup.h>
 
 #if defined(CONFIG_MTK_WATCHDOG) && defined(CONFIG_MTK_WD_KICKER)
@@ -31,6 +39,10 @@
 #ifdef CONFIG_MTK_ICCS_SUPPORT
 #include <mtk_hps_internal.h>
 #endif
+
+#if defined(CONFIG_MTK_GIC_V3_EXT)
+#include <linux/irqchip/mtk-gic-extend.h>
+#endif /* CONFIG_MTK_GIC_V3_EXT */
 
 static int spm_dormant_sta;
 int spm_ap_mdsrc_req_cnt;
@@ -60,7 +72,96 @@ int  __attribute__ ((weak)) vcorefs_get_curr_vcore(void)
 	printk_deferred("[name:spm&]NO %s !!!\n", __func__);
 	return -1;
 }
+#if defined(CONFIG_MTK_GIC_V3_EXT)
+struct spm_wakesrc_irq_list spm_wakesrc_irqs[] = {
+	/* mtk-kpd */
+	{ WAKE_SRC_R12_KP_IRQ_B, "mediatek,kp", 0, 0},
+	/* bt_cvsd_int */
+	{ WAKE_SRC_R12_CONN2AP_SPM_WAKEUP_B, "mediatek,mtk-btcvsd-snd", 0, 0},
+	/* wf_hif_int */
+	{ WAKE_SRC_R12_CONN2AP_SPM_WAKEUP_B, "mediatek,wifi", 0, 0},
+	/* conn2ap_btif_wakeup_out */
+	{ WAKE_SRC_R12_CONN2AP_SPM_WAKEUP_B, "mediatek,mt6779-consys", 0, 0},
+	/* conn2ap_sw_irq */
+	{ WAKE_SRC_R12_CONN2AP_SPM_WAKEUP_B, "mediatek,mt6779-consys", 2, 0},
+	/* CCIF_AP_DATA */
+	{ WAKE_SRC_R12_CCIF0_EVENT_B, "mediatek,ccci_ccif", 0, 0},
+	/* SCP A IPC2HOST */
+	{ WAKE_SRC_R12_SCP_SPM_IRQ_B, "mediatek,scp", 0, 0},
+	/* CLDMA_AP */
+	{ WAKE_SRC_R12_CLDMA_EVENT_B, "mediatek,dpmaif", 0, 0},
+};
 
+#define IRQ_NUMBER	\
+(sizeof(spm_wakesrc_irqs)/sizeof(struct spm_wakesrc_irq_list))
+static void get_spm_wakesrc_irq(void)
+{
+	int i;
+	struct device_node *node;
+
+	for (i = 0; i < IRQ_NUMBER; i++) {
+		if (spm_wakesrc_irqs[i].name == NULL)
+			continue;
+
+		node = of_find_compatible_node(NULL, NULL,
+			spm_wakesrc_irqs[i].name);
+		if (!node) {
+			pr_info("[name:spm&][SPM] find '%s' node failed\n",
+				spm_wakesrc_irqs[i].name);
+			continue;
+		}
+
+		spm_wakesrc_irqs[i].irq_no =
+			irq_of_parse_and_map(node,
+				spm_wakesrc_irqs[i].order);
+
+		if (!spm_wakesrc_irqs[i].irq_no) {
+			pr_info("[name:spm&][SPM] get '%s' failed\n",
+				spm_wakesrc_irqs[i].name);
+		}
+	}
+}
+#endif
+#ifdef CONFIG_PM
+static int spm_suspend_pm_event(struct notifier_block *notifier,
+			unsigned long pm_event, void *unused)
+{
+	struct timespec ts;
+	struct rtc_time tm;
+
+	getnstimeofday(&ts);
+	rtc_time_to_tm(ts.tv_sec, &tm);
+
+	switch (pm_event) {
+	case PM_HIBERNATION_PREPARE:
+		return NOTIFY_DONE;
+	case PM_RESTORE_PREPARE:
+		return NOTIFY_DONE;
+	case PM_POST_HIBERNATION:
+		return NOTIFY_DONE;
+	case PM_SUSPEND_PREPARE:
+		printk_deferred(
+		"[name:spm&][SPM] PM: suspend entry %d-%02d-%02d %02d:%02d:%02d.%09lu UTC\n",
+			tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+			tm.tm_hour, tm.tm_min, tm.tm_sec, ts.tv_nsec);
+
+		return NOTIFY_DONE;
+	case PM_POST_SUSPEND:
+		printk_deferred(
+		"[name:spm&][SPM] PM: suspend exit %d-%02d-%02d %02d:%02d:%02d.%09lu UTC\n",
+			tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+			tm.tm_hour, tm.tm_min, tm.tm_sec, ts.tv_nsec);
+
+		return NOTIFY_DONE;
+	}
+	return NOTIFY_OK;
+}
+
+static struct notifier_block spm_suspend_pm_notifier_func = {
+	.notifier_call = spm_suspend_pm_event,
+	.priority = 0,
+};
+#endif
 void __attribute__ ((weak)) mtk8250_backup_dev(void)
 {
 	//pr_debug("NO %s !!!\n", __func__);
@@ -178,6 +279,10 @@ static unsigned int spm_output_wake_reason(struct wake_status *wakesta)
 	int hif_id;
 #endif
 #endif
+#if defined(CONFIG_MTK_GIC_V3_EXT)
+	unsigned int irq_no;
+	int i;
+#endif
 
 	if (spm_sleep_count >= 0xfffffff0)
 		spm_sleep_count = 0;
@@ -258,6 +363,20 @@ static unsigned int spm_output_wake_reason(struct wake_status *wakesta)
 
 	}
 #endif
+#endif
+
+#if defined(CONFIG_MTK_GIC_V3_EXT)
+	for (i = 0; i < IRQ_NUMBER; i++) {
+		if (spm_wakesrc_irqs[i].name == NULL ||
+			!spm_wakesrc_irqs[i].irq_no){
+			continue;
+                      }
+		if (spm_wakesrc_irqs[i].wakesrc & wakesta->r12) {
+			irq_no = spm_wakesrc_irqs[i].irq_no;
+			if(mt_irq_get_pending(irq_no))
+				log_irq_wakeup_reason(irq_no);
+		}
+	}
 #endif
 	return wr;
 }
@@ -466,5 +585,26 @@ RESTORE_IRQ:
 
 	return last_wr;
 }
+
+int __init spm_logger_init(void)
+{
+	int ret;
+
+#if defined(CONFIG_MTK_GIC_V3_EXT)
+	get_spm_wakesrc_irq();
+#endif
+
+#ifdef CONFIG_PM
+	ret = register_pm_notifier(&spm_suspend_pm_notifier_func);
+	if (ret) {
+		pr_debug("[name:spm&][SPM] Failed to register PM notifier.\n");
+		return ret;
+	}
+#endif /* CONFIG_PM */
+
+	return 0;
+}
+
+late_initcall_sync(spm_logger_init);
 
 MODULE_DESCRIPTION("SPM-Sleep Driver v0.1");

@@ -12,6 +12,7 @@
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include "ddp_reg.h"
+#include "disp_drv_log.h"
 
 /* #define BYPASS_CLK_SELECT */
 /*
@@ -107,7 +108,7 @@ static int disp_pwm_get_muxbase(void)
 	struct device_node *node;
 
 	if (disp_pmw_mux_base != NULL) {
-		pr_debug("[PWM]TOPCKGEN node exist");
+		DISPINFO("[PWM]TOPCKGEN node exist");
 		return 0;
 	}
 
@@ -152,7 +153,7 @@ int disp_pwm_set_pwmmux(unsigned int clk_req)
 	disp_pwm_get_muxbase();
 	reg_before = disp_pwm_get_pwmmux();
 
-	pr_debug("[PWM]clk_req=%d clkid=%d", clk_req, clkid);
+	DISPINFO("[PWM]clk_req=%d clkid=%d", clk_req, clkid);
 
 	if (clkid != -1) {
 		ddp_clk_prepare_enable(MUX_PWM);
@@ -162,7 +163,7 @@ int disp_pwm_set_pwmmux(unsigned int clk_req)
 
 	reg_after = disp_pwm_get_pwmmux();
 	g_pwm_mux_clock_source = (reg_after>>24) & 0x3;
-	pr_debug("[PWM]PWM_MUX %x->%x", reg_before, reg_after);
+	DISPINFO("[PWM]PWM_MUX %x->%x", reg_before, reg_after);
 
 	return 0;
 }

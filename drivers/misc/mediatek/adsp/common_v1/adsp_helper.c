@@ -121,6 +121,20 @@ void adsp_A_unregister_notify(struct notifier_block *nb)
 EXPORT_SYMBOL_GPL(adsp_A_unregister_notify);
 
 #ifdef CFG_RECOVERY_SUPPORT
+#ifndef OPLUS_ARCH_EXTENDS
+static int adsp_event_receive(struct notifier_block *this, unsigned long event,
+			    void *ptr)
+{
+	adsp_read_status_release(event);
+	return 0;
+}
+
+static struct notifier_block adsp_ready_notifier1 = {
+	.notifier_call = adsp_event_receive,
+	.priority = AUDIO_HAL_FEATURE_PRI,
+};
+#endif //OPLUS_ARCH_EXTENDS
+
 void adsp_extern_notify(enum ADSP_NOTIFY_EVENT notify_status)
 {
 	blocking_notifier_call_chain(&adsp_A_notifier_list,
@@ -633,7 +647,9 @@ static int adsp_system_sleep_suspend(struct device *dev)
 	mutex_lock(&adsp_suspend_mutex);
 	if ((is_adsp_ready(ADSP_A_ID) == 1) || adsp_feature_is_active()) {
 		adsp_timesync_suspend(1);
+		#ifndef OPLUS_BUG_STABILITY
 		adsp_awake_unlock_adsppll(ADSP_A_ID, 1);
+		#endif
 	}
 	mutex_unlock(&adsp_suspend_mutex);
 	return 0;
@@ -644,7 +660,9 @@ static int adsp_system_sleep_resume(struct device *dev)
 	mutex_lock(&adsp_suspend_mutex);
 	if ((is_adsp_ready(ADSP_A_ID) == 1) || adsp_feature_is_active()) {
 		/*wake adsp up*/
+		#ifndef OPLUS_BUG_STABILITY
 		adsp_awake_unlock_adsppll(ADSP_A_ID, 0);
+		#endif
 		adsp_timesync_resume();
 	}
 	mutex_unlock(&adsp_suspend_mutex);
@@ -682,6 +700,7 @@ static void adsp_syscore_resume(void)
 	}
 }
 
+#ifdef OPLUS_ARCH_EXTENDS
 #ifdef CFG_RECOVERY_SUPPORT
 /* user-space event notify */
 static int adsp_user_event_notify(struct notifier_block *nb,
@@ -716,6 +735,7 @@ struct notifier_block adsp_uevent_notifier = {
 	.priority = AUDIO_HAL_FEATURE_PRI,
 };
 #endif
+#endif //OPLUS_ARCH_EXTENDS
 
 static int adsp_device_probe(struct platform_device *pdev)
 {
@@ -836,6 +856,7 @@ static int __init adsp_init(void)
 		return ret;
 	}
 
+
 	ret = misc_register(&adsp_core_device);
 	if (unlikely(ret != 0)) {
 		pr_err("[ADSP] misc adsp_core register failed\n");
@@ -896,7 +917,11 @@ static int __init adsp_module_init(void)
 #endif
 #ifdef CFG_RECOVERY_SUPPORT
 	adsp_recovery_init();
+#ifndef OPLUS_ARCH_EXTENDS
+	adsp_A_register_notify(&adsp_ready_notifier1);
+#else //OPLUS_ARCH_EXTENDS
 	adsp_A_register_notify(&adsp_uevent_notifier);
+#endif //OPLUS_ARCH_EXTENDS
 #endif
 #if ADSP_BUS_MONITOR_INIT_ENABLE
 	adsp_bus_monitor_init();

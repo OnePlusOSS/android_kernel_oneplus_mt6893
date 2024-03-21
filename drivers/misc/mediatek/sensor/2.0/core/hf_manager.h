@@ -14,6 +14,10 @@
 
 #include "hf_sensor_type.h"
 #include "hf_sensor_io.h"
+#ifdef OPLUS_FEATURE_SENSOR_ALGORITHM
+#include <oplus_sensor.h>
+#endif /*OPLUS_FEATURE_SENSOR_ALGORITHM*/
+
 
 #define HF_MANAGER_IO_IN_PROGRESS 0
 #define HF_MANAGER_IO_READY       1

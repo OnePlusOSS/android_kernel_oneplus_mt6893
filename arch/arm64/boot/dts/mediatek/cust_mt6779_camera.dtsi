@@ -89,16 +89,16 @@
 			output-high;
 		};
 	};
-	camera0_vcamd_off: camera0_vcamd_output_low@gpio12 {
+	camera0_vcamd_off: camera0_vcamd_output_low@gpio110 {
 		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO12__FUNC_GPIO12>;
+			pinmux = <PINMUX_GPIO110__FUNC_GPIO110>;
 			slew-rate = <1>;
 			output-low;
 		};
 	};
-	camera0_vcamd_on: camera0_vcamd_output_high@gpio12 {
+	camera0_vcamd_on: camera0_vcamd_output_high@gpio110 {
 		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO12__FUNC_GPIO12>;
+			pinmux = <PINMUX_GPIO110__FUNC_GPIO110>;
 			output-high;
 		};
 	};

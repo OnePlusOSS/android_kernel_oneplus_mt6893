@@ -22,6 +22,7 @@
 #include <linux/swap.h>
 #include <linux/splice.h>
 #include <linux/sched.h>
+#include <../../kernel/sched/sched.h>
 
 MODULE_ALIAS_MISCDEV(FUSE_MINOR);
 MODULE_ALIAS("devname:fuse");
@@ -329,10 +330,15 @@ static u64 fuse_get_unique(struct fuse_iqueue *fiq)
 
 static void queue_request(struct fuse_iqueue *fiq, struct fuse_req *req)
 {
+	int cpu = task_cpu(current);
+	struct rq *rq = cpu_rq(cpu);
 	req->in.h.len = sizeof(struct fuse_in_header) +
 		len_args(req->in.numargs, (struct fuse_arg *) req->in.args);
 	list_add_tail(&req->list, &fiq->pending);
-	wake_up(&fiq->waitq);
+	if (test_bit(FR_BACKGROUND, &req->flags) || rq->nr_running > 1)
+		wake_up(&fiq->waitq);
+	else
+		wake_up_sync(&fiq->waitq);
 	kill_fasync(&fiq->fasync, SIGIO, POLL_IN);
 }
 
@@ -840,7 +846,8 @@ static int fuse_check_page(struct page *page)
 	       1 << PG_lru |
 	       1 << PG_active |
 	       1 << PG_reclaim |
-	       1 << PG_waiters))) {
+	       1 << PG_waiters |
+	       LRU_GEN_MASK | LRU_REFS_MASK))) {
 		printk(KERN_WARNING "fuse: trying to steal weird page\n");
 		printk(KERN_WARNING "  page=%p index=%li flags=%08lx, count=%i, mapcount=%i, mapping=%p\n", page, page->index, page->flags, page_count(page), page_mapcount(page), page->mapping);
 		return 1;
@@ -1323,7 +1330,11 @@ static ssize_t fuse_dev_do_read(struct fuse_dev *fud, struct file *file,
 	spin_lock(&fpq->lock);
 	clear_bit(FR_LOCKED, &req->flags);
 	if (!fpq->connected) {
+		req->out.h.error = -ENOTCONN;
 		err = (fc->aborted && fc->abort_err) ? -ECONNABORTED : -ENODEV;
+		/* Assign abnormal value to req->error when fpq disconnected */
+		if (req->in.h.opcode == FUSE_CANONICAL_PATH)
+			req->out.h.error = -ECONNABORTED;
 		goto out_end;
 	}
 	if (err) {
@@ -1943,8 +1954,12 @@ static ssize_t fuse_dev_do_write(struct fuse_dev *fud,
 
 	spin_lock(&fpq->lock);
 	clear_bit(FR_LOCKED, &req->flags);
-	if (!fpq->connected)
+	if (!fpq->connected) {
+		/* Assign abnormal value to req->error when fpq disconnected */
+		if (req->in.h.opcode == FUSE_CANONICAL_PATH)
+			req->out.h.error = -ECONNABORTED;
 		err = -ENOENT;
+	}
 	else if (err)
 		req->out.h.error = -EIO;
 	if (!test_bit(FR_PRIVATE, &req->flags))

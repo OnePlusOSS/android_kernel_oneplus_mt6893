@@ -20,6 +20,9 @@ static int ufshpb_create_sysfs(struct ufsf_feature *ufsf,
 			       struct ufshpb_lu *hpb);
 static int ufshpb_remove_sysfs(struct ufshpb_lu *hpb);
 
+static int create_hpbfn_enable_proc(void);
+static void remove_hpbfn_enable_proc(void);
+
 static inline void
 ufshpb_get_pos_from_lpn(struct ufshpb_lu *hpb, unsigned long lpn, int *rgn_idx,
 			int *srgn_idx, int *offset)
@@ -2810,6 +2813,7 @@ static void ufshpb_error_handler(struct work_struct *work)
 	ufshpb_release(ufsf, HPB_FAILED);
 }
 
+extern int ufsplus_hpb_status;
 static int ufshpb_init(struct ufsf_feature *ufsf)
 {
 	int lun, ret;
@@ -2836,6 +2840,8 @@ static int ufshpb_init(struct ufsf_feature *ufsf)
 				goto out_free_mem;
 		}
 		hpb_enabled_lun++;
+		if(hpb_enabled_lun)
+			ufsplus_hpb_status = 1;
 	}
 
 	if (hpb_enabled_lun == 0) {
@@ -2855,6 +2861,7 @@ static int ufshpb_init(struct ufsf_feature *ufsf)
 		if (ufsf->ufshpb_lup[lun])
 			INFO_MSG("UFSHPB LU %d working", lun);
 
+	create_hpbfn_enable_proc();
 	return 0;
 out_free_mem:
 	seq_scan_lu(lun)
@@ -2990,6 +2997,7 @@ void ufshpb_release(struct ufsf_feature *ufsf, int state)
 	RELEASE_INFO("kref count %d",
 		     atomic_read(&ufsf->ufshpb_kref.refcount.refs));
 
+	remove_hpbfn_enable_proc();
 	seq_scan_lu(lun) {
 		hpb = ufsf->ufshpb_lup[lun];
 
@@ -3759,4 +3767,81 @@ static int ufshpb_remove_sysfs(struct ufshpb_lu *hpb)
 	kobject_del(&hpb->kobj);
 
 	return 0;
+}
+
+static inline void hpbfn_enable_ctrl(struct ufshpb_lu *hpb, long val)
+{
+	switch (val) {
+	case 0:
+		hpb->force_map_req_disable = true;
+		hpb->force_disable = true;
+		break;
+	case 1:
+		hpb->force_map_req_disable = false;
+		hpb->force_disable = false;
+		break;
+	case 2:
+		ufshpb_failed(hpb, __func__);
+		break;
+	default:
+		break;
+	}
+
+	return;
+}
+
+static ssize_t hpbfn_enable_write(struct file *filp, const char *ubuf,
+				  size_t cnt, loff_t *data)
+{
+	char buf[64] = {0};
+	long val = 0;
+	int ret = 0;
+	int lun;
+
+	if (!ufsf_para.ufsf)
+		return -EFAULT;
+	if (cnt >= sizeof(buf))
+		return -EINVAL;
+	if (copy_from_user(&buf, ubuf, cnt))
+		return -EFAULT;
+	buf[cnt] = 0;
+
+	ret = kstrtoul(buf, 0, (unsigned long *)&val);
+	if (ret < 0)
+		return ret;
+
+	seq_scan_lu(lun) {
+		if (ufsf_para.ufsf->ufshpb_lup[lun])
+			hpbfn_enable_ctrl(ufsf_para.ufsf->ufshpb_lup[lun],
+					  val);
+	}
+
+	return cnt;
+}
+
+static const struct file_operations hpbfn_enable_fops = {
+	.write = hpbfn_enable_write,
+};
+
+static int create_hpbfn_enable_proc(void)
+{
+	struct proc_dir_entry *d_entry;
+
+	if (!ufsf_para.ctrl_dir)
+		return -EFAULT;
+
+	d_entry = proc_create("hpbfn_enable", S_IWUGO, ufsf_para.ctrl_dir,
+			      &hpbfn_enable_fops);
+	if(!d_entry)
+		return -ENOMEM;
+
+	return 0;
+}
+
+static void remove_hpbfn_enable_proc(void)
+{
+	if (ufsf_para.ctrl_dir)
+		remove_proc_entry("hpbfn_enable", ufsf_para.ctrl_dir);
+
+	return;
 }

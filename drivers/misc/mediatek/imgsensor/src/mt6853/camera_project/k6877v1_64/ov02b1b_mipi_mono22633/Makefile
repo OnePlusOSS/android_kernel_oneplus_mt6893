@@ -1,0 +1,1 @@
+obj-y += ov02b1bmipimono22633_Sensor.o

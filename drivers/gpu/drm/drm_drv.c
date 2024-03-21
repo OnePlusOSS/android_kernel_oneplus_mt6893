@@ -492,6 +492,9 @@ int drm_dev_init(struct drm_device *dev,
 		 struct device *parent)
 {
 	int ret;
+	/* #ifdef OPLUS_FEATURE_DISPLAY */
+	struct sched_param rmfb_param = { .sched_priority = 1 };
+	/* endif */
 
 	if (!drm_core_init_complete) {
 		DRM_ERROR("DRM core is not initialized\n");
@@ -554,6 +557,19 @@ int drm_dev_init(struct drm_device *dev,
 	ret = drm_dev_set_unique(dev, parent ? dev_name(parent) : driver->name);
 	if (ret)
 		goto err_setunique;
+
+	/* #ifdef OPLUS_FEATURE_DISPLAY */
+	kthread_init_worker(&dev->o_rmfb_work.rmfb_worker);
+	dev->o_rmfb_work.rmfb_worker_thread =
+		kthread_run(kthread_worker_fn, &dev->o_rmfb_work.rmfb_worker, "oplus_rmfb_thread");
+
+	if (IS_ERR(dev->o_rmfb_work.rmfb_worker_thread)) {
+		pr_err("unable to start rmfb_worker_thread\n");
+		goto err_setunique;;
+	} else {
+		sched_setscheduler(dev->o_rmfb_work.rmfb_worker_thread, SCHED_FIFO, &rmfb_param);
+	}
+	/* endif */
 
 	return 0;
 

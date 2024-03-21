@@ -322,6 +322,10 @@ void __migration_entry_wait(struct mm_struct *mm, pte_t *ptep,
 		goto out;
 
 	page = migration_entry_to_page(entry);
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+		CHP_BUG_ON(PageCont(page));
+#endif
+	page = compound_head(page); // mm, thp: use head page in __migration_entry_wait()
 
 	/*
 	 * Once radix-tree replacement of page migration started, page_count
@@ -689,7 +693,10 @@ void migrate_page_states(struct page *newpage, struct page *page)
 		SetPageChecked(newpage);
 	if (PageMappedToDisk(page))
 		SetPageMappedToDisk(newpage);
-
+#ifdef CONFIG_LOOK_AROUND
+	if (TestClearPageLookAroundRef(page))
+		SetPageLookAroundRef(newpage);
+#endif
 	/* Move dirty on pages not done by migrate_page_move_mapping() */
 	if (PageDirty(page))
 		SetPageDirty(newpage);
@@ -1025,6 +1032,10 @@ static int __unmap_and_move(struct page *page, struct page *newpage,
 
 		lock_page(page);
 	}
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+	/* for debugging, detect the migration of subpages */
+	CHP_BUG_ON(PageCont(page));
+#endif
 
 	if (PageWriteback(page)) {
 		/*

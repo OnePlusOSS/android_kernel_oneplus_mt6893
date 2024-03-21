@@ -60,6 +60,16 @@ struct dbg_ctrl {
 	u32 duration;
 };
 
+#if IS_ENABLED(CONFIG_OPLUS_POWERINFO_STANDBY_DEBUG)
+#define PCM_32K_TICKS_PER_SEC		(32768)
+#define PCM_TICK_TO_SEC(TICK)	(TICK / PCM_32K_TICKS_PER_SEC)
+
+extern u64 spm_26M_off_count;
+extern u64 spm_26M_off_duration;
+extern u64 ap_pd_count;
+extern u64 ap_slp_duration;
+#endif
+
 int mtk_dbg_common_fs_init(void);
 
 void mtk_dbg_common_fs_exit(void);

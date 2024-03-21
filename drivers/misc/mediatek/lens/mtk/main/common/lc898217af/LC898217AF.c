@@ -100,7 +100,9 @@ static int setPosition(unsigned short UsPosition)
 	unsigned char UcPosL;
 	unsigned int i4RetValue = 0;
 
+	#ifndef OPLUS_FEATURE_CAMERA_COMMON
 	UsPosition = 1023 - UsPosition;
+	#endif
 	TarPos = UsPosition;
 
 	/* LOG_INF("DAC(%04d) -> %03x\n", UsPosition, TarPos); */

@@ -240,9 +240,7 @@ static int perfmgr_sched_isolated_proc_show(struct seq_file *m, void *v)
 #ifdef MTK_K14_EAS_BOOST
 static void walt_mode(int enable)
 {
-#ifdef CONFIG_SCHED_WALT
-	sched_walt_enable(LT_WALT_POWERHAL, enable);
-#else
+#ifndef CONFIG_SCHED_WALT
 	pr_debug("walt not be configured\n");
 #endif
 }

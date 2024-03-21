@@ -19,6 +19,9 @@
 #include "mtk_battery.h"
 #include "mtk_gauge.h"
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+#include <soc/oplus/device_info.h>
+#endif
 
 /* ============================================================ */
 /* pmic control start*/
@@ -247,6 +250,7 @@ static struct class *bat_cali_class;
 static int bat_cali_major;
 static dev_t bat_cali_devno;
 static struct cdev *bat_cali_cdev;
+struct mtk_gauge *g_gague;
 
 
 void __attribute__ ((weak))
@@ -630,6 +634,10 @@ static int fgauge_get_info(struct mtk_gauge *gauge,
 	return 0;
 }
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+#define THRES_REG_MAX 32768
+#define THRES_REG_MIN 0
+#endif
 static void fgauge_set_nafg_intr_internal(struct mtk_gauge *gauge,
 	int _prd, int _zcv_mv, int _thr_mv)
 {
@@ -638,6 +646,14 @@ static void fgauge_set_nafg_intr_internal(struct mtk_gauge *gauge,
 
 	gauge->zcv_reg = mv_to_reg_value(_zcv_mv);
 	gauge->thr_reg = mv_to_reg_value(_thr_mv);
+
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	if (gauge->thr_reg >= THRES_REG_MAX || gauge->thr_reg <= THRES_REG_MIN) {
+		bm_err("[%s]nag_c_dltv_thr mv=%d ,thr_reg=%d,limit thr_reg to 32767\n",
+			__func__, _thr_mv, gauge->thr_reg);
+		gauge->thr_reg = THRES_REG_MAX - 1;
+	}
+#endif
 
 	NAG_C_DLTV_Threashold_26_16 = (gauge->thr_reg & 0xffff0000) >> 16;
 	NAG_C_DLTV_Threashold_15_0 = (gauge->thr_reg & 0x0000ffff);
@@ -677,9 +693,15 @@ static void fgauge_set_nafg_intr_internal(struct mtk_gauge *gauge,
 		1 <<
 		PMIC_AUXADC_NAG_VBAT1_SEL_SHIFT);
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	bm_err("[fg_bat_nafg][fgauge_set_nafg_interrupt_internal] time[%d] zcv[%d:%d] thr[%d:%d] 26_16[0x%x] 15_00[0x%x]\n",
+		_prd, _zcv_mv, gauge->zcv_reg, _thr_mv, gauge->thr_reg,
+		NAG_C_DLTV_Threashold_26_16, NAG_C_DLTV_Threashold_15_0);
+#else
 	bm_debug("[fg_bat_nafg][fgauge_set_nafg_interrupt_internal] time[%d] zcv[%d:%d] thr[%d:%d] 26_16[0x%x] 15_00[0x%x]\n",
 		_prd, _zcv_mv, gauge->zcv_reg, _thr_mv, gauge->thr_reg,
 		NAG_C_DLTV_Threashold_26_16, NAG_C_DLTV_Threashold_15_0);
+#endif
 
 }
 
@@ -2115,12 +2137,15 @@ static int boot_zcv_get(struct mtk_gauge *gauge_dev,
 	return 0;
 }
 
+
+#ifdef OPLUS_FEATURE_CHG_BASIC
 static int bat_temp_froze_en_set(struct mtk_gauge *gauge,
 	struct mtk_gauge_sysfs_field_info *attr, int val)
 {
 	/*NO need to do*/
 	return 0;
 }
+#endif
 
 static int initial_set(struct mtk_gauge *gauge,
 	struct mtk_gauge_sysfs_field_info *attr, int val)
@@ -2219,6 +2244,24 @@ static int rtc_ui_soc_set(struct mtk_gauge *gauge,
 	return 1;
 }
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+int oplus_get_rtc_ui_soc(void)
+{
+	int rtc_ui_soc;
+	rtc_ui_soc_get(g_gague, NULL, &rtc_ui_soc);
+	bm_notice("[%s] oplus_get_rtc_ui_soc = %d\n", __func__, rtc_ui_soc);
+
+	return rtc_ui_soc;
+
+}
+
+int oplus_set_rtc_ui_soc(int value)
+{
+	rtc_ui_soc_set(g_gague, NULL, value);
+	bm_notice("[%s] oplus_set_rtc_ui_soc = %d\n", __func__, value);
+	return value;
+}
+#endif
 
 static int gauge_initialized_get(struct mtk_gauge *gauge,
 	struct mtk_gauge_sysfs_field_info *attr, int *val)
@@ -2610,6 +2653,25 @@ static int reset_set(struct mtk_gauge *gauge,
 	return 0;
 }
 
+static void register_gauge_devinfo(struct mtk_gauge *gauge){
+#ifndef CONFIG_DISABLE_OPLUS_FUNCTION
+	int ret = 0;
+	char *version;
+	char *manufacture;
+
+	if(!gauge) {
+		bm_err("[%s]No device found\n", __func__);
+		return;
+	}
+	version = "mt6357";
+	manufacture = "Mediatek";
+	ret = register_device_proc("gauge",version,manufacture);
+	if (ret) {
+		pr_err("register_gauge_devinfo failed\n");
+	}
+#endif
+}
+
 static int vbat_lt_set(struct mtk_gauge *gauge,
 	struct mtk_gauge_sysfs_field_info *attr, int threshold)
 {
@@ -2809,8 +2871,10 @@ static struct mtk_gauge_sysfs_field_info mt6357_sysfs_field_tbl[] = {
 		vbat2_detect_time, GAUGE_PROP_VBAT2_DETECT_TIME),
 	GAUGE_SYSFS_INFO_FIELD_RW(
 		vbat2_detect_counter, GAUGE_PROP_VBAT2_DETECT_COUNTER),
+#ifdef OPLUS_FEATURE_CHG_BASIC
 	GAUGE_SYSFS_FIELD_WO(
 		bat_temp_froze_en_set, GAUGE_PROP_BAT_TEMP_FROZE_EN),
+#endif
 };
 
 static struct attribute *
@@ -3181,6 +3245,10 @@ static int mt6357_gauge_probe(struct platform_device *pdev)
 	gauge->pdev = pdev;
 	mutex_init(&gauge->ops_lock);
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+        g_gague = gauge;
+#endif
+
 	gauge->irq_no[COULOMB_H_IRQ] =
 		platform_get_irq_byname(pdev, "COULOMB_H");
 	gauge->irq_no[COULOMB_L_IRQ] =
@@ -3246,6 +3314,7 @@ static int mt6357_gauge_probe(struct platform_device *pdev)
 	bat_create_netlink(pdev);
 	battery_init(pdev);
 	adc_cali_cdev_init(pdev);
+	register_gauge_devinfo(gauge);
 
 	bm_err("%s: done\n", __func__);
 

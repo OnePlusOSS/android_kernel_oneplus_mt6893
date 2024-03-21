@@ -21,6 +21,7 @@
 #include <linux/slab.h>
 #include "mach/mtk_thermal.h"
 #include <linux/bug.h>
+#include <soc/oplus/system/oplus_project.h>
 
 #if defined(CONFIG_MTK_CLKMGR)
 #include <mach/mtk_clkmgr.h>
@@ -334,10 +335,10 @@ int diff_error_count;
  * Local function declartation
  *=============================================================
  */
-static unsigned int  lvts_temp_to_raw(int ret, enum lvts_sensor_enum ts_name);
+//MTK static unsigned int  lvts_temp_to_raw(int ret, enum lvts_sensor_enum ts_name);
 
-static void lvts_set_tc_trigger_hw_protect(
-		int temperature, int temperature2, int tc_num);
+//MTK static void lvts_set_tc_trigger_hw_protect(
+//MTK		int temperature, int temperature2, int tc_num);
 /*=============================================================
  *Weak functions
  *=============================================================
@@ -616,6 +617,7 @@ static void dump_lvts_register_value(void)
 
 void dump_lvts_error_info(void)
 {
+	lvts_printk(" %s\n",__func__);
 	read_controller_reg_when_error();
 
 	lvts_disable_all_sensing_points();
@@ -1311,6 +1313,7 @@ void lvts_ipi_send_sspm_thermal_suspend_resume(int is_suspend)
 #endif
 #endif
 
+#if 0 //MTK
 static unsigned int lvts_temp_to_raw(int temp, enum lvts_sensor_enum ts_name)
 {
 	/* MSR_RAW = ((temp[i] - GOLDEN_TEMP/2 - b) * 16384) / a
@@ -1326,11 +1329,13 @@ static unsigned int lvts_temp_to_raw(int temp, enum lvts_sensor_enum ts_name)
 
 	return msr_raw;
 }
+#endif
 
 static void lvts_interrupt_handler(int tc_num)
 {
 	unsigned int  ret = 0;
 	int offset;
+	lvts_printk("[Thermal IRQ] %s\n",__func__);
 
 	if (tc_num < ARRAY_SIZE(lvts_tscpu_g_tc) && (tc_num >= 0)) {
 		offset = lvts_tscpu_g_tc[tc_num].tc_offset;
@@ -1538,6 +1543,7 @@ static void lvts_configure_polling_speed_and_filter(int tc_num)
  * temperature2 to set the middle threshold for interrupting CPU.
  * -275000 to disable it.
  */
+#if 0 //MTK
 static void lvts_set_tc_trigger_hw_protect(
 int temperature, int temperature2, int tc_num)
 {
@@ -1546,10 +1552,11 @@ int temperature, int temperature2, int tc_num)
 	unsigned int d_index;
 	enum lvts_sensor_enum ts_name;
 #endif
+	lvts_printk("%s 222\n", __func__);
 	if (tc_num < ARRAY_SIZE(lvts_tscpu_g_tc) && (tc_num >= 0)) {
 		offset = lvts_tscpu_g_tc[tc_num].tc_offset;
 
-		lvts_dbg_printk("%s t1=%d t2=%d\n",
+		lvts_printk("%s t1=%d t2=%d\n",
 					__func__, temperature, temperature2);
 
 #if LVTS_USE_DOMINATOR_SENSING_POINT
@@ -1579,14 +1586,40 @@ int temperature, int temperature2, int tc_num)
 		raw_high = lvts_temp_to_raw(temperature, 0);
 #endif
 
+#if 1 //MTK
+
+	/* After adding the huge offset 0x3FFF, LVTS alawys adds the
+	 * offset to MSR_RAW.
+	 * When MSR_RAW is larger, SW will convert lower temperature/
+	 */
+	temp = readl(LVTSPROTCTL_0 + offset);
+	mt_reg_sync_writel_print(temp | 0x3FFF, LVTSPROTCTL_0 + offset);
+
+	/* Disable the interrupt of AP SW */
+	temp = readl(LVTSMONINT_0 + offset);
+
+	temp = temp & ~(STAGE3_INT_EN);
+
+	temp = temp & ~(HIGH_OFFSET3_INT_EN |
+					HIGH_OFFSET2_INT_EN |
+					HIGH_OFFSET1_INT_EN |
+					HIGH_OFFSET0_INT_EN);
+
+	temp = temp & ~(LOW_OFFSET3_INT_EN |
+					LOW_OFFSET2_INT_EN |
+					LOW_OFFSET1_INT_EN |
+					LOW_OFFSET0_INT_EN);
+
+	mt_reg_sync_writel_print(temp, LVTSMONINT_0 + offset);
+#endif
 #ifndef CONFIG_LVTS_DYNAMIC_ENABLE_REBOOT
-		temp = readl(offset + LVTSMONINT_0);
+//MTK		temp = readl(offset + LVTSMONINT_0);
 		/* disable trigger SPM interrupt */
-			mt_reg_sync_writel_print(temp & 0x00000000,
-				offset + LVTSMONINT_0);
+//MTK			mt_reg_sync_writel_print(temp & 0x00000000,
+//MTK				offset + LVTSMONINT_0);
 #endif
 
-		temp = readl(offset + LVTSPROTCTL_0) & ~(0xF << 16);
+//MTK		temp = readl(offset + LVTSPROTCTL_0) & ~(0xF << 16);
 #if LVTS_USE_DOMINATOR_SENSING_POINT
 		/* Select protection sensor */
 		config = ((d_index << 2) + 0x2) << 16;
@@ -1599,18 +1632,54 @@ int temperature, int temperature2, int tc_num)
 				offset + LVTSPROTCTL_0);
 #endif
 
+#if 1 //MTK
+		/* high offset INT */
+		mt_reg_sync_writel_print(raw_high, LVTSOFFSETH_0 + offset);
+
+		/*
+		 * lowoffset INT
+		 * set a big msr_raw = 0xffff(very low temperature)
+		 * to let lowoffset INT not be triggered
+		 */
+		mt_reg_sync_writel_print(0xffff, LVTSOFFSETL_0 + offset);
+#endif
+
 		/* set hot to HOT wakeup event */
-		mt_reg_sync_writel_print(raw_high, offset + LVTSPROTTC_0);
+//MTK		mt_reg_sync_writel_print(raw_high, offset + LVTSPROTTC_0);
 
 #ifndef CONFIG_LVTS_DYNAMIC_ENABLE_REBOOT
 		/* enable trigger Hot SPM interrupt */
-			mt_reg_sync_writel_print(temp | 0x80000000,
-				offset + LVTSMONINT_0);
+//MTK			mt_reg_sync_writel_print(temp | 0x80000000,
+//MTK				offset + LVTSMONINT_0);
+#endif
+
+#if 1 //MTK
+		/* Enable the interrupt of AP SW */
+		temp = readl(LVTSMONINT_0 + offset);
+
+
+		temp = temp | HIGH_OFFSET3_INT_EN |
+				HIGH_OFFSET2_INT_EN |
+				HIGH_OFFSET1_INT_EN |
+				HIGH_OFFSET0_INT_EN;
+
+		temp = temp | LOW_OFFSET3_INT_EN |
+				LOW_OFFSET2_INT_EN |
+				LOW_OFFSET1_INT_EN |
+				LOW_OFFSET0_INT_EN;
+
+		mt_reg_sync_writel_print(temp, LVTSMONINT_0 + offset);
+
+		/* Clear the offset */
+		temp = readl(LVTSPROTCTL_0 + offset);
+		mt_reg_sync_writel_print(temp & ~PROTOFFSET, LVTSPROTCTL_0 + offset);
+
 #endif
 	} else
 		pr_notice("Error: %d wrong tc_num value: %d\n",
 			__LINE__, tc_num);
 }
+#endif
 
 static void dump_lvts_device(int tc_num, __u32 offset)
 {
@@ -2056,6 +2125,7 @@ void lvts_tscpu_thermal_initial_all_tc(void)
 #endif
 }
 
+#if 0 //MTK
 static void lvts_disable_rgu_reset(void)
 {
 	struct wd_api *wd_api;
@@ -2084,6 +2154,7 @@ static void lvts_enable_rgu_reset(void)
 		WARN_ON_ONCE(1);
 	}
 }
+#endif
 
 void lvts_config_all_tc_hw_protect(int temperature, int temperature2)
 {
@@ -2096,20 +2167,24 @@ void lvts_config_all_tc_hw_protect(int temperature, int temperature2)
 	/*Thermal need to config to direct reset mode
 	 *this API provide by Weiqi Fu(RGU SW owner).
 	 */
-	lvts_disable_rgu_reset();
+//MTK	lvts_disable_rgu_reset();
+
+	/* if high temp aging version, disable thermal protection */
+	if (get_eng_version() == HIGH_TEMP_AGING)
+		return;
 
 	for (i = 0; i < ARRAY_SIZE(lvts_tscpu_g_tc); i++) {
 		if (lvts_tscpu_g_tc[i].ts_number == 0)
 			continue;
 		/* Move thermal HW protection ahead... */
-		lvts_set_tc_trigger_hw_protect(temperature, temperature2, i);
+//MTK		lvts_set_tc_trigger_hw_protect(temperature, temperature2, i);
 	}
 
 #ifndef CONFIG_LVTS_DYNAMIC_ENABLE_REBOOT
 	/* Thermal need to config to direct reset mode
 	 * this API provide by Weiqi Fu(RGU SW owner).
 	 */
-	lvts_enable_rgu_reset();
+//MTK	lvts_enable_rgu_reset();
 #else
 	hw_protect_setting_done = 1;
 #endif

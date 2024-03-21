@@ -271,6 +271,10 @@ static int mt6360_pmu_core_probe(struct platform_device *pdev)
 	}
 	/* irq register */
 	mt6360_pmu_core_irq_register(pdev);
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	ret = mt6360_pmu_reg_read(mpci->mpi, MT6360_PMU_I2C_CTRL);
+	dev_info(&pdev->dev, "%s: reg0x10 = 0x%02X\n", __func__, ret);
+#endif
 	dev_info(&pdev->dev, "%s: successfully probed\n", __func__);
 	return 0;
 }

@@ -35,7 +35,16 @@
 #define LVTS_ADDRESS_INDEX_22	207 /* 0x11F10214 */
 
 
-
+/**************************************************************************** */
+/* RGU related registers. */
+/**************************************************************************** */
+#define MTK_WDT_REQ_MODE		(RGU_CTRL_BASE_2 + 0x0030)
+#define MTK_WDT_REQ_IRQ_EN		(RGU_CTRL_BASE_2 + 0x0034)
+#define MTK_WDT_REQ_MODE_KEY		(0x33000000)
+#define MTK_WDT_REQ_IRQ_KEY		(0x44000000)
+#define MTK_WDT_REQ_THERMAL_MARK		(1<<18)
+#define MTK_WDT_REQ_MODE_THERMAL		(1<<18)
+#define MTK_WDT_REQ_IRQ_THERMAL_EN		(1<<18)
 
 /**************************************************************************** */
 /* LVTS related registers. */
@@ -90,5 +99,8 @@
 #define LVTSSPARE3_0	(THERM_CTRL_BASE_2 + 0x0FC)
 
 #define THERMINTST	(THERM_CTRL_BASE_2 + 0xF04)
+
+#define STAGE3_INT_EN	(1 << 31)
+#define PROTOFFSET	GENMASK(15, 0)
 
 #endif	/* __TSCPU_LVTS_SETTINGS_H__ */

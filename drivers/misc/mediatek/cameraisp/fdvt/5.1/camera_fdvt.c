@@ -1316,7 +1316,7 @@ static bool update_fdvt(pid_t *process_id)
 					*hw_process_idx =
 						(*hw_process_idx + 1) %
 						MAX_FDVT_REQUEST_RING_SIZE;
-
+					#if 0
 					IRQ_LOG_KEEPER(
 						FDVT_IRQ_TYPE_INT_FDVT_ST,
 						m_CurrentPPB,
@@ -1332,6 +1332,7 @@ static bool update_fdvt(pid_t *process_id)
 						"Finish FDVT Frame i:%d, j:%d, hw_process_idx:%d\n",
 						i, j,
 						*hw_process_idx);
+					#endif
 				}
 				break;
 			}
@@ -1381,6 +1382,7 @@ static bool update_fdvt(pid_t *process_id)
 					*hw_process_idx =
 						(*hw_process_idx + 1) %
 						MAX_FDVT_REQUEST_RING_SIZE;
+					#if 0
 					IRQ_LOG_KEEPER(
 						FDVT_IRQ_TYPE_INT_FDVT_ST,
 						m_CurrentPPB,
@@ -1396,6 +1398,7 @@ static bool update_fdvt(pid_t *process_id)
 						"Finish FDVT Frame i:%d, j:%d, hw_process_idx:%d\n",
 						i, j,
 						*hw_process_idx);
+					#endif
 				}
 				break;
 			}

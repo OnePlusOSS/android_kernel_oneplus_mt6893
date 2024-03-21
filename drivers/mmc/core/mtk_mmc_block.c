@@ -77,6 +77,8 @@ static void mt_bio_ctx_count_usage(struct mt_bio_context *ctx,
 	__u64 start, __u64 end);
 static uint64_t mt_bio_get_period_busy(struct mt_bio_context *ctx);
 
+extern void mtk_btag_commit_req(struct request *rq);
+
 /* queue id:
  * 0=internal storage (emmc:mmcqd0/exe_cq),
  * 1=external storage (t-card:mmcqd1)

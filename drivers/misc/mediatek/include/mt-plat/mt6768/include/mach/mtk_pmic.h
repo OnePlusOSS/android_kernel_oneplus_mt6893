@@ -12,7 +12,8 @@
 
 #define PT_DLPT_BRINGUP 0
 
-#if defined(CONFIG_FPGA_EARLY_PORTING) || PT_DLPT_BRINGUP
+//#ifndef OPLUS_FEATURE_CHG_BASIC
+//#if defined(CONFIG_FPGA_EARLY_PORTING) || PT_DLPT_BRINGUP
 /* Define for disable low battery protect feature,
  * default no define for enable low battery protect.
  */
@@ -26,7 +27,8 @@
 
 /*Define for DLPT*/
 #define DISABLE_DLPT_FEATURE
-#endif /* defined(CONFIG_FPGA_EARLY_PORTING) || PT_DLPT_BRINGUP */
+//#endif /* defined(CONFIG_FPGA_EARLY_PORTING) || PT_DLPT_BRINGUP */
+//#endif /* OPLUS_FEATURE_CHG_BASIC */
 
 #define POWER_UVLO_VOLT_LEVEL 2600
 #define IMAX_MAX_VALUE 5500

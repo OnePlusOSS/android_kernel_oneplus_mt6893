@@ -86,8 +86,7 @@ struct imgsensor_struct {
 /* SENSOR PRIVATE STRUCT FOR CONSTANT*/
 struct imgsensor_info_struct {
 	kal_uint16 sensor_id;//record sensor id defined in Kd_imgsensor.h
-	#ifdef VENDOR_EDIT
-	/*Caohua.Lin@Camera.Driver add for 18011/18311	board 20180723*/
+	#ifdef OPLUS_FEATURE_CAMERA_COMMON
 	kal_uint16 module_id;
 	#endif
 	kal_uint32 checksum_value;
@@ -168,8 +167,7 @@ extern int iReadReg(
 	u16 a_u2Addr, u8 *a_puBuff, u16 i2cId);
 extern int iWriteReg(
 	u16 a_u2Addr, u32 a_u4Data, u32 a_u4Bytes, u16 i2cId);
-#ifndef VENDOR_EDIT
-/*Caohua.Lin@Camera.Driver 20180707 add for s5k3p9sp crosstalk*/
+#ifndef OPLUS_FEATURE_CAMERA_COMMON
 extern unsigned int brcb032gwz_read_4cell_from_eeprom_s5k3p9sp(char *data);
 #endif
 

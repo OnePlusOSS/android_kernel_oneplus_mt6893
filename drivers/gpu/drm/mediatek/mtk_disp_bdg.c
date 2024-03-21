@@ -26,6 +26,10 @@
 #include <linux/of_gpio.h>
 /***** NFC SRCLKENAI0 Interrupt Handler --- *****/
 
+#ifdef CONFIG_MTK_MT6382_BDG
+#define CHK_SWITCH(a, b)  ((a == 0) ? b : a)
+#endif
+
 #define SPI_EN
 struct BDG_SYSREG_CTRL_REGS *SYS_REG;		/* 0x00000000 */
 struct BDG_TOPCKGEN_REGS *TOPCKGEN;		/* 0x00003000 */
@@ -54,6 +58,7 @@ unsigned int need_6382_init;
 unsigned int bdg_tx_mode;
 static int bdg_eint_irq;
 static bool irq_already_requested;
+static atomic_t bdg_pwr_on = ATOMIC_INIT(0);
 
 /***** NFC SRCLKENAI0 Interrupt Handler +++ *****/
 static int nfc_eint_irq;
@@ -61,6 +66,9 @@ static int mt6382_nfc_srclk;
 static bool nfc_irq_already_requested;
 static bool nfc_clk_already_enabled;
 static int mt6382_nfc_gpio_value;
+//#ifdef OPLUS_BUG_STABILITY
+static int nfc_clk_mode;
+//#endif
 /***** NFC SRCLKENAI0 Interrupt Handler --- *****/
 
 #define T_DCO		5  // nominal: 200MHz
@@ -1148,6 +1156,10 @@ int bdg_tx_phy_config(enum DISP_BDG_ENUM module,
 	u32 ui, cycle_time;
 	unsigned int hs_trail;
 
+#ifdef CONFIG_MTK_MT6382_BDG
+	struct mtk_dsi_phy_timcon *phy_timcon = NULL;
+#endif
+
 	ui = 1000 / tx_data_rate;
 	cycle_time = 8000 / tx_data_rate;
 
@@ -1223,6 +1235,13 @@ int bdg_tx_phy_config(enum DISP_BDG_ENUM module,
 	bg_tx_data_phy_cycle = (timcon1.DA_HS_EXIT + 1) + timcon0.LPX +
 					timcon0.HS_PRPR + timcon0.HS_ZERO + 1;
 
+#ifdef CONFIG_MTK_MT6382_BDG
+	if (dsi->ext && dsi->ext->params) {
+		phy_timcon = &dsi->ext->params->phy_timcon;
+		timcon0.HS_TRAIL = CHK_SWITCH(phy_timcon->hs_trail, timcon0.HS_TRAIL);
+	        timcon2.CLK_TRAIL = CHK_SWITCH(phy_timcon->clk_trail, timcon2.CLK_TRAIL);
+	}
+#endif
 	DDPINFO(
 		"%s, bg_tx_data_phy_cycle=%d, LPX=%d, HS_PRPR=%d, HS_ZERO=%d, HS_TRAIL=%d, DA_HS_EXIT=%d\n",
 		__func__, bg_tx_data_phy_cycle, timcon0.LPX, timcon0.HS_PRPR,
@@ -1296,7 +1315,7 @@ int bdg_tx_txrx_ctrl(enum DISP_BDG_ENUM module,
 {
 	int i;
 	int lane_num = dsi->lanes;
-	bool hstx_cklp_en = false;
+	bool hstx_cklp_en = dsi->ext->params->hstx_cklp_en ? true : false;
 	bool dis_eotp_en = dsi->ext->params->is_cphy ? true : false;
 	bool ext_te_en = (dsi->mode_flags & MIPI_DSI_MODE_VIDEO) ? false : true;
 
@@ -4059,23 +4078,11 @@ void startup_seq_dphy_specific(unsigned int data_rate)
 	DDPMSG("%s, data_rate=%d\n", __func__, data_rate);
 
 	mtk_spi_mask_field_write(MIPI_RX_PHY_BASE + CORE_DIG_RW_COMMON_7 * 4,
-		CORE_DIG_RW_COMMON_7_LANE0_HSRX_WORD_CLK_SEL_GATING_REG_MASK,
-		0);
-
-	mtk_spi_mask_field_write(MIPI_RX_PHY_BASE + CORE_DIG_RW_COMMON_7 * 4,
-		CORE_DIG_RW_COMMON_7_LANE1_HSRX_WORD_CLK_SEL_GATING_REG_MASK,
-		0);
-
-	mtk_spi_mask_field_write(MIPI_RX_PHY_BASE + CORE_DIG_RW_COMMON_7 * 4,
-		CORE_DIG_RW_COMMON_7_LANE2_HSRX_WORD_CLK_SEL_GATING_REG_MASK,
-		0);
-
-	mtk_spi_mask_field_write(MIPI_RX_PHY_BASE + CORE_DIG_RW_COMMON_7 * 4,
-		CORE_DIG_RW_COMMON_7_LANE3_HSRX_WORD_CLK_SEL_GATING_REG_MASK,
-		0);
-
-	mtk_spi_mask_field_write(MIPI_RX_PHY_BASE + CORE_DIG_RW_COMMON_7 * 4,
-		CORE_DIG_RW_COMMON_7_LANE4_HSRX_WORD_CLK_SEL_GATING_REG_MASK,
+		(CORE_DIG_RW_COMMON_7_LANE0_HSRX_WORD_CLK_SEL_GATING_REG_MASK |
+		CORE_DIG_RW_COMMON_7_LANE1_HSRX_WORD_CLK_SEL_GATING_REG_MASK |
+		CORE_DIG_RW_COMMON_7_LANE2_HSRX_WORD_CLK_SEL_GATING_REG_MASK |
+		CORE_DIG_RW_COMMON_7_LANE3_HSRX_WORD_CLK_SEL_GATING_REG_MASK |
+		CORE_DIG_RW_COMMON_7_LANE4_HSRX_WORD_CLK_SEL_GATING_REG_MASK),
 		0);
 
 	if (data_rate >= 1500)
@@ -4106,25 +4113,7 @@ void startup_seq_dphy_specific(unsigned int data_rate)
 		PPI_RW_DDLCAL_CFG_1_DDLCAL_DISABLE_TIME_MASK,
 		25);
 
-	mtk_spi_mask_field_write(MIPI_RX_PHY_BASE + PPI_RW_DDLCAL_CFG_2 * 4,
-		PPI_RW_DDLCAL_CFG_2_DDLCAL_WAIT_MASK,
-		4);
-
-	mtk_spi_mask_field_write(MIPI_RX_PHY_BASE + PPI_RW_DDLCAL_CFG_2 * 4,
-		PPI_RW_DDLCAL_CFG_2_DDLCAL_TUNE_MODE_MASK,
-		2);
-
-	mtk_spi_mask_field_write(MIPI_RX_PHY_BASE + PPI_RW_DDLCAL_CFG_2 * 4,
-		PPI_RW_DDLCAL_CFG_2_DDLCAL_DDL_DLL_MASK,
-		1);
-
-	mtk_spi_mask_field_write(MIPI_RX_PHY_BASE + PPI_RW_DDLCAL_CFG_2 * 4,
-		PPI_RW_DDLCAL_CFG_2_DDLCAL_ENABLE_WAIT_MASK,
-		25); // cfg_clk = 26 MHz
-
-	mtk_spi_mask_field_write(MIPI_RX_PHY_BASE + PPI_RW_DDLCAL_CFG_2 * 4,
-		PPI_RW_DDLCAL_CFG_2_DDLCAL_UPDATE_SETTINGS_MASK,
-		1);
+	mtk_spi_write(MIPI_RX_PHY_BASE + PPI_RW_DDLCAL_CFG_2 * 4, 0x4b19);
 
 	mtk_spi_mask_field_write(MIPI_RX_PHY_BASE + PPI_RW_DDLCAL_CFG_4 * 4,
 		PPI_RW_DDLCAL_CFG_4_DDLCAL_STUCK_THRESH_MASK,
@@ -4148,12 +4137,9 @@ void startup_seq_dphy_specific(unsigned int data_rate)
 			max_phase);
 
 		mtk_spi_mask_field_write(MIPI_RX_PHY_BASE + PPI_RW_DDLCAL_CFG_5 * 4,
-			PPI_RW_DDLCAL_CFG_5_DDLCAL_DLL_FBK_MASK,
-			dll_fbk);
-
-		mtk_spi_mask_field_write(MIPI_RX_PHY_BASE + PPI_RW_DDLCAL_CFG_5 * 4,
-			PPI_RW_DDLCAL_CFG_5_DDLCAL_DDL_COARSE_BANK_MASK,
-			coarse_bank);
+			(PPI_RW_DDLCAL_CFG_5_DDLCAL_DLL_FBK_MASK |
+			PPI_RW_DDLCAL_CFG_5_DDLCAL_DDL_COARSE_BANK_MASK),
+			((dll_fbk << 4) | coarse_bank));
 	}
 
 	mtk_spi_mask_field_write(MIPI_RX_PHY_BASE +
@@ -4223,12 +4209,9 @@ void startup_seq_dphy_specific(unsigned int data_rate)
 		0);
 
 	mtk_spi_mask_field_write(MIPI_RX_PHY_BASE + CORE_DIG_RW_COMMON_6 * 4,
-		CORE_DIG_RW_COMMON_6_DESERIALIZER_EN_DEASS_COUNT_THRESH_D_MASK,
-		1);
-
-	mtk_spi_mask_field_write(MIPI_RX_PHY_BASE + CORE_DIG_RW_COMMON_6 * 4,
-		CORE_DIG_RW_COMMON_6_DESERIALIZER_DIV_EN_DELAY_THRESH_D_MASK,
-		1);
+		(CORE_DIG_RW_COMMON_6_DESERIALIZER_EN_DEASS_COUNT_THRESH_D_MASK |
+		CORE_DIG_RW_COMMON_6_DESERIALIZER_DIV_EN_DELAY_THRESH_D_MASK),
+		9);
 
 	if (data_rate > 1500) {
 		mtk_spi_mask_field_write(MIPI_RX_PHY_BASE +
@@ -5125,32 +5108,23 @@ void startup_seq_dphy_specific(unsigned int data_rate)
 		0x07FC);
 
 #ifdef _Disable_HS_DCO_
-		mtk_spi_mask_field_write(MIPI_RX_PHY_BASE +
-			CORE_DIG_IOCTRL_RW_AFE_CB_CTRL_2_6 * 4,
-			CORE_DIG_IOCTRL_RW_AFE_CB_CTRL_2_6_OA_CB_HSTXLB_DCO_EN_OVR_EN_MASK,
-			1);
-		mtk_spi_mask_field_write(MIPI_RX_PHY_BASE +
-			CORE_DIG_IOCTRL_RW_AFE_CB_CTRL_2_6 * 4,
-			CORE_DIG_IOCTRL_RW_AFE_CB_CTRL_2_6_OA_CB_HSTXLB_DCO_PON_OVR_EN_MASK,
-			1);
-		mtk_spi_mask_field_write(MIPI_RX_PHY_BASE +
-			CORE_DIG_IOCTRL_RW_AFE_CB_CTRL_2_6 * 4,
-			CORE_DIG_IOCTRL_RW_AFE_CB_CTRL_2_6_OA_CB_LP_DCO_EN_OVR_VAL_MASK,
-			0);
-		mtk_spi_mask_field_write(MIPI_RX_PHY_BASE +
-			CORE_DIG_IOCTRL_RW_AFE_CB_CTRL_2_6 * 4,
-			CORE_DIG_IOCTRL_RW_AFE_CB_CTRL_2_6_OA_CB_LP_DCO_PON_OVR_VAL_MASK,
-			0);
+	mtk_spi_mask_field_write(MIPI_RX_PHY_BASE +
+		CORE_DIG_IOCTRL_RW_AFE_CB_CTRL_2_6 * 4,
+		(CORE_DIG_IOCTRL_RW_AFE_CB_CTRL_2_6_OA_CB_HSTXLB_DCO_EN_OVR_EN_MASK |
+		CORE_DIG_IOCTRL_RW_AFE_CB_CTRL_2_6_OA_CB_HSTXLB_DCO_PON_OVR_EN_MASK),
+		0x3);
+
+	mtk_spi_mask_field_write(MIPI_RX_PHY_BASE +
+		CORE_DIG_IOCTRL_RW_AFE_CB_CTRL_2_6 * 4,
+		(CORE_DIG_IOCTRL_RW_AFE_CB_CTRL_2_6_OA_CB_LP_DCO_EN_OVR_VAL_MASK |
+		CORE_DIG_IOCTRL_RW_AFE_CB_CTRL_2_6_OA_CB_LP_DCO_PON_OVR_VAL_MASK),
+		0);
 #endif
 #ifdef _Disable_LP_TX_L023_
-		mtk_spi_mask_field_write(MIPI_RX_PHY_BASE + 0x1028 * 4, 0x80, 1);
-		mtk_spi_mask_field_write(MIPI_RX_PHY_BASE + 0x1028 * 4, 0x40, 1);
-		mtk_spi_mask_field_write(MIPI_RX_PHY_BASE + 0x1428 * 4, 0x80, 1);
-		mtk_spi_mask_field_write(MIPI_RX_PHY_BASE + 0x1428 * 4, 0x40, 1);
-		mtk_spi_mask_field_write(MIPI_RX_PHY_BASE + 0x1628 * 4, 0x80, 1);
-		mtk_spi_mask_field_write(MIPI_RX_PHY_BASE + 0x1628 * 4, 0x40, 1);
-		mtk_spi_mask_field_write(MIPI_RX_PHY_BASE + 0x1828 * 4, 0x80, 1);
-		mtk_spi_mask_field_write(MIPI_RX_PHY_BASE + 0x1828 * 4, 0x40, 1);
+		mtk_spi_mask_field_write(MIPI_RX_PHY_BASE + 0x1028 * 4, 0xc0, (3 << 6));
+		mtk_spi_mask_field_write(MIPI_RX_PHY_BASE + 0x1428 * 4, 0xc0, (3 << 6));
+		mtk_spi_mask_field_write(MIPI_RX_PHY_BASE + 0x1628 * 4, 0xc0, (3 << 6));
+		mtk_spi_mask_field_write(MIPI_RX_PHY_BASE + 0x1828 * 4, 0xc0, (3 << 6));
 		mtk_spi_mask_field_write(MIPI_RX_PHY_BASE + 0x1027 * 4, 0xf, 0);
 		mtk_spi_mask_field_write(MIPI_RX_PHY_BASE + 0x1427 * 4, 0xf, 0);
 		mtk_spi_mask_field_write(MIPI_RX_PHY_BASE + 0x1627 * 4, 0xf, 0);
@@ -5202,8 +5176,21 @@ void output_debug_signal(void)
 
 void bdg_first_init(void)
 {
+	DISPSYS_REG = (struct BDG_DISPSYS_CONFIG_REGS *)DISPSYS_BDG_MMSYS_CONFIG_BASE;
+	DSI2_REG = (struct BDG_MIPIDSI2_REGS *)DISPSYS_BDG_MIPIDSI2_DEVICE_BASE;
 	SYS_REG = (struct BDG_SYSREG_CTRL_REGS *)DISPSYS_BDG_SYSREG_CTRL_BASE;
+	RDMA_REG = (struct BDG_RDMA0_REGS *)DISPSYS_BDG_RDMA0_REGS_BASE;
+	MUTEX_REG = (struct BDG_MUTEX_REGS *)DISPSYS_BDG_MUTEX_REGS_BASE;
+	OCLA_REG = (struct BDG_OCLA_REGS *)DISPSYS_BDG_OCLA_BASE;
 	TX_REG[0] = (struct BDG_TX_REGS *)DISPSYS_BDG_TX_DSI0_BASE;
+	MIPI_TX_REG = (struct BDG_MIPI_TX_REGS *)DISPSYS_BDG_MIPI_TX_BASE;
+	DSC_REG = (struct BDG_DISP_DSC_REGS *)DISPSYS_BDG_DISP_DSC_BASE;
+	APMIXEDSYS = (struct BDG_APMIXEDSYS_REGS *)DISPSYS_BDG_APMIXEDSYS_BASE;
+	TOPCKGEN = (struct BDG_TOPCKGEN_REGS *)DISPSYS_BDG_TOPCKGEN_BASE;
+	GCE_REG = (struct BDG_GCE_REGS *)DISPSYS_BDG_GCE_BASE;
+	EFUSE = (struct BDG_EFUSE_REGS *)DISPSYS_BDG_EFUSE_BASE;
+	GPIO = (struct BDG_GPIO_REGS *)DISPSYS_BDG_GPIO_BASE;
+	TX_CMDQ_REG[0] = (struct DSI_TX_CMDQ_REGS *)(DISPSYS_BDG_TX_DSI0_BASE + 0xd00);
 
 	// request eint irq
 	bdg_request_eint_irq();
@@ -5256,10 +5243,22 @@ int bdg_common_init(enum DISP_BDG_ENUM module,
 	spislv_init();
 	spislv_switch_speed_hz(SPI_TX_LOW_SPEED_HZ, SPI_RX_LOW_SPEED_HZ);
 
+//#ifndef OPLUS_BUG_STABILITY
+	/*mtk case ALPS08225966, only when nfc clk mode in "software control" mode,then enable/disable nfc clk output by software method*/
+/*
 	if (nfc_clk_already_enabled)
 		bdg_clk_buf_nfc(1);
 	else
 		bdg_clk_buf_nfc(0);
+*/
+//#else
+	if (nfc_clk_mode == 0) {
+		if (nfc_clk_already_enabled)
+			bdg_clk_buf_nfc(1);
+		else
+			bdg_clk_buf_nfc(0);
+	}
+//#endif
 
 	set_LDO_on(cmdq);
 	set_mtcmos_on(cmdq);
@@ -5350,6 +5349,17 @@ int bdg_common_init(enum DISP_BDG_ENUM module,
 
 	output_debug_signal();
 
+//#ifdef OPLUS_BUG_STABILITY
+	if (nfc_clk_mode == 1) {
+	/*mtk case ALPS08225966, need re-configure mt6382 to hardware control mode when power on mt6382*/
+		DDPMSG("set nfc clk mode as hw ctrl\n");
+		mtk_spi_write(0x000000a0, 0x00000012);
+	}
+//#endif
+
+
+	atomic_set(&bdg_pwr_on, 1);
+
 	DDPMSG("%s-\n", __func__);
 
 	return ret;
@@ -5363,6 +5373,7 @@ int bdg_common_deinit(enum DISP_BDG_ENUM module, void *cmdq)
 
 	/* close dsi eint */
 	atomic_set(&bdg_eint_wakeup, 0);
+	atomic_set(&bdg_pwr_on, 0);
 
 	/* set spi low speed */
 	spislv_switch_speed_hz(SPI_TX_LOW_SPEED_HZ, SPI_RX_LOW_SPEED_HZ);
@@ -5777,6 +5788,11 @@ void bdg_clk_buf_nfc(bool onoff)
 {
 //	DISPFUNCSTART();
 
+	if (atomic_read(&bdg_pwr_on) == 0) {
+		DDPMSG("bdg is pwr off!\n");
+		return;
+	}
+
 	if (onoff) {
 		mtk_spi_write(0x000000a0, 0x00000022);
 //		DSI_OUTREGBIT(cmdq, struct CKBUF_CTRL_REG,
@@ -5826,6 +5842,10 @@ irqreturn_t nfc_eint_thread_handler(int irq, void *data)
 
 void nfc_request_eint_irq(void)
 {
+//#ifdef OPLUS_BUG_STABILITY
+	int ret = 0;
+//#endif
+
 	struct device_node *node;
 
 	if (nfc_irq_already_requested) {
@@ -5839,6 +5859,19 @@ void nfc_request_eint_irq(void)
 		DDPMSG("%s, mt6382 can't find mt6382_nfc_eint compatible node\n", __func__);
 		return;
 	}
+
+//#ifdef OPLUS_BUG_STABILITY
+	//mtk case ALPS08225966, configure mt6382 to "hardware control" mode according to the dts config.
+	ret = of_property_read_u32(node, "nfc_clk_mode", &nfc_clk_mode);
+	if (!ret) {
+		DDPMSG("%s: get nfc_clk_mode (%d)\n", __func__, nfc_clk_mode);
+		if (nfc_clk_mode == 1) {
+			DDPMSG("set nfc clk mode as hw ctrl\n");
+			mtk_spi_write(0x000000a0, 0x00000012);
+			return;
+		}
+	}
+//#endif
 
 	//get gpio
 	mt6382_nfc_srclk = of_get_named_gpio(node, "mt6382_nfc_srclk", 0);

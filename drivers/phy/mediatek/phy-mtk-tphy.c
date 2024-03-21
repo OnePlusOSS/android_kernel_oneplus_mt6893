@@ -340,8 +340,10 @@
 
 #define PHY_MODE_BC11_SW_SET 1
 #define PHY_MODE_BC11_SW_CLR 2
+#define PHY_MODE_DPDMPULLDOWN_SET 3
+#define PHY_MODE_DPDMPULLDOWN_CLR 4
 
-#if (!defined CONFIG_MACH_MT6781) && (!defined CONFIG_MACH_MT6768)
+#if (!defined CONFIG_MACH_MT6781)
 #define PHY_MODE_DPDMPULLDOWN_SET 3
 #define PHY_MODE_DPDMPULLDOWN_CLR 4
 #define PHY_MODE_DPPULLUP_SET 5
@@ -1310,7 +1312,10 @@ static void u2_phy_instance_power_on(struct mtk_tphy *tphy,
 #if (!defined CONFIG_MACH_MT6781) && (!defined CONFIG_MACH_MT6768)
 	tmp = readl(com + U3P_USBPHYACR6);
 	tmp &= ~PA6_RG_U2_PHY_REV6;
-	tmp |= PA6_RG_U2_PHY_REV6_VAL(1);
+	if (instance->eye_rev6)
+		tmp |= PA6_RG_U2_PHY_REV6_VAL(instance->eye_rev6);
+	else
+		tmp |= PA6_RG_U2_PHY_REV6_VAL(1);
 	writel(tmp, com + U3P_USBPHYACR6);
 
 	udelay(800);
@@ -1326,7 +1331,7 @@ static void u2_phy_instance_power_on(struct mtk_tphy *tphy,
 		writel(tmp, com + U3P_U2PHYDTM0);
 	}
 
-#if (defined CONFIG_MACH_MT6781) || (defined CONFIG_MACH_MT6768)
+#if (defined CONFIG_MACH_MT6781)
 	/* set SW_BC11_EN as 0 which is usb control DPDM */
 	u2_phy_instance_set_mode_ext(tphy, instance, PHY_MODE_BC11_SW_CLR);
 #endif
@@ -1336,7 +1341,10 @@ static void u2_phy_instance_power_on(struct mtk_tphy *tphy,
 	/* HQA Setting */
 	tmp = readl(com + U3P_USBPHYACR6);
 	tmp &= ~PA6_RG_U2_DISCTH;
-	tmp |= PA6_RG_U2_DISCTH_VAL(0xf);
+	if (instance->eye_disc)
+		tmp |= PA6_RG_U2_DISCTH_VAL(instance->eye_disc);
+	else
+		tmp |= PA6_RG_U2_DISCTH_VAL(0xf);
 	writel(tmp, com + U3P_USBPHYACR6);
 #endif
 
@@ -1424,7 +1432,7 @@ static void u2_phy_instance_power_off(struct mtk_tphy *tphy,
 		writel(tmp, com + U3D_U2PHYDCR0);
 	}
 
-#if (defined CONFIG_MACH_MT6781) || (defined CONFIG_MACH_MT6768)
+#if (defined CONFIG_MACH_MT6781)
 	/*
 	 * set SW_BC11_EN as 0 which is charger control DPDM
 	 * to disable USB DPDM
@@ -1552,8 +1560,16 @@ static void u2_phy_instance_set_mode(struct mtk_tphy *tphy,
 				     enum phy_mode mode)
 {
 	struct u2phy_banks *u2_banks = &instance->u2_banks;
+
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	static struct device_node *of_node;
+#endif
 	struct device *dev = &instance->phy->dev;
 	u32 tmp;
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	of_node = of_find_compatible_node(NULL, NULL, "mediatek,phy_tuning");
+	dev_info(tphy->dev, "%s mode(%d)\n", __func__, mode);
+#endif
 
 	tmp = readl(u2_banks->com + U3P_U2PHYDTM1);
 	switch (mode) {
@@ -1572,6 +1588,16 @@ static void u2_phy_instance_set_mode(struct mtk_tphy *tphy,
 				 &instance->eye_rev6);
 		device_property_read_u32(dev, "mediatek,eye-disc",
 				 &instance->eye_disc);
+
+#ifdef OPLUS_FEATURE_CHG_BASIC
+		if (of_node) {
+			of_property_read_u32(of_node, "eye-vrt", &instance->eye_vrt);
+			of_property_read_u32(of_node, "eye-term", &instance->eye_term);
+			of_property_read_u32(of_node, "eye-rev6", &instance->eye_rev6);
+			of_property_read_u32(of_node, "eye-disc", &instance->eye_disc);
+		}
+#endif
+
 		u2_phy_props_set(tphy, instance);
 		break;
 	case PHY_MODE_USB_HOST:
@@ -1592,6 +1618,20 @@ static void u2_phy_instance_set_mode(struct mtk_tphy *tphy,
 				 &instance->eye_rev6);
 		device_property_read_u32(dev, "mediatek,host-eye-disc",
 				 &instance->eye_disc);
+
+#ifdef OPLUS_FEATURE_CHG_BASIC
+		if (of_node) {
+			of_property_read_u32(of_node, "host-eye-vrt",
+					&instance->eye_vrt);
+			of_property_read_u32(of_node, "host-eye-term",
+					&instance->eye_term);
+			of_property_read_u32(of_node, "host-eye-rev6",
+					&instance->eye_rev6);
+			of_property_read_u32(of_node, "host-eye-disc",
+					&instance->eye_disc);
+		}
+#endif
+
 		u2_phy_props_set(tphy, instance);
 		break;
 	case PHY_MODE_USB_OTG:
@@ -1664,6 +1704,8 @@ static void u2_phy_instance_set_mode_ext(struct mtk_tphy *tphy,
 		tmp |= PA6_RG_U2_BC11_SW_EN;
 		writel(tmp, u2_banks->com + U3P_USBPHYACR6);
 		break;
+#endif
+#if (!defined CONFIG_MACH_MT6781)
 	case PHY_MODE_DPPULLUP_SET:
 		tmp = readl(u2_banks->com + U3P_USBPHYACR3);
 		tmp |= PA3_RG_USB20_PUPD_BIST_EN |

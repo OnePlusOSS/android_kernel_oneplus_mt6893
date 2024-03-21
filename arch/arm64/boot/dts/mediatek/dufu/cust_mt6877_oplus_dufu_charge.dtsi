@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+* Copyright (C) 2020-2021 Oplus. All rights reserved.
+*/
+
+//#ifdef OPLUS_FEATURE_CHG_BASIC
+#include "mediatek/dufu/cust_mt6877_oplus_dufu_charge_common.dtsi"
+//#endif /*OPLUS_FEATURE_CHG_BASIC*/

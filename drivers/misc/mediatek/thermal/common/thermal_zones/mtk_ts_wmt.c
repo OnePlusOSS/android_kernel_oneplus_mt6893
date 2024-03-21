@@ -23,6 +23,7 @@
 #include <linux/slab.h>
 #include <linux/sched/task.h>
 #include <linux/sched/signal.h>
+#include <soc/oplus/system/oplus_project.h>
 /*=============================================================
  *Weak functions
  *=============================================================
@@ -99,6 +100,7 @@ static unsigned int low_rst_time;
 static unsigned int low_rst_max = 3;
 /* New Wifi throttling Algo- */
 
+#undef  MAX_LEN
 #define MAX_LEN	(256)
 #define COOLER_THRO_NUM (3)
 #define COOLER_NUM (10)
@@ -787,7 +789,10 @@ struct thermal_cooling_device *cool_dev, unsigned long v)
 		/* To trigger data abort to reset the system
 		 * for thermal protection.
 		 */
-		BUG();
+		if (get_eng_version() != HIGH_TEMP_AGING)
+			BUG();
+		else
+			wmt_tm_printk("should reset but bypass \n");
 	}
 
 	return 0;

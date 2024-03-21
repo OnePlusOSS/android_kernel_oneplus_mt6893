@@ -100,8 +100,12 @@ static atomic_t g_pwm_is_change_state[PWM_TOTAL_MODULE_NUM] = {
 #ifndef CONFIG_FPGA_EARLY_PORTING
 static atomic_t g_pwm_backlight[PWM_TOTAL_MODULE_NUM] = { ATOMIC_INIT(-1) };
 static atomic_t g_pwm_en[PWM_TOTAL_MODULE_NUM] = { ATOMIC_INIT(-1) };
-static atomic_t g_pwm_max_backlight[PWM_TOTAL_MODULE_NUM] = {
-	ATOMIC_INIT(1023) };
+/* #ifndef OPLUS_BUG_STABILITY */
+/* static atomic_t g_pwm_max_backlight[PWM_TOTAL_MODULE_NUM] = {
+	ATOMIC_INIT(1023) }; */
+/* #else */
+static atomic_t g_pwm_max_backlight[PWM_TOTAL_MODULE_NUM] = { ATOMIC_INIT(2047) };
+/* #endif */ /* OPLUS_BUG_STABILITY */
 static atomic_t g_pwm_is_power_on[PWM_TOTAL_MODULE_NUM] = { ATOMIC_INIT(0) };
 static atomic_t g_pwm_value_before_power_off[PWM_TOTAL_MODULE_NUM] = {
 	ATOMIC_INIT(0) };
@@ -567,6 +571,10 @@ int disp_pwm_set_backlight_cmdq(enum disp_pwm_id_t id,
 	int index;
 	int abs_diff;
 	int max_level_1024;
+
+	/* #ifdef OPLUS_BUG_STABILITY */
+	return 0;
+	/* #endif */
 
 	if ((DISP_PWM_ALL & id) == 0) {
 		PWM_ERR("[ERROR] invalid id = 0x%x", id);

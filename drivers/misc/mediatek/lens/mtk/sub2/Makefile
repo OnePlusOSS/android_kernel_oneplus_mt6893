@@ -31,3 +31,6 @@ obj-$(CONFIG_MTK_LENS)    += sub2af.o
 
 sub2af-y  += sub2_lens.o
 #sub2af-y  += common/ak7371af/AK7371AF.o
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+obj-y += common/bu64253teaf/BU64253TEAF.o
+#endif

@@ -40,6 +40,11 @@
 
 #include "mt6358.h"
 
+#if IS_ENABLED(CONFIG_SND_SOC_OPLUS_PA_MANAGER)
+#include "audio/oplus_speaker_manager/oplus_speaker_manager_platform.h"
+#include "audio/oplus_speaker_manager/oplus_speaker_manager_codec.h"
+#endif /* CONFIG_SND_SOC_OPLUS_PA_MANAGER */
+
 enum {
 	AUDIO_ANALOG_VOLUME_HSOUTL,
 	AUDIO_ANALOG_VOLUME_HSOUTR,
@@ -1493,7 +1498,7 @@ static int mt_aif_in_event(struct snd_soc_dapm_widget *w,
 		/* sdm audio fifo clock power on */
 		regmap_write(priv->regmap, MT6358_AFUNC_AUD_CON2, 0x0006);
 		/* scrambler clock on enable, invert left channel */
-		regmap_write(priv->regmap, MT6358_AFUNC_AUD_CON0, 0xCFA1);
+		regmap_write(priv->regmap, MT6358_AFUNC_AUD_CON0, 0xcba1);
 		/* sdm power on */
 		regmap_write(priv->regmap, MT6358_AFUNC_AUD_CON2, 0x0003);
 		/* sdm fifo enable */
@@ -1502,7 +1507,7 @@ static int mt_aif_in_event(struct snd_soc_dapm_widget *w,
 	case SND_SOC_DAPM_POST_PMD:
 		/* DL scrambler disabling sequence */
 		regmap_write(priv->regmap, MT6358_AFUNC_AUD_CON2, 0x0000);
-		regmap_write(priv->regmap, MT6358_AFUNC_AUD_CON0, 0xCFA0);
+		regmap_write(priv->regmap, MT6358_AFUNC_AUD_CON0, 0xcba0);
 
 		playback_gpio_reset(priv);
 		break;
@@ -2123,6 +2128,8 @@ static int mtk_hp_dual_spk_enable(struct mt6358_priv *priv)
 {
 	unsigned int trim_setting = 0;
 	unsigned int reg_value = 0;
+	/* scrambler clock on enable, invert left channel */
+	regmap_write(priv->regmap, MT6358_AFUNC_AUD_CON0, 0xcfa1);
 #ifdef ANALOG_HPTRIM
 	regmap_read(priv->regmap, MT6358_AUDDEC_ELR_0, &reg_value);
 	dev_info(priv->dev, "%s(), current AUDDEC_ELR_0 = 0x%x, mic_vinp_mv = %d\n",
@@ -2789,6 +2796,8 @@ static int mt_rcv_event(struct snd_soc_dapm_widget *w,
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
+		/* scrambler clock on enable, invert left channel */
+		regmap_write(priv->regmap, MT6358_AFUNC_AUD_CON0, 0xcfa1);
 		/* Reduce ESD resistance of AU_REFN */
 		regmap_write(priv->regmap, MT6358_AUDDEC_ANA_CON2, 0x4000);
 
@@ -3176,13 +3185,20 @@ static int mt6358_amic_enable(struct mt6358_priv *priv)
 					   0xff00, 0x0000);
 			break;
 		}
+#ifndef OPLUS_ARCH_EXTENDS
 		/* Enable MICBIAS0, MISBIAS0 = 1P9V */
 		regmap_update_bits(priv->regmap, MT6358_AUDENC_ANA_CON9,
 				   0xff, 0x21);
+#else
+		/* Enable MICBIAS0, MISBIAS0 = 2P7V */
+		regmap_update_bits(priv->regmap, MT6358_AUDENC_ANA_CON9,
+				   0xff, 0x71);
+#endif /* OPLUS_ARCH_EXTENDS */
 	}
 
 	/* mic bias 1 */
 	if (mux_pga_l == PGA_MUX_AIN1 || mux_pga_r == PGA_MUX_AIN1) {
+#ifndef OPLUS_ARCH_EXTENDS
 		/* Enable MICBIAS1, MISBIAS1 = 2P6V */
 		if (mic_type == MIC_TYPE_MUX_DCC_ECM_SINGLE)
 			regmap_write(priv->regmap,
@@ -3190,6 +3206,15 @@ static int mt6358_amic_enable(struct mt6358_priv *priv)
 		else
 			regmap_write(priv->regmap,
 				     MT6358_AUDENC_ANA_CON10, 0x0061);
+#else
+		/* Enable MICBIAS1, MISBIAS1 = 2P7V */
+		if (mic_type == MIC_TYPE_MUX_DCC_ECM_SINGLE)
+			regmap_write(priv->regmap,
+				     MT6358_AUDENC_ANA_CON10, 0x0171);
+		else
+			regmap_write(priv->regmap,
+				     MT6358_AUDENC_ANA_CON10, 0x0071);
+#endif /* OPLUS_ARCH_EXTENDS */
 	}
 
 	/* set mic pga gain */
@@ -7208,6 +7233,9 @@ static int get_hp_current_calibrate_val(struct mt6358_priv *priv)
 
 static int mt6358_codec_probe(struct snd_soc_component *cmpnt)
 {
+#if IS_ENABLED(CONFIG_SND_SOC_OPLUS_PA_MANAGER)
+	int ret = 0;
+#endif /* CONFIG_SND_SOC_OPLUS_PA_MANAGER */
 	struct mt6358_priv *priv = snd_soc_component_get_drvdata(cmpnt);
 
 	snd_soc_component_init_regmap(cmpnt, priv->regmap);
@@ -7226,6 +7254,14 @@ static int mt6358_codec_probe(struct snd_soc_component *cmpnt)
 				       mt6358_snd_vow_controls,
 				       ARRAY_SIZE(mt6358_snd_vow_controls));
 
+#if IS_ENABLED(CONFIG_SND_SOC_OPLUS_PA_MANAGER)
+	ret = oplus_add_pa_manager_snd_controls(cmpnt);
+	if (ret < 0) {
+		pr_err("%s(), add oplus pa manager snd controls failed:\n",
+			__func__);
+		return -EINVAL;
+	}
+#endif /*CONFIG_SND_SOC_OPLUS_PA_MANAGER*/
 	mt6358_codec_init_reg(priv);
 
 	priv->ana_gain[AUDIO_ANALOG_VOLUME_HPOUTL] = 8;

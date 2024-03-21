@@ -22,6 +22,7 @@
 #include <linux/slab.h>
 #include "mach/mtk_thermal.h"
 #include <linux/bug.h>
+#include <soc/oplus/system/oplus_project.h>
 
 #if defined(CONFIG_MTK_CLKMGR)
 #include <mach/mtk_clkmgr.h>
@@ -2016,6 +2017,9 @@ void lvts_config_all_tc_hw_protect(int temperature, int temperature2)
 	 *this API provide by Weiqi Fu(RGU SW owner).
 	 */
 	lvts_disable_rgu_reset();
+
+	if (get_eng_version() == HIGH_TEMP_AGING)
+		return;
 
 	for (i = 0; i < ARRAY_SIZE(lvts_tscpu_g_tc); i++) {
 		if (lvts_tscpu_g_tc[i].ts_number == 0)

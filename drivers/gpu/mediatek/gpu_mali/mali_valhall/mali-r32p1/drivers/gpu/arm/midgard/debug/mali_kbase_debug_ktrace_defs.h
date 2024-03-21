@@ -49,12 +49,20 @@
 #ifdef CONFIG_MALI_MIDGARD_ENABLE_TRACE
 #define KBASE_KTRACE_TARGET_RBUF 1
 #else /* CONFIG_MALI_MIDGARD_ENABLE_TRACE*/
+#if defined(CONFIG_MALI_FENCE_DEBUG_EXTEND)
+#define KBASE_KTRACE_TARGET_RBUF 1
+#else
 #define KBASE_KTRACE_TARGET_RBUF 0
+#endif
 #endif /* CONFIG_MALI_MIDGARD_ENABLE_TRACE */
 
 #else /* KBASE_KTRACE_ENABLE */
 #define KBASE_KTRACE_TARGET_FTRACE 0
+#if defined(CONFIG_MALI_FENCE_DEBUG_EXTEND)
+#define KBASE_KTRACE_TARGET_RBUF 1
+#else
 #define KBASE_KTRACE_TARGET_RBUF 0
+#endif
 #endif /* KBASE_KTRACE_ENABLE */
 
 /*
@@ -114,7 +122,7 @@ union kbase_ktrace_backend;
 #define KBASE_KTRACE_FLAG_ALL \
 		(KBASE_KTRACE_FLAG_COMMON_ALL | KBASE_KTRACE_FLAG_BACKEND_ALL)
 
-#define KBASE_KTRACE_SHIFT (9) /* 512 entries */
+#define KBASE_KTRACE_SHIFT (11) /* 2048 entries */
 #define KBASE_KTRACE_SIZE (1 << KBASE_KTRACE_SHIFT)
 #define KBASE_KTRACE_MASK ((1 << KBASE_KTRACE_SHIFT)-1)
 
@@ -155,7 +163,7 @@ enum kbase_ktrace_code {
  *             a minimum common set of members.
  */
 struct kbase_ktrace_msg {
-	struct timespec64 timestamp;
+	u64 timestamp;
 	u32 thread_id;
 	u32 cpu;
 	pid_t kctx_tgid;

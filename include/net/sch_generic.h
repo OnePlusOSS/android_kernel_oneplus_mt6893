@@ -108,6 +108,7 @@ struct Qdisc {
 
 	spinlock_t		busylock ____cacheline_aligned_in_smp;
 	spinlock_t		seqlock;
+	struct rcu_head		rcu;
 };
 
 static inline void qdisc_refcount_inc(struct Qdisc *qdisc)
@@ -562,6 +563,7 @@ struct Qdisc *qdisc_alloc(struct netdev_queue *dev_queue,
 			  const struct Qdisc_ops *ops,
 			  struct netlink_ext_ack *extack);
 void qdisc_free(struct Qdisc *qdisc);
+void qdisc_put_unlocked(struct Qdisc *qdisc);
 struct Qdisc *qdisc_create_dflt(struct netdev_queue *dev_queue,
 				const struct Qdisc_ops *ops, u32 parentid,
 				struct netlink_ext_ack *extack);

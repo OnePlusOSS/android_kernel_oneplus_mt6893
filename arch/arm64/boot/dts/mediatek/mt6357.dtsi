@@ -30,7 +30,7 @@
 
 	mt6357keys: mt6357keys {
 		compatible = "mediatek,mt6357-keys";
-		mediatek,long-press-mode = <1>;
+		mediatek,long-press-mode = <2>;
 		power-off-time-sec = <0>;
 
 		power {

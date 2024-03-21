@@ -375,6 +375,10 @@ static int mt6833_spm_suspend_pm_event(struct notifier_block *notifier,
 	case PM_POST_HIBERNATION:
 		return NOTIFY_DONE;
 	case PM_SUSPEND_PREPARE:
+			pr_info(
+		"[name:spm&][SPM] PM: suspend entry %d-%02d-%02d %02d:%02d:%02d.%09lu UTC\n",
+			tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+			tm.tm_hour, tm.tm_min, tm.tm_sec, ts.tv_nsec);
 		mtk_s2idle_state_enable(1);
 		cpu_hotplug_disable();
 		suspend_online_cpus = num_online_cpus();
@@ -421,6 +425,10 @@ static int mt6833_spm_suspend_pm_event(struct notifier_block *notifier,
 				send_sig(SIGKILL, mtk_lpm_ac[cpu].ts, 0);
 		}
 		spin_unlock(&lpm_abort_locker);
+		   pr_info(
+		"[name:spm&][SPM] PM: suspend exit %d-%02d-%02d %02d:%02d:%02d.%09lu UTC\n",
+			tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+			tm.tm_hour, tm.tm_min, tm.tm_sec, ts.tv_nsec);
 		return NOTIFY_DONE;
 	}
 	return NOTIFY_OK;

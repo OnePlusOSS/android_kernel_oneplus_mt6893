@@ -1,0 +1,43 @@
+// SPDX-License-Identifier: GPL-2.0
+/* Copyright (c) 2020 MediaTek Inc. */
+
+&i2c6 {
+	clock-frequency = <400000>;
+
+	fsa4480: fsa4480@42 {
+		compatible = "qcom,fsa4480-i2c";
+		reg = <0x42>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&fsa_hs_det>;
+		fsa4480,hs-det-gpio = <&pio 169 0>;
+	};
+
+	tfa98xx: tfa98xx@35 {
+		compatible = "nxp,tfa98xx";
+		reg = <0x35>;
+		reset-gpio = <&pio 107 0>;
+		tfa_min_range = <5000>;
+		tfa_max_range = <8000>;
+		status = "okay";
+	};
+};
+
+&audio_extend {
+ 	//for nxp speaker
+ 	oplus,speaker-vendor = "nxp";
+ 	oplus,speaker-i2s-id = <0>;
+ 	oplus,speaker-i2s-id-in = <3>;
+ 	oplus,speaker-codec-name = "tfa98xx.6-0035";
+ 	oplus,speaker-codec-dai-name = "tfa98xx-aif-6-35";
+};
+
+&pio {
+	fsa_hs_det: fsa_hs_det {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO169__FUNC_GPIO169>;
+			slew-rate = <1>;  /*direction 0:in, 1:out*/
+			output-high;
+		};
+	};
+};
+

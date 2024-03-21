@@ -275,6 +275,9 @@ static int __ffs_ep0_queue_wait(struct ffs_data *ffs, char *data, size_t len)
 	struct usb_request *req = ffs->ep0req;
 	int ret;
 
+	if (!req)
+		return -EINVAL;
+
 	req->zero     = len < le16_to_cpu(ffs->ev.setup.wLength);
 
 	spin_unlock_irq(&ffs->ev.waitq.lock);
@@ -291,13 +294,22 @@ static int __ffs_ep0_queue_wait(struct ffs_data *ffs, char *data, size_t len)
 		req->buf = (void *)0xDEADBABE;
 
 	reinit_completion(&ffs->ep0req_completion);
-
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/* Null pointer caused in special asynchronous operation */
+	if (ffs->gadget == NULL)
+		return -EINTR;
+#endif
 	ret = usb_ep_queue(ffs->gadget->ep0, req, GFP_ATOMIC);
 	if (unlikely(ret < 0))
 		return ret;
 
 	ret = wait_for_completion_interruptible(&ffs->ep0req_completion);
 	if (unlikely(ret)) {
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/* Null pointer caused in special asynchronous operation */
+		if (ffs->gadget == NULL)
+			return -EINTR;
+#endif
 		usb_ep_dequeue(ffs->gadget->ep0, req);
 		return -EINTR;
 	}

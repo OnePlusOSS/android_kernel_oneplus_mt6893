@@ -11,7 +11,11 @@
 #include <linux/dma-mapping.h>
 #include <linux/dmapool.h>
 #include <linux/sched/clock.h>
-
+#include <linux/sched/types.h>
+#include <linux/sched.h>
+#ifdef OPLUS_BUG_STABILITY
+#include <soc/oplus/system/oplus_mm_kevent_fb.h>
+#endif
 #if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
 #include "cmdq-util.h"
 
@@ -65,7 +69,10 @@ struct client_priv {
 	struct dma_pool *buf_pool;
 	u32 pool_limit;
 	atomic_t buf_cnt;
-	struct workqueue_struct *flushq;
+	struct wait_queue_head irq_wq;
+	struct task_struct *flushq;
+ 	struct list_head irq_removes;
+	spinlock_t irq_removes_lock;
 };
 
 struct cmdq_instruction {
@@ -80,7 +87,7 @@ struct cmdq_instruction {
 };
 
 struct cmdq_flush_item {
-	struct work_struct work;
+	struct list_head list_entry;
 	struct cmdq_pkt *pkt;
 	cmdq_async_flush_cb cb;
 	void *data;
@@ -164,6 +171,54 @@ struct cmdq_base *cmdq_register_device(struct device *dev)
 }
 EXPORT_SYMBOL(cmdq_register_device);
 
+static void cmdq_pkt_flush_threaded_wait_item(struct cmdq_flush_item *item_q)
+{
+	int ret;
+
+#if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
+	ret = cmdq_pkt_wait_complete(item_q->pkt);
+#endif
+	if (item_q->cb) {
+#if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
+		struct cmdq_cb_data data = {.data = item_q->data, .err = ret};
+#else
+		struct cmdq_cb_data data = {.data = item_q->data, .err = item_q->err};
+#endif
+		item_q->cb(data);
+	}
+	kfree(item_q);
+}
+
+static int cmdq_irq_handler_thread(void *data)
+{
+	struct cmdq_client *client = (struct cmdq_client *)data;
+	struct client_priv *cl_priv = (struct client_priv *)(client->cl_priv);
+	unsigned long flags;
+	struct sched_param param = {.sched_priority = 12};
+
+	sched_setscheduler(current, SCHED_RR, &param);
+	while (!kthread_should_stop()) {
+		struct cmdq_flush_item *task, *tmp;
+		wait_event_interruptible(cl_priv->irq_wq,
+			!list_empty(&cl_priv->irq_removes));
+
+		spin_lock_irqsave(&cl_priv->irq_removes_lock, flags);
+		list_for_each_entry_safe(task, tmp, &cl_priv->irq_removes,
+			list_entry) {
+			list_del(&task->list_entry);
+
+			spin_unlock_irqrestore(
+				&cl_priv->irq_removes_lock, flags);
+			cmdq_pkt_flush_threaded_wait_item(task);
+			spin_lock_irqsave(
+				&cl_priv->irq_removes_lock, flags);
+		}
+		spin_unlock_irqrestore(&cl_priv->irq_removes_lock, flags);
+	}
+
+	return 0;
+}
+
 struct cmdq_client *cmdq_mbox_create(struct device *dev, int index)
 {
 	struct cmdq_client *client;
@@ -191,8 +246,11 @@ struct cmdq_client *cmdq_mbox_create(struct device *dev, int index)
 	}
 
 	priv->pool_limit = CMDQ_MBOX_BUF_LIMIT;
-	priv->flushq = create_singlethread_workqueue("cmdq_flushq");
+	INIT_LIST_HEAD(&priv->irq_removes);
+	spin_lock_init(&priv->irq_removes_lock);
+	init_waitqueue_head(&priv->irq_wq);
 	client->cl_priv = (void *)priv;
+	priv->flushq = kthread_run(cmdq_irq_handler_thread, (void*)client, "cmdq_flushq");
 
 	mutex_init(&client->chan_mutex);
 
@@ -522,10 +580,30 @@ EXPORT_SYMBOL(cmdq_pkt_create);
 
 void cmdq_pkt_destroy(struct cmdq_pkt *pkt)
 {
+#ifdef OPLUS_BUG_STABILITY
+	struct cmdq_client *client = NULL;
+	if (!pkt) {
+		cmdq_err("cmdq_pkt is NULL");
+		return;
+	} else {
+		client = pkt->cl;
+	}
+#else
 	struct cmdq_client *client = pkt->cl;
+#endif
 
 	if (client)
 		mutex_lock(&client->chan_mutex);
+#if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
+	if (pkt && pkt->task_alloc && !pkt->rec_irq) {
+		cmdq_err("invalid pkt_destroy, pkt:0x%p", pkt);
+		if (client && client->chan) {
+			s32 thread_id = cmdq_mbox_chan_id(client->chan);
+
+			cmdq_err("pkt:%p thd:%d", pkt, thread_id);
+		}
+	}
+#endif
 	cmdq_pkt_free_buf(pkt);
 	kfree(pkt->flush_item);
 #if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
@@ -1304,6 +1382,52 @@ s32 cmdq_pkt_poll_timeout(struct cmdq_pkt *pkt, u32 value, u8 subsys,
 }
 EXPORT_SYMBOL(cmdq_pkt_poll_timeout);
 
+#ifdef CONFIG_MTK_MT6382_BDG
+void cmdq_pkt_sleep_by_poll(struct cmdq_pkt *pkt, u32 tick)
+{
+	struct cmdq_client *cl = (struct cmdq_client *)pkt->cl;
+	struct cmdq_operand lop, rop;
+	const u32 timeout_en = cmdq_mbox_get_base_pa(cl->chan) +
+		CMDQ_TPR_TIMEOUT_EN;
+	u32 begin_mark;
+	u64 *inst;
+	dma_addr_t cmd_pa;
+
+	cmdq_pkt_write_indriect(pkt, NULL, timeout_en, CMDQ_CPR_TPR_MASK, ~0);
+
+	if (tick < U16_MAX) {
+		lop.reg = true;
+		lop.idx = CMDQ_TPR_ID;
+		rop.reg = false;
+		rop.value = tick;
+		cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_ADD,
+			CMDQ_THR_SPR_IDX1, &lop, &rop);
+	} else {
+		cmdq_pkt_assign_command(pkt, CMDQ_THR_SPR_IDX3, tick);
+		lop.reg = true;
+		lop.idx = CMDQ_TPR_ID;
+		rop.reg = true;
+		rop.value = CMDQ_THR_SPR_IDX3;
+		cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_ADD,
+			CMDQ_THR_SPR_IDX1, &lop, &rop);
+	}
+	begin_mark = pkt->cmd_buf_size;
+	cmd_pa = cmdq_pkt_get_pa_by_offset(pkt, begin_mark);
+	cmdq_pkt_assign_command(pkt, CMDQ_SPR_FOR_TEMP, cmd_pa);
+
+	lop.reg = true;
+	lop.idx = CMDQ_THR_SPR_IDX1;
+	rop.reg = true;
+	rop.idx = CMDQ_TPR_ID;
+	cmdq_pkt_cond_jump_abs(pkt, CMDQ_SPR_FOR_TEMP, &lop, &rop,
+		CMDQ_GREATER_THAN);
+
+	cmdq_pkt_write_indriect(pkt, NULL, timeout_en, 0, ~0);
+
+}
+EXPORT_SYMBOL(cmdq_pkt_sleep_by_poll);
+#endif
+
 void cmdq_pkt_perf_begin(struct cmdq_pkt *pkt)
 {
 	dma_addr_t pa;
@@ -1681,6 +1805,11 @@ void cmdq_pkt_err_dump_cb(struct cmdq_cb_data data)
 
 	cmdq_util_user_err(client->chan, "Begin of Error %u", err_num);
 
+	#ifdef OPLUS_BUG_STABILITY
+	if (err_num < 5) {
+		mm_fb_display_kevent("DisplayDriverID@@508$$", MM_FB_KEY_RATELIMIT_1H, "cmdq timeout Begin of Error %u", err_num);
+	}
+	#endif
 	cmdq_dump_core(client->chan);
 
 #if IS_ENABLED(CONFIG_MTK_SEC_VIDEO_PATH_SUPPORT) || \
@@ -1918,43 +2047,18 @@ int cmdq_pkt_wait_complete(struct cmdq_pkt *pkt)
 EXPORT_SYMBOL(cmdq_pkt_wait_complete);
 #endif
 
-#if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
-static void cmdq_pkt_flush_q_wait_work(struct work_struct *w)
-{
-	struct cmdq_flush_item *item_q = container_of(w,
-		struct cmdq_flush_item, work);
-	int ret;
-
-	ret = cmdq_pkt_wait_complete(item_q->pkt);
-	if (item_q->cb) {
-		struct cmdq_cb_data data = {.data = item_q->data, .err = ret};
-
-		item_q->cb(data);
-	}
-	kfree(item_q);
-}
-#else
-static void cmdq_pkt_flush_q_cb_work(struct work_struct *w)
-{
-	struct cmdq_flush_item *item_q = container_of(w,
-		struct cmdq_flush_item, work);
-	struct cmdq_cb_data data;
-
-	data.data = item_q->data;
-	data.err = item_q->err;
-	item_q->cb(data);
-	kfree(item_q);
-}
-#endif
-
 static void cmdq_pkt_flush_q_cb(struct cmdq_cb_data data)
 {
 	struct cmdq_flush_item *item_q = (struct cmdq_flush_item *)data.data;
 	struct cmdq_client *cl = item_q->pkt->cl;
 	struct client_priv *priv = cl->cl_priv;
+	unsigned long irq_idx_flag;
 
 	item_q->err = data.err;
-	queue_work(priv->flushq, &item_q->work);
+	spin_lock_irqsave(&priv->irq_removes_lock, irq_idx_flag);
+	list_add_tail(&item_q->list_entry, &priv->irq_removes);
+	spin_unlock_irqrestore(&priv->irq_removes_lock, irq_idx_flag);
+	wake_up_interruptible(&priv->irq_wq);
 }
 
 s32 cmdq_pkt_flush_threaded(struct cmdq_pkt *pkt,
@@ -1972,7 +2076,6 @@ s32 cmdq_pkt_flush_threaded(struct cmdq_pkt *pkt,
 
 #if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
 
-	INIT_WORK(&item_q->work, cmdq_pkt_flush_q_wait_work);
 	err = cmdq_pkt_flush_async(pkt, NULL, NULL);
 	if (err >= 0) {
 		struct cmdq_cb_data data = {.data = item_q, .err = 0};
@@ -1980,7 +2083,6 @@ s32 cmdq_pkt_flush_threaded(struct cmdq_pkt *pkt,
 		cmdq_pkt_flush_q_cb(data);
 	}
 #else
-	INIT_WORK(&item_q->work, cmdq_pkt_flush_q_cb_work);
 	err = cmdq_pkt_flush_async(pkt, cmdq_pkt_flush_q_cb, item_q);
 #endif
 	return err;

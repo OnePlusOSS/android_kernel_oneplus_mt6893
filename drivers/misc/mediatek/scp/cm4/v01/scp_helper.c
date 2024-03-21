@@ -105,6 +105,9 @@ unsigned int mpu_region_id;
 unsigned char *scp_send_buff[SCP_CORE_TOTAL];
 unsigned char *scp_recv_buff[SCP_CORE_TOTAL];
 
+#ifdef OPLUS_FEATURE_SENSOR
+unsigned char *ipi_buff[SCP_CORE_TOTAL];
+#endif
 static struct workqueue_struct *scp_workqueue;
 #if SCP_RECOVERY_SUPPORT
 static struct workqueue_struct *scp_reset_workqueue;
@@ -343,6 +346,7 @@ static void scp_A_notify_ws(struct work_struct *ws)
 		container_of(ws, struct scp_work_struct, work);
 	unsigned int scp_notify_flag = sws->flags;
 
+	pr_err("[oem] scp_A_notify_ws");
 	scp_ready[SCP_A_ID] = scp_notify_flag;
 
 	if (scp_notify_flag) {
@@ -2006,6 +2010,12 @@ static int __init scp_init(void)
 	if (!scp_recv_buff[SCP_A_ID])
 		goto err_3;
 
+#ifdef OPLUS_FEATURE_SENSOR
+	ipi_buff[SCP_A_ID] = kmalloc((size_t) SHARE_BUF_SIZE, GFP_KERNEL);
+	if (!ipi_buff[SCP_A_ID])
+		goto err_3;
+#endif
+
 	INIT_WORK(&scp_A_notify_work.work, scp_A_notify_ws);
 	INIT_WORK(&scp_timeout_work.work, scp_timeout_ws);
 
@@ -2038,6 +2048,14 @@ static int __init scp_init(void)
 		pr_err("[SCP] CM4 A require irq failed\n");
 		goto err_3;
 	}
+
+#ifdef CONFIG_MACH_MT6781
+	ret = enable_irq_wake(scpreg.irq);
+	if (ret < 0) {
+		pr_err("[SCP] CM4 A register wakeup irq failed\n");
+		goto err_3;
+	}
+#endif
 
 #if SCP_LOGGER_ENABLE
 	/* scp logger initialise */
@@ -2130,6 +2148,10 @@ static void __exit scp_exit(void)
 	for (i = 0; i < SCP_CORE_TOTAL; i++) {
 		kfree(scp_send_buff[i]);
 		kfree(scp_recv_buff[i]);
+
+#ifdef OPLUS_FEATURE_SENSOR
+		kfree(ipi_buff[i]);
+#endif
 	}
 }
 

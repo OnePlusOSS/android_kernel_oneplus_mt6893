@@ -19,6 +19,9 @@
 #include <mt6877_dbg_fs_common.h>
 #include <mt6877_cond.h>
 #include <mt6877_spm_comm.h>
+#if IS_ENABLED(CONFIG_OPLUS_POWERINFO_STANDBY_DEBUG)
+#include <mt-plat/mtk_ccci_common.h>
+#endif
 
 /* Determine for node route */
 #define MT_LP_RQ_NODE	"/sys/kernel/debug/spm/spm_resource_req"
@@ -428,6 +431,50 @@ static ssize_t mt6877_spm_res_rq_write(char *FromUserBuf, size_t sz, void *priv)
 	return -EINVAL;
 }
 
+#if IS_ENABLED(CONFIG_OPLUS_POWERINFO_STANDBY_DEBUG)
+#define MD_SLEEP_INFO_SMEM_OFFEST (4)
+static ssize_t mtk_dbg_get_system_stats(char *ToUserBuf,
+			  size_t sz, void *priv)
+{
+	/* dump sleep info */
+#if defined(CONFIG_MTK_ECCCI_DRIVER)
+	u32 len = 0;
+	u32 *share_mem = NULL;
+	struct md_sleep_status md_data;
+
+	share_mem = (u32 *)get_smem_start_addr(MD_SYS1,
+		SMEM_USER_LOW_POWER, NULL);
+	memset(&md_data, 0, sizeof(struct md_sleep_status));
+	if (share_mem != NULL) {
+		share_mem = share_mem + MD_SLEEP_INFO_SMEM_OFFEST;
+		memcpy(&md_data, share_mem, sizeof(struct md_sleep_status));
+	}
+	len = snprintf(ToUserBuf, sz,
+	"26M:%lld:%lld.%03lld\nAP:%lld:%lld.%03lld\nMD:%lld:%lld.%03lld\n",
+	spm_26M_off_count,
+	PCM_TICK_TO_SEC(spm_26M_off_duration),
+	PCM_TICK_TO_SEC((spm_26M_off_duration % PCM_32K_TICKS_PER_SEC)
+		* 1000),
+	ap_pd_count,
+	PCM_TICK_TO_SEC(ap_slp_duration),
+	PCM_TICK_TO_SEC((ap_slp_duration % PCM_32K_TICKS_PER_SEC)
+		* 1000),
+	md_data.sleep_cnt,
+	PCM_TICK_TO_SEC(md_data.sleep_time),
+	PCM_TICK_TO_SEC((md_data.sleep_time % PCM_32K_TICKS_PER_SEC)
+		* 1000));
+
+	return (len > sz) ? sz : len;
+#else
+	return 0;
+#endif
+}
+
+static const struct mtk_lp_sysfs_op mtk_dbg_spm_system_stats_fops = {
+	.fs_read = mtk_dbg_get_system_stats,
+};
+#endif
+
 static const struct mtk_lp_sysfs_op mt6877_spm_res_rq_fops = {
 	.fs_read = mt6877_spm_res_rq_read,
 	.fs_write = mt6877_spm_res_rq_write,
@@ -440,6 +487,10 @@ int mt6877_dbg_spm_fs_init(void)
 	mtk_spm_sysfs_root_entry_create();
 	mtk_spm_sysfs_entry_node_add("spm_resource_req", 0444
 			, &mt6877_spm_res_rq_fops, NULL);
+#if IS_ENABLED(CONFIG_OPLUS_POWERINFO_STANDBY_DEBUG)
+	mtk_spm_sysfs_entry_node_add("system_stats", 0444
+  			, &mtk_dbg_spm_system_stats_fops, NULL);
+#endif
 
 	/* create /sys/power/spm/xxx */
 	r = mtk_spm_sysfs_power_create_group(&pwrctrl_attr_group);

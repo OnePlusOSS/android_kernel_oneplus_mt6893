@@ -102,7 +102,9 @@ enum gauge_property {
 	GAUGE_PROP_R_FG_VALUE,
 	GAUGE_PROP_VBAT2_DETECT_TIME,
 	GAUGE_PROP_VBAT2_DETECT_COUNTER,
+#ifdef OPLUS_FEATURE_CHG_BASIC
 	GAUGE_PROP_BAT_TEMP_FROZE_EN,
+#endif
 };
 
 struct gauge_hw_status {

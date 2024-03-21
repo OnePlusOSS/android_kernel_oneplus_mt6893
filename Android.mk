@@ -14,6 +14,11 @@ KERNEL_MAKE_DEPENDENCIES := $(shell find $(KERNEL_DIR) -name .git -prune -o -typ
 $(TARGET_KERNEL_CONFIG): PRIVATE_DIR := $(KERNEL_DIR)
 $(TARGET_KERNEL_CONFIG): $(KERNEL_CONFIG_FILE) $(LOCAL_PATH)/Android.mk
 $(TARGET_KERNEL_CONFIG): $(KERNEL_MAKE_DEPENDENCIES)
+	#ifdef OPLUS_FEATURE_FORCE_SELINUX
+	OBSOLETE_KEEP_ADB_SECURE=$(OBSOLETE_KEEP_ADB_SECURE) \
+	TARGET_MEMLEAK_DETECT_TEST=$(TARGET_MEMLEAK_DETECT_TEST) \
+	$(KERNEL_DIR)/tools/changeConfig.sh $(KERNEL_CONFIG_FILE)
+	#endif OPLUS_FEATURE_FORCE_SELINUX
 	$(hide) mkdir -p $(dir $@)
 	$(PREBUILT_MAKE_PREFIX)$(MAKE) -C $(PRIVATE_DIR) $(KERNEL_MAKE_OPTION) $(KERNEL_DEFCONFIG)
 
@@ -52,6 +57,12 @@ menuconfig-kernel savedefconfig-kernel:
 	$(hide) mkdir -p $(KERNEL_OUT)
 	$(MAKE) -C $(KERNEL_DIR) $(KERNEL_MAKE_OPTION) $(patsubst %config-kernel,%config,$@)
 
+ifeq ($(OPLUS_VND_ENV_USB_MICRO), yes)
+$(shell sed -i 's/CONFIG_TCPC_CLASS=y/# CONFIG_TCPC_CLASS is not set/g' $(KERNEL_CONFIG_FILE))
+$(shell sed -i 's/CONFIG_MTK_USB_TYPEC=y/# CONFIG_MTK_USB_TYPEC is not set/g' $(KERNEL_CONFIG_FILE))
+$(shell sed -i 's/CONFIG_TCPC_RT1711H=y/# CONFIG_TCPC_RT1711H is not set/g' $(KERNEL_CONFIG_FILE))
+endif
+
 clean-kernel:
 	$(hide) rm -rf $(KERNEL_OUT) $(INSTALLED_KERNEL_TARGET)
 
@@ -59,7 +70,14 @@ clean-kernel:
 MTK_DTBIMAGE_DTS := $(addsuffix .dts,$(addprefix $(KERNEL_DIR)/arch/$(KERNEL_TARGET_ARCH)/boot/dts/,$(PLATFORM_DTB_NAME)))
 include device/mediatek/build/core/build_dtbimage.mk
 
+#ifdef OPLUS_BUG_STABILITY
+CUSTOMER_DTBO_PROJECT := $(subst $\",,$(shell grep DTB_OVERLAY_IMAGE_NAMES $(KERNEL_CONFIG_FILE) | sed 's/.*=//' ))
+MTK_DTBOIMAGE_DTS := $(addsuffix .dts,$(addprefix $(KERNEL_DIR)/arch/$(KERNEL_TARGET_ARCH)/boot/dts/,$(CUSTOMER_DTBO_PROJECT)))
+#else
+ifeq ($(MTK_DTBOIMAGE_DTS), )
 MTK_DTBOIMAGE_DTS := $(addsuffix .dts,$(addprefix $(KERNEL_DIR)/arch/$(KERNEL_TARGET_ARCH)/boot/dts/,$(PROJECT_DTB_NAMES)))
+endif
+#endif /*OPLUS_BUG_STABILITY*/
 include device/mediatek/build/core/build_dtboimage.mk
 
 endif #TARGET_NO_KERNEL

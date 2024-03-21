@@ -1,0 +1,35 @@
+/**********************************************************************************
+* Copyright (c)  2008-2020  Guangdong oplus Mobile Comm Corp., Ltd
+*
+***********************************************************************************/
+&odm {
+	nfc_chipset:nfc_chipset {
+		compatible = "oplus-nfc-chipset";
+		chipset-22277 = "SN100T";
+	};
+};
+
+&i2c8 {
+       status = "okay";
+       nq@28 {
+               compatible = "nxp,sn-nci";
+               reg = <0x28>;
+               nxp,sn-irq = <&pio 11 0x0>;
+               nxp,sn-ven-rstn = <&pio 26 0x0>;
+               nxp,sn-dwl-req = <&pio 7 0x0>;
+               interrupt-parent = <&pio>;
+       };
+};
+
+&spi1 {
+       status = "okay";
+       #address-cells = <1>;
+       #size-cells = <0>;
+       spidev5: p61@5 {
+       compatible = "nxp,sn-ese";
+       reg = <0>;
+       spi-max-frequency = <19200000>;
+       nxp,nfcc = "8-0028";
+       };
+};
+

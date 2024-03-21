@@ -95,6 +95,10 @@ struct drm_panel_funcs {
 	int (*get_modes)(struct drm_panel *panel);
 	int (*get_timings)(struct drm_panel *panel, unsigned int num_timings,
 			   struct display_timing *timings);
+	#ifdef OPLUS_BUG_STABILITY
+	int (*oplus_set_power)(uint32_t voltage_id, uint32_t voltage_value);
+	int (*oplus_update_power_value)(uint32_t voltage_id);
+	#endif /* OPLUS_BUG_STABILITY */
 };
 
 /**

@@ -17,7 +17,9 @@
 #include <linux/mmc/host.h>
 #include <linux/mmc/card.h>
 #include <linux/mmc/mmc.h>
-
+#ifdef CONFIG_MMC_PASSWORDS
+#include "lock.h"
+#endif
 #include "core.h"
 #include "card.h"
 #include "host.h"
@@ -26,6 +28,10 @@
 #define MMC_OPS_TIMEOUT_MS	(10 * 60 * 1000) /* 10 minute timeout */
 #define CMD_TIMEOUT         (HZ/10 * 5)	/* 100ms x5 */
 #define DAT_TIMEOUT         (HZ    * 5)	/* 1000ms x5 */
+
+#ifdef CONFIG_MMC_PASSWORDS
+#define SD_OPS_TIMEOUT_MS	(30 * 1000) /* 30 second timeout */
+#endif
 
 static const u8 tuning_blk_pattern_4bit[] = {
 	0xff, 0x0f, 0xff, 0x00, 0xff, 0xcc, 0xc3, 0xcc,
@@ -1055,4 +1061,265 @@ int mmc_cmdq_disable(struct mmc_card *card)
 {
 	return mmc_cmdq_switch(card, false);
 }
+
+#ifdef CONFIG_MMC_PASSWORDS
+
+int sd_send_status(struct mmc_card *card)
+{
+	int err;
+	u32 status;
+	unsigned long wait_prg_timeout;
+	wait_prg_timeout = jiffies + msecs_to_jiffies(SD_OPS_TIMEOUT_MS);
+	do {
+		err = mmc_send_status(card, &status);
+		if (err)
+		{
+			return err;
+		}
+		if (card->host->caps & MMC_CAP_WAIT_WHILE_BUSY)
+			break;
+		if (mmc_host_is_spi(card->host))
+			break;
+		/* Timeout if the device never leaves the program state. */
+		if (time_after(jiffies, wait_prg_timeout)) {
+			printk("[SDLOCK]%s: Card stuck in programming state!\n",__func__);
+			return -ETIMEDOUT;
+		}
+	} while (R1_CURRENT_STATE(status) == R1_STATE_PRG);
+
+	return err;
+}
+
+int sd_send_blocklen(struct mmc_card *card,unsigned int blocklen)
+{
+	int err;
+	struct mmc_command cmd = {0};
+
+	cmd.opcode = MMC_SET_BLOCKLEN;
+	cmd.arg = blocklen;
+	cmd.flags = MMC_RSP_R1 | MMC_CMD_AC;
+	err = mmc_wait_for_cmd(card->host, &cmd, MMC_CMD_RETRIES);
+	if (err)
+	{
+		printk("%s failed blocklen=%d \n",__func__,blocklen);
+	}
+	return err;
+}
+
+int sd_send_lock_unlock_cmd(struct mmc_card *card,u8* data_buf,int data_size,int max_buf_size,int mode)
+{
+	int err;
+	struct mmc_request mrq = {0};
+	struct mmc_command cmd = {0};
+	struct mmc_data data = {0};
+	struct scatterlist sg;
+
+	cmd.opcode = MMC_LOCK_UNLOCK;
+	cmd.arg = 0;
+	cmd.flags = MMC_RSP_R1 | MMC_CMD_ADTC;
+
+	data.blksz = data_size;
+	data.blocks = 1;
+	data.flags = MMC_DATA_WRITE;
+	data.sg = &sg;
+	data.sg_len = 1;
+	mmc_set_data_timeout(&data, card);
+    if((unsigned int)mode & MMC_LOCK_MODE_ERASE) {
+        data.timeout_ns = 4000000000u; //erase cmd set 4s for 128G
+        data.timeout_clks = 8000000;//clk is 400000,8000000 is 20S,calculate in sdhci_target_timeout
+	} else {
+        data.timeout_ns = (2*1000*1000*1000);
+    }
+
+	mrq.cmd = &cmd;
+	mrq.data = &data;
+
+	sg_init_one(&sg, data_buf, data_size);
+	mmc_wait_for_req(card->host, &mrq);
+	err = cmd.error;
+	if (err)
+	{
+		printk("%s: lock unlock cmd error %d\n", __func__, cmd.error);
+		return err;
+	}
+
+	err = data.error;
+	if (err)
+	{
+		dev_err(mmc_dev(card->host), "%s: data error %d\n",	__func__, data.error);
+	}
+	return err;
+}
+
+int sd_wait_lock_unlock_cmd(struct mmc_card *card,int mode)
+{
+	int err;
+	struct mmc_command cmd = {0};
+	unsigned long erase_timeout;
+	unsigned long normal_timeout;
+
+
+	cmd.opcode = MMC_SEND_STATUS;
+	cmd.arg = card->rca << 16;
+	cmd.flags = MMC_RSP_R1 | MMC_CMD_AC;
+
+	/* set timeout for forced erase operation to 3 min. (see MMC spec) */
+	erase_timeout = jiffies + 180 * HZ;
+	normal_timeout = jiffies + 10 * HZ;
+	if((unsigned int)mode & MMC_LOCK_MODE_ERASE) {
+		do {
+			/* we cannot use "retries" here because the
+			 * R1_LOCK_UNLOCK_FAILED bit is cleared by subsequent reads to
+			 * the status register, hiding the error condition */
+			err = mmc_wait_for_cmd(card->host, &cmd, 0);
+			if (err) {
+				printk("[SDLOCK] %s mmc_wait_for_cmd err=%d resp[0] =%x \n",__func__,err,cmd.resp[0]);
+				break;
+			}
+
+			if (time_after(jiffies, erase_timeout)) {
+				dev_dbg(&card->dev, "forced erase timed out\n");
+				err = -ETIMEDOUT;
+				break;
+			}
+		} while (!(cmd.resp[0] & R1_READY_FOR_DATA) || (cmd.resp[0] & R1_CARD_IS_LOCKED));
+	} else {
+		do {
+			/* we cannot use "retries" here because the
+			 * R1_LOCK_UNLOCK_FAILED bit is cleared by subsequent reads to
+			 * the status register, hiding the error condition */
+			err = mmc_wait_for_cmd(card->host, &cmd, 0);
+			if (err) {
+				printk("[SDLOCK] %s mmc_wait_for_cmd err=%d resp[0] =%x \n",__func__,err,cmd.resp[0]);
+				break;
+			}
+
+			if (time_after(jiffies, normal_timeout)) {
+				dev_dbg(&card->dev, "normal timed out\n");
+				err = -ETIMEDOUT;
+				printk("[SDLOCK] %s normal timed out err=%d resp[0] =%x \n",__func__,err,cmd.resp[0]);
+				break;
+			}
+		} while (!(cmd.resp[0] & R1_READY_FOR_DATA));
+	}
+
+	if (cmd.resp[0] & R1_LOCK_UNLOCK_FAILED) {
+		printk("%s: LOCK_UNLOCK operation failed\n", __func__);
+		err = -EIO;
+		return err;
+	}
+
+	if (cmd.resp[0] & R1_CARD_IS_LOCKED)
+	{
+		mmc_card_set_locked(card);
+	}
+	else
+	{
+		mmc_card_clr_locked(card);
+	}
+
+	return err;
+}
+
+int mmc_lock_unlock_by_buf(struct mmc_card *card, u8* key_buf,int key_len, int mode)
+{
+
+	int err = -EINVAL;
+	int data_size;
+	int max_buf_size ;
+	u8 *data_buf;
+	unsigned int retry = 0;
+	max_buf_size = MAX_UNLOCK_PASSWORD_WITH_BUF;
+	data_size = 1;
+	//max password(16byte) max_key = max_password + 0xFF + 0xFF = 18
+	if(key_len > (MAX_UNLOCK_PASSWORD_WITH_BUF - 2))
+	{
+		return err;
+	}
+	if (!((unsigned int)mode & MMC_LOCK_MODE_ERASE)) {
+//		data_size =  key_len ;
+		data_size = max_buf_size;
+	}
+
+	data_buf = kzalloc(max_buf_size, GFP_KERNEL);
+	if (!data_buf)
+	{
+		printk("%s kzalloc failed\n",__func__);
+		return -ENOMEM;
+	}
+
+sdlock_retry:
+	if(retry > 2) {
+		printk("[SDLOCK] %s up to retry limit, goto out \n",__func__);
+		goto out;
+	} else {
+		if(retry++ > 0) {
+			mmc_set_blocklen(card, 512);
+			mmc_power_off(card->host);
+			mmc_delay(200);
+			mmc_power_up(card->host, card->ocr);
+			(void)mmc_lock_sd_init_card(card, true);
+		}
+	}
+	memset(data_buf, 0, max_buf_size);
+	data_buf[0] |= (unsigned int)mode;
+	if ((unsigned int)mode & MMC_LOCK_MODE_UNLOCK)
+		data_buf[0] &= ~MMC_LOCK_MODE_UNLOCK;
+
+	if (!((unsigned int)mode & MMC_LOCK_MODE_ERASE)) {
+		data_buf[1] = key_len-2; //exclude end 2 chars (0xFF 0xFF)
+		memcpy(data_buf + 2, key_buf, key_len);
+	} else {
+		data_buf[1] =0xff;
+		data_buf[2] = 0xff;
+	}
+
+#ifdef CONFIG_MMC_BLOCK_DEFERRED_RESUME
+	if (mmc_bus_needs_resume(card->host)) {
+		mmc_resume_bus(card->host);
+	}
+	printk("[SDLOCK] %s bus_resume_flags = %d",__func__,card->host->bus_resume_flags);
+#endif
+
+	/*-----------Set mmc Status Command-----------------------------*/
+	err = sd_send_status(card);
+	if (err)
+	{
+		printk("[SDLOCK] %s STATUS failure data_size =%d\n",__func__,data_size);
+		goto sdlock_retry;
+	}
+
+	/*------------Set Block Length Command--------------------------*/
+	err = sd_send_blocklen(card,data_size);
+	if (err)
+	{
+		printk("[SDLOCK] %s MMC_SET_BLOCKLEN failure\n",__func__);
+		goto out;
+	}
+
+	/*-----------Set Lock/Unlock Command---------------------------*/
+	err = sd_send_lock_unlock_cmd(card,data_buf,data_size,max_buf_size,mode);
+	if (err)
+	{
+		printk("[SDLOCK] %s MMC_LOCK_UNLOCK failure, goto retry\n",__func__);
+		goto sdlock_retry;
+	}
+
+	/*-------------Set mmc Status Command--------------------*/
+	err = sd_wait_lock_unlock_cmd(card,mode);
+	if (err) {
+	    printk("[SDLOCK] %s sd_wait_lock_unlock_cmd failure, goto retry\n",__func__);
+		goto sdlock_retry;
+	}
+
+	err = mmc_set_blocklen(card, 512);
+
+out:
+	kfree(data_buf);
+
+	return err;
+}
+
+#endif /* CONFIG_MMC_PASSWORDS */
+
 EXPORT_SYMBOL_GPL(mmc_cmdq_disable);

@@ -226,4 +226,18 @@ source "drivers/slimbus/Kconfig"
 source "drivers/interconnect/Kconfig"
 
 source "drivers/energy_model/Kconfig"
+
+##ifdef OPLUS_FEATURE_BRINGUP
+source "drivers/nfc/Kconfig"
+source "drivers/nfc/pn553-i2c/Kconfig"
+source "drivers/nfc/p73-spi/Kconfig"
+source "drivers/nfc/oplus_nfc/Kconfig"
+source "drivers/nfc/st21nfc-i2c/Kconfig"
+source "drivers/nfc/st54-spi/Kconfig"
+source "drivers/nfc/nq330-i2c/Kconfig"
+source "drivers/nfc/p73-spi-nq330/Kconfig"
+source "drivers/nfc/sn_nci/nfc/Kconfig"
+source "drivers/nfc/sn_nci/ese/Kconfig"
+#endif /* OPLUS_FEATURE_NFC_BRINGUP */
+
 endmenu

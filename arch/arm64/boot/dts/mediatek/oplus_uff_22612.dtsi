@@ -1,0 +1,110 @@
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+* Copyright (C) 2021-2025 Oplus. All rights reserved.
+*/
+#include <dt-bindings/iio/mt635x-auxadc.h>
+#include <dt-bindings/pinctrl/mt6877-pinfunc.h>
+#include <dt-bindings/pinctrl/mt65xx.h>
+
+/* UFF dts config at 2022.06.16
+ *
+ * fp vendor:
+ *   jiiov: 0301
+ *   goodix:
+ */
+
+&spi5 {
+#address-cells = <1>;
+#size-cells = <0>;
+status = "okay";
+
+oplus_fp: fingerprint@0 {
+    /* UFF especial */
+    compatible = "oplus,fp_spi";
+
+    reg = <0>;
+    spi-max-frequency = <50000000>;
+    spi-id = <5>;
+    spi-irq = <22>;
+    spi-reg = <11019000>;
+
+    /* UFF gpio begin */
+    /* UFF gpio irq */
+    uff,gpio_irq = <&pio 22 0x00>;
+
+    /* UFF gpio rst */
+    uff,gpio_reset = <&pio 21 0x00>;
+
+    /* UFF gpio cs */
+    uff,gpio_cs = <&pio 99 0x00>;
+
+    pinctrl-names = "default", "fp_spi_driver", "fp_cs_func";
+    pinctrl-0 = <&gpio_uff_irq_default>, <&gpio_uff_reset_default>;
+    pinctrl-1 = <&gpio_uff_clk_6mA>, <&gpio_uff_mosi_6mA>, <&uff_gpio_miso_6mA>, <&uff_gpio_cs_6mA>;
+    pinctrl-2 = <&gpio_uff_cs_func>;
+
+    dvdd-supply = <&mt_pmic_vmch_ldo_reg>;
+    dvdd-config = <3300000 3300000 150000>;
+    power-num = <1>;
+    status = "okay";
+    power_source_1 {
+        power-mode = <1>;
+        power-name = "dvdd";
+        power-config = "dvdd-config";
+        delay-time = <0>;
+    };
+};
+};
+
+&pio{
+    gpio_uff_reset_default: gpio_uff_reset_default {
+        pins_cmd_dat {
+            pinmux = <PINMUX_GPIO21__FUNC_GPIO21>;
+            slew-rate = <1>;
+            output-low;
+        };
+    };
+
+    gpio_uff_irq_default: gpio_uff_irq_default {
+        pins_cmd_dat {
+            pinmux = <PINMUX_GPIO22__FUNC_GPIO22>;
+            slew-rate = <0>;
+            bias-pull-down;
+        };
+    };
+
+    gpio_uff_clk_6mA: gpio_uff_clk_6mA {
+        pins_cmd_dat {
+            pinmux = <PINMUX_GPIO98__FUNC_SPI5_CLK>;
+            drive-strength = <2>;
+        };
+    };
+
+    gpio_uff_mosi_6mA: gpio_uff_mosi_6mA {
+        pins_cmd_dat {
+            pinmux = <PINMUX_GPIO101__FUNC_SPI5_MO>;
+            drive-strength = <2>;
+        };
+    };
+
+    uff_gpio_miso_6mA: uff_gpio_miso_6mA {
+        pins_cmd_dat {
+            pinmux = <PINMUX_GPIO100__FUNC_SPI5_MI>;
+            drive-strength = <3>;
+        };
+    };
+
+    uff_gpio_cs_6mA: uff_gpio_cs_6mA{
+        pins_cmd_dat {
+            pinmux = <PINMUX_GPIO99__FUNC_SPI5_CSB>;
+            drive-strength = <2>;
+        };
+    };
+
+    gpio_uff_cs_func: gpio_uff_cs_func {
+        pins_cmd_dat {
+            pinmux = <PINMUX_GPIO99__FUNC_SPI5_CSB>;
+            drive-strength = <2>;
+        };
+    };
+};

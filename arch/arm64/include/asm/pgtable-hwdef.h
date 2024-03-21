@@ -99,11 +99,11 @@
 #define CONT_PTE_SHIFT		7
 #define CONT_PMD_SHIFT		5
 #else
-#define CONT_PTE_SHIFT		4
+#define CONT_PTE_SHIFT		(4 + PAGE_SHIFT)
 #define CONT_PMD_SHIFT		4
 #endif
 
-#define CONT_PTES		(1 << CONT_PTE_SHIFT)
+#define CONT_PTES		(1 << 4)
 #define CONT_PTE_SIZE		(CONT_PTES * PAGE_SIZE)
 #define CONT_PTE_MASK		(~(CONT_PTE_SIZE - 1))
 #define CONT_PMDS		(1 << CONT_PMD_SHIFT)

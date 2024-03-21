@@ -237,7 +237,8 @@ static inline int64_t getCurNS(void)
 	int64_t ns;
 	struct timespec time;
 
-	time.tv_sec = time.tv_nsec = 0;
+	time.tv_sec = 0;
+        time.tv_nsec = 0;
 	get_monotonic_boottime(&time);
 	ns = time.tv_sec * 1000000000LL + time.tv_nsec;
 

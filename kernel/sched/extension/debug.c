@@ -4,7 +4,12 @@
  */
 
 #include <linux/cpufreq.h>
+#if defined(OPLUS_FEATURE_SCHEDUTIL_USE_TL) && defined(CONFIG_SCHEDUTIL_USE_TL)
+#include "tuning.h"
+#define BUFFER_SIZE 1024
+#else
 #include "sched.h"
+#endif
 
 struct eas_data {
 	struct attribute_group *attr_group;
@@ -93,6 +98,16 @@ int show_perf_order_domain_info(char *buf, int buf_size)
 			);
 	}
 
+#if defined(OPLUS_FEATURE_SCHEDUTIL_USE_TL) && defined(CONFIG_SCHEDUTIL_USE_TL)
+	len += snprintf(buf+len,buf_size-len,
+		"capacity_margin : %d\n",
+		get_capacity_margin());
+
+	len += snprintf(buf+len,buf_size-len,
+		"get_capacity_margin_dvfs : %d\n",
+		get_capacity_margin_dvfs());
+#endif
+
 	return len;
 }
 #endif
@@ -112,8 +127,58 @@ static ssize_t show_eas_info_attr(struct kobject *kobj,
 	return len;
 }
 
+#if defined(OPLUS_FEATURE_SCHEDUTIL_USE_TL) && defined(CONFIG_SCHEDUTIL_USE_TL)
+static ssize_t store_set_capacity_margin(struct kobject *kobj,
+                                        struct kobj_attribute *attr,
+                                         const char *buf,size_t count)
+{
+	int val = 0 ;
+	char acBuffer[BUFFER_SIZE];
+	int arg;
+	bool core_ctl_enable = false ;
+
+	if((count > 0) && (count < BUFFER_SIZE))
+	{
+		if(scnprintf(acBuffer,BUFFER_SIZE,"%s",buf))
+			if(kstrtoint(acBuffer,0,&arg) == 0)
+				val = arg;
+			else
+				return count;
+	}
+
+	if(val == 0)
+	{
+		core_ctl_enable = false;
+		set_capacity_margin(1024);
+		set_capacity_margin_dvfs(1024);
+		set_capacity_margin_dvfs_changed(true);
+		pr_err("set capacity margin : 1024\n");
+	}
+	else if(val == 1)
+	{
+		core_ctl_enable = true;
+		set_capacity_margin(1280);
+		set_capacity_margin_dvfs(1280);
+		set_capacity_margin_dvfs_changed(false);
+		pr_err("set capacity margin : 1280\n");
+	}
+	else
+	{
+		set_capacity_margin(val);
+		set_capacity_margin_dvfs(val);
+		set_capacity_margin_dvfs_changed(true);
+		pr_err("set capacity margin : %d\n",val);
+	}
+	return count;
+}
+#endif
+
 static struct kobj_attribute eas_info_attr =
+#if defined(OPLUS_FEATURE_SCHEDUTIL_USE_TL) && defined(CONFIG_SCHEDUTIL_USE_TL)
+__ATTR(info, 0660, show_eas_info_attr, store_set_capacity_margin);
+#else
 __ATTR(info, 0400, show_eas_info_attr, NULL);
+#endif
 
 static struct attribute *eas_attrs[] = {
 	&eas_info_attr.attr,

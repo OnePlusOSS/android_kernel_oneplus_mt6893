@@ -65,6 +65,9 @@
 #include <linux/lockdep.h>
 #include <linux/file.h>
 #include <linux/tracehook.h>
+#if defined(CONFIG_CONT_PTE_HUGEPAGE)
+#include <linux/seq_buf.h>
+#endif
 #include "internal.h"
 #include <net/sock.h>
 #include <net/ip.h>
@@ -73,6 +76,7 @@
 #include <linux/uaccess.h>
 
 #include <trace/events/vmscan.h>
+#include <trace/hooks/vh_vmscan.h>
 
 struct cgroup_subsys memory_cgrp_subsys __read_mostly;
 EXPORT_SYMBOL(memory_cgrp_subsys);
@@ -688,6 +692,24 @@ mem_cgroup_largest_soft_limit_node(struct mem_cgroup_tree_per_node *mctz)
 	return mz;
 }
 
+#if defined(CONFIG_CONT_PTE_HUGEPAGE) && CONFIG_CONT_PTE_HUGEPAGE_LRU
+struct mem_cgroup_per_node *chp_lruvec_to_memcg_pn(struct lruvec *lruvec)
+{
+	struct deferred_split *ds_queue = NULL;
+	struct mem_cgroup *memcg = NULL;
+	struct mem_cgroup_per_node *pn = NULL;
+	struct chp_lruvec *chp_lruvec = NULL;
+
+	chp_lruvec = container_of(lruvec, struct chp_lruvec, lruvec);
+	ds_queue = chp_lruvec->ds;
+	memcg = container_of(ds_queue, struct mem_cgroup, deferred_split_queue);
+	pn = memcg->nodeinfo[0];
+
+	CHP_BUG_ON(!ds_queue || !memcg || !pn);
+	return pn;
+}
+#endif
+
 static unsigned long memcg_sum_events(struct mem_cgroup *memcg,
 				      int event)
 {
@@ -729,6 +751,7 @@ static void mem_cgroup_charge_statistics(struct mem_cgroup *memcg,
 unsigned long mem_cgroup_node_nr_lru_pages(struct mem_cgroup *memcg,
 					   int nid, unsigned int lru_mask)
 {
+	/* FIXME: chp lruvec to do!! */
 	struct lruvec *lruvec = mem_cgroup_lruvec(NODE_DATA(nid), memcg);
 	unsigned long nr = 0;
 	enum lru_list lru;
@@ -1156,6 +1179,46 @@ out:
 	return lruvec;
 }
 
+#if defined(CONFIG_CONT_PTE_HUGEPAGE) && CONFIG_CONT_PTE_HUGEPAGE_LRU
+struct lruvec *mem_cgroup_chp_page_lruvec(struct page *page, struct pglist_data *pgdat)
+{
+	struct mem_cgroup *memcg;
+	struct chp_lruvec *chp_lruvec;
+	struct lruvec *lruvec;
+
+	if (mem_cgroup_disabled()) {
+		chp_lruvec = (struct chp_lruvec *)pgdat->split_queue_len;
+		lruvec = &chp_lruvec->lruvec;
+		CHP_BUG_ON(!lruvec);
+		goto out;
+	}
+
+	memcg = page->mem_cgroup;
+	/*
+	 * Swapcache readahead pages are added to the LRU - and
+	 * possibly migrated - before they are charged.
+	 */
+	if (!memcg)
+		memcg = root_mem_cgroup;
+
+	CHP_BUG_ON(MAX_NUMNODES > 1);
+	chp_lruvec = (struct chp_lruvec *)memcg->deferred_split_queue.split_queue_len;
+	CHP_BUG_ON(!chp_lruvec);
+	lruvec = &chp_lruvec->lruvec;
+	CHP_BUG_ON(!lruvec);
+out:
+	/*
+	 * Since a node can be onlined after the mem_cgroup was created,
+	 * we have to be prepared to initialize lruvec->zone here;
+	 * and if offlined then reonlined, we need to reinitialize it.
+	 */
+	if (unlikely(lruvec->pgdat != pgdat))
+		lruvec->pgdat = pgdat;
+
+	return lruvec;
+}
+#endif
+
 /**
  * mem_cgroup_update_lru_size - account for adding or removing an lru page
  * @lruvec: mem_cgroup per zone lru vector
@@ -1177,19 +1240,32 @@ void mem_cgroup_update_lru_size(struct lruvec *lruvec, enum lru_list lru,
 	if (mem_cgroup_disabled())
 		return;
 
-	mz = container_of(lruvec, struct mem_cgroup_per_node, lruvec);
-	lru_size = &mz->lru_zone_size[zid][lru];
+#if defined(CONFIG_CONT_PTE_HUGEPAGE) && CONFIG_CONT_PTE_HUGEPAGE_LRU
+	if (is_chp_lruvec(lruvec)) {
+		struct chp_lruvec *chp_lruvec = NULL;
+
+		chp_lruvec = container_of(lruvec, struct chp_lruvec, lruvec);
+		lru_size = &chp_lruvec->lru_zone_size[zid][lru];
+	}
+	else
+#endif
+	{
+		mz = container_of(lruvec, struct mem_cgroup_per_node, lruvec);
+		lru_size = &mz->lru_zone_size[zid][lru];
+	}
 
 	if (nr_pages < 0)
 		*lru_size += nr_pages;
 
 	size = *lru_size;
+#ifndef CONFIG_LRU_GEN
 	if (WARN_ONCE(size < 0,
 		"%s(%p, %d, %d): lru_size %ld\n",
 		__func__, lruvec, lru, nr_pages, size)) {
 		VM_BUG_ON(1);
 		*lru_size = 0;
 	}
+#endif
 
 	if (nr_pages > 0)
 		*lru_size += nr_pages;
@@ -2390,9 +2466,14 @@ static void lock_page_lru(struct page *page, int *isolated)
 	if (PageLRU(page)) {
 		struct lruvec *lruvec;
 
-		lruvec = mem_cgroup_page_lruvec(page, zone->zone_pgdat);
+#if defined(CONFIG_CONT_PTE_HUGEPAGE) && CONFIG_CONT_PTE_HUGEPAGE_LRU
+		if (ContPteCMAHugePageHead(page))
+			lruvec = mem_cgroup_chp_page_lruvec(page, zone->zone_pgdat);
+		else
+#endif
+			lruvec = mem_cgroup_page_lruvec(page, zone->zone_pgdat);
 		ClearPageLRU(page);
-		del_page_from_lru_list(page, lruvec, page_lru(page));
+		del_page_from_lru_list(page, lruvec);
 		*isolated = 1;
 	} else
 		*isolated = 0;
@@ -2405,10 +2486,15 @@ static void unlock_page_lru(struct page *page, int isolated)
 	if (isolated) {
 		struct lruvec *lruvec;
 
-		lruvec = mem_cgroup_page_lruvec(page, zone->zone_pgdat);
+#if defined(CONFIG_CONT_PTE_HUGEPAGE) && CONFIG_CONT_PTE_HUGEPAGE_LRU
+		if (ContPteCMAHugePageHead(page))
+			lruvec = mem_cgroup_chp_page_lruvec(page, zone->zone_pgdat);
+		else
+#endif
+			lruvec = mem_cgroup_page_lruvec(page, zone->zone_pgdat);
 		VM_BUG_ON_PAGE(PageLRU(page), page);
 		SetPageLRU(page);
-		add_page_to_lru_list(page, lruvec, page_lru(page));
+		add_page_to_lru_list(page, lruvec);
 	}
 	spin_unlock_irq(zone_lru_lock(zone));
 }
@@ -2440,6 +2526,7 @@ static void commit_charge(struct page *page, struct mem_cgroup *memcg,
 	 *
 	 * - a page cache insertion, a swapin fault, or a migration
 	 *   have the page locked
+	 * - mem_cgroup_trylock_pages()
 	 */
 	page->mem_cgroup = memcg;
 
@@ -3516,8 +3603,8 @@ static int memcg_stat_show(struct seq_file *m, void *v)
 		pg_data_t *pgdat;
 		struct mem_cgroup_per_node *mz;
 		struct zone_reclaim_stat *rstat;
-		unsigned long recent_rotated[2] = {0, 0};
-		unsigned long recent_scanned[2] = {0, 0};
+		unsigned long recent_rotated[ANON_AND_FILE] = {};
+		unsigned long recent_scanned[ANON_AND_FILE] = {};
 
 		for_each_online_pgdat(pgdat) {
 			mz = mem_cgroup_nodeinfo(memcg, pgdat->node_id);
@@ -3537,6 +3624,105 @@ static int memcg_stat_show(struct seq_file *m, void *v)
 
 	return 0;
 }
+
+#if defined(CONFIG_CONT_PTE_HUGEPAGE) && CONFIG_CONT_PTE_HUGEPAGE_LRU
+static char *chp_lru_text[NR_LRU_LISTS] = {
+	"inactive_anon",
+	"active_anon",
+	"inactive_file",
+	"active_file",
+	"unevictable",
+};
+
+static char *chp_lru_stat_format(struct mem_cgroup *memcg,
+		struct mem_cgroup_per_node *mz,
+		struct chp_lruvec *chp_lruvec)
+{
+	int i;
+	int zid, lru;
+	int proportion[2] = { 0 };
+	struct seq_buf s;
+	unsigned long lru_size;
+	unsigned long total_lru_size[2][NR_LRU_LISTS] = { 0 };
+	unsigned long total_size[2] = { 0 };
+	unsigned long memcg_total_lru_size[NR_LRU_LISTS] = { 0 };
+	unsigned long memcg_total_size = 0;
+	pg_data_t *pgdat = NODE_DATA(0);
+
+	seq_buf_init(&s, kmalloc(PAGE_SIZE, GFP_KERNEL), PAGE_SIZE);
+	if (!s.buffer)
+		return NULL;
+
+	for (i = 0; i < 2; i++) {
+		seq_buf_printf(&s, "-------------------- %s LRU --------------------\n", i ? "NORMAL" : "CHP");
+		seq_buf_printf(&s, "TOTAL LRU STAT\n");
+		for (lru = 0; lru < NR_LRU_LISTS; lru++) {
+			lru_size = 0;
+			for (zid = 0; zid < MAX_NR_ZONES; zid++) {
+				lru_size += i ? READ_ONCE(mz->lru_zone_size[zid][lru]) :
+					READ_ONCE(chp_lruvec->lru_zone_size[zid][lru]);
+			}
+			total_lru_size[i][lru] = lru_size;
+			memcg_total_lru_size[lru] += lru_size;
+			total_size[i] += lru_size;
+			seq_buf_printf(&s, "  LRU %s: %lu\n", chp_lru_text[lru], lru_size);
+		}
+
+		seq_buf_printf(&s, "ZONES LRU STAT\n");
+		for (zid = 0; zid < MAX_NR_ZONES; zid++) {
+			seq_buf_printf(&s, "  ZONE %s:\n", pgdat->node_zones[zid].name);
+			for (lru = 0; lru < NR_LRU_LISTS; lru++) {
+				seq_buf_printf(&s, "    LRU %s: %lu\n", chp_lru_text[lru],
+						i ? READ_ONCE(mz->lru_zone_size[zid][lru]) :
+						READ_ONCE(chp_lruvec->lru_zone_size[zid][lru]));
+			}
+		}
+	}
+
+	seq_buf_printf(&s, "-------------------- MEMCG TOTAOL LRU --------------------\n");
+	for (lru = 0; lru < NR_LRU_LISTS; lru++) {
+		memcg_total_size += memcg_total_lru_size[lru];
+		proportion[0] = (total_lru_size[0][lru] * 100) / memcg_total_lru_size[lru];
+		proportion[1] = (total_lru_size[1][lru] * 100) / memcg_total_lru_size[lru];
+
+		seq_buf_printf(&s, "LRU %s: %lu(page) %lu(Byte)  proportion-> %d%% chp, %d%% normal\n",
+				chp_lru_text[lru], memcg_total_lru_size[lru],
+				memcg_total_lru_size[lru] * PAGE_SIZE,
+				proportion[0], proportion[1]);
+	}
+	seq_buf_printf(&s, "memcg total size:%lu(page) %lu(Byte) \n",
+			memcg_total_size, memcg_total_size * PAGE_SIZE);
+	seq_buf_printf(&s, "  chp total size:%lu(page) %lu(Byte) proportion-> %d%%\n",
+			total_size[0], total_size[0] * PAGE_SIZE, (total_size[0] * 100) / memcg_total_size);
+	seq_buf_printf(&s, "  normal total size:%lu(page) %lu(Byte) proportion-> %d%%\n",
+			total_size[1], total_size[1] * PAGE_SIZE, (total_size[1] * 100) / memcg_total_size);
+
+	/* The above should easily fit into one page */
+	WARN_ON_ONCE(seq_buf_has_overflowed(&s));
+
+	return s.buffer;
+}
+
+int chp_lru_stat_show(struct seq_file *m, void *v)
+{
+	struct mem_cgroup *memcg = mem_cgroup_from_css(seq_css(m));
+	struct mem_cgroup_per_node *mz;
+	struct chp_lruvec *chp_lruvec;
+	char *buf;
+
+	CHP_BUG_ON(MAX_NUMNODES > 1);
+	mz = memcg->nodeinfo[0];
+	chp_lruvec = (struct chp_lruvec *)memcg->deferred_split_queue.split_queue_len;
+
+	buf = chp_lru_stat_format(memcg, mz, chp_lruvec);
+	if (!buf)
+		return -ENOMEM;
+	seq_puts(m, buf);
+	kfree(buf);
+
+	return 0;
+}
+#endif
 
 static u64 mem_cgroup_swappiness_read(struct cgroup_subsys_state *css,
 				      struct cftype *cft)
@@ -4277,6 +4463,12 @@ static struct cftype mem_cgroup_legacy_files[] = {
 		.name = "stat",
 		.seq_show = memcg_stat_show,
 	},
+#if defined(CONFIG_CONT_PTE_HUGEPAGE) && CONFIG_CONT_PTE_HUGEPAGE_LRU
+	{
+		.name = "chp_lru_stat",
+		.seq_show = chp_lru_stat_show,
+	},
+#endif
 	{
 		.name = "force_empty",
 		.write = mem_cgroup_force_empty_write,
@@ -4403,6 +4595,7 @@ static DEFINE_IDR(mem_cgroup_idr);
 static void mem_cgroup_id_remove(struct mem_cgroup *memcg)
 {
 	if (memcg->id.id > 0) {
+		trace_android_vh_mem_cgroup_id_remove(memcg);
 		idr_remove(&mem_cgroup_idr, memcg->id.id);
 		memcg->id.id = 0;
 	}
@@ -4446,6 +4639,29 @@ struct mem_cgroup *mem_cgroup_from_id(unsigned short id)
 	WARN_ON_ONCE(!rcu_read_lock_held());
 	return idr_find(&mem_cgroup_idr, id);
 }
+EXPORT_SYMBOL(mem_cgroup_from_id);
+
+#if defined(CONFIG_CONT_PTE_HUGEPAGE) && CONFIG_CONT_PTE_HUGEPAGE_LRU
+static int memcg_init_chp_lruvec(struct mem_cgroup *memcg)
+{
+	struct deferred_split *ds_queue = &memcg->deferred_split_queue;
+	struct chp_lruvec *chp_lruvec = NULL;
+	struct lruvec *lruvec = NULL;
+
+	chp_lruvec = kzalloc(sizeof(struct chp_lruvec), GFP_KERNEL);
+	if (!chp_lruvec)
+		return -ENOMEM;
+
+	lruvec = &chp_lruvec->lruvec;
+	lruvec_init(lruvec);
+	set_bit(LRUVEC_FOR_CHP, &lruvec->flags);
+
+	ds_queue->split_queue_len = (unsigned long)chp_lruvec;
+	chp_lruvec->ds = ds_queue;
+
+	return 0;
+}
+#endif
 
 static int alloc_mem_cgroup_per_node_info(struct mem_cgroup *memcg, int node)
 {
@@ -4497,12 +4713,17 @@ static void __mem_cgroup_free(struct mem_cgroup *memcg)
 
 	for_each_node(node)
 		free_mem_cgroup_per_node_info(memcg, node);
+#if defined(CONFIG_CONT_PTE_HUGEPAGE) && CONFIG_CONT_PTE_HUGEPAGE_LRU
+	kfree((void *)memcg->deferred_split_queue.split_queue_len);
+#endif
 	free_percpu(memcg->stat_cpu);
+	trace_android_vh_mem_cgroup_free(memcg);
 	kfree(memcg);
 }
 
 static void mem_cgroup_free(struct mem_cgroup *memcg)
 {
+	lru_gen_exit_memcg(memcg);
 	memcg_wb_domain_exit(memcg);
 	__mem_cgroup_free(memcg);
 }
@@ -4552,7 +4773,20 @@ static struct mem_cgroup *mem_cgroup_alloc(void)
 #ifdef CONFIG_CGROUP_WRITEBACK
 	INIT_LIST_HEAD(&memcg->cgwb_list);
 #endif
+
+#if defined(CONFIG_CONT_PTE_HUGEPAGE) && CONFIG_CONT_PTE_HUGEPAGE_LRU
+	CHP_BUG_ON(MAX_NUMNODES > 1);
+
+	if (memcg_init_chp_lruvec(memcg)) {
+		pr_err("@@@%s:%d comm:%s pid:%d -> fail to memcg_init_chp_lruvec!@\n",
+				__func__, __LINE__, current->comm, current->pid);
+		goto fail;
+	}
+#endif
+
 	idr_replace(&mem_cgroup_idr, memcg, memcg->id.id);
+	lru_gen_init_memcg(memcg);
+	trace_android_vh_mem_cgroup_alloc(memcg);
 	return memcg;
 fail:
 	mem_cgroup_id_remove(memcg);
@@ -4636,6 +4870,7 @@ static int mem_cgroup_css_online(struct cgroup_subsys_state *css)
 	/* Online state pins memcg ID, memcg ID pins CSS */
 	atomic_set(&memcg->id.ref, 1);
 	css_get(css);
+	trace_android_vh_mem_cgroup_css_online(css, memcg);
 	return 0;
 }
 
@@ -4644,6 +4879,7 @@ static void mem_cgroup_css_offline(struct cgroup_subsys_state *css)
 	struct mem_cgroup *memcg = mem_cgroup_from_css(css);
 	struct mem_cgroup_event *event, *tmp;
 
+	trace_android_vh_mem_cgroup_css_offline(css, memcg);
 	/*
 	 * Unregister events and notify userspace.
 	 * Notify userspace about cgroup removing only after rmdir of cgroup
@@ -5427,6 +5663,29 @@ static void mem_cgroup_move_task(void)
 }
 #endif
 
+#ifdef CONFIG_LRU_GEN
+static void mem_cgroup_attach(struct cgroup_taskset *tset)
+{
+	struct cgroup_subsys_state *css;
+	struct task_struct *task = NULL;
+
+	cgroup_taskset_for_each_leader(task, css, tset)
+		break;
+
+	if (!task)
+		return;
+
+	task_lock(task);
+	if (task->mm && task->mm->owner == task)
+		lru_gen_migrate_mm(task->mm);
+	task_unlock(task);
+}
+#else
+static void mem_cgroup_attach(struct cgroup_taskset *tset)
+{
+}
+#endif /* CONFIG_LRU_GEN */
+
 /*
  * Cgroup retains root cgroups across [un]mount cycles making it necessary
  * to verify whether we're attached to the default hierarchy on each mount
@@ -5779,6 +6038,12 @@ static struct cftype memory_files[] = {
 		.flags = CFTYPE_NOT_ON_ROOT,
 		.seq_show = memory_stat_show,
 	},
+#if defined(CONFIG_CONT_PTE_HUGEPAGE) && CONFIG_CONT_PTE_HUGEPAGE_LRU
+	{
+		.name = "chp_lru_stat",
+		.seq_show = chp_lru_stat_show,
+	},
+#endif
 	{
 		.name = "oom.group",
 		.flags = CFTYPE_NOT_ON_ROOT | CFTYPE_NS_DELEGATABLE,
@@ -5796,6 +6061,7 @@ struct cgroup_subsys memory_cgrp_subsys = {
 	.css_free = mem_cgroup_css_free,
 	.css_reset = mem_cgroup_css_reset,
 	.can_attach = mem_cgroup_can_attach,
+	.attach = mem_cgroup_attach,
 	.cancel_attach = mem_cgroup_cancel_attach,
 	.post_attach = mem_cgroup_move_task,
 	.bind = mem_cgroup_bind,

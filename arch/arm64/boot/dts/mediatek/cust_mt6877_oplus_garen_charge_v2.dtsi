@@ -1,0 +1,29 @@
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+* Copyright (C) 2020-2021 Oplus. All rights reserved.
+*/
+
+//#ifdef OPLUS_FEATURE_CHG_BASIC
+/*
+ * 20181: EVT2~MP3
+ * 20183: EVB1~MP3
+ * 20355: DVT1~MP3
+ *
+ * haptic ic: AW8697->TFA9873
+ *
+ * AP_AW: GPIO117->NC
+ * LRA_RST: GPIO118->I2S1_BCLK_SMPA
+ * AW_INT: GPIO3->NC
+ *
+ * I2C7: (GPIO134/GPIO135)remove external pull-up resistor
+ */
+#include "mediatek/cust_mt6877_oplus_garen_charge_common.dtsi"
+/delete-node/ &aw8697_haptic;
+/delete-node/ &aw_irq_gpio_default;
+
+&i2c7_i2c_state {
+	pins_cmd_dat {
+		bias-pull-up;
+	};
+};
+//#endif /*OPLUS_FEATURE_CHG_BASIC*/

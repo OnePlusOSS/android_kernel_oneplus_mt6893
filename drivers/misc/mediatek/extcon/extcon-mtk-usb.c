@@ -26,6 +26,35 @@
 #include "tcpm.h"
 #endif
 
+#if (defined OPLUS_FEATURE_CHG_BASIC) && ((defined CONFIG_OPLUS_CHARGER_MTK6765S) || (defined CONFIG_OPLUS_CHARGER_MTK6769R))
+extern int set_chr_enable_otg(unsigned int enable);
+#endif
+
+#ifdef OPLUS_FEATURE_CHG_BASIC
+#ifndef CONFIG_TCPC_CLASS
+static bool otg_switch_state;
+extern void oplus_gpio_switch_lock(void);
+extern void oplus_gpio_switch_unlock(void);
+extern void oplus_gpio_value_switch(unsigned int pin, unsigned int val);
+extern void oplus_gpio_set_direction(unsigned int pin);
+extern void mt_usb_host_disconnect(int delay);
+#define OTG_ID_GPIO_NUM 41
+extern int oplus_get_otg_online_status(void);
+#endif
+#endif
+
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/* Add for OTG */
+
+/* Add for single_bat_svooc OTG */
+extern int is_vooc_support_single_batt_svooc(void);
+extern void vooc_enable_cp_for_otg(int en);
+
+extern bool oplus_otgctl_by_buckboost(void);
+extern int oplus_otg_enable_by_buckboost(void);
+extern int oplus_otg_disable_by_buckboost(void);
+#endif
+
 #ifdef CONFIG_MTK_USB_TYPEC_U3_MUX
 #include "mux_switch.h"
 #endif
@@ -114,21 +143,17 @@ static int mtk_usb_extcon_set_role(struct mtk_extcon_info *extcon,
 
 	return 0;
 }
-
-#if !defined(CONFIG_USB_MTK_HDRC)
-void mt_usb_connect()
+#ifndef CONFIG_TCPC_CLASS
+void oplus_usb_extcon_set_role(unsigned int role)
 {
-	/* if (g_extcon)
-		mtk_usb_extcon_set_role(extcon, DUAL_PROP_DR_DEVICE); */
-}
-EXPORT_SYMBOL(mt_usb_connect);
+	if(!g_extcon) {
+		pr_info("g_extcon = NULL\n");
+		return;
+	}
 
-void mt_usb_disconnect()
-{
-	/* if (g_extcon)
-		mtk_usb_extcon_set_role(extcon, DUAL_PROP_DR_NONE); */
+	mtk_usb_extcon_set_role(g_extcon, role);
 }
-EXPORT_SYMBOL(mt_usb_disconnect);
+EXPORT_SYMBOL_GPL(oplus_usb_extcon_set_role);
 #endif
 
 static int mtk_usb_extcon_psy_notifier(struct notifier_block *nb,
@@ -195,7 +220,11 @@ static int mtk_usb_extcon_psy_init(struct mtk_extcon_info *extcon)
 	union power_supply_propval ival;
 	union power_supply_propval tval;
 
+#ifdef CONFIG_CHARGER_BQ2560X
+	extcon->usb_psy = power_supply_get_by_name("bq2560x");
+#else
 	extcon->usb_psy = devm_power_supply_get_by_phandle(dev, "charger");
+#endif
 	if (IS_ERR_OR_NULL(extcon->usb_psy)) {
 		dev_err(dev, "fail to get usb_psy\n");
 		extcon->usb_psy = NULL;
@@ -258,17 +287,48 @@ static int mtk_usb_extcon_set_vbus_v1(bool is_on) {
 #if defined(CONFIG_MTK_GAUGE_VERSION) && (CONFIG_MTK_GAUGE_VERSION == 30)
 	pr_info("%s: is_on=%d\n", __func__, is_on);
 	if (is_on) {
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/* Modify for OTG */
+
+		printk("typec vbus_on\n");
+		if (is_vooc_support_single_batt_svooc() == true){
+			vooc_enable_cp_for_otg(1);
+		}
+
+		if (oplus_otgctl_by_buckboost()) {
+			oplus_otg_enable_by_buckboost();
+		} else {
+			charger_dev_enable_otg(primary_charger, true);
+			charger_dev_set_boost_current_limit(primary_charger,
+				g_extcon->vbus_cur);
+		}
+#else
 		charger_dev_enable_otg(primary_charger, true);
 		charger_dev_set_boost_current_limit(primary_charger,
-			1500000);
+			g_extcon->vbus_cur);
 		#if 0
 		{// # workaround
 			charger_dev_kick_wdt(primary_charger);
 			enable_boost_polling(true);
 		}
 		#endif
+#endif/* Modify for OTG */
 	} else {
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/* Modify for OTG */
+		if (oplus_otgctl_by_buckboost()) {
+			oplus_otg_disable_by_buckboost();
+		} else {
+			charger_dev_enable_otg(primary_charger, false);
+		}
+
+		if (is_vooc_support_single_batt_svooc() == true){
+			vooc_enable_cp_for_otg(0);
+		}
+
+#else /* Modify for OTG */
 		charger_dev_enable_otg(primary_charger, false);
+#endif /* Modify for OTG */
 		#if 0
 			//# workaround
 			enable_boost_polling(false);
@@ -277,8 +337,14 @@ static int mtk_usb_extcon_set_vbus_v1(bool is_on) {
 #else
 	if (is_on) {
 		charger_dev_enable_otg(primary_charger, true);
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/* Modify for OTG */
+		charger_dev_set_boost_current_limit(primary_charger,
+			g_extcon->vbus_cur);
+#else /* Modify for OTG */
 		charger_dev_set_boost_current_limit(primary_charger,
 			1500000);
+#endif /* Modify for OTG */
 	} else {
 		charger_dev_enable_otg(primary_charger, false);
 	}
@@ -353,7 +419,11 @@ static int mtk_extcon_tcpc_notifier(struct notifier_block *nb,
 		dev_info(dev, "source vbus = %dmv\n",
 				 noti->vbus_state.mv);
 		vbus_on = (noti->vbus_state.mv) ? true : false;
+#if (defined OPLUS_FEATURE_CHG_BASIC) && ((defined CONFIG_OPLUS_CHARGER_MTK6765S) || (defined CONFIG_OPLUS_CHARGER_MTK6769R))
+		set_chr_enable_otg(vbus_on);
+#else
 		mtk_usb_extcon_set_vbus(extcon, vbus_on);
+#endif
 		break;
 	case TCP_NOTIFY_TYPEC_STATE:
 		dev_info(dev, "old_state=%d, new_state=%d\n",
@@ -464,11 +534,42 @@ static void mtk_usb_extcon_detect_cable(struct work_struct *work)
 
 	/* at first we clean states which are no longer active */
 	if (id) {
+#if (defined OPLUS_FEATURE_CHG_BASIC) && ((defined CONFIG_OPLUS_CHARGER_MTK6765S) || (defined CONFIG_OPLUS_CHARGER_MTK6769R))
+		set_chr_enable_otg(false);
+#ifndef CONFIG_TCPC_CLASS
+/* modfied for open otg_switch cause usb disconnect */
+		if (g_extcon->c_role == DUAL_PROP_DR_DEVICE) {
+			//do nothing
+		} else {
+			mtk_usb_extcon_set_role(extcon, DUAL_PROP_DR_NONE);
+		}
+#else
+		mtk_usb_extcon_set_role(extcon, DUAL_PROP_DR_NONE);
+#endif
+#else
 		mtk_usb_extcon_set_vbus(extcon, false);
 		mtk_usb_extcon_set_role(extcon, DUAL_PROP_DR_NONE);
+#endif
 	} else {
+#if (defined OPLUS_FEATURE_CHG_BASIC) && ((defined CONFIG_OPLUS_CHARGER_MTK6765S) || (defined CONFIG_OPLUS_CHARGER_MTK6769R))
+#ifndef CONFIG_TCPC_CLASS
+		if (otg_switch_state == true) {
+			set_chr_enable_otg(true);
+			mtk_usb_extcon_set_role(extcon, DUAL_PROP_DR_HOST);
+		} else {
+			set_chr_enable_otg(false);
+			if (g_extcon->c_role != DUAL_PROP_DR_DEVICE) {
+				mtk_usb_extcon_set_role(extcon, DUAL_PROP_DR_NONE);
+			}
+		}
+#else
+		set_chr_enable_otg(true);
+		mtk_usb_extcon_set_role(extcon, DUAL_PROP_DR_HOST);
+#endif
+#else
 		mtk_usb_extcon_set_vbus(extcon, true);
 		mtk_usb_extcon_set_role(extcon, DUAL_PROP_DR_HOST);
+#endif
 	}
 }
 
@@ -520,8 +621,15 @@ static int mtk_usb_extcon_id_pin_init(struct mtk_extcon_info *extcon)
 	id = extcon->id_gpiod ?	gpiod_get_value_cansleep(extcon->id_gpiod) : 1;
 	dev_info(extcon->dev, "id value : %d\n", id);
 	if (!id) {
+#if (defined OPLUS_FEATURE_CHG_BASIC) && ((defined CONFIG_OPLUS_CHARGER_MTK6765S) || (defined CONFIG_OPLUS_CHARGER_MTK6769R))
+#ifdef CONFIG_TCPC_CLASS
+		set_chr_enable_otg(true);
+		mtk_usb_extcon_set_role(extcon, DUAL_PROP_DR_HOST);
+#endif
+#else
 		mtk_usb_extcon_set_vbus(extcon, true);
 		mtk_usb_extcon_set_role(extcon, DUAL_PROP_DR_HOST);
+#endif
 	}
 
 	return 0;
@@ -564,6 +672,36 @@ void mt_usb_disconnect_v1(void)
 }
 EXPORT_SYMBOL_GPL(mt_usb_disconnect_v1);
 #endif //ADAPT_PSY_V1
+
+#ifdef OPLUS_FEATURE_CHG_BASIC
+#ifndef CONFIG_TCPC_CLASS
+void otg_switch_mode(bool value)
+{
+	if (value){
+		otg_switch_state = true;
+		/* add for first boot when otg connected */
+		if (g_extcon->c_role == DUAL_PROP_DR_HOST &&
+			oplus_get_otg_online_status() == true) {
+			return;
+		}
+		oplus_gpio_switch_lock();
+		oplus_gpio_value_switch(OTG_ID_GPIO_NUM, 1);
+		oplus_gpio_switch_unlock();
+		oplus_gpio_set_direction(OTG_ID_GPIO_NUM);
+	} else {
+		otg_switch_state = false;
+		oplus_gpio_switch_lock();
+		oplus_gpio_value_switch(OTG_ID_GPIO_NUM, 0);
+		oplus_gpio_switch_unlock();
+		if (g_extcon->c_role != DUAL_PROP_DR_DEVICE) {
+			mt_usb_host_disconnect(0);
+			set_chr_enable_otg(false);
+			mtk_usb_extcon_set_role(g_extcon, DUAL_PROP_DR_NONE);
+		}
+	}
+}
+#endif
+#endif
 
 static int mtk_usb_extcon_probe(struct platform_device *pdev)
 {
@@ -628,8 +766,15 @@ static int mtk_usb_extcon_probe(struct platform_device *pdev)
 					&extcon->vbus_vol))
 		dev_info(dev, "vbus-voltage=%d", extcon->vbus_vol);
 
-	if (!of_property_read_u32(dev->of_node, "vbus-current",
-					&extcon->vbus_cur))
+	if (of_property_read_u32(dev->of_node, "vbus-current",
+					&extcon->vbus_cur) >= 0) {
+	} else {
+#ifdef OPLUS_FEATURE_CHG_BASIC
+		extcon->vbus_cur = 1100000;
+#else
+		extcon->vbus_cur = 1500000;
+#endif
+	}
 		dev_info(dev, "vbus-current=%d", extcon->vbus_cur);
 
 	extcon->bypss_typec_sink =
@@ -673,6 +818,12 @@ static int mtk_usb_extcon_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, extcon);
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+#ifndef CONFIG_TCPC_CLASS
+	otg_switch_mode(false);
+	dev_err(dev, "default set otg swith close and set gpio value low\n");
+#endif
+#endif
 	return 0;
 }
 

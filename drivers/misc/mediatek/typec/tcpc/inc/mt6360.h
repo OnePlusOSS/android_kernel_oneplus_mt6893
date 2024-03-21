@@ -379,9 +379,15 @@ enum mt6360_id_rupsel {
 #define MT6360_RPDET_ONESHOT			BIT(6)
 
 #if ENABLE_MT6360_DBG
+#ifdef OPLUS_FEATURE_CHG_BASIC
+#define MT6360_INFO(format, args...) \
+	pd_dbg_info("line-%d: " format,\
+	__LINE__, ##args)
+#else
 #define MT6360_INFO(format, args...) \
 	pd_dbg_info("%s() line-%d: " format,\
 	__func__, __LINE__, ##args)
+#endif /*OPLUS_FEATURE_CHG_BASIC*/
 #else
 #define MT6360_INFO(foramt, args...)
 #endif /* ENABLE_MT6360_DBG */

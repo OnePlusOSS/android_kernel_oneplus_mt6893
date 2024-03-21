@@ -848,7 +848,11 @@ int __vma_adjust(struct vm_area_struct *vma, unsigned long start,
 		}
 	}
 again:
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+	vma_adjust_cont_pte_trans_huge(orig_vma, start, end, adjust_next);
+#else
 	vma_adjust_trans_huge(orig_vma, start, end, adjust_next);
+#endif
 
 	if (file) {
 		mapping = file->f_mapping;
@@ -1521,6 +1525,15 @@ unsigned long do_mmap(struct file *file, unsigned long addr,
 		if (!file_mmap_ok(file, inode, pgoff, len))
 			return -EOVERFLOW;
 
+#if 0 // CONFIG_CONT_PTE_HUGEPAGE
+		/* jar is first mapped as R+W, then W is removed. but actually Android has
+		 * never written it. ignore WRITE and make jar eligible for hugepages.
+		 * Note: Ideally, we should fix it in Android.
+		 */
+		if (inode->may_cont_pte == JAR_HUGE)
+			vm_flags &= ~VM_WRITE;
+#endif
+
 		flags_mask = LEGACY_MAP_MASK | file->f_op->mmap_supported_flags;
 
 		switch (flags & MAP_TYPE) {
@@ -2170,7 +2183,17 @@ arch_get_unmapped_area(struct file *filp, unsigned long addr,
 	info.length = len;
 	info.low_limit = mm->mmap_base;
 	info.high_limit = TASK_SIZE;
+#ifndef CONFIG_CONT_PTE_HUGEPAGE
 	info.align_mask = 0;
+#else
+	/* don't change alignment for 32bit non-file pages */
+	if (test_thread_flag(TIF_32BIT) && (!filp || CONFIG_CONT_PTE_FILE_HUGEPAGE_DISABLE))
+		info.align_mask = 0;
+	else
+		info.align_mask = CONT_PTE_SIZE - 1;
+	if (filp && file_inode(filp) && file_inode(filp)->may_cont_pte)
+		info.align_offset = (pgoff & (HPAGE_CONT_PTE_NR - 1)) * PAGE_SIZE;
+#endif
 	info.align_offset = 0;
 	return vm_unmapped_area(&info);
 }
@@ -2214,6 +2237,17 @@ arch_get_unmapped_area_topdown(struct file *filp, const unsigned long addr0,
 	info.high_limit = mm->mmap_base;
 	info.align_mask = 0;
 	info.align_offset = 0;
+#ifndef CONFIG_CONT_PTE_HUGEPAGE
+	info.align_mask = 0;
+#else
+	/* don't change alignment for 32bit non-file pages */
+	if (test_thread_flag(TIF_32BIT) && (!filp || CONFIG_CONT_PTE_FILE_HUGEPAGE_DISABLE))
+		info.align_mask = 0;
+	else
+		info.align_mask = CONT_PTE_SIZE - 1;
+	if (filp && file_inode(filp) && file_inode(filp)->may_cont_pte)
+		info.align_offset = (pgoff & (HPAGE_CONT_PTE_NR - 1)) * PAGE_SIZE;
+#endif
 	addr = vm_unmapped_area(&info);
 
 	/*
@@ -3009,7 +3043,11 @@ SYSCALL_DEFINE5(remap_file_pages, unsigned long, start, unsigned long, size,
 			 * Split pmd and munlock page on the border
 			 * of the range.
 			 */
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+			vma_adjust_cont_pte_trans_huge(tmp, start, start + size, 0);
+#else
 			vma_adjust_trans_huge(tmp, start, start + size, 0);
+#endif
 
 			munlock_vma_pages_range(tmp,
 					max(tmp->vm_start, start),

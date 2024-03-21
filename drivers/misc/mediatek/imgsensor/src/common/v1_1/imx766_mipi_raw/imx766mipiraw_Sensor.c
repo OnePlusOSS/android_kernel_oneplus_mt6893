@@ -40,7 +40,7 @@
 #include "imx766mipiraw_Sensor.h"
 #include "imx766_eeprom.h"
 
-#undef VENDOR_EDIT
+#undef OPLUS_FEATURE_CAMERA_COMMON
 
 #define USE_BURST_MODE 1
 

@@ -1697,6 +1697,7 @@ int dpmgr_enable_event(disp_path_handle dp_handle, enum DISP_PATH_EVENT event)
 
 	if (!wq_handle->init) {
 		init_waitqueue_head(&(wq_handle->wq));
+		smp_wmb(); /* memory barrier */
 		wq_handle->init = 1;
 		wq_handle->data = 0;
 		wq_handle->event = event;

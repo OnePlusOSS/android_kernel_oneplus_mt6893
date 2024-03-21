@@ -1,0 +1,91 @@
+&i2c9 {
+	status = "ok";
+	qcom,clk-freq-out = <400000>;
+	ist8801@18 {
+		compatible = "oplus,hall-ist8801,up";
+		reg = <0x18>;
+		dhall,id = <1>;
+		vdd-supply = <&mt_pmic_vio28_ldo_reg>;
+		vio-supply = <&mt_pmic_vio18_ldo_reg>;
+		//interrupt-parent = <&tlmm>;
+		interrups = <12 0x02>;
+		dhall,irq-gpio = <&pio 12 0x2008>;
+		pinctrl-names = "ist8801_hall_up_active";
+		pinctrl-0 = <&ist8801_hall_up_active>;
+	};
+	ist8801@19 {
+		compatible = "oplus,hall-ist8801,down";
+		reg = <0x19>;
+		dhall,id = <2>;
+		vdd-supply = <&mt_pmic_vio28_ldo_reg>;
+		vio-supply = <&mt_pmic_vio18_ldo_reg>;
+		//interrupt-parent = <&tlmm>;
+		interrups = <13 0x02>;
+		dhall,irq-gpio = <&pio 13 0x2008>;
+		pinctrl-names = "ist8801_hall_down_active";
+		pinctrl-0 = <&ist8801_hall_down_active>;
+	};
+};
+
+&i2c9 {
+	status = "ok";
+	qcom,clk-freq-out = <400000>;
+	magnachip@0x0D {
+		compatible = "oplus,hall-mxm1120,up";
+		reg = <0x0D>;
+		dhall,id = <1>;
+		vdd-supply = <&mt_pmic_vio28_ldo_reg>;
+		vio-supply = <&mt_pmic_vio18_ldo_reg>;
+		//interrupt-parent = <&tlmm>;
+		interrups = <12 0x02>;
+		dhall,irq-gpio = <&pio 12 0x2008>;
+		pinctrl-names = "uphall_tri_state_key_active";
+		pinctrl-0 = <&uphall_tri_state_key_active>;
+	};
+	magnachip@0C {
+		compatible = "oplus,hall-mxm1120,down";
+		reg = <0x0C>;
+		dhall,id = <2>;
+		vdd-supply = <&mt_pmic_vio28_ldo_reg>;
+		vio-supply = <&mt_pmic_vio18_ldo_reg>;
+		//interrupt-parent = <&tlmm>;
+		interrups = <13 0x02>;
+		dhall,irq-gpio = <&pio 13 0x2008>;
+		pinctrl-names = "downhall_tri_state_key_active";
+		pinctrl-0 = <&downhall_tri_state_key_active>;
+	};
+};
+
+&pio {
+	ist8801_hall_up_active: ist8801_hall_up_active {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO12__FUNC_GPIO12>;
+			input-enable;
+			bias-pull-up;
+		};
+	};
+	ist8801_hall_down_active: ist8801_hall_down_active {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO13__FUNC_GPIO13>;
+			input-enable;
+			bias-pull-up;
+		};
+	};
+};
+
+&pio {
+	uphall_tri_state_key_active: uphall_tri_state_key_active {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO12__FUNC_GPIO12>;
+			input-enable;
+			bias-pull-up;
+		};
+	};
+	downhall_tri_state_key_active: downhall_tri_state_key_active {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO13__FUNC_GPIO13>;
+			input-enable;
+			bias-pull-up;
+		};
+	};
+};

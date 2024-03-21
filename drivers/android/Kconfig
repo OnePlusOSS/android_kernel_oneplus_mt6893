@@ -63,6 +63,11 @@ config ANDROID_BINDER_USER_TRACKING
 	  checked whether it executed overtime.
 	  If yes, printing out the detailed info.
 
+config OPLUS_BINDER_STRATEGY
+	default n
+	bool "config binder control"
+	help
+	  it helps to reduce anr by restricting background app binder behavior.
 endif # if ANDROID
 
 endmenu

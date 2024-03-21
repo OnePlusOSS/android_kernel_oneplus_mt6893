@@ -1189,9 +1189,11 @@ static int is_db_ok(struct musb *musb, struct musb_ep *musb_ep)
 
 	addr = ((ep->address & 0x80) >> 3)
 			| (ep->address & 0x0f);
-	list_for_each_entry(f, &cdev->config->functions, list) {
-		if (test_bit(addr, f->endpoints))
-			goto find_f;
+	if (!IS_ERR_OR_NULL(cdev->config)) {
+		list_for_each_entry(f, &cdev->config->functions, list) {
+			if (test_bit(addr, f->endpoints))
+				goto find_f;
+		}
 	}
 	goto done;
 find_f:
@@ -1439,8 +1441,10 @@ static int musb_gadget_enable
 		musb_writew(regs, MUSB_RXCSR, csr);
 #endif
 	}
-
-	fifo_setup(musb, musb_ep);
+	if (musb->is_active)
+		fifo_setup(musb, musb_ep);
+	else
+		goto fail;
 
 #ifndef CONFIG_MTK_MUSB_QMU_SUPPORT
 	/* NOTE:  all the I/O code _should_ work fine without DMA, in case
@@ -2254,16 +2258,16 @@ static int musb_gadget_vbus_draw
 static int usb_rdy;
 void set_usb_rdy(void)
 {
-	DBG(0, "set usb_rdy, wake up bat\n");
-	usb_rdy = 1;
+       DBG(0, "set usb_rdy, wake up bat\n");
+       usb_rdy = 1;
 }
 
 bool is_usb_rdy(void)
 {
-	if (usb_rdy)
-		return true;
-	else
-		return false;
+       if (usb_rdy)
+               return true;
+       else
+               return false;
 }
 EXPORT_SYMBOL(is_usb_rdy);
 
@@ -2294,7 +2298,7 @@ static int musb_gadget_pullup(struct usb_gadget *gadget, int is_on)
 
 	if (!musb->is_ready && is_on) {
 		musb->is_ready = true;
-		//set_usb_rdy();
+		set_usb_rdy();
 		/* direct issue connection work if usb is forced on */
 		if (musb_force_on) {
 			DBG(0, "mt_usb_connect() on is_ready begin\n");
@@ -2304,9 +2308,6 @@ static int musb_gadget_pullup(struct usb_gadget *gadget, int is_on)
 			mt_usb_reconnect();
 		}
 	}
-
-	if (!is_usb_rdy() && is_on)
-		set_usb_rdy();
 
 	spin_unlock_irqrestore(&musb->lock, flags);
 

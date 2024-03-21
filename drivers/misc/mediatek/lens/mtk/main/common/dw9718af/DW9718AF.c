@@ -1,9 +1,15 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2019 MediaTek Inc.
+ * Copyright (C) 2015 MediaTek Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
  */
-
-
 
 /*
  * DW9718AF voice coil motor driver
@@ -37,6 +43,44 @@ static unsigned long g_u4AF_INF;
 static unsigned long g_u4AF_MACRO = 1023;
 static unsigned long g_u4CurrPosition;
 
+#if 0
+static int i2c_read(u8 a_u2Addr, u8 *a_puBuff)
+{
+	int i4RetValue = 0;
+	char puReadCmd[1] = {(char)(a_u2Addr)};
+
+	i4RetValue = i2c_master_send(g_pstAF_I2Cclient, puReadCmd, 1);
+	if (i4RetValue < 0) {
+		LOG_INF(" I2C write failed!!\n");
+		return -1;
+	}
+
+	i4RetValue = i2c_master_recv(g_pstAF_I2Cclient, (char *)a_puBuff, 1);
+	if (i4RetValue < 0) {
+		LOG_INF(" I2C read failed!!\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+
+static u8 read_data(u8 addr)
+{
+	u8 get_byte = 0xFF;
+
+	i2c_read(addr, &get_byte);
+
+	return get_byte;
+}
+
+static int s4DW9718AF_ReadReg(unsigned short *a_pu2Result)
+{
+	*a_pu2Result = (read_data(0x02) << 8) + (read_data(0x03) & 0xff);
+
+	return 0;
+}
+#endif
 
 static int s4AF_WriteReg(u16 a_u2Data)
 {
@@ -131,7 +175,7 @@ static int initAF(void)
 static inline int moveAF(unsigned long a_u4Position)
 {
 	int ret = 0;
-
+    LOG_INF("move %d", a_u4Position);
 	if (s4AF_WriteReg((unsigned short)a_u4Position) == 0) {
 		g_u4CurrPosition = a_u4Position;
 		ret = 0;
@@ -200,15 +244,27 @@ long DW9718AF_Ioctl(struct file *a_pstFile, unsigned int a_u4Command,
 int DW9718AF_Release(struct inode *a_pstInode, struct file *a_pstFile)
 {
 	LOG_INF("Start\n");
-
-	if (*g_pAF_Opened == 2) {
-		int i4RetValue = 0;
-		char puSendCmd[2] = {0x00, 0x01};
+    if (*g_pAF_Opened == 2) {
+        int pos = g_u4CurrPosition;
+        int interval = 15;
+        if (pos > 0 && pos <= 1023) {
+            while (pos >= 138) {
+                pos = pos * 10 / 13 + 10;
+                if (s4AF_WriteReg(pos) != 0) {
+                    LOG_INF("AF DW9718TAF_Release I2C failed");
+                }
+                LOG_INF("DW9718T_Release p%d d%d", pos, interval);
+                mdelay(4);
+            }
+            s4AF_WriteReg(90);
+            mdelay(3);
+            s4AF_WriteReg(60);
+        }
 
 		LOG_INF("apply\n");
-
-		i4RetValue = i2c_master_send(g_pstAF_I2Cclient, puSendCmd, 2);
-	}
+        g_pstAF_I2Cclient->addr = AF_I2C_SLAVE_ADDR;
+        g_pstAF_I2Cclient->addr = g_pstAF_I2Cclient->addr >> 1;
+    }
 
 	if (*g_pAF_Opened) {
 		LOG_INF("Free\n");

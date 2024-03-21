@@ -28,5 +28,5 @@ struct mt6370_pmu_core_platdata {
 #define MT6370_INTWDT_TMRSHFT	(6)
 #define MT6370_INTDEG_TIMEMASK	(0x30)
 #define MT6370_INTDEG_TIMESHFT	(4)
-
+#define MT6370_DB_VPOS_DISCMASK        (0x20)
 #endif /* #ifndef __LINUX_MFD_MT6370_PMU_CORE_H */

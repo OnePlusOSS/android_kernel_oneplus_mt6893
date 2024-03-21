@@ -73,8 +73,22 @@
 #include "simulator_kernel.h"
 #endif
 
+#include <soc/oplus/system/oplus_project.h>
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
 
+#endif /*OPLUS_FEATURE_CHG_BASIC*/
+
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/* add for fg */
+#define SUBCMD_PARAL_VOLT  795
+#define SUBCMD_VOLT_CONV   2000
+
+#ifdef CONFIG_OPLUS_CHARGER_MTK6893
+/* Add for charging logo */
+extern int fgauge_is_start;
+#endif /*CONFIG_OPLUS_CHARGER_MTK6893*/
+#endif /*OPLUS_FEATURE_CHG_BASIC*/
 /* ============================================================ */
 /* global variable */
 /* ============================================================ */
@@ -233,6 +247,13 @@ int gauge_set_nag_en(int nafg_zcv_en)
 		return 0;
 
 #if defined(CONFIG_MTK_DISABLE_GAUGE)
+#elif defined OPLUS_FEATURE_CHG_BASIC
+/* Add for charger full status */
+	if (is_fuelgauge_apply() == true) {
+		if (gm.disable_nafg_int == false) {
+			gauge_dev_enable_nag_interrupt(gm.gdev, nafg_zcv_en);
+		}
+	}
 #else
 	if (gm.disable_nafg_int == false)
 		gauge_dev_enable_nag_interrupt(gm.gdev, nafg_zcv_en);
@@ -636,8 +657,10 @@ void fgauge_get_profile_id(void)
 	}
 
 	bm_err("[%s]auxadc_voltage is %d\n", __func__, auxadc_voltage);
+
 	id_volt = auxadc_voltage * 1500 / 4096;
-	bm_err("[%s]battery_id_voltage is %d\n", __func__, id_volt);
+
+		bm_err("[%s]battery_id_voltage is %d\n", __func__, id_volt);
 
 	if ((sizeof(g_battery_id_voltage) /
 		sizeof(int)) != TOTAL_BATTERY_NUMBER) {
@@ -667,15 +690,33 @@ void fgauge_get_profile_id(void)
 #else
 void fgauge_get_profile_id(void)
 {
-	if (get_ec()->debug_bat_id_en == 1)
-		gm.battery_id = get_ec()->debug_bat_id_value;
+#if defined CONFIG_OPLUS_CHARGER_MTK6893 || defined CONFIG_OPLUS_CHARGER_MTK6833
+	if (is_fuelgauge_apply() == true)
+		battery_type_check();
 	else
 		gm.battery_id = BATTERY_PROFILE_ID;
+#else
+	if ((odm_select_bat_ntc_support == ODM_SPACE_B_33W) ||
+	    (odm_select_bat_ntc_support == ODM_SPACE_D_18W)) {
+		if (is_fuelgauge_apply() == true)
+			battery_type_check();
+		else
+			gm.battery_id = 0;
+	} else {
+		if (get_ec()->debug_bat_id_en == 1)
+			gm.battery_id = get_ec()->debug_bat_id_value;
+		else
+			gm.battery_id = BATTERY_PROFILE_ID;
 
-	bm_err("[%s]Battery id=(%d) en:%d,%d\n",
-		__func__,
-		gm.battery_id, get_ec()->debug_bat_id_en,
-		get_ec()->debug_bat_id_value);
+		if (is_fuelgauge_apply() == true)
+			battery_type_check();
+
+		bm_err("[%s]Battery id=(%d) en:%d,%d\n",
+			__func__,
+			gm.battery_id, get_ec()->debug_bat_id_en,
+			get_ec()->debug_bat_id_value);
+	}
+#endif
 }
 #endif
 
@@ -1064,9 +1105,15 @@ void fg_custom_init_from_header(void)
 
 
 #ifdef CONFIG_OF
+#ifndef OPLUS_FEATURE_CHG_BASIC
 static int fg_read_dts_val(const struct device_node *np,
 		const char *node_srting,
 		int *param, int unit)
+#else
+int fg_read_dts_val(const struct device_node *np,
+		const char *node_srting,
+		int *param, int unit)
+#endif
 {
 	static unsigned int val;
 
@@ -1204,6 +1251,21 @@ static void fg_custom_part_ntc_table(const struct device_node *np,
 #endif
 
 	ret = fg_read_dts_val(np, "RBAT_TYPE", &(gm.rbat.type), 1);
+#if defined(CONFIG_MACH_MT6781)
+	if((odm_select_bat_ntc_support == ODM_SPACE_B_33W) || (odm_select_bat_ntc_support == ODM_SPACE_D_18W)){
+		if ((odm_select_bat_ntc_support == ODM_SPACE_B_33W) && get_PCB_Version() < 4) {
+			gm.rbat.rbat_pull_up_r = RBAT_PULL_UP_R_33W;
+			printk("before EVT  \n");
+		} else if(get_PCB_Version() >= 4) {
+			gm.rbat.rbat_pull_up_r = RBAT_PULL_UP_R_new;
+			printk("include EVT \n");
+		}
+		bm_err("%s odm_select_bat_ntc_support = %d, RBAT_PULL_UP_R=%d get_PCB_Version() =%d %d\n",__func__, odm_select_bat_ntc_support, gm.rbat.rbat_pull_up_r,get_PCB_Version(),__LINE__);
+		return;
+	} else {
+		bm_err("%s odm_select_bat_ntc_support = %d, RBAT_PULL_UP_R=%d get_PCB_Version() =%d %d\n",__func__, odm_select_bat_ntc_support, gm.rbat.rbat_pull_up_r,get_PCB_Version(),__LINE__);
+	}
+#endif
 	ret_a = fg_read_dts_val(np, "RBAT_PULL_UP_R",
 			&(gm.rbat.rbat_pull_up_r), 1);
 	if ((ret == -1) || (ret_a == -1)) {
@@ -1254,6 +1316,9 @@ void fg_custom_init_from_dts(struct platform_device *dev)
 	unsigned int val;
 	int bat_id, multi_battery, active_table, i, j, ret, column;
 	int r_pseudo100_raw = 0, r_pseudo100_col = 0;
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	int dim2_table_distinguish = 0;
+#endif
 	char node_name[128];
 
 	fgauge_get_profile_id();
@@ -1802,6 +1867,35 @@ void fg_custom_init_from_dts(struct platform_device *dev)
 			);
 	}
 	/* read dtsi from pseudo100 */
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	fg_read_dts_val(np, "DIM2_TABLE_DISTINGUISH",
+		&(dim2_table_distinguish), 1);
+	if (dim2_table_distinguish) {
+		sprintf(node_name, "battery%d_g_FG_charge_PSEUDO100", bat_id);
+		for (i = 0; i < MAX_TABLE; i++) {
+			for (j = 0; j < r_pseudo100_raw; j++) {
+				fg_read_dts_val_by_idx(np, node_name,
+					i*r_pseudo100_raw+j,
+					&(fg_table_cust_data.fg_profile[i].r_pseudo100.pseudo[j+1]),
+						UNIT_TRANS_100);
+			}
+		}
+
+		bm_err("battery%d_g_FG_charge_PSEUDO100 g_FG_charge_PSEUDO100_row:%d g_FG_charge_PSEUDO100_col:%d\n", bat_id, r_pseudo100_raw, r_pseudo100_col);
+	} else {
+		for (i = 0; i < MAX_TABLE; i++) {
+			for (j = 0; j < r_pseudo100_raw; j++) {
+				fg_read_dts_val_by_idx(np, "g_FG_charge_PSEUDO100",
+					i*r_pseudo100_raw+j,
+					&(fg_table_cust_data.fg_profile[i].r_pseudo100.pseudo[j+1]),
+						UNIT_TRANS_100);
+			}
+		}
+
+		bm_err("g_FG_charge_PSEUDO100_row:%d g_FG_charge_PSEUDO100_col:%d\n",
+			r_pseudo100_raw, r_pseudo100_col);
+	}
+#else
 	for (i = 0; i < MAX_TABLE; i++) {
 		for (j = 0; j < r_pseudo100_raw; j++) {
 			fg_read_dts_val_by_idx(np, "g_FG_charge_PSEUDO100",
@@ -1814,6 +1908,7 @@ void fg_custom_init_from_dts(struct platform_device *dev)
 
 	bm_err("g_FG_charge_PSEUDO100_row:%d g_FG_charge_PSEUDO100_col:%d\n",
 		r_pseudo100_raw, r_pseudo100_col);
+#endif
 
 	for (i = 0; i < MAX_TABLE; i++) {
 		bm_err("%6d %6d %6d %6d %6d\n",
@@ -2049,9 +2144,15 @@ void sw_check_bat_plugout(void)
 				is_fg_disabled());
 
 			battery_notifier(EVENT_BATTERY_PLUG_OUT);
+
+#ifndef OPLUS_FEATURE_CHG_BASIC
 			battery_main.BAT_STATUS = POWER_SUPPLY_STATUS_UNKNOWN;
 			wakeup_fg_algo(FG_INTR_BAT_PLUGOUT);
 			battery_update(&battery_main);
+#else /* OPLUS_FEATURE_CHG_BASIC */
+			wakeup_fg_algo(FG_INTR_BAT_PLUGOUT);
+#endif /* OPLUS_FEATURE_CHG_BASIC */
+
 			kernel_power_off();
 		}
 	}
@@ -2088,6 +2189,15 @@ void fg_nafg_monitor(void)
 				FG_INTR_KERNEL_CMD,
 				FG_KERNEL_CMD_DISABLE_NAFG,
 				true);
+#ifdef OPLUS_FEATURE_CHG_BASIC
+		bm_err("[%s]before restart fuelgauge pid:%d\n",
+				__func__, gm.g_fgd_pid);
+			gm.old_pid = gm.g_fgd_pid;
+			kill_pid(find_vpid(gm.g_fgd_pid), SIGKILL, 1);
+			gm.force_restart_daemon++;
+			bm_err("[%s]after restart fuelgauged,%d\n",
+				__func__, gm.force_restart_daemon);
+#endif
 		}
 	}
 	bm_debug("[%s]time:%d nafg_cnt:%d, now:%d, last_t:%d\n",
@@ -2431,6 +2541,25 @@ void fg_bat_temp_int_init(void)
 
 	if (fg_interrupt_check() == false)
 		return;
+
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/*add for fg*/
+	if (is_fuelgauge_apply() == false) {
+		return;
+	} else {
+		tmp = force_get_tbat(true);
+
+		fg_bat_new_ht = TempToBattVolt(tmp + 1, 1);
+		fg_bat_new_lt = TempToBattVolt(tmp - 1, 0);
+
+		gauge_dev_enable_battery_tmp_lt_interrupt(gm.gdev, false, 0);
+		gauge_dev_enable_battery_tmp_ht_interrupt(gm.gdev, false, 0);
+		gauge_dev_enable_battery_tmp_lt_interrupt(
+			gm.gdev, true, fg_bat_new_lt);
+		gauge_dev_enable_battery_tmp_ht_interrupt(
+			gm.gdev, true, fg_bat_new_ht);
+	}
+#else
 #if defined(CONFIG_MTK_DISABLE_GAUGE) || defined(FIXED_TBAT_25)
 	tmp = 1;
 	fg_bat_new_ht = 1;
@@ -2449,6 +2578,7 @@ void fg_bat_temp_int_init(void)
 	gauge_dev_enable_battery_tmp_ht_interrupt(
 		gm.gdev, true, fg_bat_new_ht);
 #endif
+#endif
 }
 
 void fg_bat_temp_int_internal(void)
@@ -2456,15 +2586,29 @@ void fg_bat_temp_int_internal(void)
 	int tmp = 0;
 	int fg_bat_new_ht, fg_bat_new_lt;
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/* Add for charger full status */
+	if (is_fuelgauge_apply() == false) {
+		return;
+	}
+#endif
+
 	if (is_fg_disabled()) {
+
+#ifndef OPLUS_FEATURE_CHG_BASIC
 		battery_main.BAT_batt_temp = 25;
 		battery_update(&battery_main);
+#endif
+
 		return;
 	}
 
 #if defined(CONFIG_MTK_DISABLE_GAUGE) || defined(FIXED_TBAT_25)
-	battery_main.BAT_batt_temp = 25;
+
+#ifndef OPLUS_FEATURE_CHG_BASIC
 	battery_update(&battery_main);
+#endif
+
 	tmp = 1;
 	fg_bat_new_ht = 1;
 	fg_bat_new_lt = 1;
@@ -2504,8 +2648,10 @@ void fg_bat_temp_int_internal(void)
 		gm.fg_bat_tmp_c_lt,
 		fg_bat_new_lt, fg_bat_new_ht);
 
-	battery_main.BAT_batt_temp = tmp;
+#ifndef OPLUS_FEATURE_CHG_BASIC
 	battery_update(&battery_main);
+#endif
+
 #endif
 }
 
@@ -2568,9 +2714,14 @@ void fg_bat_plugout_int_handler(void)
 
 	if (is_bat_exist == 0) {
 		battery_notifier(EVENT_BATTERY_PLUG_OUT);
+#ifndef OPLUS_FEATURE_CHG_BASIC
 		battery_main.BAT_STATUS = POWER_SUPPLY_STATUS_UNKNOWN;
 		wakeup_fg_algo(FG_INTR_BAT_PLUGOUT);
 		battery_update(&battery_main);
+#else
+		wakeup_fg_algo(FG_INTR_BAT_PLUGOUT);
+#endif /* OPLUS_FEATURE_CHG_BASIC */
+
 		fg_int_event(gm.gdev, EVT_INT_BAT_PLUGOUT);
 		kernel_power_off();
 	}
@@ -2843,7 +2994,10 @@ void fg_drv_update_hw_status(void)
 int battery_update_routine(void *x)
 {
 	int ret = 0;
+#ifndef OPLUS_FEATURE_CHG_BASIC
 	battery_update_psd(&battery_main);
+#endif /* OPLUS_FEATURE_CHG_BASIC */
+
 	while (1) {
 		ret = wait_event_interruptible(gm.wait_que,
 			(gm.fg_update_flag > 0)
@@ -2851,6 +3005,7 @@ int battery_update_routine(void *x)
 			|| (gm.onepercent_cb_flag > 0));
 		if (gm.fg_update_flag > 0) {
 			gm.fg_update_flag = 0;
+
 			fg_drv_update_hw_status();
 		}
 		if (gm.tracking_cb_flag > 0) {
@@ -3203,6 +3358,10 @@ void fg_daemon_comm_INT_data(char *rcv, char *ret)
 	case FG_SET_AGING_FACTOR:
 		{
 			gm.aging_factor = prcv->input;
+#ifdef CONFIG_OPLUS_CHARGER_MTK6893
+/* for aging issue */
+			bm_err("FG_SET_AGING_FACTOR aging=%d\n", gm.aging_factor);
+#endif
 		}
 		break;
 	case FG_SET_QMAX:
@@ -3302,6 +3461,7 @@ void bmd_ctrl_cmd_from_user(void *nl_data, struct fgd_nl_msg_t *ret_msg)
 				is_bat_plugout);
 		}
 		break;
+
 	case FG_DAEMON_CMD_IS_BAT_EXIST:
 		{
 			int is_bat_exist = 0;
@@ -3344,12 +3504,14 @@ void bmd_ctrl_cmd_from_user(void *nl_data, struct fgd_nl_msg_t *ret_msg)
 			/* charger status need charger API */
 			/* CHR_ERR = -1 */
 			/* CHR_NORMAL = 0 */
+
+#ifndef OPLUS_FEATURE_CHG_BASIC
 			if (battery_main.BAT_STATUS ==
 				POWER_SUPPLY_STATUS_NOT_CHARGING)
 				charger_status = -1;
 			else
 				charger_status = 0;
-
+#endif /* OPLUS_FEATURE_CHG_BASIC */
 			ret_msg->fgd_data_len += sizeof(charger_status);
 			memcpy(ret_msg->fgd_data,
 				&charger_status, sizeof(charger_status));
@@ -3381,10 +3543,18 @@ void bmd_ctrl_cmd_from_user(void *nl_data, struct fgd_nl_msg_t *ret_msg)
 #if defined(CONFIG_MACH_MT6877) || defined(CONFIG_MACH_MT6885) || defined(CONFIG_MACH_MT6853) \
 	|| defined(CONFIG_MACH_MT6893) || defined(CONFIG_MACH_MT6873)                         \
 	|| defined(CONFIG_MACH_MT6771) || defined(CONFIG_MACH_MT6785)
+#ifndef OPLUS_FEATURE_CHG_BASIC
 			if (battery_main.BAT_STATUS == POWER_SUPPLY_STATUS_CHARGING)
 				is_charger_exist = true;
 			else
 				is_charger_exist = false;
+#else
+			if (upmu_get_rgs_chrdet() == 0 ||
+				mt_usb_is_device() == 0)
+				is_charger_exist = false;
+			else
+				is_charger_exist = true;
+#endif
 #else
 			if (upmu_get_rgs_chrdet() == 0 ||
 				mt_usb_is_device() == 0)
@@ -3419,6 +3589,11 @@ void bmd_ctrl_cmd_from_user(void *nl_data, struct fgd_nl_msg_t *ret_msg)
 		{
 			memcpy(&gm.init_flag,
 				&msg->fgd_data[0], sizeof(gm.init_flag));
+
+#ifdef CONFIG_OPLUS_CHARGER_MTK6893
+/* Add for charging logo */
+			fgauge_is_start = 1;
+#endif /* CONFIG_OPLUS_CHARGER_MTK6893 */
 
 			if (gm.init_flag == 1)
 				gauge_dev_set_info(gm.gdev,
@@ -3628,7 +3803,10 @@ void bmd_ctrl_cmd_from_user(void *nl_data, struct fgd_nl_msg_t *ret_msg)
 	{
 		int voltage = 0;
 
+
+#ifndef OPLUS_FEATURE_CHG_BASIC
 		battery_main.BAT_batt_temp = force_get_tbat(true);
+#endif /* OPLUS_FEATURE_CHG_BASIC */
 		voltage = gauge_get_hwocv();
 		gm.hw_status.hw_ocv = voltage;
 
@@ -4011,7 +4189,6 @@ void bmd_ctrl_cmd_from_user(void *nl_data, struct fgd_nl_msg_t *ret_msg)
 		int nafg_c_dltv;
 
 		memcpy(&nafg_c_dltv, &msg->fgd_data[0], sizeof(nafg_c_dltv));
-
 		gauge_dev_set_nag_c_dltv(gm.gdev, nafg_c_dltv);
 		gauge_set_nag_en(1);
 
@@ -4370,14 +4547,19 @@ void bmd_ctrl_cmd_from_user(void *nl_data, struct fgd_nl_msg_t *ret_msg)
 				gm.disableGM30, old_uisoc, diff.tv_sec);
 			gm.uisoc_oldtime = now_time;
 
+#ifndef OPLUS_FEATURE_CHG_BASIC
 			battery_main.BAT_CAPACITY = gm.ui_soc;
 			battery_update(&battery_main);
+#endif /* OPLUS_FEATURE_CHG_BASIC */
+
 		} else {
 			bm_debug("[fg_res] FG_DAEMON_CMD_SET_KERNEL_UISOC = %d %d GM3:%d\n",
 				daemon_ui_soc, gm.ui_soc, gm.disableGM30);
 			/* ac_update(&ac_main); */
+#ifndef OPLUS_FEATURE_CHG_BASIC
 			battery_main.BAT_CAPACITY = gm.ui_soc;
 			battery_update(&battery_main);
+#endif /* OPLUS_FEATURE_CHG_BASIC */
 		}
 	}
 	break;
@@ -4491,6 +4673,17 @@ void bmd_ctrl_cmd_from_user(void *nl_data, struct fgd_nl_msg_t *ret_msg)
 	{
 		gm.proc_subcmd = msg->fgd_subcmd;
 		gm.proc_subcmd_para1 = msg->fgd_subcmd_para1;
+
+#ifdef CONFIG_OPLUS_CHARGER_MTK6893
+		if (gm.proc_subcmd_para1 == SUBCMD_PARAL_VOLT) {
+			memset(gm.ag_log, 0, SUBCMD_VOLT_CONV);
+			strncpy(gm.ag_log, &msg->fgd_data[0],
+				strlen(&msg->fgd_data[0]));
+			bm_err("[fr]FG_DAEMON_CMD_DUMP_LOG:%s\n",
+				gm.ag_log);
+		}
+#endif
+
 		memset(gm.proc_log, 0, 4096);
 		strncpy(gm.proc_log, &msg->fgd_data[0],
 			strlen(&msg->fgd_data[0]));
@@ -4624,7 +4817,10 @@ void bmd_ctrl_cmd_from_user(void *nl_data, struct fgd_nl_msg_t *ret_msg)
 			bm_err("%s:SET_BATTERY_CAPACITY: show_ag:%d, bat_health:%d",
 				__func__, gm.show_ag, gm.bat_health);
 		}
-
+#ifdef OPLUS_FEATURE_CHG_BASIC
+		gm.prev_batt_fcc = param.data[4];
+		gm.prev_batt_remaining_capacity = param.data[4] /10 * param.data[6] / 10000;
+#endif /*OPLUS_FEATURE_CHG_BASIC*/
 		bm_debug(
 			"[fr] FG_DAEMON_CMD_SET_BATTERY_CAPACITY = %d %d %d %d %d %d %d %d %d %d RM:%d\n",
 			param.data[0],
@@ -4936,11 +5132,17 @@ void gm3_log_dump(bool force)
 	/* charger status need charger API */
 	/* CHR_ERR = -1 */
 	/* CHR_NORMAL = 0 */
+
+#ifndef OPLUS_FEATURE_CHG_BASIC
 	if (battery_main.BAT_STATUS ==
 		POWER_SUPPLY_STATUS_NOT_CHARGING)
 		gm.log.chr_status = -1;
 	else
 		gm.log.chr_status = 0;
+#else
+    gm.log.chr_status = 0;
+#endif/*OPLUS_FEATURE_CHG_BASIC*/
+
 
 	car = gauge_get_coulomb();
 

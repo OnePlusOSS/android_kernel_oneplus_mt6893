@@ -29,6 +29,9 @@
 
 #include "drm_internal.h"
 #include "drm_crtc_internal.h"
+/* #ifdef OPLUS_FEATURE_DISPLAY */
+#include <drm/drm_device.h>
+/* endif */
 
 /**
  * DOC: overview
@@ -356,6 +359,9 @@ int drm_mode_addfb2(struct drm_device *dev,
 struct drm_mode_rmfb_work {
 	struct work_struct work;
 	struct list_head fbs;
+	/* #ifdef OPLUS_FEATURE_DISPLAY */
+	struct kthread_work rmfb_work;
+	/* endif */
 };
 
 static void drm_mode_rmfb_work_fn(struct work_struct *w)
@@ -370,6 +376,21 @@ static void drm_mode_rmfb_work_fn(struct work_struct *w)
 		drm_framebuffer_remove(fb);
 	}
 }
+
+/* #ifdef OPLUS_FEATURE_DISPLAY */
+static void oplus_drm_mode_rmfb_work_fn(struct kthread_work *w)
+{
+	struct drm_mode_rmfb_work *arg = container_of(w, typeof(*arg), rmfb_work);
+
+	while (!list_empty(&arg->fbs)) {
+		struct drm_framebuffer *fb =
+			list_first_entry(&arg->fbs, typeof(*fb), filp_head);
+
+		list_del_init(&fb->filp_head);
+		drm_framebuffer_remove(fb);
+	}
+}
+/* endif */
 
 /**
  * drm_mode_rmfb - remove an FB from the configuration
@@ -422,7 +443,8 @@ int drm_mode_rmfb(struct drm_device *dev, u32 fb_id,
 	 */
 	if (drm_framebuffer_read_refcount(fb) > 1) {
 		struct drm_mode_rmfb_work arg;
-
+		/* #ifdef OPLUS_FEATURE_DISPLAY */
+		#if 0
 		INIT_WORK_ONSTACK(&arg.work, drm_mode_rmfb_work_fn);
 		INIT_LIST_HEAD(&arg.fbs);
 		list_add_tail(&fb->filp_head, &arg.fbs);
@@ -430,6 +452,13 @@ int drm_mode_rmfb(struct drm_device *dev, u32 fb_id,
 		schedule_work(&arg.work);
 		flush_work(&arg.work);
 		destroy_work_on_stack(&arg.work);
+		#endif
+		INIT_LIST_HEAD(&arg.fbs);
+		list_add_tail(&fb->filp_head, &arg.fbs);
+		kthread_init_work(&arg.rmfb_work, oplus_drm_mode_rmfb_work_fn);
+		kthread_queue_work(&dev->o_rmfb_work.rmfb_worker, &arg.rmfb_work);
+		kthread_flush_worker(&dev->o_rmfb_work.rmfb_worker);
+		/* endif */
 	} else
 		drm_framebuffer_put(fb);
 

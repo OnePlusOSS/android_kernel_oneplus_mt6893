@@ -20,6 +20,16 @@
 #include <asm/page.h>
 #include <asm/pgtable.h>
 #include "internal.h"
+#include <trace/hooks/vh_vmscan.h>
+
+//#ifdef OPLUS_FEATURE_HEALTHINFO
+#include <linux/healthinfo/ion.h>
+//#endif /*OPLUS_FEATURE_HEALTHINFO*/
+
+#ifdef OPLUS_FEATURE_HEALTHINFO
+//extern unsigned long gpu_total(void);
+#endif /*OPLUS_FEATURE_HEALTHINFO*/
+
 
 void __attribute__((weak)) arch_report_meminfo(struct seq_file *m)
 {
@@ -55,6 +65,9 @@ static int meminfo_proc_show(struct seq_file *m, void *v)
 
 	available = si_mem_available();
 	sreclaimable = global_node_page_state(NR_SLAB_RECLAIMABLE);
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+	sreclaimable += cont_pte_pool_total_pages() - cont_pte_pool_high();
+#endif
 	sunreclaim = global_node_page_state(NR_SLAB_UNRECLAIMABLE);
 
 	show_val_kb(m, "MemTotal:       ", i.totalram);
@@ -134,12 +147,22 @@ static int meminfo_proc_show(struct seq_file *m, void *v)
 #endif
 
 #ifdef CONFIG_TRANSPARENT_HUGEPAGE
+#ifndef CONFIG_CONT_PTE_HUGEPAGE
 	show_val_kb(m, "AnonHugePages:  ",
 		    global_node_page_state(NR_ANON_THPS) * HPAGE_PMD_NR);
+#else
+	show_val_kb(m, "AnonHugePages:  ",
+		    global_node_page_state(NR_ANON_THPS) * HPAGE_CONT_PTE_NR);
+#endif
 	show_val_kb(m, "ShmemHugePages: ",
 		    global_node_page_state(NR_SHMEM_THPS) * HPAGE_PMD_NR);
 	show_val_kb(m, "ShmemPmdMapped: ",
 		    global_node_page_state(NR_SHMEM_PMDMAPPED) * HPAGE_PMD_NR);
+#endif
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+	show_val_kb(m, "HugePagePool:   ", cont_pte_pool_total_pages());
+	show_val_kb(m, "DoubleMapTHP:   ",
+			 atomic_long_read(&cont_pte_double_map_count) * HPAGE_CONT_PTE_NR);
 #endif
 
 #ifdef CONFIG_CMA
@@ -148,9 +171,17 @@ static int meminfo_proc_show(struct seq_file *m, void *v)
 		    global_zone_page_state(NR_FREE_CMA_PAGES));
 #endif
 
+#if defined(OPLUS_FEATURE_HEALTHINFO) && defined(CONFIG_ION)
+	show_val_kb(m, "IonTotalCache:   ", global_zone_page_state(NR_IONCACHE_PAGES));;
+	show_val_kb(m, "IonTotalUsed:   ", ion_total() >> PAGE_SHIFT);
+#endif /*OPLUS_FEATURE_HEALTHINFO*/
+#ifdef OPLUS_FEATURE_HEALTHINFO
+	//show_val_kb(m, "GPUTotalUsed:	", gpu_total() >> PAGE_SHIFT);
+#endif /*OPLUS_FEATURE_HEALTHINFO*/
 	hugetlb_report_meminfo(m);
 
 	arch_report_meminfo(m);
+	trace_android_vh_meminfo_proc_show(m);
 
 	return 0;
 }

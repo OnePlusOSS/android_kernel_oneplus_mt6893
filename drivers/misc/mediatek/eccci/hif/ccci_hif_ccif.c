@@ -57,11 +57,15 @@ static struct ccci_clk_node ccif_clk_table[] = {
 	{ NULL, "infra-ccif-md"},
 	{ NULL, "infra-ccif1-ap"},
 	{ NULL, "infra-ccif1-md"},
-	{ NULL, "infra-ccif2-ap"},
-	{ NULL, "infra-ccif2-md"},
 	{ NULL, "infra-ccif4-md"},
 	{ NULL, "infra-ccif5-md"},
 };
+
+static struct ccci_clk_node scp_clk_table[] = {
+	{ NULL, "infra-ccif2-ap"},
+	{ NULL, "infra-ccif2-md"},
+};
+
 #define IS_PASS_SKB(per_md_data, qno)	\
 	(!per_md_data->data_usb_bypass && (per_md_data->is_in_ee_dump == 0) \
 	 && ((1<<qno) & NET_RX_QUEUE_MASK))
@@ -1887,16 +1891,60 @@ static int ccif_late_init(unsigned char hif_id)
 			ccif_ctrl->ap_ccif_irq1_id, ret);
 		return -1;
 	}
-#if (MD_GENERATION >= 6295)
+
+
 	ret = irq_set_irq_wake(ccif_ctrl->ap_ccif_irq1_id, 1);
 	if (ret)
 		CCCI_ERROR_LOG(ccif_ctrl->md_id, TAG,
 			"irq_set_irq_wake ccif ap_ccif_irq1_id(%d) error %d\n",
 			ccif_ctrl->ap_ccif_irq1_id, ret);
-#endif
+
 	/*need compare k5.10*/
 	md_ccif_ring_buf_init(CCIF_HIF_ID);
 	return 0;
+}
+
+static int scp_set_clk_on(void)
+{
+	int idx, ret;
+
+	for (idx = 0; idx < ARRAY_SIZE(scp_clk_table); idx++) {
+		if (ccif_clk_table[idx].clk_ref == NULL)
+			continue;
+		ret = clk_prepare_enable(scp_clk_table[idx].clk_ref);
+		if (ret) {
+			CCCI_ERROR_LOG(MD_SYS1, TAG, "open scp clk fail:%s,ret=%d\n",
+				scp_clk_table[idx].clk_name, ret);
+			return -1;
+		}
+	}
+	CCCI_NORMAL_LOG(MD_SYS1, TAG, "%s done!\n", __func__);
+	return 0;
+}
+
+void scp_set_clk_off(void)
+{
+	int idx;
+	void __iomem *ap_ccif2_base;
+	void __iomem *md_ccif2_base;
+
+	ap_ccif2_base = ioremap_nocache(0x1023c000, 0x20);
+	md_ccif2_base = ioremap_nocache(0x1023d000, 0x20);
+	if (ap_ccif2_base != NULL && md_ccif2_base != NULL) {
+		ccci_write32(ap_ccif2_base, APCCIF_ACK, 0xFFFF);
+		ccci_write32(md_ccif2_base, APCCIF_ACK, 0xFFFF);
+		CCCI_NORMAL_LOG(MD_SYS1, TAG, "ack ccif2 reg done!\n");
+	} else
+		CCCI_ERROR_LOG(MD_SYS1, TAG, "[%s] ccif2 ioremap fail!\n", __func__);
+
+	for (idx = 0; idx < ARRAY_SIZE(scp_clk_table); idx++) {
+		if (ccif_clk_table[idx].clk_ref == NULL)
+			continue;
+		clk_disable_unprepare(scp_clk_table[idx].clk_ref);
+	}
+	iounmap(ap_ccif2_base);
+	iounmap(md_ccif2_base);
+	CCCI_NORMAL_LOG(MD_SYS1, TAG, "%s done!\n", __func__);
 }
 
 static void ccif_set_clk_on(unsigned char hif_id)
@@ -1907,6 +1955,10 @@ static void ccif_set_clk_on(unsigned char hif_id)
 	unsigned long flags;
 
 	CCCI_NORMAL_LOG(ccif_ctrl->md_id, TAG, "%s start\n", __func__);
+
+	ret = scp_set_clk_on();
+	if (ret)
+		CCCI_ERROR_LOG(MD_SYS1, TAG, "fail to set scp clk, ret = %d\n", ret);
 
 	for (idx = 0; idx < ARRAY_SIZE(ccif_clk_table); idx++) {
 		if (ccif_clk_table[idx].clk_ref == NULL)
@@ -2167,6 +2219,15 @@ static int ccif_hif_hw_init(struct device *dev, struct md_ccif_ctrl *md_ctrl)
 			ccif_clk_table[idx].clk_ref = NULL;
 		}
 	}
+	for (idx = 0; idx < ARRAY_SIZE(scp_clk_table); idx++) {
+		scp_clk_table[idx].clk_ref = devm_clk_get(dev,
+			scp_clk_table[idx].clk_name);
+		if (IS_ERR(scp_clk_table[idx].clk_ref)) {
+			CCCI_ERROR_LOG(-1, TAG, "ccif get %s failed\n",
+				scp_clk_table[idx].clk_name);
+			scp_clk_table[idx].clk_ref = NULL;
+		}
+	}
 	dev->dma_mask = &ccif_dmamask;
 	dev->coherent_dma_mask = ccif_dmamask;
 	dev->platform_data = md_ctrl;
@@ -2223,14 +2284,14 @@ static int ccif_hif_hw_init(struct device *dev, struct md_ccif_ctrl *md_ctrl)
 			md_ctrl->ap_ccif_irq0_id, ret);
 		return -1;
 	}
-#if (MD_GENERATION >= 6295)
+
 	ret = irq_set_irq_wake(md_ctrl->ap_ccif_irq0_id, 1);
 	if (ret){
 		CCCI_ERROR_LOG(md_ctrl->md_id, TAG,
 				"irq_set_irq_wake ccif irq0(%d) error %d\n",
 				md_ctrl->ap_ccif_irq0_id, ret);
 	}
-#endif
+
 	return 0;
 
 }

@@ -1,0 +1,19 @@
+&i2c5 {
+	bq25910@4B {
+		compatible = "ti,bq2591x";
+		reg = <0x4B>;
+		charger_name = "secondary_chg";
+
+		interrupt-parent = <&pio>;
+		interrupts = <11 IRQ_TYPE_EDGE_FALLING 11 0>;
+		ti,charging-disabled;
+		ti,bq2591x,enable-term;
+
+		ti,bq2591x,charge-voltage = <4400>;
+		ti,bq2591x,charge-current = <3000>;
+		ti,bq2591x,input-current-limit = <3000>;
+		ti,bq2591x,input-voltage-limit = <4500>;
+		ti,bq2591x,vbatlow-volt = <3500>;
+		ti,bq2591x,term-current = <1000>;
+	};
+};

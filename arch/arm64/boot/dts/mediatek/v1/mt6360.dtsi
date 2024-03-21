@@ -16,14 +16,14 @@
 		mt6360,intr_gpio_num = <24>; /* direct defined GPIO num */
 		mt6360,intr_gpio = <&pio 24 0x0>;
 #else
-		mt6360,intr_gpio_num = <3>; /* direct defined GPIO num */
-		mt6360,intr_gpio = <&pio 3 0x0>; /* GPIO */
+		mt6360,intr_gpio_num = <24>; /* direct defined GPIO num */
+		mt6360,intr_gpio = <&pio 24 0x0>; /* GPIO */
 #endif
 		interrupt-controller;
 		#interrupt-cells = <2>;
 		adc: adc {
 			compatible = "mediatek,mt6360_pmu_adc";
-			/*interrupt-parent = <&subpmic_mtk>;*/
+			interrupt-parent = <&mt6360_pmu>;
 			interrupts = <41 0>, <43 0>, <44 0>;
 			interrupt-names = "bat_ovp_adc_evt",
 					  "adc_wakeup_evt",
@@ -32,7 +32,7 @@
 		};
 		mt6360_chg: chg {
 			compatible = "mediatek,mt6360_pmu_chg";
-			/*interrupt-parent = <&subpmic_mtk>;*/
+			interrupt-parent = <&mt6360_pmu>;
 			interrupts = <4 0>, <6 0>, <7 0>, <9 0>,
 				     <12 0>, <13 0>, <14 0>, <15 0>,
 				     <27 0>, <29 0>, <32 0>, <35 0>,
@@ -49,7 +49,6 @@
 				      <&adc 5>, <&adc 6>, <&adc 8>, <&adc 10>;
 			io-channel-names = "USBID", "VBUSDIV5", "VSYS", "VBAT",
 					   "IBUS", "IBAT", "TEMP_JC", "TS";
-			bootmode = <&chosen>;
 			chg_name = "primary_chg";
 			ichg = <2000000>;		/* uA */
 			aicr = <500000>;		/* uA */
@@ -61,29 +60,14 @@
 			ircmp_vclamp = <32000>;		/* uV */
 			en_te = <1>;
 			en_wdt = <1>;
-			en_otg_wdt = <1>;
 			aicc_once = <1>;
 			post_aicc = <1>;
 			batoc_notify = <0>;
-			charger = <&mt6360_chg>;
-			bc12_sel = <0>;
-#if !defined (CONFIG_MACH_MT6833)
-			phys = <&u2port0 PHY_TYPE_USB2>;
-			phy-names = "usb2-phy";
-			usb = <&ssusb>;
-#endif
-			otg_vbus: usb-otg-vbus {
-				regulator-compatible = "usb-otg-vbus";
-				regulator-name = "usb-otg-vbus";
-				regulator-min-microvolt = <4425000>;
-				regulator-max-microvolt = <5825000>;
-				regulator-min-microamp = <500000>;
-				regulator-max-microamp = <3000000>;
-			};
+			pp_sense_l = <0x08>;
 		};
 		fled {
 			compatible = "mediatek,mt6360_pmu_fled";
-			/*interrupt-parent = <&subpmic_mtk>;*/
+			interrupt-parent = <&mt6360_pmu>;
 			interrupts = <11 0>, <74 0>, <75 0>, <78 0>,
 				     <79 0>;
 			interrupt-names = "fled_chg_vinovp_evt", "fled_tx_evt",
@@ -118,7 +102,7 @@
 		};
 		core {
 			compatible = "mediatek,mt6360_pmu_core";
-			/*interrupt-parent = <&subpmic_mtk>;*/
+			interrupt-parent = <&mt6360_pmu>;
 			interrupts = <65 0>, <66 0>, <67 0>,
 				     <68 0>, <69 0>, <70 0>,
 				     <71 0>;
@@ -134,6 +118,10 @@
 			cc_open_sel = <3>;
 			i2c_cc_open_tsel = <1>;
 			ldo5_otp_en = <0>;
+/* #ifdef OPLUS_FEATURE_CHG_BASIC */
+			sda_sizesel = <3>;
+			sda_drvsrsel = <1>;
+/* #endif */
 		};
 	};
 
@@ -210,8 +198,8 @@
 		mt_pmic_vmch_ldo_reg: ldo5 {
 			regulator-compatible = "LDO5";
 			regulator-name = "VMCH";
-			regulator-min-microvolt = <2700000>;
-			regulator-max-microvolt = <3600000>;
+			regulator-min-microvolt = <3000000>;
+			regulator-max-microvolt = <3000000>;
 		};
 	};
 };

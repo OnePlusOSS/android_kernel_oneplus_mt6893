@@ -15,8 +15,14 @@ PHONY += $(modules)
 __modsign: $(modules)
 	@:
 
-quiet_cmd_sign_ko = SIGN [M] $(2)/$(notdir $@)
-        cmd_sign_ko = $(mod_sign_cmd) $(2)/$(notdir $@)
+#ifdef OPLUS_FEATURE_SECURITY_COMMON
+#quiet_cmd_sign_ko = SIGN [M] $(2)/$(notdir $@)
+#        cmd_sign_ko = $(mod_sign_cmd) $(2)/$(notdir $@)
+# For temporary, change $(2)/$(notdir $@) to $@
+
+quiet_cmd_sign_ko = SIGN [M] $@
+        cmd_sign_ko = $(mod_sign_cmd) $@
+#endif /*OPLUS_FEATURE_SECURITY_COMMON*/
 
 # Modules built outside the kernel source tree go into extra by default
 INSTALL_MOD_DIR ?= extra

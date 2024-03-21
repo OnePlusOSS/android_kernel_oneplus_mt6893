@@ -8,6 +8,10 @@
 
 #include <trace/events/sched.h>
 
+#ifdef CONFIG_OPLUS_FG_BOOST
+#include "extension/tuning.h"
+#define SCHED_FG_BOOST 2
+#endif /* CONFIG_OPLUS_FG_BOOST */
 #include "sched.h"
 
 bool schedtune_initialized = false;
@@ -93,6 +97,11 @@ struct schedtune {
 	 * towards idle CPUs */
 	int prefer_idle;
 
+#ifdef CONFIG_SCHEDUTIL_USE_TL
+	unsigned int window_policy;
+	bool discount_wait_time;
+#endif
+
 #ifdef CONFIG_UCLAMP_TASK_GROUP
 	/* The two decimal precision [%] value requested from user-space */
 	unsigned int		uclamp_pct[UCLAMP_CNT];
@@ -130,6 +139,10 @@ static inline struct schedtune *parent_st(struct schedtune *st)
 struct schedtune
 root_schedtune = {
 	.boost	= 0,
+#ifdef CONFIG_SCHEDUTIL_USE_TL
+	.window_policy = 2,
+	.discount_wait_time = false,
+#endif
 	.prefer_idle = 0,
 };
 
@@ -506,6 +519,29 @@ int schedtune_task_boost(struct task_struct *p)
 	return task_boost;
 }
 
+#ifdef CONFIG_OPLUS_FG_BOOST
+extern int sysctl_animation_type;
+extern int sched_boost_type;
+void oplus_task_sched_boost(struct task_struct *p, int *task_prefer)
+{
+	int boost = sched_boost_type == SCHED_FG_BOOST? 1 :0;
+	struct schedtune *st = NULL;
+	if(!boost) {
+		return;
+	}
+	rcu_read_lock();
+	st = task_schedtune(p);
+	if (((st-> idx == 3) || (st-> idx == 1))){
+		if (READ_ONCE(p->se.avg.util_avg) > sysctl_boost_task_threshold){
+			*task_prefer = SCHED_PREFER_MEDIUM;
+		}
+	} else {
+		*task_prefer = SCHED_PREFER_LITTLE;
+	}
+	rcu_read_unlock();
+}
+#endif /* CONFIG_OPLUS_FG_BOOST */
+
 int schedtune_prefer_idle(struct task_struct *p)
 {
 	struct schedtune *st;
@@ -619,6 +655,83 @@ boost_write(struct cgroup_subsys_state *css, struct cftype *cft,
 
 	return 0;
 }
+
+#ifdef CONFIG_SCHEDUTIL_USE_TL
+unsigned int schedtune_window_policy(struct task_struct *p)
+{
+	struct schedtune *st;
+	unsigned int window_policy;
+
+	if (unlikely(!schedtune_initialized))
+		return 0;
+
+	rcu_read_lock();
+	st = task_schedtune(p);
+	window_policy = st->window_policy;
+	rcu_read_unlock();
+
+	return window_policy;
+}
+
+unsigned int uclamp_discount_wait_time(struct task_struct *p)
+{
+	struct schedtune *st;
+	unsigned int ret;
+
+	if (unlikely(!schedtune_initialized))
+		return 0;
+
+	rcu_read_lock();
+	st = task_schedtune(p);
+	ret = st->discount_wait_time;
+	rcu_read_unlock();
+
+	return ret;
+}
+
+static u64
+window_policy_read(struct cgroup_subsys_state *css,
+		struct cftype *cft)
+{
+	struct schedtune *st = css_st(css);
+	return st->window_policy;
+}
+
+static int
+window_policy_write(struct cgroup_subsys_state *css, struct cftype *cft,
+		u64 window_policy)
+{
+	struct schedtune *st = css_st(css);
+
+	if (window_policy >= 4)
+		return -EINVAL;
+
+	st->window_policy = window_policy;
+
+	return 0;
+}
+
+#define PE_FUNC(NAME) \
+static u64 NAME##_read(struct cgroup_subsys_state *css, \
+		struct cftype *cft) \
+{ \
+	struct schedtune *st = css_st(css); \
+	return st->NAME; \
+} \
+ \
+static int \
+NAME##_write(struct cgroup_subsys_state *css, struct cftype *cft, \
+		u64 NAME) \
+{ \
+	struct schedtune *st = css_st(css); \
+ \
+	st->NAME = !!NAME; \
+ \
+	return 0; \
+}
+
+PE_FUNC(discount_wait_time)
+#endif /* CONFIG_SCHEDUTIL_USE_TL */
 
 #ifdef CONFIG_UCLAMP_TASK_GROUP
 static void cpu_util_update_eff(struct cgroup_subsys_state *css)
@@ -810,6 +923,18 @@ static struct cftype files[] = {
 		.read_u64 = prefer_idle_read,
 		.write_u64 = prefer_idle_write,
 	},
+#ifdef CONFIG_SCHEDUTIL_USE_TL
+	{
+		.name = "window_policy",
+		.read_u64 = window_policy_read,
+		.write_u64 = window_policy_write,
+	},
+	{
+		.name = "discount_wait_time",
+		.read_u64 = discount_wait_time_read,
+		.write_u64 = discount_wait_time_write,
+	},
+#endif /* CONFIG_SCHEDUTIL_USE_TL */
 #ifdef CONFIG_UCLAMP_TASK_GROUP
 	{
 		.name = "uclamp.min",

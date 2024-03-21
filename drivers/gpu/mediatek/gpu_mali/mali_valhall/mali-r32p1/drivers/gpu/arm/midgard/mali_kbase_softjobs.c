@@ -40,6 +40,9 @@
 #include <linux/kernel.h>
 #include <linux/cache.h>
 
+#include <mali_kbase_fence.h>
+#include "backend/gpu/mali_kbase_pm_internal.h"
+
 #if !MALI_USE_CSF
 /**
  * DOC: This file implements the logic behind software only jobs that are
@@ -313,6 +316,298 @@ static void kbase_fence_debug_check_atom(struct kbase_jd_atom *katom)
 	}
 }
 
+struct kbase_jd_debugfs_depinfo {
+	u8 id;
+	char type;
+};
+
+static void kbasep_jd_debug_atom_deps(
+		struct kbase_jd_debugfs_depinfo *deps,
+		struct kbase_jd_atom *atom)
+{
+	struct kbase_context *kctx = atom->kctx;
+	int i;
+
+	for (i = 0; i < 2; i++)	{
+		deps[i].id = (unsigned)(atom->dep[i].atom ?
+				kbase_jd_atom_id(kctx, atom->dep[i].atom) : 0);
+
+		switch (atom->dep[i].dep_type) {
+		case BASE_JD_DEP_TYPE_INVALID:
+			deps[i].type = ' ';
+			break;
+		case BASE_JD_DEP_TYPE_DATA:
+			deps[i].type = 'D';
+			break;
+		case BASE_JD_DEP_TYPE_ORDER:
+			deps[i].type = '>';
+			break;
+		default:
+			deps[i].type = '?';
+			break;
+		}
+	}
+}
+
+bool kbase_reset_gpu_is_active(struct kbase_device *kbdev);
+struct kbase_jd_atom *kbase_gpu_inspect(struct kbase_device *kbdev, int js, int idx);
+static void kbase_jd_debug_fence_info(struct kbase_jd_atom *katom);
+static void print_pm_state(struct kbase_device *kbdev)
+{
+	dev_err(kbdev->dev, "reset_gpu_is_active = %d, active_count = %d, job_fault_debug = %d\n",
+		kbase_reset_gpu_is_active(kbdev), kbdev->pm.active_count, atomic_read(&kbdev->job_fault_debug));
+	dev_err(kbdev->dev, "protected_mode = %d, protected_mode_transition = %d, protected_transition_override = %d\n",
+		kbdev->protected_mode, kbdev->protected_mode_transition, kbdev->pm.backend.protected_transition_override);
+	dev_err(kbdev->dev, "protected_l2_override = %d, protected_entry_transition_override = %d, protected_mode_hwcnt_disabled = %d, protected_mode_hwcnt_desired = %d\n",
+		kbdev->pm.backend.protected_l2_override, kbdev->pm.backend.protected_entry_transition_override,
+		kbdev->protected_mode_hwcnt_disabled, kbdev->protected_mode_hwcnt_desired);
+	dev_err(kbdev->dev, "hwcnt.triggered = %d, hwcnt.state = %d\n",
+		kbdev->hwcnt.backend.triggered, kbdev->hwcnt.backend.state);
+}
+
+void print_atom_info(struct kbase_jd_atom *katom)
+{
+	struct kbase_device *kbdev;
+	if (katom == NULL || katom->kctx == NULL) {
+		return;
+	}
+	kbdev = katom->kctx->kbdev;
+
+	dev_err(kbdev->dev,"mali gpu: ctx id %d_%d (nr_jobs %u flags 0x%x)\n",
+		katom->kctx->tgid, katom->kctx->id, katom->kctx->jctx.job_nr,
+		atomic_read(&katom->kctx->flags));
+	dev_err(kbdev->dev,"mali gpu: atom info: id %d, age 0x%x, core_req 0x%x, flags 0x%x\n",
+		kbase_jd_atom_id(katom->kctx, katom), katom->age, katom->core_req, katom->atom_flags);
+	dev_err(kbdev->dev,"mali gpu: jc %llx, ec 0x%x, (will_fail 0x%x), status 0x%x, rb_state = 0x%x, protect_state 0x%x, slot %d, prio %d, tick %u, blocked %d\n",
+		(unsigned long long)katom->jc, katom->event_code, katom->will_fail_event_code, katom->status, katom->gpu_rb_state,
+		katom->protected_state.enter, katom->slot_nr, katom->sched_priority, katom->ticks, atomic_read(&katom->blocked));
+	if (katom->pre_dep)
+		dev_err(kbdev->dev,"mali gpu: pre_dep(%d)\n", kbase_jd_atom_id(katom->kctx, katom->pre_dep));
+	if (katom->post_dep)
+		dev_err(kbdev->dev,"mali gpu: post_dep(%d)\n", kbase_jd_atom_id(katom->kctx, katom->post_dep));
+	if (katom->x_pre_dep)
+		dev_err(kbdev->dev,"mali gpu: x_pre_dep(%d)\n", kbase_jd_atom_id(katom->kctx, katom->x_pre_dep));
+	if (katom->x_post_dep)
+		dev_err(kbdev->dev,"mali gpu: x_post_dep(%d)\n", kbase_jd_atom_id(katom->kctx, katom->x_post_dep));
+}
+
+static void print_on_slot_atoms(struct kbase_context *kctx)
+{
+	struct kbase_device *kbdev = kctx->kbdev;
+	int js;
+	unsigned long flags;
+
+	dev_err(kbdev->dev, "On slot atoms info\n");
+	spin_lock_irqsave(&kbdev->hwaccess_lock, flags);
+	for (js = 0; js < kbdev->gpu_props.num_job_slots; js++) {
+		struct kbase_jd_atom *katom = kbase_gpu_inspect(kbdev, js, 0);
+		if (!katom)
+			continue;
+		print_atom_info(katom);
+		katom = kbase_gpu_inspect(kbdev, js, 1);
+		if (!katom)
+			continue;
+		print_atom_info(katom);
+	}
+	spin_unlock_irqrestore(&kbdev->hwaccess_lock, flags);
+}
+
+static int kbasep_jd_atoms_show(struct kbase_context *kctx)
+{
+	struct kbase_jd_atom *atoms = NULL;
+	unsigned long irq_flags;
+	int i;
+	struct kbase_device *kbdev = NULL;
+	static bool dumped_state_info = false;
+
+	KBASE_DEBUG_ASSERT(kctx != NULL);
+	atoms = kctx->jctx.atoms;
+	kbdev = kctx->kbdev;
+
+	dev_err(kbdev->dev, "dump kctx %d_%d\n", kctx->tgid, kctx->id);
+	dev_err(kbdev->dev, "slots_pullable = %d, as_nr = %d, refcount = %d, flags = 0x%x\n",
+		kctx->slots_pullable, kctx->as_nr,
+		atomic_read(&kctx->refcount), atomic_read(&kctx->flags));
+	dev_err(kbdev->dev, "kbdev->js_data.runpool_irq.submit_allowed = %d\n", kbdev->js_data.runpool_irq.submit_allowed);
+
+	if (!dumped_state_info) {
+		print_pm_state(kbdev);
+		print_on_slot_atoms(kctx);
+		dumped_state_info = true;
+		KBASE_KTRACE_DUMP(kbdev);
+	}
+
+	/* Print table heading */
+	dev_err(kbdev->dev, " ID, Core req, St, CR,   Predeps,           Start time, gpu_rb_state, Additional info...\n");
+
+	/* General atom states */
+	/* JS-related states */
+	spin_lock_irqsave(&kctx->kbdev->hwaccess_lock, irq_flags);
+	for (i = 0; i != BASE_JD_ATOM_COUNT; ++i) {
+		struct kbase_jd_atom *atom = &atoms[i];
+		s64 start_timestamp = 0;
+		struct kbase_jd_debugfs_depinfo deps[2];
+
+		if (atom->status == KBASE_JD_ATOM_STATE_UNUSED)
+			continue;
+
+		/* start_timestamp is cleared as soon as the atom leaves UNUSED state
+		 * and set before a job is submitted to the h/w, a non-zero value means
+		 * it is valid */
+		if (ktime_to_ns(atom->start_timestamp))
+			start_timestamp = ktime_to_ns(
+					ktime_sub(ktime_get(), atom->start_timestamp));
+
+		kbasep_jd_debug_atom_deps(deps, atom);
+
+		dev_err(kbdev->dev,
+				"%3u, %8x, %2u, %c%3u %c%3u, %20lld, %d",
+				i, atom->core_req, atom->status,
+				deps[0].type, deps[0].id,
+				deps[1].type, deps[1].id,
+				start_timestamp, atom->gpu_rb_state);
+
+
+		kbase_jd_debug_fence_info(atom);
+		print_atom_info(atom);
+		dev_err(kbdev->dev, "\n");
+	}
+	dev_err(kbdev->dev, "\n");
+
+	dev_err(kbdev->dev, " active_count,suspending,gpu_powered,l2_desired,shader_desired,cache_clean_in_progress,cache_clean_queued\n");
+	dev_err(kbdev->dev, "%3u, %3u, %3u, %3u, %3u, %3u, %3u",
+		kbdev->pm.active_count, kbdev->pm.suspending,
+		kbdev->pm.backend.gpu_powered, kbdev->pm.backend.l2_desired,
+		kbdev->pm.backend.shaders_desired,
+		kbdev->cache_clean_in_progress, kbdev->cache_clean_queued);
+	dev_err(kbdev->dev, "\n");
+	dev_err(kbdev->dev, " poweroff_wait_in_progress invoke_poweroff_wait_wq_when_l2_off poweron_required\n");
+	dev_err(kbdev->dev, "%3u, %3u, %3u",
+		kbdev->pm.backend.poweroff_wait_in_progress,
+		kbdev->pm.backend.invoke_poweroff_wait_wq_when_l2_off,
+		kbdev->pm.backend.poweron_required);
+	dev_err(kbdev->dev, "\n");
+	dev_err(kbdev->dev, " l2_state, shaders_state in_reset protected_transition_override protected_l2_override hwcnt_desired hwcnt_disabled\n");
+	dev_err(kbdev->dev, "%3u, %3u, %3u, %3u, %3u, %3u, %3u ",
+		kbdev->pm.backend.l2_state, kbdev->pm.backend.shaders_state,
+		kbdev->pm.backend.in_reset, kbdev->pm.backend.protected_transition_override,
+		kbdev->pm.backend.protected_l2_override,
+		kbdev->pm.backend.hwcnt_desired, kbdev->pm.backend.hwcnt_disabled);
+	dev_err(kbdev->dev, "\n");
+
+	if (kbdev->pm.backend.gpu_powered) {
+		dev_err(kbdev->dev, " l2_trans l2_ready tiler_trans tiler_ready l2_present tiler_present\n");
+		dev_err(kbdev->dev, " %8llx %8llx %8llx %8llx %8llx %8llx",
+			kbase_pm_get_trans_cores(kbdev,KBASE_PM_CORE_L2),
+			kbase_pm_get_ready_cores(kbdev, KBASE_PM_CORE_L2),
+			kbase_pm_get_trans_cores(kbdev,KBASE_PM_CORE_TILER),
+			kbase_pm_get_ready_cores(kbdev,KBASE_PM_CORE_TILER),
+			kbdev->gpu_props.props.raw_props.l2_present,
+			kbdev->gpu_props.props.raw_props.tiler_present);
+		dev_err(kbdev->dev, "\n");
+		dev_err(kbdev->dev, " shaders_trans shaders_ready\n");
+		dev_err(kbdev->dev, " %8llx %8llx ",
+			kbase_pm_get_trans_cores(kbdev, KBASE_PM_CORE_SHADER),
+			kbase_pm_get_ready_cores(kbdev, KBASE_PM_CORE_SHADER));
+		dev_err(kbdev->dev, "\n");
+	}
+	spin_unlock_irqrestore(&kctx->kbdev->hwaccess_lock, irq_flags);
+
+	return 0;
+}
+
+static void kbase_sync_fence_debug_dump(struct dma_fence *fence, bool show_atoms)
+{
+	unsigned long flags;
+	struct kbase_context *kctx = NULL;
+	struct dma_fence_array *fa = to_dma_fence_array(fence);
+
+	spin_lock_irqsave(fence->lock, flags);
+
+	if (fa) {
+		int i;
+		printk(KERN_ERR "mali gpu: Fence is a fence array\n");
+
+		for (i = 0; i < fa->num_fences; ++i) {
+			printk(KERN_ERR "mali gpu: fence_array[%d] - %s - %d\n",
+					i,
+					fa->fences[i]->ops->get_driver_name(fa->fences[i]),
+					dma_fence_is_signaled(fa->fences[i]));
+
+			if (fa->fences[i]->ops == &kbase_fence_ops) {
+				printk(KERN_ERR "mali gpu: Mali fence found inside fence array\n");
+				kctx = *(void**)(fa->fences[i]+1);
+				printk(KERN_ERR "mali gpu: Found ctx %d_%d\n", kctx->tgid, kctx->id);
+			}
+		}
+	} else if (fence->ops == &kbase_fence_ops) {
+		kctx = *(void**)(fence+1);
+		printk(KERN_ERR "mali gpu: Fence is a Mali fence\n");
+		printk(KERN_ERR "mali gpu: Found ctx %d_%d\n", kctx->tgid, kctx->id);
+	} else {
+		printk(KERN_ERR "mali gpu: Fence is not a Mali fence nor a fence array\n");
+	}
+	spin_unlock_irqrestore(fence->lock, flags);
+
+	if ((kctx != NULL) && (show_atoms == true))
+		kbasep_jd_atoms_show(kctx);
+}
+
+static void kbase_fence_debug_dump_all_kctx(struct kbase_device *kbdev)
+{
+	struct kbase_context *kctx = NULL;
+	struct kbase_context *tmp = NULL;
+
+	dev_err(kbdev->dev, "Show all context atom info start----------\n");
+	mutex_lock(&kbdev->kctx_list_lock);
+	list_for_each_entry_safe(kctx, tmp, &kbdev->kctx_list, kctx_list_link) {
+		kbasep_jd_atoms_show(kctx);
+	}
+	mutex_unlock(&kbdev->kctx_list_lock);
+	dev_err(kbdev->dev, "Show all context atom info done----------\n");
+}
+
+static void kbase_jd_debug_fence_info(struct kbase_jd_atom *katom)
+{
+#if defined(CONFIG_SYNC) || defined(CONFIG_SYNC_FILE)
+	struct kbase_sync_fence_info info;
+	int res;
+	struct kbase_context *kctx = katom->kctx;
+	struct dma_fence * fence;
+	struct kbase_device *kbdev = kctx->kbdev;
+
+	switch (katom->core_req & BASE_JD_REQ_SOFT_JOB_TYPE) {
+		case BASE_JD_REQ_SOFT_FENCE_TRIGGER:
+			res = kbase_sync_fence_out_info_get(katom, &info);
+			if (res == 0) {
+				fence = info.fence;
+				dev_err(kbdev->dev,"mali gpu: ctx %d_%d atom[%d] Sa([%p] %s) context#seqno:%s (driver=%s, timeline=%s)",
+						kctx->tgid, kctx->id, kbase_jd_atom_id(kctx, katom),
+						info.fence, kbase_sync_status_string(info.status), info.name,
+						fence->ops->get_driver_name(fence),
+						fence->ops->get_timeline_name(fence));
+				kbase_sync_fence_debug_dump(info.fence, false);
+			}
+			break;
+		case BASE_JD_REQ_SOFT_FENCE_WAIT:
+			res = kbase_sync_fence_in_info_get(katom, &info);
+			if (res == 0) {
+				fence = info.fence;
+				dev_err(kbdev->dev,"mali gpu: ctx %d_%d atom[%d] Wa([%p] %s) context#seqno:%s (driver=%s, timeline=%s)",
+						kctx->tgid, kctx->id, kbase_jd_atom_id(kctx, katom),
+						info.fence, kbase_sync_status_string(info.status), info.name,
+						fence->ops->get_driver_name(fence),
+						fence->ops->get_timeline_name(fence));
+				kbase_sync_fence_debug_dump(info.fence, false);
+			}
+			break;
+		default:
+			break;
+	}
+#endif /* CONFIG_SYNC || CONFIG_SYNC_FILE */
+}
+
+
 static void kbase_fence_debug_wait_timeout(struct kbase_jd_atom *katom)
 {
 	struct kbase_context *kctx = katom->kctx;
@@ -320,7 +615,7 @@ static void kbase_fence_debug_wait_timeout(struct kbase_jd_atom *katom)
 	int timeout_ms = atomic_read(&kctx->kbdev->js_data.soft_job_timeout_ms);
 	unsigned long lflags;
 	struct kbase_sync_fence_info info;
-
+	struct dma_fence *fence = NULL;
 	spin_lock_irqsave(&kctx->waiting_soft_jobs_lock, lflags);
 
 	if (kbase_sync_fence_in_info_get(katom, &info)) {
@@ -329,19 +624,24 @@ static void kbase_fence_debug_wait_timeout(struct kbase_jd_atom *katom)
 		return;
 	}
 
-	dev_warn(dev, "ctx %d_%d: Atom %d still waiting for fence [%pK] after %dms\n",
+	dev_warn(dev, "ctx %d_%d: Atom %d still waiting for fence [%p] after %dms\n",
 		 kctx->tgid, kctx->id,
 		 kbase_jd_atom_id(kctx, katom),
 		 info.fence, timeout_ms);
-	dev_warn(dev, "\tGuilty fence [%pK] %s: %s\n",
+	dev_warn(dev, "\tGuilty fence [%p] %s: %s\n",
 		 info.fence, info.name,
 		 kbase_sync_status_string(info.status));
+
+	fence = (struct dma_fence *)info.fence;
+	if (fence->ops && fence->ops->get_driver_name && fence->ops->get_timeline_name)
+		dev_info(dev, "fence driver name %s, fence timeline name %s\n", fence->ops->get_driver_name(fence), fence->ops->get_timeline_name(fence));
 
 	/* Search for blocked trigger atoms */
 	kbase_fence_debug_check_atom(katom);
 
 	spin_unlock_irqrestore(&kctx->waiting_soft_jobs_lock, lflags);
-
+	kbase_sync_fence_debug_dump(fence, true);
+	kbase_fence_debug_dump_all_kctx(katom->kctx->kbdev);
 	kbase_sync_fence_in_dump(katom);
 }
 
@@ -502,6 +802,7 @@ static void kbasep_soft_event_cancel_job(struct kbase_jd_atom *katom)
 		kbase_js_sched_all(katom->kctx->kbdev);
 }
 
+#if IS_ENABLED(CONFIG_MALI_VECTOR_DUMP) || MALI_UNIT_TEST
 static void kbase_debug_copy_finish(struct kbase_jd_atom *katom)
 {
 	struct kbase_debug_copy_buffer *buffers = katom->softjob_data;
@@ -673,8 +974,8 @@ static int kbase_debug_copy_prepare(struct kbase_jd_atom *katom)
 		case KBASE_MEM_TYPE_IMPORTED_USER_BUF:
 		{
 			struct kbase_mem_phy_alloc *alloc = reg->gpu_alloc;
-			unsigned long nr_pages =
-				alloc->imported.user_buf.nr_pages;
+			const unsigned long nr_pages = alloc->imported.user_buf.nr_pages;
+			const unsigned long start = alloc->imported.user_buf.address;
 
 			if (alloc->imported.user_buf.mm != current->mm) {
 				ret = -EINVAL;
@@ -686,11 +987,9 @@ static int kbase_debug_copy_prepare(struct kbase_jd_atom *katom)
 				ret = -ENOMEM;
 				goto out_unlock;
 			}
-
-			ret = get_user_pages_fast(
-					alloc->imported.user_buf.address,
-					nr_pages, 0,
-					buffers[i].extres_pages);
+			kbase_gpu_vm_unlock(katom->kctx);
+			ret = get_user_pages_fast(start, nr_pages, 0, buffers[i].extres_pages);
+			kbase_gpu_vm_lock(katom->kctx);
 			if (ret != nr_pages) {
 				/* Adjust number of pages, so that we only
 				 * attempt to release pages in the array that we
@@ -728,7 +1027,6 @@ out_cleanup:
 
 	return ret;
 }
-#endif /* !MALI_USE_CSF */
 
 #if KERNEL_VERSION(5, 6, 0) <= LINUX_VERSION_CODE
 static void *dma_buf_kmap_page(struct kbase_mem_phy_alloc *gpu_alloc,
@@ -760,8 +1058,18 @@ static void *dma_buf_kmap_page(struct kbase_mem_phy_alloc *gpu_alloc,
 }
 #endif
 
-int kbase_mem_copy_from_extres(struct kbase_context *kctx,
-		struct kbase_debug_copy_buffer *buf_data)
+/**
+ * kbase_mem_copy_from_extres() - Copy from external resources.
+ *
+ * @kctx:	kbase context within which the copying is to take place.
+ * @buf_data:	Pointer to the information about external resources:
+ *		pages pertaining to the external resource, number of
+ *		pages to copy.
+ *
+ * Return:      0 on success, error code otherwise.
+ */
+static int kbase_mem_copy_from_extres(struct kbase_context *kctx,
+				      struct kbase_debug_copy_buffer *buf_data)
 {
 	unsigned int i;
 	unsigned int target_page_nr = 0;
@@ -856,7 +1164,6 @@ out_unlock:
 	return ret;
 }
 
-#if !MALI_USE_CSF
 static int kbase_debug_copy(struct kbase_jd_atom *katom)
 {
 	struct kbase_debug_copy_buffer *buffers = katom->softjob_data;
@@ -874,6 +1181,7 @@ static int kbase_debug_copy(struct kbase_jd_atom *katom)
 
 	return 0;
 }
+#endif /* IS_ENABLED(CONFIG_MALI_VECTOR_DUMP) || MALI_UNIT_TEST */
 #endif /* !MALI_USE_CSF */
 
 #define KBASEP_JIT_ALLOC_GPU_ADDR_ALIGNMENT ((u32)0x7)
@@ -969,6 +1277,13 @@ static int kbase_jit_allocate_prepare(struct kbase_jd_atom *katom)
 	jit_info_user_copy_size =
 			jit_info_copy_size_for_jit_version[kctx->jit_version];
 	WARN_ON(jit_info_user_copy_size > sizeof(*info));
+
+	if (!kbase_mem_allow_alloc(kctx)) {
+		dev_dbg(kbdev->dev, "Invalid attempt to allocate JIT memory by %s/%d for ctx %d_%d",
+			current->comm, current->pid, kctx->tgid, kctx->id);
+		ret = -EINVAL;
+		goto fail;
+	}
 
 	/* For backwards compatibility, and to prevent reading more than 1 jit
 	 * info struct on jit version 1
@@ -1485,10 +1800,11 @@ static void kbase_ext_res_process(struct kbase_jd_atom *katom, bool map)
 			if (!kbase_sticky_resource_acquire(katom->kctx,
 					gpu_addr))
 				goto failed_loop;
-		} else
+		} else {
 			if (!kbase_sticky_resource_release_force(katom->kctx, NULL,
 					gpu_addr))
 				failed = true;
+		}
 	}
 
 	/*
@@ -1577,6 +1893,7 @@ int kbase_process_soft_job(struct kbase_jd_atom *katom)
 	case BASE_JD_REQ_SOFT_EVENT_RESET:
 		kbasep_soft_event_update_locked(katom, BASE_JD_SOFT_EVENT_RESET);
 		break;
+#if IS_ENABLED(CONFIG_MALI_VECTOR_DUMP) || MALI_UNIT_TEST
 	case BASE_JD_REQ_SOFT_DEBUG_COPY:
 	{
 		int res = kbase_debug_copy(katom);
@@ -1585,6 +1902,7 @@ int kbase_process_soft_job(struct kbase_jd_atom *katom)
 			katom->event_code = BASE_JD_EVENT_JOB_INVALID;
 		break;
 	}
+#endif /* IS_ENABLED(CONFIG_MALI_VECTOR_DUMP) || MALI_UNIT_TEST */
 	case BASE_JD_REQ_SOFT_JIT_ALLOC:
 		ret = kbase_jit_allocate_process(katom);
 		break;
@@ -1696,8 +2014,10 @@ int kbase_prepare_soft_job(struct kbase_jd_atom *katom)
 		if (katom->jc == 0)
 			return -EINVAL;
 		break;
+#if IS_ENABLED(CONFIG_MALI_VECTOR_DUMP) || MALI_UNIT_TEST
 	case BASE_JD_REQ_SOFT_DEBUG_COPY:
 		return kbase_debug_copy_prepare(katom);
+#endif /* IS_ENABLED(CONFIG_MALI_VECTOR_DUMP) || MALI_UNIT_TEST */
 	case BASE_JD_REQ_SOFT_EXT_RES_MAP:
 		return kbase_ext_res_prepare(katom);
 	case BASE_JD_REQ_SOFT_EXT_RES_UNMAP:
@@ -1729,9 +2049,11 @@ void kbase_finish_soft_job(struct kbase_jd_atom *katom)
 		kbase_sync_fence_in_remove(katom);
 		break;
 #endif /* CONFIG_SYNC || CONFIG_SYNC_FILE */
+#if IS_ENABLED(CONFIG_MALI_VECTOR_DUMP) || MALI_UNIT_TEST
 	case BASE_JD_REQ_SOFT_DEBUG_COPY:
 		kbase_debug_copy_finish(katom);
 		break;
+#endif /* IS_ENABLED(CONFIG_MALI_VECTOR_DUMP) || MALI_UNIT_TEST */
 	case BASE_JD_REQ_SOFT_JIT_ALLOC:
 		kbase_jit_allocate_finish(katom);
 		break;

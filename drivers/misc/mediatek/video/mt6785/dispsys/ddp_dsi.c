@@ -194,6 +194,11 @@ unsigned long DSI_PHY_REG[DSI_INTERFACE_NUM];
 struct DSI_CMDQ_REGS *DSI_CMDQ_REG[DSI_INTERFACE_NUM];
 struct DSI_VM_CMDQ_REGS *DSI_VM_CMD_REG[DSI_INTERFACE_NUM];
 unsigned int deskew_done;
+#ifdef OPLUS_BUG_STABILITY
+struct DSI_VM_CMDQ_REGS *DSI_VM_CMD_REG_10_1C[DSI_INTERFACE_NUM];
+struct DSI_VM_CMDQ_REGS *DSI_VM_CMD_REG_20_2C[DSI_INTERFACE_NUM];
+struct DSI_VM_CMDQ_REGS *DSI_VM_CMD_REG_30_3C[DSI_INTERFACE_NUM];
+#endif /* OPLUS_BUG_STABILITY */
 static int mipi_clk_change_sta;
 static int dsi_currect_mode;
 static int dsi_force_config;
@@ -213,7 +218,16 @@ unsigned int data_lane2[2] = { 0 }; /* MIPITX_DSI_DATA_LANE2 */
 unsigned int data_lane3[2] = { 0 }; /* MIPITX_DSI_DATA_LANE3 */
 
 unsigned int mipitx_impedance_backup[50];
+#ifdef OPLUS_BUG_STABILITY
+//#ifdef OPLUS_FEATURE_RAMLESS_AOD
+extern bool oplus_display_aod_ramless_support;
+extern int disp_lcm_set_aod_cv_mode(struct disp_lcm_handle *plcm, void *handle, unsigned int mode);
+//#endif /* OPLUS_FEATURE_RAMLESS_AOD */
 
+/* #ifdef OPLUS_BUG_STABILITY */
+extern int primary_display_set_safe_mode(unsigned int level);
+/* #endif */ /* OPLUS_BUG_STABILITY */
+#endif
 static void backup_mipitx_impedance(void)
 {
 	int i = 0, j = 0, cnt = 0;
@@ -526,6 +540,16 @@ static void _DSI_INTERNAL_IRQ_Handler(enum DISP_MODULE_ENUM module,
 	if (status.INP_UNFINISH_INT_EN)
 		DDP_PR_ERR("%s:input relay unfinish\n",
 			   ddp_get_module_name(module));
+#ifdef OPLUS_BUG_STABILITY
+	/* #ifdef OPLUS_FEATURE_RAMLESS_AOD */
+	if (oplus_display_aod_ramless_support) {
+		if (!primary_display_is_video_mode()) {
+			if (status.FRAME_DONE_INT_EN)
+			    DISPCHECK("%s:==DSI EOF\n", __func__);
+		}
+	}
+	/* #endif */ /* OPLUS_FEATURE_RAMLESS_AOD */
+#endif
 }
 
 enum DSI_STATUS DSI_Reset(enum DISP_MODULE_ENUM module,
@@ -3008,6 +3032,11 @@ int mipi_clk_change(enum DISP_MODULE_ENUM module, int en)
 		DISP_PR_ERR("%s:Fail to create cmdq handle\n", __func__);
 		return -1;
 	}
+#ifdef OPLUS_BUG_STABILITY
+        if (oplus_display_aod_ramless_support) {
+                primary_display_set_safe_mode(0);
+        }
+#endif /* OPLUS_BUG_STABILITY */
 	cmdqRecReset(handle);
 #endif
 
@@ -3057,6 +3086,11 @@ int mipi_clk_change(enum DISP_MODULE_ENUM module, int en)
 
 	cmdqRecFlush(handle);
 	cmdqRecDestroy(handle);
+#ifdef OPLUS_BUG_STABILITY
+        if (oplus_display_aod_ramless_support) {
+                primary_display_set_safe_mode(1);
+        }
+#endif /* OPLUS_BUG_STABILITY */
 
 	DISPMSG("%s,mipi_clk_change_sta=%d done\n",
 			__func__, mipi_clk_change_sta);
@@ -3944,7 +3978,14 @@ static int process_packet(int recv_data_offset,
 	/* 0x1c: dcs long read response */
 	/* 0x21: dcs short read response(1 byte return) */
 	/* 0x22: dcs short read response(2 byte return) */
+	#ifndef OPLUS_BUG_STABILITY
+	/*
+	 * modify for 19357 ramless oled
+	 */
 	if (packet_type == 0x1A || packet_type == 0x1C) {
+	#else /* OPLUS_BUG_STABILITY */
+	if (packet_type == 0x1A || packet_type == 0x1C || oplus_display_aod_ramless_support) {
+	#endif /* OPLUS_BUG_STABILITY */
 		*recv_data_cnt = read_data[0].byte1 + read_data[0].byte2 * 16;
 		if (*recv_data_cnt > 10) {
 			DISPCHECK("read long pkt data > 4 bytes:%d\n",
@@ -4766,8 +4807,12 @@ static void DSI_send_vm_cmd(struct cmdqRecStruct *cmdq,
 	int dsi_i = 0;
 	unsigned long goto_addr, mask_para, set_para;
 	struct DSI_VM_CMD_CON_REG vm_cmdq;
+	#ifndef OPLUS_BUG_STABILITY
+	/*
+ 	* remove for set reg for more than 16 bytes
+ 	*/
 	struct DSI_VM_CMDQ *vm_data;
-
+	#endif /* OPLUS_BUG_STABILITY */
 	if (module == DISP_MODULE_DSI0 || module == DISP_MODULE_DSIDUAL)
 		dsi_i = 0;
 	else if (module == DISP_MODULE_DSI1)
@@ -4776,7 +4821,12 @@ static void DSI_send_vm_cmd(struct cmdqRecStruct *cmdq,
 		return;
 	DISPFUNCSTART();
 	memset(&vm_cmdq, 0, sizeof(struct DSI_VM_CMD_CON_REG));
+	#ifndef OPLUS_BUG_STABILITY
+	/*
+ 	* remove for set reg for more than 16 bytes
+ 	*/
 	vm_data = DSI_VM_CMD_REG[dsi_i]->data;
+	#endif /* OPLUS_BUG_STABILITY */
 	DSI_READREG32(struct DSI_VM_CMD_CON_REG *, &vm_cmdq,
 			      &DSI_REG[dsi_i]->DSI_VM_CMD_CON);
 
@@ -4792,14 +4842,36 @@ static void DSI_send_vm_cmd(struct cmdqRecStruct *cmdq,
 		DSI_OUTREG32(cmdq, &DSI_REG[dsi_i]->DSI_VM_CMD_CON,
 					AS_UINT32(&vm_cmdq));
 
+		#ifndef OPLUS_BUG_STABILITY
+		/*
+ 		* remove for set reg for more than 16 bytes
+ 		*/
 		goto_addr = (unsigned long)(&vm_data[0].byte0);
+		#else
+		goto_addr = (unsigned long)(&DSI_VM_CMD_REG[dsi_i]->data[0].byte0);
+		#endif /* OPLUS_BUG_STABILITY */
 		mask_para = (0xFF << ((goto_addr & 0x3) * 8));
 		set_para = (cmd << ((goto_addr & 0x3) * 8));
 		DSI_MASKREG32(cmdq, goto_addr & (~0x3),
 					mask_para, set_para);
 
 		for (i = 0; i < count; i++) {
+			#ifndef OPLUS_BUG_STABILITY
+			/*
+ 			* remove for set reg for more than 16 bytes
+ 			*/
 			goto_addr = (unsigned long) (&vm_data[0].byte1) + i;
+			#else /* OPLUS_BUG_STABILITY */
+			if (i < 15) {
+				goto_addr = (unsigned long)(&DSI_VM_CMD_REG[dsi_i]->data[0].byte1) + i;
+			} else if ((i >= 15) && (i < 31)) {
+				goto_addr = (unsigned long)(&DSI_VM_CMD_REG_10_1C[dsi_i]->data[0].byte0)+(i+1-16);
+			} else if((i >= 31) && (i < 47)) {
+				goto_addr = (unsigned long)(&DSI_VM_CMD_REG_20_2C[dsi_i]->data[0].byte0)+(i+1-32);
+			} else if((i >= 47) && (i < 63)) {
+				goto_addr = (unsigned long)(&DSI_VM_CMD_REG_30_3C[dsi_i]->data[0].byte0)+(i+1-48);
+			}
+			#endif /* OPLUS_BUG_STABILITY */
 			mask_para = (0xFF << ((goto_addr & 0x3) * 8));
 			set_para = (unsigned long)(para_list[i] <<
 					((goto_addr & 0x3) * 8));
@@ -5103,6 +5175,136 @@ static void DSI_set_cmdq_serially(enum DISP_MODULE_ENUM module,
 		}
 	}
 }
+//#ifdef OPLUS_FEATURE_RAMLESS_AOD
+static void DSI_set_cmdq_serially_v1(enum DISP_MODULE_ENUM module,
+			bool hs,
+			struct LCM_setting_table_V3 *para_tbl,
+			unsigned int size, unsigned char force_update)
+{
+	/* vdo LP set only support CMDQ version */
+	int dsi_i = 0;
+	UINT32 index = 0;
+	unsigned char data_id, cmd, count;
+	unsigned char *para_list;
+	//int i = 0;
+
+	struct cmdqRecStruct *cmdq;
+
+	if (module == DISP_MODULE_DSI0 || module == DISP_MODULE_DSIDUAL)
+		dsi_i = 0;
+	else if (module == DISP_MODULE_DSI1)
+		dsi_i = 1;
+	else
+		return;
+
+	DDPMSG("DISP/DSI %s,module = %d\n",__func__,module);
+
+	if (DSI_REG[dsi_i]->DSI_MODE_CTRL.MODE && hs) {
+		do {
+			cmdqRecCreate(CMDQ_SCENARIO_DISP_ESD_CHECK, &cmdq);
+			cmdqRecReset(cmdq);
+
+			data_id = para_tbl[index].id;
+			cmd = para_tbl[index].cmd;
+			count = para_tbl[index].count;
+			para_list = para_tbl[index].para_list;
+
+			/*
+			if(cmd != REGFLAG_DELAY_MS_V3){
+				DDPMSG("DISP/DSI %s[%d]. data_id = 0x%x cmd = 0x%x count = 0x%x vdo mode\n",
+						__func__, index, data_id, cmd, count);
+				for(i = 0;i < count;i++){
+					DDPMSG("para_list[%d] = 0x%x vdo mode\n", i, para_list[i]);
+				}
+			}
+			*/
+
+			if (data_id == REGFLAG_ESCAPE_ID &&
+				cmd == REGFLAG_DELAY_MS_V3) {
+				if (count < 10)
+					udelay(count * 1000);
+				else if (count <= 20)
+					usleep_range(count*1000, (count+1)*1000);
+				else
+					msleep(count);
+				//udelay(1000 * count);
+				DDPMSG("DISP/DSI %s[%d]. Delay %d (ms)\n",
+					__func__, index, count);
+				continue;
+			}
+
+			DSI_send_vm_cmd(cmdq, module, data_id, cmd, count,
+					para_list, force_update);
+
+			cmdqRecFlush(cmdq);
+			cmdqRecDestroy(cmdq);
+		} while (++index < size);
+
+	} else {
+		cmdqRecCreate(CMDQ_SCENARIO_DISP_ESD_CHECK, &cmdq);
+		cmdqRecReset(cmdq);
+
+		if (DSI_REG[dsi_i]->DSI_MODE_CTRL.MODE)
+			ddp_dsi_build_cmdq(module, cmdq, CMDQ_STOP_VDO_MODE);
+		else
+			dsi_wait_not_busy(module, cmdq);
+
+		cmdqRecFlush(cmdq);
+		msleep(2);
+		cmdqRecDestroy(cmdq);
+
+		do {
+			cmdqRecCreate(CMDQ_SCENARIO_DISP_ESD_CHECK, &cmdq);
+			cmdqRecReset(cmdq);
+
+			data_id = para_tbl[index].id;
+			cmd = para_tbl[index].cmd;
+			count = para_tbl[index].count;
+			para_list = para_tbl[index].para_list;
+
+/*
+			if(cmd != REGFLAG_DELAY_MS_V3){
+				DDPMSG("DISP/DSI %s[%d]. data_id = 0x%x cmd = 0x%x count = 0x%x cmd mode\n",
+						__func__, index, data_id, cmd, count);
+				for(i = 0;i < count;i++){
+					DDPMSG("para_list[%d] = 0x%x cmd mode\n", i, para_list[i]);
+				}
+			}
+*/
+
+			if (data_id == REGFLAG_ESCAPE_ID &&
+				cmd == REGFLAG_DELAY_MS_V3) {
+				if (count < 10)
+					udelay(count * 1000);
+				else if (count <= 20)
+					usleep_range(count*1000, (count+1)*1000);
+				else
+					msleep(count);
+				//udelay(1000 * count);
+				DDPMSG("DSI_set_cmdq_V3[%d]. Delay %d (ms)\n",
+				   index, count);
+				continue;
+			}
+
+			DSI_send_cmd_cmd(cmdq, module, hs, data_id, cmd, count,
+					para_list, force_update);
+
+			cmdqRecFlush(cmdq);
+			cmdqRecDestroy(cmdq);
+		} while (++index < size);
+		cmdqRecCreate(CMDQ_SCENARIO_DISP_ESD_CHECK, &cmdq);
+		cmdqRecReset(cmdq);
+
+		if (DSI_REG[dsi_i]->DSI_MODE_CTRL.MODE) {
+			ddp_dsi_build_cmdq(module, cmdq, CMDQ_START_VDO_MODE);
+			ddp_dsi_trigger(module, cmdq);
+		}
+
+		cmdqRecFlush(cmdq);
+		cmdqRecDestroy(cmdq);
+	}
+}
+//#endif /* OPLUS_FEATURE_RAMLESS_AOD */
 #ifdef CONFIG_MTK_MT6382_BDG
 void DSI_send_cmdq_to_bdg(enum DISP_MODULE_ENUM module, struct cmdqRecStruct *cmdq,
 		     unsigned int cmd, unsigned char count,
@@ -5224,12 +5426,35 @@ void DSI_set_cmdq_V4(enum DISP_MODULE_ENUM module, bool hs,
 {
 	struct cmdqRecStruct *cmdq;
 
+	//#ifndef OPLUS_FEATURE_RAMLESS_AOD
+	/*
+	 * modify for 19357 ramless aod
+	 */
+	/*
 	cmdqRecCreate(CMDQ_SCENARIO_DISP_ESD_CHECK, &cmdq);
 	cmdqRecReset(cmdq);
 	DSI_set_cmdq_serially(module, cmdq, hs, para_tbl, size,
 			force_update);
 	cmdqRecFlush(cmdq);
 	cmdqRecDestroy(cmdq);
+	*/
+	//#else /* OPLUS_FEATURE_RAMLESS_AOD */
+#ifdef OPLUS_BUG_STABILITY
+	if (oplus_display_aod_ramless_support) {
+		DSI_set_cmdq_serially_v1(module, hs, para_tbl, size,
+				force_update);
+	} else {
+#endif
+		cmdqRecCreate(CMDQ_SCENARIO_DISP_ESD_CHECK, &cmdq);
+		cmdqRecReset(cmdq);
+		DSI_set_cmdq_serially(module, cmdq, hs, para_tbl, size,
+				force_update);
+		cmdqRecFlush(cmdq);
+		cmdqRecDestroy(cmdq);
+#ifdef OPLUS_BUG_STABILITY
+	}
+#endif
+	//#endif /* OPLUS_FEATURE_RAMLESS_AOD */
 }
 
 void DSI_set_cmdq(enum DISP_MODULE_ENUM module, struct cmdqRecStruct *cmdq,
@@ -5304,6 +5529,36 @@ int DSI_Send_ROI(enum DISP_MODULE_ENUM module, void *handle, unsigned int x,
 	return 0;
 }
 
+#ifdef OPLUS_BUG_STABILITY
+static void lcm_set_reset_pin(UINT32 value)
+{
+#if !defined(CONFIG_MTK_LEGACY)
+	if (value)
+		disp_dts_gpio_select_state(DTS_GPIO_STATE_LCM_RST_OUT1);
+	else
+		disp_dts_gpio_select_state(DTS_GPIO_STATE_LCM_RST_OUT0);
+#endif
+}
+
+ long lcm_bias_vsp(UINT32 value)
+{
+	pr_debug("[lcm]set vsp value is %d\n",value);
+	if (value)
+		disp_dts_gpio_select_state(DTS_GPIO_STATE_LCD_BIAS_ENP1);
+	else
+		disp_dts_gpio_select_state(DTS_GPIO_STATE_LCD_BIAS_ENP0);
+	return 0;
+}
+ void lcm_bias_vsn(UINT32 value)
+{
+	 pr_debug("[lcm]set vsn value is %d\n",value);
+
+	if (value)
+		disp_dts_gpio_select_state(DTS_GPIO_STATE_LCD_BIAS_ENN1);
+	else
+		disp_dts_gpio_select_state(DTS_GPIO_STATE_LCD_BIAS_ENN0);
+}
+#else
 static void lcm_set_reset_pin(UINT32 value)
 {
 	if (dts_gpio_state != 0)
@@ -5316,6 +5571,7 @@ static void lcm_set_reset_pin(UINT32 value)
 	}
 
 }
+#endif
 
 static void lcm1_set_reset_pin(UINT32 value)
 {
@@ -5338,6 +5594,12 @@ static void lcm1_set_te_pin(void)
 #endif
 }
 
+#ifdef OPLUS_BUG_STABILITY
+void lcm_set_te_bk_gpio15_pin(void)
+{
+	disp_dts_gpio_select_state(DTS_GPIO_STATE_TE_BK_GPIO15);
+}
+#endif /* OPLUS_BUG_STABILITY */
 static void lcm_udelay(UINT32 us)
 {
 	udelay(us);
@@ -5352,6 +5614,25 @@ static void lcm_mdelay(UINT32 ms)
 	else
 		msleep(ms);
 }
+//#ifdef OPLUS_FEATURE_RAMLESS_AOD
+void DSI_set_cmdq_V4_DSI0(struct LCM_setting_table_V3 *para_tbl,
+			unsigned int size, bool hs)
+{
+	DSI_set_cmdq_V4(DISP_MODULE_DSI0, hs, para_tbl, size, 1);
+}
+
+void DSI_set_cmdq_V4_DSI1(struct LCM_setting_table_V3 *para_tbl,
+			unsigned int size, bool hs)
+{
+	DSI_set_cmdq_V4(DISP_MODULE_DSI1, hs, para_tbl, size, 1);
+}
+
+void DSI_set_cmdq_V4_DSIDual(struct LCM_setting_table_V3 *para_tbl,
+			unsigned int size, bool hs)
+{
+	DSI_set_cmdq_V4(DISP_MODULE_DSIDUAL, hs, para_tbl, size, 1);
+}
+//#endif /* OPLUS_FEATURE_RAMLESS_AOD */
 
 void DSI_set_cmdq_V11_wrapper_DSI0(void *cmdq, unsigned int *pdata,
 			unsigned int queue_size, unsigned char force_update)
@@ -5452,6 +5733,20 @@ unsigned int DSI_dcs_read_lcm_reg_v2_wrapper_DSI0(UINT8 cmd, UINT8 *buffer,
 				       buffer_size);
 }
 
+//#ifdef OPLUS_BUG_STABILITY
+/*
+* add for lcd serial
+*/
+unsigned int DSI_dcs_read_lcm_reg_v4_wrapper_DSI0(UINT8 cmd, UINT8 *buffer, UINT8 buffer_size)
+{
+	return DSI_dcs_read_lcm_reg_v4(DISP_MODULE_DSI0, cmd, buffer, buffer_size, 0);
+}
+
+unsigned int DSI_dcs_read_lcm_reg_v3_wrapper_DSI0(UINT8 cmd, UINT8 *buffer, UINT8 buffer_size)
+{
+	return DSI_dcs_read_lcm_reg_v3(DISP_MODULE_DSI0, cmd, buffer, buffer_size);
+}
+//#endif
 unsigned int DSI_dcs_read_lcm_reg_v2_wrapper_DSI1(UINT8 cmd, UINT8 *buffer,
 						  UINT8 buffer_size)
 {
@@ -5516,6 +5811,11 @@ int ddp_dsi_set_lcm_utils(enum DISP_MODULE_ENUM module,
 	}
 
 	utils->set_reset_pin = lcm_set_reset_pin;
+#ifdef OPLUS_BUG_STABILITY
+	utils->set_gpio_lcd_enp_bias = lcm_bias_vsp;
+	utils->set_gpio_lcd_enn_bias = lcm_bias_vsn;
+	//utils->set_gpio_lcm_vddio_ctl = lcm_vddio18_enable;
+#endif
 	utils->udelay = lcm_udelay;
 	utils->mdelay = lcm_mdelay;
 	utils->set_te_pin = NULL;
@@ -5523,6 +5823,9 @@ int ddp_dsi_set_lcm_utils(enum DISP_MODULE_ENUM module,
 		utils->dsi_set_cmdq = DSI_set_cmdq_wrapper_DSI0;
 		utils->dsi_set_cmdq_V2 = DSI_set_cmdq_V2_Wrapper_DSI0;
 		utils->dsi_set_cmdq_V3 = DSI_set_cmdq_V3_Wrapper_DSI0;
+		//#ifdef OPLUS_FEATURE_RAMLESS_AOD
+		utils->dsi_set_cmdq_V4 = DSI_set_cmdq_V4_DSI0;
+		//#endif /* OPLUS_FEATURE_RAMLESS_AOD */
 		utils->dsi_dcs_read_lcm_reg_v2 =
 					DSI_dcs_read_lcm_reg_v2_wrapper_DSI0;
 		utils->dsi_set_cmdq_V22 = DSI_set_cmdq_V2_DSI0;
@@ -5534,6 +5837,9 @@ int ddp_dsi_set_lcm_utils(enum DISP_MODULE_ENUM module,
 		utils->dsi_set_cmdq = DSI_set_cmdq_wrapper_DSI1;
 		utils->dsi_set_cmdq_V2 = DSI_set_cmdq_V2_Wrapper_DSI1;
 		utils->dsi_set_cmdq_V3 = DSI_set_cmdq_V3_Wrapper_DSI1;
+		//#ifdef OPLUS_FEATURE_RAMLESS_AOD
+		utils->dsi_set_cmdq_V4 = DSI_set_cmdq_V4_DSI1;
+		//#endif /* OPLUS_FEATURE_RAMLESS_AOD */
 		utils->dsi_dcs_read_lcm_reg_v2 =
 					DSI_dcs_read_lcm_reg_v2_wrapper_DSI1;
 		utils->dsi_set_cmdq_V22 = DSI_set_cmdq_V2_DSI1;
@@ -5548,6 +5854,9 @@ int ddp_dsi_set_lcm_utils(enum DISP_MODULE_ENUM module,
 			utils->dsi_set_cmdq = DSI_set_cmdq_wrapper_DSI0;
 			utils->dsi_set_cmdq_V2 = DSI_set_cmdq_V2_Wrapper_DSI0;
 			utils->dsi_set_cmdq_V3 = DSI_set_cmdq_V3_Wrapper_DSI0;
+			//#ifdef OPLUS_FEATURE_RAMLESS_AOD
+			utils->dsi_set_cmdq_V4 = DSI_set_cmdq_V4_DSI0;
+			//#endif /* OPLUS_FEATURE_RAMLESS_AOD */
 			utils->dsi_dcs_read_lcm_reg_v2 =
 					DSI_dcs_read_lcm_reg_v2_wrapper_DSI0;
 			utils->dsi_set_cmdq_V22 = DSI_set_cmdq_V2_DSI0;
@@ -5556,12 +5865,18 @@ int ddp_dsi_set_lcm_utils(enum DISP_MODULE_ENUM module,
 			utils->dsi_set_cmdq = DSI_set_cmdq_wrapper_DSI1;
 			utils->dsi_set_cmdq_V2 = DSI_set_cmdq_V2_Wrapper_DSI1;
 			utils->dsi_set_cmdq_V3 = DSI_set_cmdq_V3_Wrapper_DSI1;
+			//#ifdef OPLUS_FEATURE_RAMLESS_AOD
+			utils->dsi_set_cmdq_V4 = DSI_set_cmdq_V4_DSI1;
+			//#endif /* OPLUS_FEATURE_RAMLESS_AOD */
 			utils->dsi_dcs_read_lcm_reg_v2 =
 					DSI_dcs_read_lcm_reg_v2_wrapper_DSI1;
 			utils->dsi_set_cmdq_V22	= DSI_set_cmdq_V2_DSI1;
 			utils->dsi_set_cmdq_V23 = DSI_set_cmdq_V2_DSI1;
 		} else {
 			utils->dsi_set_cmdq = DSI_set_cmdq_wrapper_DSIDual;
+			//#ifdef OPLUS_FEATURE_RAMLESS_AOD
+			utils->dsi_set_cmdq_V4 = DSI_set_cmdq_V4_DSIDual;
+			//#endif /* OPLUS_FEATURE_RAMLESS_AOD */
 			utils->dsi_set_cmdq_V2 =
 					DSI_set_cmdq_V2_Wrapper_DSIDual;
 			utils->dsi_dcs_read_lcm_reg_v2 =
@@ -5579,7 +5894,9 @@ int ddp_dsi_set_lcm_utils(enum DISP_MODULE_ENUM module,
 							mt_set_gpio_pull_enable;
 #endif
 #else
+#ifndef OPLUS_BUG_STABILITY
 	utils->set_gpio_lcd_enp_bias = lcd_enp_bias_setting;
+#endif //OPLUS_BUG_STABILITY
 #endif
 #ifdef CONFIG_MTK_HIGH_FRAME_RATE
 	utils->dsi_dynfps_send_cmd = DSI_dynfps_send_cmd;
@@ -5642,6 +5959,16 @@ int ddp_dsi_init(enum DISP_MODULE_ENUM module, void *cmdq)
 							0x134);
 	DSI_VM_CMD_REG[1] = (struct DSI_VM_CMDQ_REGS *)(DISPSYS_DSI1_BASE +
 							0x134);
+	#ifdef OPLUS_BUG_STABILITY
+	DSI_VM_CMD_REG_10_1C[0] = (struct DSI_VM_CMDQ_REGS *)(DISPSYS_DSI0_BASE + 0x180);
+	DSI_VM_CMD_REG_10_1C[1] = (struct DSI_VM_CMDQ_REGS *)(DISPSYS_DSI1_BASE + 0x180);
+
+	DSI_VM_CMD_REG_20_2C[0] = (struct DSI_VM_CMDQ_REGS *)(DISPSYS_DSI0_BASE + 0x1A0);
+	DSI_VM_CMD_REG_20_2C[1] = (struct DSI_VM_CMDQ_REGS *)(DISPSYS_DSI1_BASE + 0x1A0);
+
+	DSI_VM_CMD_REG_30_3C[0] = (struct DSI_VM_CMDQ_REGS *)(DISPSYS_DSI0_BASE + 0x1B0);
+	DSI_VM_CMD_REG_30_3C[1] = (struct DSI_VM_CMDQ_REGS *)(DISPSYS_DSI1_BASE + 0x1B0);
+	#endif /* OPLUS_BUG_STABILITY */
 	memset(&_dsi_context, 0, sizeof(_dsi_context));
 
 	for (i = DSI_MODULE_BEGIN(module); i <= DSI_MODULE_END(module); i++) {
@@ -6311,6 +6638,14 @@ int ddp_dsi_stop(enum DISP_MODULE_ENUM module, void *cmdq_handle)
 	} else {
 		DISPMSG("dsi stop: brust mode(vdo mode lcm)\n");
 		/* stop vdo mode */
+#ifdef OPLUS_BUG_STABILITY
+		/* #ifdef OPLUS_FEATURE_RAMLESS_AOD */
+		if (oplus_display_aod_ramless_support) {
+			DSI_OUTREGBIT(cmdq_handle, struct DSI_INT_ENABLE_REG,
+				DSI_REG[i]->DSI_INTEN, VM_DONE, 1);
+		}
+		/* #endif */ /* OPLUS_FEATURE_RAMLESS_AOD */
+#endif
 		DSI_OUTREGBIT(cmdq_handle, struct DSI_START_REG,
 			      DSI_REG[i]->DSI_START, DSI_START, 0);
 		DSI_SetMode(module, cmdq_handle, CMD_MODE);
@@ -6545,7 +6880,145 @@ int ddp_dsi_switch_mode(enum DISP_MODULE_ENUM module, void *cmdq_handle,
 
 	return 0;
 }
+#ifdef OPLUS_BUG_STABILITY
+//#ifdef OPLUS_FEATURE_RAMLESS_AOD
+int ddp_dsi_switch_aod_mode(enum DISP_MODULE_ENUM module, void *cmdq_handle,
+	void *params)
+{
+	int i = 0;
+	int mode = *((int *) (params));
 
+	struct LCM_DSI_PARAMS *dsi_params = &_dsi_context[0].dsi_params;
+
+	int ret;
+
+	DISPMSG("[CV Switch]%s mode = %d\n", __func__, mode);
+
+	if (mode == 0) { /* V2C */
+		unsigned int irq_en_backup;
+
+		DISPMSG("[C2V]v2c switch begin\n");
+
+		/* 1. Turn off DSI interrupt */
+		irq_en_backup = (DISP_REG_GET(DISPSYS_DSI0_BASE + 0x8) &
+			0xffff);
+		DSI_OUTREG32(cmdq_handle, &DSI_REG[i]->DSI_INTEN, 0);
+
+		/* 1. wait idle */
+		DSI_POLLREG32(cmdq_handle, &DSI_REG[i]->DSI_INTSTA,
+			0x80000000, 0x0);
+
+		/* 5. cmd mode setting */
+		DSI_SetMode(module, cmdq_handle, 0);
+		DSI_OUTREG32(cmdq_handle, &DSI_CMDQ_REG[i]->data[0],
+			0x002c3909);
+		DSI_OUTREG32(cmdq_handle, &DSI_REG[i]->DSI_CMDQ_SIZE, 1);
+
+		/* set mutex */
+		DSI_MASKREG32(cmdq_handle, DISP_REG_CONFIG_MUTEX0_RST,
+			0x1, 0x1);
+		DSI_MASKREG32(cmdq_handle, DISP_REG_CONFIG_MUTEX0_RST,
+			0x1, 0x0);
+		DSI_MASKREG32(cmdq_handle, DISP_REG_CONFIG_MUTEX0_SOF,
+			0x7, 0x0);
+		if (disp_helper_get_option(DISP_OPT_MUTEX_EOF_EN_FOR_CMD_MODE))
+			DSI_MASKREG32(cmdq_handle, DISP_REG_CONFIG_MUTEX0_SOF,
+				0x1c0, 0x40); /* eof */
+
+		/* te_rdy irq enable in dsi config */
+		DSI_OUTREGBIT(NULL, struct DSI_INT_ENABLE_REG,
+			DSI_REG[i]->DSI_INTEN, TE_RDY, 1);
+		DSI_OUTREGBIT(cmdq_handle, struct DSI_TXRX_CTRL_REG,
+			DSI_REG[i]->DSI_TXRX_CTRL, EXT_TE_EN, 1);
+
+		/* adjust pll clk */
+		dsi_cmd_mode_clk_change(module, cmdq_handle, dsi_params);
+
+		/* 6. restore IRQ_EN setting */
+		DSI_OUTREG32(cmdq_handle, &DSI_REG[i]->DSI_INTEN,
+			irq_en_backup);
+
+		/* 7. blocking flush */
+		cmdqRecFlush(cmdq_handle);
+		cmdqRecReset(cmdq_handle);
+
+		DISPMSG("[C2V]v2c switch finished\n");
+	} else { /* C2V */
+		DISPMSG("[C2V]c2v switch begin\n");
+
+		/* 1. wait idle */
+		DSI_POLLREG32(cmdq_handle, &DSI_REG[i]->DSI_INTSTA,
+			0x80000000, 0x0);
+
+		/* 2. adjust pll clk */
+		dsi_cmd_mode_clk_change(module, cmdq_handle, dsi_params);
+		DSI_SetBypassRack(module, cmdq_handle, 1);
+
+		/*Config VDO Timing*/
+		DSI_Calc_VDO_Timing(module, dsi_params);
+		DSI_Config_VDO_Timing(module, cmdq_handle, dsi_params);
+		DSI_OUTREGBIT(cmdq_handle, struct DSI_INT_ENABLE_REG,
+				  DSI_REG[i]->DSI_INTEN, VM_DONE, 1);
+		DSI_Set_VM_CMD(module, cmdq_handle);
+		disp_lcm_set_aod_cv_mode(pgc->plcm, cmdq_handle, 1);
+		pr_info("c2v init code push finished\n");
+
+		DSI_Start(module, cmdq_handle);
+		DSI_POLLREG32(cmdq_handle, &DSI_REG[i]->DSI_INTSTA, 0x2, 0x2);
+		DSI_POLLREG32(cmdq_handle, &DSI_REG[i]->DSI_INTSTA,
+			0x80000000, 0x0);
+
+		/* 5. config into vdo mode */
+		DSI_SetMode(module, cmdq_handle, mode);
+		DSI_MASKREG32(cmdq_handle, DISP_REG_CONFIG_MUTEX0_SOF,
+			0x7, 0x1); /* sof */
+		DSI_MASKREG32(cmdq_handle, DISP_REG_CONFIG_MUTEX0_SOF,
+			0x1c0, 0x40); /* eof */
+		DSI_MASKREG32(cmdq_handle, DISP_REG_CONFIG_MUTEX0_EN,
+			0x1, 0x1); /* release mutex for video mode */
+		DSI_Start(module, cmdq_handle);
+
+		/* 6. check if vdo mode now */
+		DSI_OUTREGBIT(cmdq_handle, struct DSI_INT_STATUS_REG,
+			DSI_REG[i]->DSI_INTSTA, VM_VACT_STR_INT_EN, 0);
+		DSI_POLLREG32(cmdq_handle, &DSI_REG[i]->DSI_INTSTA,
+			0x200, 0x200);
+
+		/* 7. Disable packet_size_mult */
+		if (dsi_params->packet_size_mult) {
+			unsigned int ps_wc = 0, h = 0;
+
+			h = DSI_INREG32(struct DSI_VACT_NL_REG,
+				&DSI_REG[i]->DSI_VACT_NL);
+			h *= dsi_params->packet_size_mult;
+			DSI_OUTREGBIT(cmdq_handle, struct DSI_VACT_NL_REG,
+				DSI_REG[i]->DSI_VACT_NL, VACT_NL, h);
+			ps_wc = DSI_INREG32(struct DSI_PSCTRL_REG,
+				&DSI_REG[i]->DSI_PSCTRL);
+			ps_wc /= dsi_params->packet_size_mult;
+			DSI_OUTREGBIT(cmdq_handle, struct DSI_PSCTRL_REG,
+				DSI_REG[i]->DSI_PSCTRL, DSI_PS_WC, ps_wc);
+		}
+
+		/* 8. disable bypass RACK */
+		DSI_SetBypassRack(module, cmdq_handle, 0);
+		DSI_OUTREGBIT(cmdq_handle, struct DSI_TXRX_CTRL_REG,
+			DSI_REG[i]->DSI_TXRX_CTRL, EXT_TE_EDGE, 0);
+
+		/* 9. blocking flush */
+		ret = cmdqRecFlush(cmdq_handle);
+		cmdqRecReset(cmdq_handle);
+
+		DISPMSG("[C2V]c2v switch finished\n");
+	}
+
+	for (i = DSI_MODULE_BEGIN(module); i <= DSI_MODULE_END(module); i++)
+		_dsi_context[i].dsi_params.mode = mode;
+
+	return 0;
+}
+//#endif /* OPLUS_FEATURE_RAMLESS_AOD */
+#endif
 int ddp_dsi_ioctl(enum DISP_MODULE_ENUM module, void *cmdq_handle,
 		  enum DDP_IOCTL_NAME ioctl_cmd, void *params)
 {
@@ -6565,6 +7038,15 @@ int ddp_dsi_ioctl(enum DISP_MODULE_ENUM module, void *cmdq_handle,
 		ret = ddp_dsi_switch_mode(module, cmdq_handle, params);
 		break;
 	}
+#ifdef OPLUS_BUG_STABILITY
+	//#ifdef OPLUS_FEATURE_RAMLESS_AOD
+	case DDP_SWITCH_AOD_MODE:
+	{
+		ret = ddp_dsi_switch_aod_mode(module, cmdq_handle, params);
+		break;
+	}
+	//#endif /* OPLUS_FEATURE_RAMLESS_AOD */
+#endif
 	case DDP_SWITCH_LCM_MODE:
 	{
 		/* ret = ddp_dsi_switch_lcm_mode(module, params); */

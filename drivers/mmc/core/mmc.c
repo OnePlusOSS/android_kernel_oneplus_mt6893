@@ -438,6 +438,10 @@ static int mmc_decode_ext_csd(struct mmc_card *card, u8 *ext_csd)
 
 		/* EXT_CSD value is in units of 10ms, but we store in ms */
 		card->ext_csd.part_time = 10 * ext_csd[EXT_CSD_PART_SWITCH_TIME];
+		/* Some eMMC set the value too low so set a minimum */
+		if (card->ext_csd.part_time &&
+		    card->ext_csd.part_time < MMC_MIN_PART_SWITCH_TIME)
+			card->ext_csd.part_time = MMC_MIN_PART_SWITCH_TIME;
 
 		/* Sleep / awake timeout in 100ns units */
 		if (sa_shift > 0 && sa_shift <= 0x17)
@@ -626,17 +630,6 @@ static int mmc_decode_ext_csd(struct mmc_card *card, u8 *ext_csd)
 	} else {
 		card->ext_csd.data_sector_size = 512;
 	}
-
-	/*
-	 * GENERIC_CMD6_TIME is to be used "unless a specific timeout is defined
-	 * when accessing a specific field", so use it here if there is no
-	 * PARTITION_SWITCH_TIME.
-	 */
-	if (!card->ext_csd.part_time)
-		card->ext_csd.part_time = card->ext_csd.generic_cmd6_time;
-	/* Some eMMC set the value too low so set a minimum */
-	if (card->ext_csd.part_time < MMC_MIN_PART_SWITCH_TIME)
-		card->ext_csd.part_time = MMC_MIN_PART_SWITCH_TIME;
 
 	/* eMMC v5 or later */
 	if (card->ext_csd.rev >= 7) {
@@ -1936,6 +1929,28 @@ static int mmc_can_sleep(struct mmc_card *card)
 	return (card && card->ext_csd.rev >= 3);
 }
 
+#ifdef CONFIG_MTK_EMMC_CQ_SUPPORT
+static int mmc_awake(struct mmc_host *host)
+{
+	struct mmc_command cmd = {0};
+	struct mmc_card *card = host->card;
+	int err;
+
+	cmd.opcode = MMC_SLEEP_AWAKE;
+	cmd.arg = card->rca << 16;
+
+	cmd.flags = MMC_RSP_R1B | MMC_CMD_AC;
+	err = mmc_wait_for_cmd(host, &cmd, 0);
+	if (err)
+		return err;
+
+	err = mmc_select_card(host->card);
+
+	return err;
+
+}
+#endif
+
 static int mmc_sleep(struct mmc_host *host)
 {
 	struct mmc_command cmd = {};
@@ -2090,9 +2105,10 @@ static int _mmc_suspend(struct mmc_host *host, bool is_suspend)
 	if (mmc_can_poweroff_notify(host->card) &&
 		((host->caps2 & MMC_CAP2_FULL_PWR_CYCLE) || !is_suspend))
 		err = mmc_poweroff_notify(host->card, notify_type);
-	else if (mmc_can_sleep(host->card))
-		err = mmc_sleep(host);
-	else if (!mmc_host_is_spi(host))
+	else if (mmc_can_sleep(host->card)) {
+		memcpy(&host->cached_ios, &host->ios, sizeof(host->ios));
+		err = mmc_sleep(host);	
+	} else if (!mmc_host_is_spi(host))
 		err = mmc_deselect_cards(host);
 
 	if (!err) {
@@ -2134,7 +2150,21 @@ static int _mmc_resume(struct mmc_host *host)
 		goto out;
 
 	mmc_power_up(host, host->card->ocr);
+#ifdef CONFIG_MTK_EMMC_CQ_SUPPORT
+	if (mmc_can_sleep(host->card)) {
+		err = mmc_awake(host);
+		if (err) {
+			pr_err("%s: %s: awake failed (%d)\n",
+					mmc_hostname(host), __func__, err);
+			goto out;
+		}
+		memcpy(&host->ios, &host->cached_ios, sizeof(host->ios));
+		host->ops->set_ios(host, &host->ios);
+	} else
+		err = mmc_init_card(host, host->card->ocr, host->card);
+#else
 	err = mmc_init_card(host, host->card->ocr, host->card);
+#endif
 	mmc_card_clr_suspended(host->card);
 
 out:
@@ -2243,6 +2273,10 @@ static int _mmc_hw_reset(struct mmc_host *host)
 static const struct mmc_bus_ops mmc_ops = {
 	.remove = mmc_remove,
 	.detect = mmc_detect,
+#ifdef CONFIG_MMC_PASSWORDS
+	.sysfs_add = NULL,
+	.sysfs_remove = NULL,
+#endif
 	.suspend = mmc_suspend,
 	.resume = mmc_resume,
 	.runtime_suspend = mmc_runtime_suspend,

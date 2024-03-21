@@ -573,6 +573,7 @@ static struct page **__iommu_dma_alloc_pages(unsigned int count,
 	while (count) {
 		struct page *page = NULL;
 		unsigned int order_size;
+		gfp_t gfp_tmp;
 
 		/*
 		 * Higher-order allocations are a convenience rather
@@ -584,8 +585,11 @@ static struct page **__iommu_dma_alloc_pages(unsigned int count,
 			unsigned int order = __fls(order_mask);
 
 			order_size = 1U << order;
-			page = alloc_pages((order_mask - order_size) ?
-					   gfp | __GFP_NORETRY : gfp, order);
+			gfp_tmp = (order_mask - order_size) ? (gfp | __GFP_NORETRY) : gfp;
+			if (order > 3)
+				gfp_tmp &= ~__GFP_RECLAIM;
+
+			page = alloc_pages(gfp_tmp, order);
 			if (!page)
 				continue;
 			if (!order)

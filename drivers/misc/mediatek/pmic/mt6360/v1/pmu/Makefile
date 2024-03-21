@@ -2,6 +2,7 @@ ifeq ($(CONFIG_MTK_GAUGE_VERSION),30)
 subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/typec/tcpc/inc
 subdir-ccflags-y += -I$(srctree)/drivers/power/supply/mediatek/charger
 subdir-ccflags-y += -I$(srctree)/drivers/power/supply/mediatek/misc
+subdir-ccflags-y += -I$(srctree)/drivers/power/supply
 endif
 
 obj-$(CONFIG_MFD_MT6360_PMU)		+= mt6360_pmu_i2c.o mt6360_pmu_regmap.o\

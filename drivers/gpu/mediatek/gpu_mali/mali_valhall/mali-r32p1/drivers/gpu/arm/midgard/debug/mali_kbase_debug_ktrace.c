@@ -18,7 +18,8 @@
  * http://www.gnu.org/licenses/gpl-2.0.html.
  *
  */
-
+#include <linux/delay.h>
+#include <linux/sched/clock.h>
 #include <mali_kbase.h>
 #include "debug/mali_kbase_debug_ktrace_internal.h"
 
@@ -83,15 +84,14 @@ static void kbasep_ktrace_format_msg(struct kbase_ktrace_msg *trace_msg,
 		char *buffer, int sz)
 {
 	s32 written = 0;
-
+	unsigned long rem_nsec = do_div(trace_msg->timestamp, 1000000000);
 	/* Initial part of message:
 	 *
 	 * secs,thread_id,cpu,code,
 	 */
 	written += MAX(snprintf(buffer + written, MAX(sz - written, 0),
-			"%d.%.6d,%d,%d,%s,",
-			(int)trace_msg->timestamp.tv_sec,
-			(int)(trace_msg->timestamp.tv_nsec / 1000),
+			"%u.%.6lu,%d,%d,%s,",
+			(u32)trace_msg->timestamp, rem_nsec / 1000,
 			trace_msg->thread_id, trace_msg->cpu,
 			kbasep_ktrace_code_string[trace_msg->backend.gpu.code]),
 			0);
@@ -131,7 +131,7 @@ static void kbasep_ktrace_dump_msg(struct kbase_device *kbdev,
 	lockdep_assert_held(&kbdev->ktrace.lock);
 
 	kbasep_ktrace_format_msg(trace_msg, buffer, sizeof(buffer));
-	dev_dbg(kbdev->dev, "%s", buffer);
+	dev_err(kbdev->dev, "%s", buffer);
 }
 
 struct kbase_ktrace_msg *kbasep_ktrace_reserve(struct kbase_ktrace *ktrace)
@@ -159,7 +159,7 @@ void kbasep_ktrace_msg_init(struct kbase_ktrace *ktrace,
 	trace_msg->thread_id = task_pid_nr(current);
 	trace_msg->cpu = task_cpu(current);
 
-	ktime_get_real_ts64(&trace_msg->timestamp);
+	trace_msg->timestamp = local_clock();
 
 	/* No need to store a flag about whether there was a kctx, tgid==0 is
 	 * sufficient
@@ -220,7 +220,7 @@ void kbasep_ktrace_dump(struct kbase_device *kbdev)
 	char buffer[KTRACE_DUMP_MESSAGE_SIZE] = "Dumping trace:\n";
 
 	kbasep_ktrace_format_header(buffer, sizeof(buffer), strlen(buffer));
-	dev_dbg(kbdev->dev, "%s", buffer);
+	dev_err(kbdev->dev, "%s", buffer);
 
 	spin_lock_irqsave(&kbdev->ktrace.lock, flags);
 	start = kbdev->ktrace.first_out;
@@ -233,7 +233,7 @@ void kbasep_ktrace_dump(struct kbase_device *kbdev)
 
 		start = (start + 1) & KBASE_KTRACE_MASK;
 	}
-	dev_dbg(kbdev->dev, "TRACE_END");
+	dev_err(kbdev->dev, "TRACE_END");
 
 	kbasep_ktrace_clear_locked(kbdev);
 

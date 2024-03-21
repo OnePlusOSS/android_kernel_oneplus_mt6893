@@ -1,0 +1,17 @@
+/*#ifdef VENDOE_EDIT*/
+&i2c8 {
+	   fan53870@35 {
+               compatible = "fan53870";
+               reg = <0x35>;
+               ldo1_min_vol = <800000>;  /*uV*/
+               ldo1_max_vol = <1504000>;
+               ldo1_step_vol = <8000>;
+       };
+};
+/*#endif*/
+
+&charger {
+	qcom,sub_board_pull_up_r_support;
+	qcom,sub_board_pull_up_r = <100000>;
+};
+

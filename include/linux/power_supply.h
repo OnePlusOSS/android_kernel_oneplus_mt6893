@@ -407,6 +407,8 @@ enum power_supply_property {
 	 * MODEL_NAME and SERIAL_NUMBER. Don't add below SERIAL_NUMBER.
 	 */
 	POWER_SUPPLY_PROP_SERIAL_NUMBER,
+	POWER_SUPPLY_PROP_COOL_DOWN,
+	POWER_SUPPLY_PROP_MMI_CHARGING_ENABLE,
 };
 
 enum power_supply_type {
@@ -422,8 +424,10 @@ enum power_supply_type {
 	POWER_SUPPLY_TYPE_USB_PD,		/* Power Delivery Port */
 	POWER_SUPPLY_TYPE_USB_PD_DRP,		/* PD Dual Role Port */
 	POWER_SUPPLY_TYPE_APPLE_BRICK_ID,	/* Apple Charging Method */
+#ifdef CONFIG_OPLUS_HVDCP_SUPPORT
 	POWER_SUPPLY_TYPE_USB_HVDCP,		/* High Voltage DCP */
 	POWER_SUPPLY_TYPE_USB_HVDCP_3,		/* Efficient High Voltage DCP */
+#endif
 	POWER_SUPPLY_TYPE_USB_HVDCP_3P5,	/* Efficient High Voltage DCP */
 	POWER_SUPPLY_TYPE_WIRELESS,		/* Accessory Charger Adapters */
 	POWER_SUPPLY_TYPE_USB_FLOAT,		/* Floating charger */

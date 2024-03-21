@@ -44,7 +44,7 @@ void ufsdbg_print_info(char **buff, unsigned long *size, struct seq_file *m)
 
 	/* Host state */
 	SPREAD_PRINTF(buff, size, m,
-		      "UFS Host state=%d\n", hba->ufshcd_state);
+		      "UFS Host state=%u\n", hba->ufshcd_state);
 	SPREAD_PRINTF(buff, size, m,
 		      "lrb in use=0x%lx, outstanding reqs=0x%lx tasks=0x%lx\n",
 		      hba->lrb_in_use, hba->outstanding_reqs,
@@ -59,7 +59,7 @@ void ufsdbg_print_info(char **buff, unsigned long *size, struct seq_file *m)
 		      "PM in progress=%d, sys. suspended=%d\n",
 		      hba->pm_op_in_progress, hba->is_sys_suspended);
 	SPREAD_PRINTF(buff, size, m,
-		      "Auto BKOPS=%d, Host self-block=%d\n",
+		      "Auto BKOPS=%d, Host self-block=%u\n",
 		      hba->auto_bkops_enabled, hba->host->host_self_blocked);
 	if (ufshcd_is_clkgating_allowed(hba))
 		SPREAD_PRINTF(buff, size, m,
@@ -89,13 +89,13 @@ void ufsdbg_print_info(char **buff, unsigned long *size, struct seq_file *m)
 		      "hba->ufs_version = 0x%x, hba->capabilities = 0x%x\n",
 		      hba->ufs_version, hba->capabilities);
 	SPREAD_PRINTF(buff, size, m,
-		      "last_hibern8_exit_tstamp at %lld us, hibern8_exit_cnt = %d\n",
+		      "last_hibern8_exit_tstamp at %lld us, hibern8_exit_cnt = %u\n",
 		      ktime_to_us(hba->ufs_stats.last_hibern8_exit_tstamp),
 		      hba->ufs_stats.hibern8_exit_cnt);
 
 	/* PWR info */
 	SPREAD_PRINTF(buff, size, m,
-		      "[RX, TX]: gear=[%d, %d], lane[%d, %d], pwr[%d, %d], rate = %d\n",
+		      "[RX, TX]: gear=[%u, %u], lane[%u, %u], pwr[%u, %u], rate = %u\n",
 		      hba->pwr_info.gear_rx, hba->pwr_info.gear_tx,
 		      hba->pwr_info.lane_rx, hba->pwr_info.lane_tx,
 		      hba->pwr_info.pwr_rx,
@@ -108,6 +108,11 @@ void ufsdbg_print_info(char **buff, unsigned long *size, struct seq_file *m)
 		      hba->dev_info.wmanufacturerid,
 		      hba->dev_info.model,
 			  hba->dev_info.wspecversion);
+
+	/* RWcmd info */
+	SPREAD_PRINTF(buff, size, m,
+		      "rcmd = %u, wcmd = %u\n",
+		      hba->ufs_mtk_qcmd_r_cmd_cnt, hba->ufs_mtk_qcmd_w_cmd_cnt);
 
 	/* Error history */
 	ufshcd_print_all_evt_hist(hba, m, buff, size);

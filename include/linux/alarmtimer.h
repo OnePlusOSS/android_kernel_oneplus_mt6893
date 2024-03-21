@@ -44,6 +44,9 @@ struct alarm {
 	enum alarmtimer_restart	(*function)(struct alarm *, ktime_t now);
 	enum alarmtimer_type	type;
 	int			state;
+#ifdef OPLUS_FEATURE_ALARMINFO_STANDBY
+	char			comm[TASK_COMM_LEN];
+#endif /* OPLUS_FEATURE_ALARMINFO_STANDBY */
 	void			*data;
 };
 

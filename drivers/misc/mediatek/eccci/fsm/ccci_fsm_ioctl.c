@@ -22,6 +22,13 @@
 #include "ccci_platform.h"
 #include "modem_sys.h"
 #include "md_sys1_platform.h"
+//#ifdef VENDOR_EDIT
+//Add for caple detect when SIM plug in
+#include "ccci_swtp.h"
+//#endif /* VENDOR_EDIT */
+//#ifdef VENDOR_EDIT
+#include <linux/proc_fs.h>
+//#endif  /*VENDOR_EDIT*/
 
 signed int __weak battery_get_bat_voltage(void)
 {
@@ -611,6 +618,16 @@ long ccci_fsm_ioctl(int md_id, unsigned int cmd, unsigned long arg)
 			"get modem exception type=%d ret=%d\n",
 			ctl->ee_ctl.ex_type, ret);
 		break;
+	
+	//#ifdef VENDOR_EDIT
+	//Add for caple detect when SIM plug in
+	case CCCI_IOC_SIM_INSERTED_FOR_SWITCH_RF_SAR:
+		CCCI_NORMAL_LOG(md_id, FSM,
+			"SIM inserted notify to ioctl called by %s\n", current->comm);
+		ret = ccci_get_swtp_gpio_value();
+	//Wrire the return value into Node file
+	//....
+	//#endif /* VENDOR_EDIT */
 	default:
 		ret = fsm_md_data_ioctl(md_id, cmd, arg);
 		break;

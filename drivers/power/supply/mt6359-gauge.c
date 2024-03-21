@@ -380,11 +380,14 @@
 #define Set_BAT_DISABLE_NAFG _IOW('k', 14, int)
 #define Set_CARTUNE_TO_KERNEL _IOW('k', 15, int)
 
+
+#ifdef OPLUS_FEATURE_CHG_BASIC
 #define MT6359_AUXADC_BAT_TEMP_1	0x1228
 #define PMIC_AUXADC_BAT_TEMP_FROZE_EN_ADDR	\
 	MT6359_AUXADC_BAT_TEMP_1
 #define PMIC_AUXADC_BAT_TEMP_FROZE_EN_MASK	0x1
 #define PMIC_AUXADC_BAT_TEMP_FROZE_EN_SHIFT	0
+#endif
 
 static struct class *bat_cali_class;
 static int bat_cali_major;
@@ -555,8 +558,13 @@ static int reg_to_current(struct mtk_gauge *gauge,
 		retval,
 		is_charging);
 
+#ifndef OPLUS_FEATURE_CHG_BASIC
 	if (is_charging == false)
 		return -retval;
+#else
+	if (is_charging == true)
+		return -retval;
+#endif /*OPLUS_FEATURE_CHG_BASIC*/
 
 	return retval;
 }
@@ -2607,7 +2615,7 @@ static int zcv_get(struct mtk_gauge *gauge_dev,
 	*zcv = adc_result;
 	return 0;
 }
-
+#ifndef OPLUS_FEATURE_CHG_BASIC
 static int get_charger_zcv(struct mtk_gauge *gauge_dev)
 {
 	struct power_supply *chg_psy;
@@ -2628,7 +2636,7 @@ static int get_charger_zcv(struct mtk_gauge *gauge_dev)
 
 	return val.intval;
 }
-
+#endif
 static int boot_zcv_get(struct mtk_gauge *gauge_dev,
 	struct mtk_gauge_sysfs_field_info *attr, int *val)
 {
@@ -2644,7 +2652,9 @@ static int boot_zcv_get(struct mtk_gauge *gauge_dev,
 	int _hw_ocv_chgin_rdy;
 	int now_temp;
 	int now_thr;
+#ifndef OPLUS_FEATURE_CHG_BASIC
 	int tmp_hwocv_chgin = 0;
+#endif
 	bool fg_is_charger_exist;
 	struct mtk_battery *gm;
 	struct zcv_data *zcvinfo;
@@ -2657,6 +2667,11 @@ static int boot_zcv_get(struct mtk_gauge *gauge_dev,
 	_hw_ocv_59_pon = read_hw_ocv_6359_power_on(gauge_dev);
 	_hw_ocv_59_plugin = read_hw_ocv_6359_plug_in(gauge_dev);
 
+	/* todo:charger function is not ready to access charger zcv */
+	/* _hw_ocv_chgin = battery_get_charger_zcv() / 100; */
+	_hw_ocv_chgin = 0;
+	
+#ifndef OPLUS_FEATURE_CHG_BASIC
 	tmp_hwocv_chgin = get_charger_zcv(gauge_dev);
 	if (tmp_hwocv_chgin != -ENODEV)
 		_hw_ocv_chgin = tmp_hwocv_chgin / 100;
@@ -2664,6 +2679,10 @@ static int boot_zcv_get(struct mtk_gauge *gauge_dev,
 		_hw_ocv_chgin = 0;
 
 	now_temp = gm->bs_data.bat_batt_temp;
+#else
+	now_temp = 25;
+#endif
+
 
 	if (gm == NULL)
 		now_thr = 300;
@@ -3043,6 +3062,7 @@ static int ptim_resist_get(struct mtk_gauge *gauge,
 	return ret;
 }
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
 static int bat_temp_froze_en_set(struct mtk_gauge *gauge,
 	struct mtk_gauge_sysfs_field_info *attr, int val)
 {
@@ -3055,6 +3075,7 @@ static int bat_temp_froze_en_set(struct mtk_gauge *gauge,
 		val << PMIC_AUXADC_BAT_TEMP_FROZE_EN_SHIFT);
 	return 0;
 }
+#endif
 
 static int coulomb_interrupt_ht_set(struct mtk_gauge *gauge,
 	struct mtk_gauge_sysfs_field_info *attr, int val)
@@ -3671,8 +3692,10 @@ static struct mtk_gauge_sysfs_field_info mt6359_sysfs_field_tbl[] = {
 		vbat2_detect_time, GAUGE_PROP_VBAT2_DETECT_TIME),
 	GAUGE_SYSFS_INFO_FIELD_RW(
 		vbat2_detect_counter, GAUGE_PROP_VBAT2_DETECT_COUNTER),
+#ifdef OPLUS_FEATURE_CHG_BASIC
 	GAUGE_SYSFS_FIELD_WO(
 		bat_temp_froze_en_set, GAUGE_PROP_BAT_TEMP_FROZE_EN),
+#endif
 };
 
 static struct attribute *

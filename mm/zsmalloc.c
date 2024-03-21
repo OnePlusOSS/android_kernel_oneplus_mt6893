@@ -71,7 +71,11 @@
  * A single 'zspage' is composed of up to 2^N discontiguous 0-order (single)
  * pages. ZS_MAX_ZSPAGE_ORDER defines upper limit on N.
  */
+#if defined(OPLUS_FEATURE_ZRAM_OPT) && defined(CONFIG_OPLUS_ZRAM_OPT)
+#define ZS_MAX_ZSPAGE_ORDER 3
+#else
 #define ZS_MAX_ZSPAGE_ORDER 2
+#endif /*OPLUS_FEATURE_ZRAM_OPT*/
 #define ZS_MAX_PAGES_PER_ZSPAGE (_AC(1, UL) << ZS_MAX_ZSPAGE_ORDER)
 
 #define ZS_HANDLE_SIZE (sizeof(unsigned long))
@@ -122,7 +126,11 @@
 
 #define FULLNESS_BITS	2
 #define CLASS_BITS	8
+#if defined(OPLUS_FEATURE_ZRAM_OPT) && defined(CONFIG_OPLUS_ZRAM_OPT)
+#define ISOLATED_BITS	(ZS_MAX_ZSPAGE_ORDER+1)
+#else
 #define ISOLATED_BITS	3
+#endif /*OPLUS_FEATURE_ZRAM_OPT*/
 #define MAGIC_VAL_BITS	8
 
 #define MAX(a, b) ((a) >= (b) ? (a) : (b))
@@ -350,7 +358,7 @@ static void destroy_cache(struct zs_pool *pool)
 static unsigned long cache_alloc_handle(struct zs_pool *pool, gfp_t gfp)
 {
 	return (unsigned long)kmem_cache_alloc(pool->handle_cachep,
-			gfp & ~(__GFP_HIGHMEM|__GFP_MOVABLE));
+			gfp & ~(__GFP_HIGHMEM|__GFP_MOVABLE|__GFP_CMA));
 }
 
 static void cache_free_handle(struct zs_pool *pool, unsigned long handle)
@@ -361,7 +369,7 @@ static void cache_free_handle(struct zs_pool *pool, unsigned long handle)
 static struct zspage *cache_alloc_zspage(struct zs_pool *pool, gfp_t flags)
 {
 	return kmem_cache_alloc(pool->zspage_cachep,
-			flags & ~(__GFP_HIGHMEM|__GFP_MOVABLE));
+			flags & ~(__GFP_HIGHMEM|__GFP_MOVABLE|__GFP_CMA));
 }
 
 static void cache_free_zspage(struct zs_pool *pool, struct zspage *zspage)
@@ -2594,6 +2602,10 @@ static int __init zs_init(void)
 
 	zs_stat_init();
 
+#ifdef CONFIG_CONT_PTE_HUGEPAGE_64K_ZRAM
+	thp_zs_init();
+#endif
+
 	return 0;
 
 hp_setup_fail:
@@ -2604,6 +2616,10 @@ out:
 
 static void __exit zs_exit(void)
 {
+#ifdef CONFIG_CONT_PTE_HUGEPAGE_64K_ZRAM
+	thp_zs_exit();
+#endif
+
 #ifdef CONFIG_ZPOOL
 	zpool_unregister_driver(&zs_zpool_driver);
 #endif

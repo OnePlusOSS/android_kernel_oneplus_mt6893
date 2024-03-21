@@ -271,7 +271,7 @@ u64 mt_gpufreq_get_shader_present(void)
 	return shader_present;
 }
 
-#define hf_fmfg_ck 1 // Qoo for build pass
+#define hf_fmfg_ck 22 // Qoo for build pass
 void mt_gpufreq_dump_infra_status(void)
 {
 	unsigned int start, offset;

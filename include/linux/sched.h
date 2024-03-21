@@ -31,6 +31,14 @@
 #include <linux/rseq.h>
 #include <linux/android_kabi.h>
 
+#ifdef CONFIG_OPLUS_FEATURE_AUDIO_OPT
+#include <linux/sched_assist/sched_assist_status.h>
+#endif
+
+#if defined (OPLUS_FEATURE_HEALTHINFO) && defined (CONFIG_OPLUS_JANK_INFO)
+#include <linux/healthinfo/jank_monitor.h>
+#endif /* OPLUS_FEATURE_HEALTHINFO */
+
 /* task_struct member predeclarations (sorted alphabetically): */
 struct audit_context;
 struct backing_dev_info;
@@ -205,6 +213,26 @@ struct task_group;
 
 #endif
 
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+extern int sysctl_sched_assist_enabled;
+extern int sysctl_sched_assist_scene;
+extern int sysctl_animation_type;
+
+
+extern int sysctl_slide_boost_enabled;
+extern int sysctl_boost_task_threshold;
+extern int sysctl_input_boost_enabled;
+#endif /* OPLUS_FEATURE_SCHED_ASSIST */
+#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_SCHED_WALT)
+enum task_event {
+	PUT_PREV_TASK   = 0,
+	PICK_NEXT_TASK  = 1,
+	TASK_WAKE       = 2,
+	TASK_MIGRATE    = 3,
+	TASK_UPDATE     = 4,
+	IRQ_UPDATE	= 5,
+};
+#endif /* defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_SCHED_WALT) */
 /* Task command name length: */
 #define TASK_COMM_LEN			16
 
@@ -651,6 +679,83 @@ struct wake_q_node {
 	struct wake_q_node *next;
 };
 
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_CPU_JANKINFO)
+#define OPLUS_NR_CPUS (8)
+/* hot-thread */
+struct task_record {
+#define RECOED_WINSIZE			(1 << 8)
+#define RECOED_WINIDX_MASK		(RECOED_WINSIZE - 1)
+	u8 winidx;
+	u8 count;
+	u8 top_app_cnt;
+	u8 non_topapp_cnt;
+};
+#endif
+
+#if defined(OPLUS_FEATURE_PROCESS_RECLAIM) && defined(CONFIG_PROCESS_RECLAIM_ENHANCE)
+union reclaim_limit {
+	unsigned long stop_jiffies;
+	unsigned long stop_scan_addr;
+};
+#endif
+
+#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_SCHED_WALT)
+#define RAVG_HIST_SIZE_MAX 5
+
+/* ravg represents frequency scaled cpu-demand of tasks */
+struct ravg {
+	/*
+	 * 'mark_start' marks the beginning of an event (task waking up, task
+	 * starting to execute, task being preempted) within a window
+	 *
+	 * 'sum' represents how runnable a task has been within current
+	 * window. It incorporates both running time and wait time and is
+	 * frequency scaled.
+	 *
+	 * 'sum_history' keeps track of history of 'sum' seen over previous
+	 * RAVG_HIST_SIZE windows. Windows where task was entirely sleeping are
+	 * ignored.
+	 *
+	 * 'demand' represents maximum sum seen over previous
+	 * sysctl_sched_ravg_hist_size windows. 'demand' could drive frequency
+	 * demand for tasks.
+	 *
+	 * 'curr_window' represents task's contribution to cpu busy time
+	 * statistics (rq->curr_runnable_sum) in current window
+	 *
+	 * 'prev_window' represents task's contribution to cpu busy time
+	 * statistics (rq->prev_runnable_sum) in previous window
+	 */
+	u64 mark_start;
+	u32 sum, demand;
+	u32 sum_history[RAVG_HIST_SIZE_MAX];
+	u32 curr_window, prev_window;
+	u16 active_windows;
+};
+#endif /* defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_SCHED_WALT) */
+
+#if IS_ENABLED(CONFIG_OPLUS_LOCKING_STRATEGY)
+struct locking_info {
+	u64 waittime_stamp;
+	/*
+	 * mutex or rwsem optimistic spin start time. Because a task
+	 * can't spin both on mutex and rwsem at one time, use one common
+	 * threshold time is OK.
+	 */
+	u64 opt_spin_start_time;
+	struct task_struct *holder;
+	bool ux_contrib;
+	/*
+	 * Whether task is ux when it's going to be added to mutex or
+	 * rwsem waiter list. It helps us check whether there is ux
+	 * task on mutex or rwsem waiter list. Also, a task can't be
+	 * added to both mutex and rwsem at one time, so use one common
+	 * field is OK.
+	 */
+	bool is_block_ux;
+};
+#endif
+
 struct task_struct {
 #ifdef CONFIG_THREAD_INFO_IN_TASK
 	/*
@@ -673,6 +778,10 @@ struct task_struct {
 	/* Per task flags (PF_*), defined further below: */
 	unsigned int			flags;
 	unsigned int			ptrace;
+#if defined(OPLUS_FEATURE_TASK_CPUSTATS) && defined(CONFIG_OPLUS_SCHED)
+	u64 wake_tid;
+	u64 running_start_time;
+#endif /* defined(OPLUS_FEATURE_TASK_CPUSTATS) && defined(CONFIG_OPLUS_SCHED) */
 
 #ifdef CONFIG_SMP
 	struct llist_node		wake_entry;
@@ -708,6 +817,10 @@ struct task_struct {
 	const struct sched_class	*sched_class;
 	struct sched_entity		se;
 	struct sched_rt_entity		rt;
+
+#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_SCHED_WALT)
+	u64 last_wake_ts;
+#endif /* OPLUS_FEATURE_SCHED_ASSIST */
 
 	/* task boost vendor fields */
 	u64				last_sleep_ts;
@@ -810,6 +923,10 @@ struct task_struct {
 #ifdef CONFIG_MEMCG_KMEM
 	unsigned			memcg_kmem_skip_account:1;
 #endif
+#endif
+#ifdef CONFIG_LRU_GEN
+	/* whether the LRU algorithm may apply to this access */
+	unsigned			in_lru_fault:1;
 #endif
 #ifdef CONFIG_COMPAT_BRK
 	unsigned			brk_randomized:1;
@@ -943,6 +1060,9 @@ struct task_struct {
 #ifdef CONFIG_DETECT_HUNG_TASK
 	unsigned long			last_switch_count;
 	unsigned long			last_switch_time;
+#ifdef CONFIG_OPLUS_FEATURE_HUNG_TASK_ENHANCE
+	bool hang_detection_enabled;
+#endif /* CONFIG_OPLUS_FEATURE_HUNG_TASK_ENHANCE */
 #endif
 	/* Filesystem information: */
 	struct fs_struct		*fs;
@@ -994,6 +1114,13 @@ struct task_struct {
 	/* Deadlock detection and priority inheritance handling: */
 	struct rt_mutex_waiter		*pi_blocked_on;
 #endif
+#ifdef CONFIG_KERNEL_LOCK_OPT
+	struct list_head		own_rwsem;
+	int 				mt_count;
+	struct mutex			*block_on_mutex;
+	u64				lock_waiting_start;
+	struct rw_semaphore 		*hold_rwsem;
+#endif
 #ifdef CONFIG_MM_EVENT_STAT
 	struct mm_event_task	mm_event[MM_TYPE_NUM];
 	unsigned long		next_period;
@@ -1001,6 +1128,10 @@ struct task_struct {
 #ifdef CONFIG_DEBUG_MUTEXES
 	/* Mutex deadlock detection: */
 	struct mutex_waiter		*blocked_on;
+#endif
+#ifdef CONFIG_LOCKING_PROTECT
+	unsigned long locking_time_start;
+	unsigned long locking_depth;
 #endif
 
 #ifdef CONFIG_TRACE_IRQFLAGS
@@ -1197,6 +1328,25 @@ struct task_struct {
 	int				latency_record_count;
 	struct latency_record		latency_record[LT_SAVECOUNT];
 #endif
+
+#ifdef CONFIG_OPLUS_FEATURE_UID_PERF
+#define UID_PERF_EVENTS 3
+	struct perf_event* uid_pevents[UID_PERF_EVENTS];
+	long long uid_counts[UID_PERF_EVENTS];
+	long long uid_prev_counts[UID_PERF_EVENTS];
+	long long uid_leaving_counts[UID_PERF_EVENTS];
+
+	/* define for grouping info */
+#define UID_GROUP_SIZE 8
+	long long uid_group[UID_GROUP_SIZE];
+	long long uid_group_prev_counts[UID_GROUP_SIZE];
+	long long uid_group_snapshot_prev_counts[UID_GROUP_SIZE];
+#endif
+
+#if defined(OPLUS_FEATURE_MEMLEAK_DETECT) && defined(CONFIG_ION) && defined(CONFIG_DUMP_TASKS_MEM)
+	struct list_head user_tasks;
+	atomic64_t ions;
+#endif
 	/*
 	 * Time slack values; these are used to round up poll() and
 	 * select() etc timeout values. These are in nanoseconds.
@@ -1259,6 +1409,49 @@ struct task_struct {
 	int				kcov_sequence;
 #endif
 
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+	int ux_state;
+	atomic64_t inherit_ux;
+	struct list_head ux_entry;
+	int ux_depth;
+	u64 enqueue_time;
+	u64 inherit_ux_start;
+#ifdef CONFIG_OPLUS_UX_IM_FLAG
+	int ux_im_flag;
+#endif
+#ifdef CONFIG_OPLUS_FEATURE_SCHED_SPREAD
+        int lb_state;
+        int ld_flag;
+#endif
+#endif /* OPLUS_FEATURE_SCHED_ASSIST */
+
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+//#ifdef CONFIG_UXCHAIN_V2
+       int ux_once;
+       u64 get_mmlock_ts;
+       int get_mmlock;
+#endif
+#ifdef CONFIG_OPLUS_FEATURE_ABNORMAL_FLAG
+	int abnormal_flag;
+#endif
+#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_SCHED_WALT)
+	struct ravg ravg;
+	/*
+	 * 'init_load_pct' represents the initial task load assigned to children
+	 * of this task
+	 */
+	u32 init_load_pct;
+#endif /* defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_SCHED_WALT) */
+
+#ifdef CONFIG_OPLUS_FEATURE_AUDIO_OPT
+	struct task_info oplus_task_info;
+#endif
+#ifdef CONFIG_LOCKING_PROTECT
+	struct list_head locking_entry;
+#endif
+#if IS_ENABLED(CONFIG_OPLUS_LOCKING_STRATEGY)
+	struct locking_info lkinfo;
+#endif
 #ifdef CONFIG_MEMCG
 	struct mem_cgroup		*memcg_in_oom;
 	gfp_t				memcg_oom_gfp_mask;
@@ -1274,7 +1467,9 @@ struct task_struct {
 #ifdef CONFIG_BLK_CGROUP
 	struct request_queue		*throttle_queue;
 #endif
-
+#if defined(OPLUS_FEATURE_PROCESS_RECLAIM) && defined(CONFIG_PROCESS_RECLAIM_ENHANCE)
+	union reclaim_limit reclaim;
+#endif
 #ifdef CONFIG_UPROBES
 	struct uprobe_task		*utask;
 #endif
@@ -1332,6 +1527,26 @@ struct task_struct {
 	unsigned short inherit_cnt:14;
 	short nice_backup;
 	atomic_t inherit_types;
+#endif
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_CPU_JANKINFO)
+	struct task_record record[OPLUS_NR_CPUS];	/* 2*u64 */
+	u8 total_cnt;
+	u8 top_app_cnt;
+	u8 non_topapp_cnt;
+#endif
+#if defined (OPLUS_FEATURE_HEALTHINFO) && defined (CONFIG_OPLUS_JANK_INFO)
+	int jank_trace;
+	struct jank_monitor_info jank_info;
+	unsigned in_mutex:1;
+	unsigned in_downread:1;
+	unsigned in_downwrite:1;
+	unsigned in_futex:1;
+	unsigned in_binder:1;
+	unsigned in_epoll:1;
+#endif /* OPLUS_FEATURE_HEALTHINFO */
+
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_FDLEAK_CHECK)
+	unsigned int fdleak_flag;
 #endif
 
 	/*
@@ -1508,6 +1723,9 @@ extern struct pid *cad_pid;
 /*
  * Per process flags
  */
+#ifdef CONFIG_SHRINK_LRU_TRYLOCK
+#define PF_SHRNIK_LRUVECD	0x00000001      /* Early kill for mce process policy */
+#endif /* CONFIG_SHRINK_LRU_TRYLOCK */
 #define PF_IDLE			0x00000002	/* I am an IDLE thread */
 #define PF_EXITING		0x00000004	/* Getting shut down */
 #define PF_VCPU			0x00000010	/* I'm a virtual CPU */
@@ -1537,6 +1755,12 @@ extern struct pid *cad_pid;
 #define PF_MUTEX_TESTER		0x20000000	/* Thread belongs to the rt mutex tester */
 #define PF_FREEZER_SKIP		0x40000000	/* Freezer should not count it as freezable */
 #define PF_SUSPEND_TASK		0x80000000      /* This thread called freeze_processes() and should not be frozen */
+
+#if defined(OPLUS_FEATURE_PROCESS_RECLAIM) && defined(CONFIG_PROCESS_RECLAIM_ENHANCE)
+#define PF_RECLAIM_SHRINK	0x02000000	/* Flag the task is memory compresser */
+
+#define current_is_reclaimer() (current->flags & PF_RECLAIM_SHRINK)
+#endif
 
 /*
  * Only the _current_ task can read/write to tsk->flags, but other
@@ -1745,11 +1969,34 @@ extern void kick_process(struct task_struct *tsk);
 static inline void kick_process(struct task_struct *tsk) { }
 #endif
 
-extern void __set_task_comm(struct task_struct *tsk, const char *from, bool exec);
+#ifdef CONFIG_OPLUS_ION_BOOSTPOOL
+extern pid_t alloc_svc_tgid;
+#endif /* CONFIG_OPLUS_ION_BOOSTPOOL */
 
+#if defined(OPLUS_FEATURE_TASK_CPUSTATS) && defined(CONFIG_OPLUS_SCHED)
+extern void get_target_thread_pid(struct task_struct *p);
+#endif /* defined(OPLUS_FEATURE_TASK_CPUSTATS) && defined(CONFIG_OPLUS_SCHED) */
+
+extern void __set_task_comm(struct task_struct *tsk, const char *from, bool exec);
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+extern void sched_assist_target_comm(struct task_struct *task);
+#endif /* OPLUS_FEATURE_SCHED_ASSIST */
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+extern void update_task_hugepage_critical_flag(struct task_struct *tsk);
+#endif
 static inline void set_task_comm(struct task_struct *tsk, const char *from)
 {
 	__set_task_comm(tsk, from, false);
+#if defined(OPLUS_FEATURE_TASK_CPUSTATS) && defined(CONFIG_OPLUS_SCHED)
+	get_target_thread_pid(tsk);
+#endif /* defined(OPLUS_FEATURE_TASK_CPUSTATS) && defined(CONFIG_OPLUS_SCHED) */
+#ifdef CONFIG_OPLUS_ION_BOOSTPOOL
+	if (!strncmp(from, "allocator@4.0-s", TASK_COMM_LEN))
+		alloc_svc_tgid = tsk->tgid;
+#endif /* CONFIG_OPLUS_ION_BOOSTPOOL */
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+	update_task_hugepage_critical_flag(tsk);
+#endif
 }
 
 extern char *__get_task_comm(char *to, size_t len, struct task_struct *tsk);

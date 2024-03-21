@@ -218,3 +218,7 @@ obj-$(CONFIG_MFD_MT6370_PMU)    += mt6370/
 obj-$(CONFIG_MFD_MT6360_PMU)    += mt6360/
 obj-$(CONFIG_MFD_MT6397)    += mt6397/
 endif
+
+#ifdef OPLUS_BUG_STABILITY
+obj-$(CONFIG_OPLUS_PMIC_COMMON) += pmic_ldo_set/
+#endif

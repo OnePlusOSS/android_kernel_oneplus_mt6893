@@ -232,6 +232,7 @@ int mmc_of_parse(struct mmc_host *host)
 		if (device_property_read_u32(dev, "cd-debounce-delay-ms",
 					     &cd_debounce_delay_ms))
 			cd_debounce_delay_ms = 200;
+		cd_debounce_delay_ms = 0;
 
 		if (device_property_read_bool(dev, "broken-cd"))
 			host->caps |= MMC_CAP_NEEDS_POLL;
@@ -383,6 +384,10 @@ struct mmc_host *mmc_alloc_host(int extra, struct device *dev)
 
 	dev_set_name(&host->class_dev, "mmc%d", host->index);
 
+#ifdef OPLUS_FEATURE_MMC_DRIVER
+	host->card_stuck_in_programing_status = 0;
+#endif
+
 	host->parent = dev;
 	host->class_dev.parent = dev;
 	host->class_dev.class = &mmc_host_class;
@@ -399,6 +404,11 @@ struct mmc_host *mmc_alloc_host(int extra, struct device *dev)
 	INIT_DELAYED_WORK(&host->detect, mmc_rescan);
 	INIT_DELAYED_WORK(&host->sdio_irq_work, sdio_irq_work);
 	timer_setup(&host->retune_timer, mmc_retune_timer, 0);
+
+#ifdef OPLUS_FEATURE_MMC_DRIVER
+	/* retry 5 times when new sdcard init error */
+	host->detect_change_retry = 5;
+#endif
 
 	/*
 	 * By default, hosts do not support SGIO or large requests.

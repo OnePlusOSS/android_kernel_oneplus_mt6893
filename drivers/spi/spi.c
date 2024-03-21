@@ -1310,6 +1310,10 @@ static int spi_init_queue(struct spi_controller *ctlr)
 	kthread_init_worker(&ctlr->kworker);
 	ctlr->kworker_task = kthread_run(kthread_worker_fn, &ctlr->kworker,
 					 "%s", dev_name(&ctlr->dev));
+#ifdef CONFIG_MTK_MT6382_BDG
+	/* bind to big core 6 */
+	kthread_bind(ctlr->kworker_task, 6);
+#endif
 	if (IS_ERR(ctlr->kworker_task)) {
 		dev_err(&ctlr->dev, "failed to create message pump task\n");
 		return PTR_ERR(ctlr->kworker_task);

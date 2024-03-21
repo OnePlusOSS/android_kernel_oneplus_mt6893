@@ -1,0 +1,4 @@
+config OPLUS_CRITICALLOG
+	bool "config oplus critical log"
+	help
+		define this config to init oplus critical log driver.

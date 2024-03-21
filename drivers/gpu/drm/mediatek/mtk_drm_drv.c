@@ -49,6 +49,15 @@
 #include "mtk_disp_aal.h"
 #include "mtk_drm_mmp.h"
 #include "mtk_drm_trace.h"
+#ifdef OPLUS_BUG_STABILITY
+#include <mt-plat/mtk_boot_common.h>
+extern unsigned long silence_mode;
+#endif
+#ifdef CONFIG_OPLUS_OFP_V2
+/* add for ofp init */
+#include "oplus_display_onscreenfingerprint.h"
+#endif
+
 /* *******Panel Master******** */
 #include "mtk_fbconfig_kdebug.h"
 #ifdef CONFIG_MTK_HDMI_SUPPORT
@@ -88,6 +97,10 @@ struct lcm_fps_ctx_t lcm_fps_ctx[MAX_CRTC];
 
 static int manual_shift;
 static bool no_shift;
+#ifdef OPLUS_BUG_STABILITY
+int is_shutdown_flow = 0;
+extern unsigned int is_project(int project);
+#endif
 
 int mtk_atoi(const char *str)
 {
@@ -713,6 +726,7 @@ static void mtk_atomic_doze_update_dsi_state(struct drm_device *dev,
 			mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE]);
 }
 
+#ifndef OPLUS_BUG_STABILITY
 static void pq_bypass_cmdq_cb(struct cmdq_cb_data data)
 {
 	struct mtk_cmdq_cb_data *cb_data = data.data;
@@ -846,6 +860,7 @@ static void mtk_atomit_doze_enable_pq(struct drm_crtc *crtc)
 			DDPPR_ERR("failed to flush user_cmd\n");
 	}
 }
+#endif /* OPLUS_BUG_STABILITY */
 
 static void mtk_atomic_doze_preparation(struct drm_device *dev,
 					 struct drm_atomic_state *old_state)
@@ -860,11 +875,12 @@ static void mtk_atomic_doze_preparation(struct drm_device *dev,
 
 		crtc = connector->state->crtc;
 		if (!crtc) {
-			DDPPR_ERR("%s connector has no crtc\n", __func__);
+			DDPPR_ERR("%s connector %d has no crtc\n", __func__, i);
 			continue;
 		}
-
+		#ifndef OPLUS_BUG_STABILITY
 		mtk_atomit_doze_bypass_pq(crtc);
+		#endif
 
 		mtk_atomic_doze_update_dsi_state(dev, crtc, 1);
 
@@ -886,13 +902,14 @@ static void mtk_atomic_doze_finish(struct drm_device *dev,
 
 		crtc = connector->state->crtc;
 		if (!crtc) {
-			DDPPR_ERR("%s connector has no crtc\n", __func__);
+			DDPPR_ERR("%s connector %d has no crtc\n", __func__, i);
 			continue;
 		}
 
 		mtk_atomic_doze_update_dsi_state(dev, crtc, 0);
-
+		#ifndef OPLUS_BUG_STABILITY
 		mtk_atomit_doze_enable_pq(crtc);
+		#endif
 	}
 
 }
@@ -1003,6 +1020,23 @@ static void mtk_drm_enable_trig(struct drm_device *drm,
 	}
 }
 
+static void mtk_set_first_config(struct drm_device *dev,
+					struct drm_atomic_state *old_state)
+{
+	struct drm_connector *connector;
+	struct mtk_drm_private *private = dev->dev_private;
+	struct drm_connector_state *new_conn_state;
+	int i;
+
+	for_each_new_connector_in_state(old_state, connector, new_conn_state, i) {
+		if (private->already_first_config == false &&
+				connector->encoder && connector->encoder->crtc) {
+			private->already_first_config = true;
+			DDPMSG("%s, set first config true\n", __func__);
+		}
+	}
+}
+
 static void mtk_atomic_complete(struct mtk_drm_private *private,
 				struct drm_atomic_state *state)
 {
@@ -1032,6 +1066,8 @@ static void mtk_atomic_complete(struct mtk_drm_private *private,
 
 	drm_atomic_helper_commit_modeset_disables(drm, state);
 	drm_atomic_helper_commit_modeset_enables(drm, state);
+
+	mtk_set_first_config(drm, state);
 
 	mtk_drm_enable_trig(drm, state);
 
@@ -3098,6 +3134,12 @@ static int mtk_drm_kms_init(struct drm_device *drm)
 #endif
 	disp_dbg_init(drm);
 	PanelMaster_Init(drm);
+
+#ifdef CONFIG_OPLUS_OFP_V2
+	/* add for ofp */
+	oplus_ofp_init(private);
+#endif
+
 #ifdef MTK_FB_MMDVFS_SUPPORT
 	mtk_drm_mmdvfs_init();
 #endif
@@ -3233,6 +3275,11 @@ static const struct drm_ioctl_desc mtk_ioctls[] = {
 #endif
 	DRM_IOCTL_DEF_DRV(MTK_DEBUG_LOG, mtk_disp_ioctl_debug_log_switch,
 					DRM_UNLOCKED),
+
+	DRM_IOCTL_DEF_DRV(MTK_GET_PQ_CAPS, mtk_drm_ioctl_get_pq_caps,
+			  DRM_UNLOCKED),
+	DRM_IOCTL_DEF_DRV(MTK_SET_PQ_CAPS, mtk_drm_ioctl_set_pq_caps,
+			  DRM_UNLOCKED),
 };
 
 #if IS_ENABLED(CONFIG_COMPAT)
@@ -3936,6 +3983,16 @@ static int mtk_drm_probe(struct platform_device *pdev)
 	DDPINFO("%s-\n", __func__);
 
 	disp_dts_gpio_init(dev, private);
+
+#ifdef OPLUS_BUG_STABILITY
+	pr_err("oplus_boot_mode=%d, get_boot_mode() is %d\n", oplus_boot_mode, get_boot_mode());
+	if ((oplus_boot_mode == OPLUS_SILENCE_BOOT)
+			||(get_boot_mode() == OPLUS_SAU_BOOT)) {
+		pr_err("%s OPLUS_SILENCE_BOOT set silence_mode to 1\n", __func__);
+		silence_mode = 1;
+	}
+#endif
+
 #ifdef CONFIG_MTK_IOMMU_V2
 	memcpy(&mydev, pdev, sizeof(mydev));
 #endif
@@ -3956,6 +4013,10 @@ static void mtk_drm_shutdown(struct platform_device *pdev)
 	struct mtk_drm_private *private = platform_get_drvdata(pdev);
 	struct drm_device *drm = private->drm;
 
+#ifdef OPLUS_BUG_STABILITY
+	is_shutdown_flow = 1;
+	pr_notice("This is %s function line:%d shutdown flag = %d\n", __func__, __LINE__, is_shutdown_flow);
+#endif
 	if (drm) {
 		DDPMSG("%s\n", __func__);
 		drm_atomic_helper_shutdown(drm);
@@ -4019,6 +4080,10 @@ static int mtk_drm_sys_resume(struct device *dev)
 	drm_atomic_helper_resume(drm, private->suspend_state);
 	drm_kms_helper_poll_enable(drm);
 
+#ifdef CONFIG_OPLUS_OFP_V2
+	/* add for fix 3713857 */
+	private->suspend_state = NULL;
+#endif
 	DRM_DEBUG_DRIVER("mtk_drm_sys_resume\n");
 	return 0;
 }

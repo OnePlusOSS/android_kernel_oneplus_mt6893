@@ -12,6 +12,7 @@
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
+#include <soc/oplus/system/oplus_project.h>
 
 #include "clk-mtk.h"
 #include "clk-mux.h"
@@ -2422,6 +2423,9 @@ static int clk_mt6833_apmixed_probe(struct platform_device *pdev)
 #if MT_CCF_BRINGUP
 	pr_notice("%s init end\n", __func__);
 #endif
+        if(is_project(22087) || is_project(22088) || is_project(22331) || is_project(22332) || is_project(22333) || is_project(22334) || is_project(22869)) {
+	    pll_off(7);//mmp11
+        }
 	pll_off(11);//apll1
 	pll_off(12);//apll2
 	return r;

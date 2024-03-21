@@ -18,6 +18,10 @@ unsigned int scp_ipi_id_record_count;
 unsigned int scp_to_ap_ipi_count;
 unsigned int ap_to_scp_ipi_count;
 
+#ifdef OPLUS_FEATURE_SENSOR
+unsigned int ipi_sensor_flag;
+#endif
+
 struct scp_ipi_desc scp_ipi_desc[SCP_NR_IPI];
 struct share_obj *scp_send_obj[SCP_CORE_TOTAL];
 struct share_obj *scp_rcv_obj[SCP_CORE_TOTAL];
@@ -71,6 +75,14 @@ void scp_A_ipi_handler(void)
 		/* scp_ipi_handler is null or ipi id abnormal */
 		pr_debug("[SCP] A ipi handler is null or abnormal, id=%d\n"
 								, scp_id);
+#ifdef OPLUS_FEATURE_SENSOR
+		if (IPI_SENSOR == scp_id && scp_ipi_desc[scp_id].recv_count <= 0) {
+			ipi_sensor_flag = 1;
+			memcpy_from_scp(ipi_buff[SCP_A_ID],
+				(void *)scp_rcv_obj[SCP_A_ID]->share_buf,
+				scp_rcv_obj[SCP_A_ID]->len);
+		}
+#endif
 	}
 	/* AP side write 1 to clear SCP to SPM reg.
 	 * scp side write 1 to set SCP to SPM reg.
@@ -118,6 +130,14 @@ enum scp_ipi_status scp_ipi_registration(enum ipi_id id,
 			return SCP_IPI_ERROR;
 
 		scp_ipi_desc[id].handler = ipi_handler;
+#ifdef OPLUS_FEATURE_SENSOR
+		if (IPI_SENSOR == id && ipi_buff[SCP_A_ID] && scp_rcv_obj[SCP_A_ID] &&
+			scp_ipi_desc[id].recv_count <= 0 && ipi_sensor_flag) {
+			ipi_sensor_flag = 0;
+			scp_ipi_desc[id].handler(id, ipi_buff[SCP_A_ID], scp_rcv_obj[SCP_A_ID]->len);
+		}
+#endif
+
 		return SCP_IPI_DONE;
 	} else {
 		return SCP_IPI_ERROR;

@@ -98,6 +98,7 @@ struct mmc_ext_csd {
 	u8			raw_exception_status;	/* 54 */
 	u8			raw_partition_support;	/* 160 */
 	u8			raw_rpmb_size_mult;	/* 168 */
+	u8			boot_wp_status;	        /* 174 */
 	u8			raw_erased_mem_count;	/* 181 */
 	u8			strobe_support;		/* 184 */
 	u8			raw_ext_csd_structure;	/* 194 */
@@ -146,6 +147,7 @@ struct sd_ssr {
 	unsigned int		au;			/* In sectors */
 	unsigned int		erase_timeout;		/* In milliseconds */
 	unsigned int		erase_offset;		/* In milliseconds */
+	unsigned int		speed_class;		/* speed_class */
 };
 
 struct sd_switch_caps {
@@ -291,7 +293,12 @@ struct mmc_card {
 	struct sd_scr		scr;		/* extra SD information */
 	struct sd_ssr		ssr;		/* yet more SD information */
 	struct sd_switch_caps	sw_caps;	/* switch (CMD6) caps */
-
+#ifdef CONFIG_MMC_PASSWORDS
+#define MAX_UNLOCK_PASSWORD_WITH_BUF 20    	/* 1(len) + max_pwd(16) + 0xFF 0xFF + 0 = 20 */
+	bool swith_voltage; 			/* whether sdcard voltage swith to 1.8v  */
+	bool auto_unlock;
+	u8 unlock_pwd[MAX_UNLOCK_PASSWORD_WITH_BUF];
+#endif
 	unsigned int		sdio_funcs;	/* number of SDIO functions */
 	struct sdio_cccr	cccr;		/* common card info */
 	struct sdio_cis		cis;		/* common tuple info */

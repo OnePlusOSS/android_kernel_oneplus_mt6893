@@ -28,6 +28,10 @@
 #include "sdio_cis.h"
 #include "bus.h"
 
+#ifdef OPLUS_FEATURE_SDCARD_INFO
+#include "../host/sdInfo/sdinfo.h"
+#endif
+
 #define to_mmc_driver(d)	container_of(d, struct mmc_driver, drv)
 
 static ssize_t type_show(struct device *dev,
@@ -63,6 +67,14 @@ ATTRIBUTE_GROUPS(mmc_dev);
  */
 static int mmc_bus_match(struct device *dev, struct device_driver *drv)
 {
+#ifdef CONFIG_MMC_PASSWORDS
+	struct mmc_card *card = mmc_dev_to_card(dev);
+
+	if ((card->type == MMC_TYPE_SD) && mmc_card_locked(card)) {
+		dev_dbg(&card->dev, "sd card is locked; binding is deferred\n");
+		return 0;
+	}
+#endif
 	return 1;
 }
 
@@ -89,6 +101,14 @@ mmc_bus_uevent(struct device *dev, struct kobj_uevent_env *env)
 	default:
 		type = NULL;
 	}
+#ifdef CONFIG_MMC_PASSWORDS
+	if ((card->type == MMC_TYPE_SD) && mmc_card_locked(card)) {
+		printk("[SDLOCK] %s MMC_LOCK=LOCKED", __func__);
+		retval = add_uevent_var(env, "MMC_LOCK=LOCKED");
+		if (retval)
+			return retval;
+	}
+#endif
 
 	if (type) {
 		retval = add_uevent_var(env, "MMC_TYPE=%s", type);
@@ -281,6 +301,9 @@ struct mmc_card *mmc_alloc_card(struct mmc_host *host, struct device_type *type)
 	return card;
 }
 
+#ifdef OPLUS_FEATURE_SDCARD_INFO
+extern void set_sdinfo(struct mmc_card *card);
+#endif
 /*
  * Register a new MMC card with the driver model.
  */
@@ -358,8 +381,24 @@ int mmc_add_card(struct mmc_card *card)
 	ret = device_add(&card->dev);
 	if (ret)
 		return ret;
+#ifdef CONFIG_MMC_PASSWORDS
+	if (card->host->bus_ops->sysfs_add) {
+		ret = card->host->bus_ops->sysfs_add(card->host, card);
+		if (ret) {
+			device_del(&card->dev);
+			return ret;
+		 }
+	}
+#endif
 
 	mmc_card_set_present(card);
+
+#ifdef OPLUS_FEATURE_SDCARD_INFO
+	if (card->type == MMC_TYPE_SD) {
+		reset_sdinfo();
+		set_sdinfo(card);
+	}
+#endif
 
 	return 0;
 }
@@ -384,6 +423,11 @@ void mmc_remove_card(struct mmc_card *card)
 			pr_info("%s: card %04x removed\n",
 				mmc_hostname(card->host), card->rca);
 		}
+
+#ifdef CONFIG_MMC_PASSWORDS
+		if (card->host->bus_ops->sysfs_remove)
+			card->host->bus_ops->sysfs_remove(card->host, card);
+#endif
 		device_del(&card->dev);
 		of_node_put(card->dev.of_node);
 	}

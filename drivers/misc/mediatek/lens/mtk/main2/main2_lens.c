@@ -20,6 +20,12 @@
 #ifdef CONFIG_COMPAT
 #include <linux/compat.h>
 #endif
+#ifndef OPLUS_FEATURE_CAMERA_COMMON
+#define OPLUS_FEATURE_CAMERA_COMMON
+#endif
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+#include <linux/regulator/consumer.h>
+#endif
 
 /* kernel standard */
 #include <linux/regulator/consumer.h>
@@ -50,8 +56,12 @@
 #endif
 
 #if I2C_CONFIG_SETTING == 1
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+#define LENS_I2C_BUSNUM 4
+#else
 #define LENS_I2C_BUSNUM 0
-#define I2C_REGISTER_ID 0x28
+#endif
+#define I2C_REGISTER_ID            0x28
 #endif
 
 #define PLATFORM_DRIVER_NAME "lens_actuator_main2_af"
@@ -120,15 +130,18 @@ static struct cdev *g_pAF_CharDrv;
 static struct class *actuator_class;
 static struct device *lens_device;
 
+#if 0
 static struct regulator *vcamaf_ldo;
 static struct pinctrl *vcamaf_pio;
 static struct pinctrl_state *vcamaf_pio_on;
 static struct pinctrl_state *vcamaf_pio_off;
+#endif
 
 #define CAMAF_PMIC     "camaf_m2_pmic"
 #define CAMAF_GPIO_ON  "camaf_m2_gpio_on"
 #define CAMAF_GPIO_OFF "camaf_m2_gpio_off"
 
+#if 0
 static void camaf_power_init(void)
 {
 	int ret;
@@ -211,6 +224,7 @@ static void camaf_power_off(void)
 		LOG_INF("pinctrl disable (%d)\n", ret);
 	}
 }
+#endif
 
 #ifdef CONFIG_MACH_MT6765
 static int DrvPwrDn1 = 1;
@@ -220,6 +234,11 @@ static int DrvPwrDn1 = 1;
 void MAIN2AF_PowerDown(void)
 {
 	if (g_pstAF_I2Cclient != NULL) {
+		#ifdef OPLUS_FEATURE_CAMERA_COMMON
+		#ifdef CONFIG_MTK_LENS_DW9718TAF_SUPPORT
+		DW9718TAF_SetI2Cclient(g_pstAF_I2Cclient, &g_AF_SpinLock, &g_s4AF_Opened);
+		#endif
+		#endif
 #if defined(CONFIG_MACH_MT6771) || defined(CONFIG_MACH_MT6775)
 		LC898217AF_PowerDown(g_pstAF_I2Cclient,
 					&g_s4AF_Opened);
@@ -327,7 +346,8 @@ static inline int64_t getCurNS(void)
 	int64_t ns;
 	struct timespec time;
 
-	time.tv_sec = time.tv_nsec = 0;
+	time.tv_sec = 0;
+	time.tv_nsec = 0;
 	get_monotonic_boottime(&time);
 	ns = time.tv_sec * 1000000000LL + time.tv_nsec;
 
@@ -521,8 +541,11 @@ static int AF_Open(struct inode *a_pstInode, struct file *a_pstFile)
 	g_s4AF_Opened = 1;
 	spin_unlock(&g_AF_SpinLock);
 
+#ifndef OPLUS_FEATURE_CAMERA_COMMON
+	/*Feiping.Li@	Cam.Drv, 20200623, modify for pre11 upgrade -- 19551 still using sensor power seque */
 	camaf_power_init();
 	camaf_power_on();
+#endif
 
 	/* OIS/EIS Timer & Workqueue */
 	/* init work queue */
@@ -558,7 +581,10 @@ static int AF_Release(struct inode *a_pstInode, struct file *a_pstFile)
 		spin_unlock(&g_AF_SpinLock);
 	}
 
+#ifndef OPLUS_FEATURE_CAMERA_COMMON
+/*Feiping.Li@	Cam.Drv, 20200623, modify for pre11 upgrade -- 19551 still using sensor power seque */
 	camaf_power_off();
+#endif
 
 	/* OIS/EIS Timer & Workqueue */
 	/* Cancel Timer */

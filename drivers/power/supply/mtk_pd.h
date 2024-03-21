@@ -190,6 +190,10 @@ extern int pd_hal_enable_termination(struct chg_alg_device *alg,
 	enum chg_idx chgidx, bool enable);
 extern int pd_hal_enable_charger(struct chg_alg_device *alg,
 	enum chg_idx chgidx, bool en);
+#ifdef OPLUS_FEATURE_CHG_BASIC
+extern int oplus_pdc_setup(int *vbus_mv, int *ibus_ma);
+extern int oplus_pdc_get(int *vbus_mv, int *ibus_ma);
+#endif
 extern int pd_hal_charger_enable_chip(struct chg_alg_device *alg,
 	enum chg_idx chgidx, bool enable);
 extern int pd_hal_get_uisoc(struct chg_alg_device *alg);

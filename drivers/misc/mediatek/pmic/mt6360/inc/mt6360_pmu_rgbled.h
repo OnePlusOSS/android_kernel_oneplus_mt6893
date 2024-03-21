@@ -17,6 +17,7 @@ enum {
 struct mt6360_rgbled_platform_data {
 	const char *led_name[MT6360_LED_MAX];
 	const char *led_default_trigger[MT6360_LED_MAX];
+	int	rgbleds_support[5];
 };
 
 #define MT6360_LED_PWMDUTYMAX (7)

@@ -242,4 +242,7 @@ struct dvfs_ref *mtk_ccci_get_dvfs_table(int is_ul, int *tbl_num);
 extern void ccci_hif_register(unsigned char hif_id, void *hif_per_data,
 	struct ccci_hif_ops *ops);
 
+//#ifdef OPLUS_BUG_COMPATIBILITY
+extern void ccmni_set_cur_speed(u64 cur_dl_speed);
+//#endif /*OPLUS_BUG_COMPATIBILITY*/
 #endif

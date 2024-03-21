@@ -88,6 +88,12 @@ static struct stAF_DrvList g_stAF_DrvList[MAX_NUM_OF_LENS] = {
 	 BU24253AF_Release, BU24253AF_GetFileName, NULL},
 	{1, AFDRV_GT9772AF, GT9772AF_SetI2Cclient, GT9772AF_Ioctl,
 	 GT9772AF_Release, GT9772AF_GetFileName, NULL},
+	{1, AFDRV_DW9800S, DW9800S_SetI2Cclient, DW9800S_Ioctl,
+	 DW9800S_Release, DW9800S_GetFileName, NULL},
+	{1, AFDRV_DW9800S_CHANEL_IMX709, DW9800S_CHANEL_IMX709_SetI2Cclient, DW9800S_CHANEL_IMX709_Ioctl,
+	 DW9800S_CHANEL_IMX709_Release, DW9800S_CHANEL_IMX709_GetFileName, NULL},
+	 {1, AFDRV_DW9800S_23231_IMX709, DW9800S_23231_IMX709_SetI2Cclient, DW9800S_23231_IMX709_Ioctl,
+	 DW9800S_23231_IMX709_Release, DW9800S_23231_IMX709_GetFileName, NULL},
 };
 
 static struct stAF_DrvList *g_pstAF_CurDrv;
@@ -282,7 +288,8 @@ static inline int64_t getCurNS(void)
 	int64_t ns;
 	struct timespec time;
 
-	time.tv_sec = time.tv_nsec = 0;
+	time.tv_sec = 0;
+        time.tv_nsec = 0;
 	get_monotonic_boottime(&time);
 	ns = time.tv_sec * 1000000000LL + time.tv_nsec;
 

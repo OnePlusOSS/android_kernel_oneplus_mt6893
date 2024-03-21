@@ -9,11 +9,12 @@
 #include <linux/types.h>
 #include <mt-plat/mtk_blocktag.h>
 #include "ufshcd.h"
+#include "ufs-mediatek.h"
 
 #if defined(CONFIG_MTK_UFS_BLOCK_IO_LOG)
 
-int ufs_mtk_biolog_init(bool qos_allowed);
-int ufs_mtk_biolog_exit(void);
+int ufs_mtk_biolog_init(struct ufs_mtk_host *host, bool qos_allowed);
+int ufs_mtk_biolog_exit(struct ufs_mtk_host *host);
 
 void ufs_mtk_biolog_send_command(unsigned int task_id,
 				 struct scsi_cmnd *cmd);

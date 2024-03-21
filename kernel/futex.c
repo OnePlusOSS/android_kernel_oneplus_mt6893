@@ -72,7 +72,14 @@
 #include <asm/futex.h>
 
 #include "locking/rtmutex_common.h"
-
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_CPU_JANKINFO)
+#include <linux/sched_info/osi_tasktrack.h>
+#endif
+/*
+#if IS_ENABLED(CONFIG_OPLUS_LOCKING_STRATEGY)
+#include <linux/sched_assist/sync/futex.h>
+#endif
+*/
 /*
  * READ this before attempting to hack on futexes!
  *
@@ -1672,6 +1679,11 @@ futex_wake(u32 __user *uaddr, unsigned int flags, int nr_wake, u32 bitset)
 	struct futex_q *this, *next;
 	union futex_key key = FUTEX_KEY_INIT;
 	int ret;
+/*
+#if IS_ENABLED(CONFIG_OPLUS_LOCKING_STRATEGY)
+	int target_nr;
+#endif
+*/
 	DEFINE_WAKE_Q(wake_q);
 
 	if (!bitset)
@@ -1688,7 +1700,11 @@ futex_wake(u32 __user *uaddr, unsigned int flags, int nr_wake, u32 bitset)
 		goto out_put_key;
 
 	spin_lock(&hb->lock);
-
+/*
+#if IS_ENABLED(CONFIG_OPLUS_LOCKING_STRATEGY)
+	locking_vh_futex_wake_traverse_plist(&hb->chain, &target_nr, key, bitset);
+#endif
+*/
 	plist_for_each_entry_safe(this, next, &hb->chain, list) {
 		if (match_futex (&this->key, &key)) {
 			if (this->pi_state || this->rt_waiter) {
@@ -1699,7 +1715,11 @@ futex_wake(u32 __user *uaddr, unsigned int flags, int nr_wake, u32 bitset)
 			/* Check if one of the bits is set in both bitsets */
 			if (!(this->bitset & bitset))
 				continue;
-
+/*
+#if IS_ENABLED(CONFIG_OPLUS_LOCKING_STRATEGY)
+			locking_vh_futex_wake_this(ret, nr_wake, target_nr, this->task);
+#endif
+*/
 			mark_wake_futex(&wake_q, this);
 			if (++ret >= nr_wake)
 				break;
@@ -1708,6 +1728,11 @@ futex_wake(u32 __user *uaddr, unsigned int flags, int nr_wake, u32 bitset)
 
 	spin_unlock(&hb->lock);
 	wake_up_q(&wake_q);
+/*
+#if IS_ENABLED(CONFIG_OPLUS_LOCKING_STRATEGY)
+	locking_vh_futex_wake_up_q_finish(nr_wake, target_nr);
+#endif
+*/
 out_put_key:
 	put_futex_key(&key);
 out:
@@ -2343,7 +2368,9 @@ queue_unlock(struct futex_hash_bucket *hb)
 static inline void __queue_me(struct futex_q *q, struct futex_hash_bucket *hb)
 {
 	int prio;
-
+#if IS_ENABLED(CONFIG_OPLUS_LOCKING_STRATEGY)
+	bool already_on_hb = false;
+#endif
 	/*
 	 * The priority used to register this element is
 	 * - either the real thread-priority for the real-time threads
@@ -2355,7 +2382,12 @@ static inline void __queue_me(struct futex_q *q, struct futex_hash_bucket *hb)
 	prio = min(current->normal_prio, MAX_RT_PRIO);
 
 	plist_node_init(&q->list, prio);
-#ifdef CONFIG_MTK_TASK_TURBO
+
+#if IS_ENABLED(CONFIG_OPLUS_LOCKING_STRATEGY)
+	//locking_vh_alter_futex_plist_add(&q->list, &hb->chain, &already_on_hb);
+	if (!already_on_hb)
+		plist_add(&q->list, &hb->chain);
+#elif CONFIG_MTK_TASK_TURBO
 	futex_plist_add(q, hb);
 #else
 	plist_add(&q->list, &hb->chain);
@@ -2726,8 +2758,18 @@ static void futex_wait_queue_me(struct futex_hash_bucket *hb, struct futex_q *q,
 		 * flagged for rescheduling. Only call schedule if there
 		 * is no timeout, or if it has yet to expire.
 		 */
-		if (!timeout || timeout->task)
+		if (!timeout || timeout->task) {
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_CPU_JANKINFO)
+			android_vh_futex_sleep_start_handelr(NULL, current);
+#endif
+#if defined (OPLUS_FEATURE_HEALTHINFO) && defined (CONFIG_OPLUS_JANK_INFO)
+			current->in_futex = 1;
+#endif /* OPLUS_FEATURE_HEALTHINFO */
 			freezable_schedule();
+#if defined (OPLUS_FEATURE_HEALTHINFO) && defined (CONFIG_OPLUS_JANK_INFO)
+			current->in_futex = 0;
+#endif /* OPLUS_FEATURE_HEALTHINFO */
+		}
 	}
 	__set_current_state(TASK_RUNNING);
 }
@@ -2820,6 +2862,11 @@ static int futex_wait(u32 __user *uaddr, unsigned int flags, u32 val,
 	if (!bitset)
 		return -EINVAL;
 	q.bitset = bitset;
+/*
+#if IS_ENABLED(CONFIG_OPLUS_LOCKING_STRATEGY)
+	locking_vh_futex_wait_start(flags, bitset);
+#endif
+*/
 
 	if (abs_time) {
 		to = &timeout;
@@ -2878,6 +2925,11 @@ out:
 		hrtimer_cancel(&to->timer);
 		destroy_hrtimer_on_stack(&to->timer);
 	}
+/*
+#if IS_ENABLED(CONFIG_OPLUS_LOCKING_STRATEGY)
+	locking_vh_futex_wait_end(flags, bitset);
+#endif
+*/
 	return ret;
 }
 
@@ -3888,7 +3940,11 @@ long do_futex(u32 __user *uaddr, int op, u32 val, ktime_t *timeout,
 		if (!futex_cmpxchg_enabled)
 			return -ENOSYS;
 	}
-
+/*
+#if IS_ENABLED(CONFIG_OPLUS_LOCKING_STRATEGY)
+	locking_vh_do_futex(cmd, &flags, uaddr2);
+#endif
+*/
 	switch (cmd) {
 	case FUTEX_WAIT:
 		val3 = FUTEX_BITSET_MATCH_ANY;

@@ -36,6 +36,10 @@
 #include <mt-plat/aee.h>
 #include <trace/events/power.h>
 /* #include <trace/events/mtk_events.h> */
+#if defined(OPLUS_FEATURE_TASK_CPUSTATS) && defined(CONFIG_OPLUS_SCHED)
+#include "../../../../../../../fs/proc/task_cpustats/task_sched_info.h"
+#endif /* defined(OPLUS_FEATURE_TASK_CPUSTATS) && defined(CONFIG_OPLUS_SCHED) */
+
 #if !defined(CONFIG_MTK_TINYSYS_MCUPM_SUPPORT)
 
 #if defined(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && defined(USE_SSPM_VER_V2)
@@ -417,6 +421,9 @@ int Ripi_cpu_dvfs_thread(void *data)
 						freqs.new, 0);
 				}
 #endif
+#if defined(OPLUS_FEATURE_TASK_CPUSTATS) && defined(CONFIG_OPLUS_SCHED)
+				update_freq_limit_info(p->mt_policy);
+#endif /* defined(OPLUS_FEATURE_TASK_CPUSTATS) && defined(CONFIG_OPLUS_SCHED) */
 				trace_cpu_frequency_limits(p->mt_policy);
 
 				/* Policy notification */

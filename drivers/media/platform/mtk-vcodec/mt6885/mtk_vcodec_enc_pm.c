@@ -91,16 +91,26 @@ struct temp_job {
 	int bitratemode;
 	long long submit;
 	int kcy;
+	int cur_inst_cnt;
 	struct temp_job *next;
+	unsigned int enc_svp_mode;
 };
 static struct temp_job *temp_venc_jobs[CORE_NUM];
 
 struct temp_job *new_job_from_info(struct mtk_vcodec_ctx *ctx, int core_id)
 {
+	struct mtk_vcodec_dev *dev;
 	struct temp_job *new_job = kmalloc(sizeof(struct temp_job), GFP_KERNEL);
 
 	if (new_job == 0)
 		return 0;
+
+	dev = ctx->dev;
+	if (dev == 0) {
+		if (new_job != 0)
+			kfree(new_job);
+		return 0;
+	}
 
 	new_job->ctx_id = ctx->id;
 	new_job->format = ctx->q_data[MTK_Q_DATA_DST].fmt->fourcc;
@@ -111,7 +121,9 @@ struct temp_job *new_job_from_info(struct mtk_vcodec_ctx *ctx, int core_id)
 	new_job->operation_rate = 0;
 	new_job->submit = 0; /* use now - to be filled */
 	new_job->kcy = 0; /* retrieve hw counter - to be filled */
+	new_job->cur_inst_cnt = dev->enc_cnt;
 	new_job->next = 0;
+	new_job->enc_svp_mode = ctx->enc_params.svp_mode;
 	return new_job;
 }
 
@@ -519,18 +531,26 @@ void mtk_venc_dvfs_begin(struct temp_job **job_list)
 			else
 				idx = 0;
 		}
+		#ifdef OPLUS_FEATURE_CAMERA_COMMON
+		idx = 0;
+		#endif/*OPLUS_FEATURE_CAMERA_COMMON*/
 	} else {
 		idx = 0;
 	}
 
 	if (job->operation_rate > 240 ||
-		(area >= 1920 * 1080 && job->operation_rate == 240))
+		(area >= 1920 * 1080 && job->operation_rate == 240) ||
+		job->cur_inst_cnt > 2)
 		idx = 2;
 	else if (job->operation_rate >= 120)
 		idx = 0;
 
 	if (job->format == V4L2_PIX_FMT_HEIF)
 		idx = 3;
+
+	if (job->enc_svp_mode) {
+		idx = 3;
+	}
 
 	mtk_v4l2_debug(2, "[Debug] freq idx %d (%d, %d, %d)",
 		idx, area, job->operation_rate, job->bitratemode);

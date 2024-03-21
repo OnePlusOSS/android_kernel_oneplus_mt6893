@@ -93,6 +93,7 @@ enum scp_reserve_mem_id_t {
 	VOW_BARGEIN_MEM_ID,
 	SCP_DRV_PARAMS_MEM_ID,
 	ULTRA_MEM_ID,
+	SENS_FB_MEM_ID,
 	NUMS_MEM_ID,
 };
 

@@ -38,4 +38,44 @@ extern int GT9772AF_PowerDown(struct i2c_client *pstAF_I2Cclient,
 				int *pAF_Opened);
 extern int GT9772AF_GetFileName(unsigned char *pFileName);
 
+#define DW9800S_SetI2Cclient DW9800S_SetI2Cclient_Main3
+#define DW9800S_Ioctl DW9800S_Ioctl_Main3
+#define DW9800S_Release DW9800S_Release_Main3
+#define DW9800S_GetFileName DW9800S_GetFileName_Main3
+extern int DW9800S_SetI2Cclient(struct i2c_client *pstAF_I2Cclient,
+				 spinlock_t *pAF_SpinLock, int *pAF_Opened);
+extern long DW9800S_Ioctl(struct file *a_pstFile, unsigned int a_u4Command,
+			   unsigned long a_u4Param);
+extern int DW9800S_Release(struct inode *a_pstInode, struct file *a_pstFile);
+extern int DW9800S_PowerDown(struct i2c_client *pstAF_I2Cclient,
+				int *pAF_Opened);
+extern int DW9800S_GetFileName(unsigned char *pFileName);
+
+#define DW9800S_CHANEL_IMX709_SetI2Cclient DW9800S_CHANEL_IMX709_SetI2Cclient_Main
+#define DW9800S_CHANEL_IMX709_Ioctl DW9800S_CHANEL_IMX709_Ioctl_Main
+#define DW9800S_CHANEL_IMX709_Release DW9800S_CHANEL_IMX709_Release_Main
+#define DW9800S_CHANEL_IMX709_PowerDown DW9800S_CHANEL_IMX709_PowerDown_Main
+#define DW9800S_CHANEL_IMX709_GetFileName DW9800S_CHANEL_IMX709_GetFileName_Main
+extern int DW9800S_CHANEL_IMX709_SetI2Cclient(struct i2c_client *pstAF_I2Cclient,
+                                spinlock_t *pAF_SpinLock, int *pAF_Opened);
+extern long DW9800S_CHANEL_IMX709_Ioctl(struct file *a_pstFile, unsigned int a_u4Command,
+                                unsigned long a_u4Param);
+extern int DW9800S_CHANEL_IMX709_Release(struct inode *a_pstInode, struct file *a_pstFile);
+extern int DW9800S_CHANEL_IMX709_PowerDown(struct i2c_client *pstAF_I2Cclient,
+                                int *pAF_Opened);
+extern int DW9800S_CHANEL_IMX709_GetFileName(unsigned char *pFileName);
+
+#define DW9800S_23231_IMX709_SetI2Cclient DW9800S_23231_IMX709_SetI2Cclient_Main
+#define DW9800S_23231_IMX709_Ioctl DW9800S_23231_IMX709_Ioctl_Main
+#define DW9800S_23231_IMX709_Release DW9800S_23231_IMX709_Release_Main
+#define DW9800S_23231_IMX709_PowerDown DW9800S_23231_IMX709_PowerDown_Main
+#define DW9800S_23231_IMX709_GetFileName DW9800S_23231_IMX709_GetFileName_Main
+extern int DW9800S_23231_IMX709_SetI2Cclient(struct i2c_client *pstAF_I2Cclient,
+                                spinlock_t *pAF_SpinLock, int *pAF_Opened);
+extern long DW9800S_23231_IMX709_Ioctl(struct file *a_pstFile, unsigned int a_u4Command,
+                                unsigned long a_u4Param);
+extern int DW9800S_23231_IMX709_Release(struct inode *a_pstInode, struct file *a_pstFile);
+extern int DW9800S_23231_IMX709_PowerDown(struct i2c_client *pstAF_I2Cclient,
+                                int *pAF_Opened);
+extern int DW9800S_23231_IMX709_GetFileName(unsigned char *pFileName);
 #endif

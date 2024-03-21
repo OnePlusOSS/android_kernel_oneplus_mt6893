@@ -32,6 +32,13 @@
 		"hx83112b_fhdp_dsi_cmd_auo_rt5081_drv";
 };
 
+&mrdump_ext_rst {
+        interrupt-parent = <&pio>;
+        interrupts = <0 IRQ_TYPE_LEVEL_LOW 0 0>;
+        deb-gpios = <&pio 0 0>;
+        debounce = <512000>;
+};
+
 &odm {
 	led0:led@0 {
 		compatible = "mediatek,red";

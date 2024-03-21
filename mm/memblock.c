@@ -82,6 +82,12 @@
  * initialization compltes.
  */
 
+ #ifndef CONFIG_NEED_MULTIPLE_NODES
+ #if defined(CONFIG_CONT_PTE_HUGEPAGE) && CONFIG_CONT_PTE_HUGEPAGE_LRU
+ struct chp_lruvec __refdata contig_chp_lruvec;
+ #endif
+ #endif
+
 static struct memblock_region memblock_memory_init_regions[INIT_MEMBLOCK_REGIONS] __initdata_memblock;
 static struct memblock_region memblock_reserved_init_regions[INIT_MEMBLOCK_REGIONS] __initdata_memblock;
 #ifdef CONFIG_HAVE_MEMBLOCK_PHYS_MAP

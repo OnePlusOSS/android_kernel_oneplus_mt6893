@@ -457,3 +457,13 @@ config HAVE_CBPF_JIT
 # Extended BPF JIT (eBPF)
 config HAVE_EBPF_JIT
 	bool
+
+source "net/oplus_connectivity_sla/Kconfig"
+
+source "net/oplus_score/Kconfig"
+
+#ifdef OPLUS_FEATURE_WIFI_CAPCENTER
+source "net/oplus_wificapcenter/Kconfig"
+#endif /* OPLUS_FEATURE_WIFI_CAPCENTER */
+
+source "net/oplus_modules/Kconfig"

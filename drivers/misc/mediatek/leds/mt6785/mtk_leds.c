@@ -46,6 +46,11 @@
 #include "mtk_leds_hal.h"
 #include "../mtk_leds_drv.h"
 
+#ifdef OPLUS_FEATURE_MULTIBITS_BL
+extern bool __attribute((weak)) oplus_display_twelvebits_support;
+#include <mt-plat/mtk_boot_common.h>
+extern unsigned long silence_mode;
+#endif
 /* for LED&Backlight bringup, define the dummy API */
 #ifndef CONFIG_MTK_PMIC_NEW_ARCH
 u16 pmic_set_register_value(u32 flagname, u32 val)
@@ -792,6 +797,12 @@ int mt_mt65xx_led_set_cust(struct cust_mt65xx_led *cust, int level)
 	    Cust_GetBacklightLevelSupport_byPWM();
 #endif
 	static bool button_flag;
+        #ifdef OPLUS_BUG_STABILITY
+        if (silence_mode) {
+                printk("%s silence_mode is %ld, set backlight to 0\n",__func__, silence_mode);
+                level = 0;
+        }
+        #endif /* OPLUS_BUG_STABILITY */
 
 	switch (cust->mode) {
 
@@ -913,19 +924,54 @@ void mt_mt65xx_led_set(struct led_classdev *led_cdev, enum led_brightness level)
 		level = (level * CONFIG_LIGHTNESS_MAPPING_VALUE) / 255;
 
 	backlight_debug_log(led_data->level, level);
+
+	#ifndef OPLUS_FEATURE_MULTIBITS_BL
 	disp_pq_notify_backlight_changed((((1 << MT_LED_INTERNAL_LEVEL_BIT_CNT)
 					    - 1) * level + 127) / 255);
+	#else /* OPLUS_FEATURE_MULTIBITS_BL */
+	if(oplus_display_twelvebits_support){
+		disp_pq_notify_backlight_changed((((1 << MT_LED_INTERNAL_LEVEL_BIT_CNT_SALA)
+							- 1) * level + 127) / 255);
+	}else{
+		disp_pq_notify_backlight_changed((((1 << MT_LED_INTERNAL_LEVEL_BIT_CNT)
+					    - 1) * level + 127) / 255);
+	}
+	#endif /* OPLUS_FEATURE_MULTIBITS_BL */
 #ifdef CONFIG_MTK_AAL_SUPPORT
+	#ifndef OPLUS_FEATURE_MULTIBITS_BL
 	disp_aal_notify_backlight_changed((((1 <<
 					MT_LED_INTERNAL_LEVEL_BIT_CNT)
 					    - 1) * level + 127) / 255);
+	#else /* OPLUS_FEATURE_MULTIBITS_BL */
+	/*
+	Yongpeng.Yi@PSW.MultiMedia.Display.LCD.Feature, 2018/09/10,
+	modify for silence mode.
+	*/
+	if (silence_mode) {
+		printk("%s silence_mode is %ld, set backlight to 0\n", __func__, silence_mode);
+		level = 0;
+	}
+	disp_aal_notify_backlight_changed(level);
+	#endif /* OPLUS_FEATURE_MULTIBITS_BL */
 #else
-	if (led_data->cust.mode == MT65XX_LED_MODE_CUST_BLS_PWM)
-		mt_mt65xx_led_set_cust(&led_data->cust,
-			((((1 << MT_LED_INTERNAL_LEVEL_BIT_CNT)
-				- 1) * level + 127) / 255));
-	else
-		mt_mt65xx_led_set_cust(&led_data->cust, level);
+	#ifdef OPLUS_FEATURE_MULTIBITS_BL
+		if(oplus_display_twelvebits_support){
+			if (led_data->cust.mode == MT65XX_LED_MODE_CUST_BLS_PWM)
+				mt_mt65xx_led_set_cust(&led_data->cust,
+					((((1 << MT_LED_INTERNAL_LEVEL_BIT_CNT_SALA)
+						- 1) * level + 127) / 255));
+			else
+				mt_mt65xx_led_set_cust(&led_data->cust, level);
+
+		}else{
+			if (led_data->cust.mode == MT65XX_LED_MODE_CUST_BLS_PWM)
+				mt_mt65xx_led_set_cust(&led_data->cust,
+					((((1 << MT_LED_INTERNAL_LEVEL_BIT_CNT)
+						- 1) * level + 127) / 255));
+			else
+				mt_mt65xx_led_set_cust(&led_data->cust, level);
+		}
+	#endif
 #endif
 }
 

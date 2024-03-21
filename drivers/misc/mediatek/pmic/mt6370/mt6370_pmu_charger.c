@@ -147,7 +147,7 @@ struct mt6370_pmu_charger_data {
 	int tchg;
 
 	u32 bootmode;
-
+	bool ignore_usb;
 #ifdef CONFIG_TCPC_CLASS
 	atomic_t tcpc_usb_connected;
 
@@ -158,7 +158,6 @@ struct mt6370_pmu_charger_data {
 	struct task_struct *attach_task;
 	struct mutex attach_lock;
 	bool typec_attach;
-	bool ignore_usb;
 	bool bypass_chgdet;
 #else
 	struct work_struct chgdet_work;

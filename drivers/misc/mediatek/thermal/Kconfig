@@ -23,3 +23,12 @@ config MTK_LEGACY_THERMAL_PLATFORM
 	  drivers. Config platform name for your
 	  selection. It's used for legacy thermal
 	  drivers only.
+
+config OPLUS_TEMP_NTC
+	bool "OPLUS_TEMP_NTC"
+	default n
+	help
+	  Set yes to support OPLUS_TEMP_NTC features
+	  smart battery.
+	  Set No to disable OPLUS_TEMP_NTC features
+	  smart battery.

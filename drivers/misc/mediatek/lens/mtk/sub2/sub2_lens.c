@@ -32,8 +32,15 @@
 #include <linux/ktime.h>
 /* ------------------------- */
 
+#if defined(CONFIG_MACH_MT6779)
+#include <archcounter_timesync.h>
+#endif
+
 #include "lens_info.h"
 #include "lens_list.h"
+#ifndef OPLUS_FEATURE_CAMERA_COMMON
+#define OPLUS_FEATURE_CAMERA_COMMON
+#endif
 
 #define AF_DRVNAME "SUB2AF"
 
@@ -46,7 +53,11 @@
 #endif
 
 #if I2C_CONFIG_SETTING == 1
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+#define LENS_I2C_BUSNUM 6
+#else
 #define LENS_I2C_BUSNUM 0
+#endif
 #define I2C_REGISTER_ID 0x28
 #endif
 
@@ -79,6 +90,11 @@ static struct stAF_OisPosInfo OisPosInfo;
 /* ------------------------- */
 
 static struct stAF_DrvList g_stAF_DrvList[MAX_NUM_OF_LENS] = {
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	{1, AFDRV_BU64253TEAF, BU64253TEAF_SetI2Cclient, BU64253TEAF_Ioctl,
+	 BU64253TEAF_Release, BU64253TEAF_GetFileName, NULL, NULL},
+#endif
+
 };
 
 static struct stAF_DrvList *g_pstAF_CurDrv;
@@ -224,12 +240,65 @@ static long AF_SetMotorName(__user struct stAF_MotorName *pstMotorName)
 	return i4RetValue;
 }
 
+
+static long AF_ControlParam(unsigned long a_u4Param)
+{
+	long i4RetValue = -1;
+	__user struct stAF_CtrlCmd *pCtrlCmd =
+			(__user struct stAF_CtrlCmd *)a_u4Param;
+	struct stAF_CtrlCmd CtrlCmd;
+
+	if (copy_from_user(&CtrlCmd, pCtrlCmd, sizeof(struct stAF_CtrlCmd)))
+		LOG_INF("copy to user failed\n");
+
+	switch (CtrlCmd.i8CmdID) {
+	case CONVERT_CCU_TIMESTAMP:
+		{
+#if defined(CONFIG_MACH_MT6779)
+		long long monotonicTime = 0;
+		long long hwTickCnt     = 0;
+
+		hwTickCnt     = CtrlCmd.i8Param[0];
+		monotonicTime = archcounter_timesync_to_monotonic(hwTickCnt);
+		/* do_div(monotonicTime, 1000); */ /* ns to us */
+		CtrlCmd.i8Param[0] = monotonicTime;
+
+		hwTickCnt     = CtrlCmd.i8Param[1];
+		monotonicTime = archcounter_timesync_to_monotonic(hwTickCnt);
+		/* do_div(monotonicTime, 1000); */ /* ns to us */
+		CtrlCmd.i8Param[1] = monotonicTime;
+
+		#if 0
+		hwTickCnt     = arch_counter_get_cntvct(); /* Global timer */
+		monotonicTime = archcounter_timesync_to_monotonic(hwTickCnt);
+		do_div(monotonicTime, 1000); /* ns to us */
+		CtrlCmd.i8Param[1] = monotonicTime;
+		#endif
+#endif
+		}
+		i4RetValue = 1;
+		break;
+	default:
+		i4RetValue = -1;
+		break;
+	}
+
+	if (i4RetValue > 0) {
+		if (copy_to_user(pCtrlCmd, &CtrlCmd,
+			sizeof(struct stAF_CtrlCmd)))
+			LOG_INF("copy to user failed\n");
+	}
+
+	return i4RetValue;
+}
+
 static inline int64_t getCurNS(void)
 {
 	int64_t ns;
 	struct timespec time;
 
-	time.tv_sec = time.tv_nsec = 0;
+	time.tv_sec = 0;
+        time.tv_nsec = 0;
 	get_monotonic_boottime(&time);
 	ns = time.tv_sec * 1000000000LL + time.tv_nsec;
 
@@ -343,10 +412,32 @@ static long AF_Ioctl(struct file *a_pstFile, unsigned int a_u4Command,
 
 	case AFIOC_G_OISPOSINFO:
 		if (g_pstAF_CurDrv) {
+		#ifdef OPLUS_FEATURE_CAMERA_COMMON
+		if (g_pstAF_CurDrv->pAF_OisGetHallInfo) {
+				__user struct stAF_OisPosInfo *pstOisPosInfo =
+					(__user struct stAF_OisPosInfo *)
+						a_u4Param;
+
+				g_pstAF_CurDrv->pAF_OisGetHallInfo((void *)(&OisPosInfo));
+
+				if (copy_to_user(
+						pstOisPosInfo, &OisPosInfo,
+						sizeof(struct stAF_OisPosInfo)))
+					LOG_INF("copy to user failed\n");
+
+				g_OisPosIdx = 0;
+				memset(&OisPosInfo, 0, sizeof(OisPosInfo));
+			}
+		#else
 			if (g_pstAF_CurDrv->pAF_OisGetHallPos) {
 				__user struct stAF_OisPosInfo *pstOisPosInfo =
 					(__user struct stAF_OisPosInfo *)
 						a_u4Param;
+
+				if (ois_workqueue == NULL) {
+					ois_workqueue =
+					create_singlethread_workqueue("ois_work");
+				}
 
 				mutex_lock(&ois_mutex);
 
@@ -368,6 +459,15 @@ static long AF_Ioctl(struct file *a_pstFile, unsigned int a_u4Command,
 					g_EnableTimer = 1;
 				}
 			}
+			#endif
+		}
+		break;
+
+	case AFIOC_X_CTRLPARA:
+		if (AF_ControlParam(a_u4Param) <= 0) {
+			if (g_pstAF_CurDrv)
+				i4RetValue = g_pstAF_CurDrv->pAF_Ioctl(
+					a_pstFile, a_u4Command, a_u4Param);
 		}
 		break;
 

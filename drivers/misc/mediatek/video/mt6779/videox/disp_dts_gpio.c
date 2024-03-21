@@ -12,6 +12,11 @@
 static struct pinctrl *this_pctrl; /* static pinctrl instance */
 
 /* DTS state mapping name */
+/* #ifndef OPLUST_BUG_STABILITY */
+/*
+* add GPIO_STATE for 19537 driver
+*/
+/*
 static const char *this_state_name[DTS_GPIO_STATE_MAX] = {
 	"lcd_bias_enp1_gpio",
 	"lcd_bias_enp0_gpio",
@@ -31,6 +36,40 @@ static const char *this_state_name[DTS_GPIO_STATE_MAX] = {
 	"lcm_mipi4_sdata",
 	"lcm_mipi4_sclk",
 };
+*/
+/* #else */ /* OPLUST_BUG_STABILITY */
+static const char *this_state_name[DTS_GPIO_STATE_MAX] = {
+	"lcd_bias_enp1_gpio",
+	"lcd_bias_enp0_gpio",
+	"lcd_bias_enn1_gpio",
+	"lcd_bias_enn0_gpio",
+	"lcm_rst_out1_gpio",
+	"lcm_rst_out0_gpio",
+	"lcm_dsi_te",
+	"lcm_mipi0_sdata",
+	"lcm_mipi0_sclk",
+	"lcm_mipi1_sdata",
+	"lcm_mipi1_sclk",
+	"lcm_mipi2_sdata",
+	"lcm_mipi2_sclk",
+	"lcm_mipi3_sdata",
+	"lcm_mipi3_sclk",
+	"lcm_mipi4_sdata",
+	"lcm_mipi4_sclk",
+	"lcd_bl_en0_gpio",
+	"lcd_bl_en1_gpio",
+	"lcd_1p8_en0_gpio",
+	"lcd_1p8_en1_gpio",
+	"lcd_vci_en0_gpio",
+	"lcd_vci_en1_gpio",
+	"lcd_vpoc_en0_gpio",
+	"lcd_vpoc_en1_gpio",
+	"lcd_mipi_err_en0_gpio",
+	"lcd_mipi_err_en1_gpio",
+	"spi_csn_en0_gpio",
+	"spi_csn_en1_gpio",
+};
+/* #endif */ /* OPLUST_BUG_STABILITY */
 
 /* pinctrl implementation */
 static long _set_state(const char *name)

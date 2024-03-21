@@ -67,10 +67,21 @@ static const struct snd_soc_dapm_route mtk_dai_hostless_routes[] = {
 	{"I2S5_CH1", "PCM_2_CAP_CH1", "Hostless Speech DL"},
 	{"I2S5_CH2", "PCM_2_CAP_CH1", "Hostless Speech DL"},
 	{"I2S5_CH2", "PCM_2_CAP_CH2", "Hostless Speech DL"},
+	#ifdef OPLUS_ARCH_EXTENDS
 	{"PCM_1_PB_CH1", "ADDA_UL_CH1", "Hostless Speech DL"},
 	{"PCM_1_PB_CH2", "ADDA_UL_CH2", "Hostless Speech DL"},
 	{"PCM_2_PB_CH1", "ADDA_UL_CH1", "Hostless Speech DL"},
+	{"PCM_2_PB_CH1", "ADDA_UL_CH2", "Hostless Speech DL"},
+	{"PCM_2_PB_CH1", "ADDA_UL_CH3", "Hostless Speech DL"},
+	{"PCM_2_PB_CH2", "ADDA_UL_CH1", "Hostless Speech DL"},
 	{"PCM_2_PB_CH2", "ADDA_UL_CH2", "Hostless Speech DL"},
+	{"PCM_2_PB_CH2", "ADDA_UL_CH3", "Hostless Speech DL"},
+	{"PCM_2_PB_CH3", "ADDA_UL_CH3", "Hostless Speech DL"},
+	#endif
+	{"PCM_1_PB_CH1", "ADDA_UL_CH1", "Hostless Speech UL"},
+	{"PCM_1_PB_CH2", "ADDA_UL_CH2", "Hostless Speech UL"},
+	{"PCM_2_PB_CH1", "ADDA_UL_CH1", "Hostless Speech UL"},
+	{"PCM_2_PB_CH2", "ADDA_UL_CH2", "Hostless Speech UL"},
 
 	{"Hostless Speech UL", NULL, "PCM 1 Capture"},
 	{"Hostless Speech UL", NULL, "PCM 2 Capture"},
@@ -122,6 +133,9 @@ static const struct snd_soc_dapm_route mtk_dai_hostless_routes[] = {
 
 	/* Hostless_ADDA_DL */
 	{"ADDA Playback", NULL, "Hostless_ADDA_DL_I2S_OUT DL"},
+	#ifdef OPLUS_ARCH_EXTENDS
+	{"ADDA CH34 Playback", NULL, "Hostless_ADDA_DL_I2S_OUT DL"},
+	#endif /* OPLUS_ARCH_EXTENDS */
 	{"I2S1", NULL, "Hostless_ADDA_DL_I2S_OUT DL"},
 	{"I2S3", NULL, "Hostless_ADDA_DL_I2S_OUT DL"},
 	{"I2S5", NULL, "Hostless_ADDA_DL_I2S_OUT DL"},

@@ -423,6 +423,17 @@ config IRQ_TIME_ACCOUNTING
 
 	  If in doubt, say N here.
 
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+config SCHED_WALT
+	bool "Support window based load tracking"
+	depends on SMP
+	help
+	  This feature will allow the scheduler to maintain a tunable window
+	  based set of metrics for tasks and runqueues. These metrics can be
+	  used to guide task placement as well as task frequency requirements
+	  for cpufreq governors.
+#endif /* OPLUS_FEATURE_SCHED_ASSIST */
+
 config HAVE_SCHED_AVG_IRQ
 	def_bool y
 	depends on IRQ_TIME_ACCOUNTING || PARAVIRT_TIME_ACCOUNTING
@@ -725,7 +736,10 @@ config UCLAMP_BUCKETS_COUNT
 	  precision.
 
 	  If in doubt, use the default value.
-
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+source "kernel/sched_assist/Kconfig"
+source "kernel/locking/klockopt/Kconfig"
+#endif
 endmenu
 
 #
@@ -2170,6 +2184,12 @@ config ASN1
 	  functions to call on what tags.
 
 source "kernel/Kconfig.locks"
+
+config OPLUS_FEATURE_EAS_IGNORE_CACHEMISS
+	bool "EAS: ignore cachemiss"
+	default n
+	help
+	  EAS: change function "find_energy_efficient_cpu" as kernel-4.14, ignore cachemiss
 
 config ARCH_HAS_SYNC_CORE_BEFORE_USERMODE
 	bool

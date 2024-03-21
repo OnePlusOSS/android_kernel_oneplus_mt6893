@@ -74,7 +74,17 @@ static int g_rgb_matrix[3][3] = {
 	{1024, 0, 0},
 	{0, 1024, 0},
 	{0, 0, 1024} };
-
+/*#ifdef OPLUS_BUG_STABILITY*/
+static int g_rgb_default_matrix[3][3] = {
+        {1024, 0, 0},
+        {0, 1024, 0},
+        {0, 0, 1024} };
+extern bool dl_rgb_flag;
+extern bool dl_color_flag;
+extern bool dc_rgb_flag;
+extern bool dc_color_flag;
+unsigned int bl_backup = 0;
+/*endif*/
 #ifdef CONFIG_MTK_SLD_SUPPORT
 static DEFINE_SPINLOCK(g_sld_bl_change_lock);
 static bool sld_end_flag;
@@ -130,6 +140,12 @@ static int g_old_pq_backlight;
 static int g_pq_backlight;
 static int g_pq_backlight_db;
 static atomic_t g_ccorr_is_init_valid = ATOMIC_INIT(0);
+#ifdef OPLUS_BUG_STABILITY
+extern unsigned long oplus_display_brightness;
+#if defined(OPLUS_BUG_STABILITY) && defined(CONFIG_LEDS_MTK_DISP)
+extern int oplus_disp_ccorr_without_gamma;
+#endif
+#endif
 
 static DEFINE_MUTEX(g_ccorr_global_lock);
 // For color conversion bug fix
@@ -677,9 +693,14 @@ void disp_pq_notify_backlight_changed(int bl_1024)
 
 	DDPINFO("%s: %d\n", __func__, bl_1024);
 
+	bl_backup = bl_1024;
 	if (m_new_pq_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS]) {
-		if (default_comp != NULL &&
-			g_ccorr_relay_value[index_of_ccorr(default_comp->id)] != 1) {
+		if (default_comp != NULL
+			/*#ifdef OPLUS_BUG_STABILITY*/
+			/* to keep value of backlight for FOD while screen is turning on*/
+			/* && g_ccorr_relay_value[index_of_ccorr(default_comp->id)] != 1 */
+			/*#endif OPLUS_BUG_STABILITY*/
+			) {
 			disp_ccorr_set_interrupt(default_comp, 1);
 
 			if (default_comp != NULL &&
@@ -803,12 +824,109 @@ static int mtk_disp_ccorr_set_interrupt(struct mtk_ddp_comp *comp, void *data)
 		__func__, __LINE__);
 	return ret;
 }
+/*#ifdef OPLUS_BUG_STABILITY*/
+int disp_set_dl_default_color_matrix(void) {
+       int i,j,ret;
+
+       if (dl_rgb_flag == true) {
+               for (i = 0; i < 3; i++) {
+			for (j = 0; j < 3; j++) {
+				g_rgb_matrix[i][j] = g_rgb_default_matrix[i][j];
+			}
+               }
+               dl_rgb_flag = false;
+               ret = 0;
+       } else if (dl_color_flag == true) {
+               for (i = 0; i < 3; i++) {
+                        for (j = 0; j < 3; j++) {
+                                g_ccorr_color_matrix[i][j] = g_rgb_default_matrix[i][j];
+                        }
+                }
+               //dl_color_flag = false;
+               ret = 0;
+       } else {
+               dl_rgb_flag = false;
+               dl_color_flag = false;
+               ret = 0;
+       }
+       return ret;
+}
+int disp_set_dc_default_color_matrix(void) {
+       int i,j,ret;
+
+       if (dc_rgb_flag == true) {
+               for (i = 0; i < 3; i++) {
+                        for (j = 0; j < 3; j++) {
+                                g_rgb_matrix[i][j] = g_rgb_default_matrix[i][j];
+                        }
+               }
+               dc_rgb_flag = false;
+               ret = 0;
+       } else if (dc_color_flag == true) {
+               for (i = 0; i < 3; i++) {
+                        for (j = 0; j < 3; j++) {
+                                g_ccorr_color_matrix[i][j] = g_rgb_default_matrix[i][j];
+                        }
+                }
+               dc_color_flag = false;
+               ret = 0;
+       } else {
+               dc_rgb_flag = false;
+               dc_color_flag = false;
+               ret = 0;
+       }
+       return ret;
+}
+int disp_ccorr_set_RGB_matrix(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle, int32_t matrix[16], bool flag)
+{
+       int i,j,ret;
+       int id = index_of_ccorr(comp->id);
+
+       mutex_lock(&g_ccorr_global_lock);
+       for (i = 0; i < 3; i++) {
+               for (j = 0; j < 3; j++) {
+			if (flag == false) {
+				g_rgb_matrix[i][j] = g_rgb_default_matrix[i][j];
+			} else {
+                       		g_rgb_matrix[i][j] = matrix[j*4 +i];
+			}
+               }
+       }
+	dl_color_flag = false;
+
+        #if defined(OPLUS_BUG_STABILITY) && defined(CONFIG_LEDS_MTK_DISP)
+        if (oplus_disp_ccorr_without_gamma == 1)
+                g_disp_ccorr_without_gamma = oplus_disp_ccorr_without_gamma;
+        #endif
+
+	g_disp_ccorr_coef[id]->offset[0] = (matrix[12] << 1) << 14;
+	g_disp_ccorr_coef[id]->offset[1] = (matrix[13] << 1) << 14;
+	g_disp_ccorr_coef[id]->offset[2] = (matrix[14] << 1) << 14;
+
+	ret = disp_ccorr_write_coef_reg(comp, handle, 0);
+	if (comp->mtk_crtc->is_dual_pipe) {
+                struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+                struct drm_crtc *crtc = &mtk_crtc->base;
+                struct mtk_drm_private *priv = crtc->dev->dev_private;
+                struct mtk_ddp_comp *comp_ccorr1 = priv->ddp_comp[DDP_COMPONENT_CCORR1];
+
+                disp_ccorr_write_coef_reg(comp_ccorr1, handle, 0);
+        }
+        mutex_unlock(&g_ccorr_global_lock);
+
+       return ret;
+}
+/*#endif*/
 int disp_ccorr_set_color_matrix(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, int32_t matrix[16], int32_t hint, bool fte_flag)
 {
 	int ret = 0;
 	int i, j;
+	#if defined(OPLUS_BUG_STABILITY) && defined(CONFIG_LEDS_MTK_DISP)
+	int ccorr_without_gamma = oplus_disp_ccorr_without_gamma;
+	#else
 	int ccorr_without_gamma = 0;
+	#endif
 	bool need_refresh = false;
 	bool identity_matrix = true;
 	int id = index_of_ccorr(comp->id);
@@ -831,8 +949,17 @@ int disp_ccorr_set_color_matrix(struct mtk_ddp_comp *comp,
 	for (i = 0; i < 3; i++) {
 		for (j = 0; j < 3; j++) {
 			/* Copy Color Matrix */
-			g_ccorr_color_matrix[i][j] = matrix[j*4 + i];
-
+/*#ifdef OPLUS_BUG_STABILITY*/
+			if (mtk_crtc->panel_ext && mtk_crtc->panel_ext->params
+					&& mtk_crtc->panel_ext->params->oplus_panel_use_rgb_gain) {
+				if (dl_color_flag == false)
+					g_ccorr_color_matrix[i][j] = matrix[j*4 + i];
+			} else {
+				g_ccorr_color_matrix[i][j] = matrix[j*4 + i];
+			}
+/*#else*/
+/*			g_ccorr_color_matrix[i][j] = matrix[j*4 + i];*/
+/*#endif*/
 			/* early jump out */
 			if (ccorr_without_gamma == 1)
 				continue;
@@ -853,41 +980,44 @@ int disp_ccorr_set_color_matrix(struct mtk_ddp_comp *comp,
 	// only when set identity matrix and not gpu overlay, open display color
 	DDPINFO("hint: %d, identity: %d, fte_flag: %d, bypass: color0:%d color1:%d",
 		hint, identity_matrix, fte_flag, bypass_color0, bypass_color1);
-	if (((hint == 0) || ((hint == 1) && identity_matrix)) && (!fte_flag)) {
-		if (id == 0) {
-			if (bypass_color0 == true) {
-				struct mtk_ddp_comp *comp_color0 =
-					priv->ddp_comp[DDP_COMPONENT_COLOR0];
-				ddp_color_bypass_color(comp_color0, false, handle);
-				bypass_color0 = false;
-			}
-		} else if (id == 1) {
-			if (bypass_color1 == true) {
-				struct mtk_ddp_comp *comp_color1 =
-					priv->ddp_comp[DDP_COMPONENT_COLOR1];
-				ddp_color_bypass_color(comp_color1, false, handle);
-				bypass_color1 = false;
-			}
-		} else {
-			DDPINFO("%s, id is invalid!\n", __func__);
-		}
-	} else {
-		if (id == 0) {
-			if (bypass_color0 == false) {
-				struct mtk_ddp_comp *comp_color0 =
-					priv->ddp_comp[DDP_COMPONENT_COLOR0];
-				ddp_color_bypass_color(comp_color0, true, handle);
-				bypass_color0 = true;
-			}
-		} else if (id == 1) {
-			if (bypass_color1 == false) {
-				struct mtk_ddp_comp *comp_color1 =
-					priv->ddp_comp[DDP_COMPONENT_COLOR1];
-				ddp_color_bypass_color(comp_color1, true, handle);
-				bypass_color1 = true;
+	if (!mtk_crtc->panel_ext->params->oplus_bypass_color_flag) {
+		DDPINFO("%s, bypass color!\n", __func__);
+		if (((hint == 0) || ((hint == 1) && identity_matrix)) && (!fte_flag)) {
+			if (id == 0) {
+				if (bypass_color0 == true) {
+					struct mtk_ddp_comp *comp_color0 =
+						priv->ddp_comp[DDP_COMPONENT_COLOR0];
+					ddp_color_bypass_color(comp_color0, false, handle);
+					bypass_color0 = false;
+				}
+			} else if (id == 1) {
+				if (bypass_color1 == true) {
+					struct mtk_ddp_comp *comp_color1 =
+						priv->ddp_comp[DDP_COMPONENT_COLOR1];
+					ddp_color_bypass_color(comp_color1, false, handle);
+					bypass_color1 = false;
+				}
+			} else {
+				DDPINFO("%s, id is invalid!\n", __func__);
 			}
 		} else {
-			DDPINFO("%s, id is invalid!\n", __func__);
+			if (id == 0) {
+				if (bypass_color0 == false) {
+					struct mtk_ddp_comp *comp_color0 =
+						priv->ddp_comp[DDP_COMPONENT_COLOR0];
+					ddp_color_bypass_color(comp_color0, true, handle);
+					bypass_color0 = true;
+				}
+			} else if (id == 1) {
+				if (bypass_color1 == false) {
+					struct mtk_ddp_comp *comp_color1 =
+						priv->ddp_comp[DDP_COMPONENT_COLOR1];
+					ddp_color_bypass_color(comp_color1, true, handle);
+					bypass_color1 = true;
+				}
+			} else {
+				DDPINFO("%s, id is invalid!\n", __func__);
+			}
 		}
 	}
 
@@ -966,7 +1096,20 @@ int disp_ccorr_set_RGB_Gain(struct mtk_ddp_comp *comp,
 	g_rgb_matrix[2][2] = b;
 
 	DDPINFO("%s: r[%d], g[%d], b[%d]", __func__, r, g, b);
-	ret = disp_ccorr_write_coef_reg(comp, NULL, 0);
+	#if defined(OPLUS_BUG_STABILITY) && defined(CONFIG_LEDS_MTK_DISP)
+	if (oplus_disp_ccorr_without_gamma == 1)
+		g_disp_ccorr_without_gamma = oplus_disp_ccorr_without_gamma;
+	#endif
+	ret = disp_ccorr_write_coef_reg(comp, handle, 0);
+
+	if (comp->mtk_crtc->is_dual_pipe) {
+		struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+		struct drm_crtc *crtc = &mtk_crtc->base;
+		struct mtk_drm_private *priv = crtc->dev->dev_private;
+		struct mtk_ddp_comp *comp_ccorr1 = priv->ddp_comp[DDP_COMPONENT_CCORR1];
+
+		disp_ccorr_write_coef_reg(comp_ccorr1, handle, 0);
+	}
 	mutex_unlock(&g_ccorr_global_lock);
 
 	return ret;
@@ -978,6 +1121,8 @@ int mtk_drm_ioctl_set_ccorr(struct drm_device *dev, void *data,
 	struct mtk_drm_private *private = dev->dev_private;
 	struct mtk_ddp_comp *comp = private->ddp_comp[DDP_COMPONENT_CCORR0];
 	struct drm_crtc *crtc = private->crtc[0];
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	unsigned int panel_bl_backup = 0;
 
 	if (m_new_pq_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS]) {
 		int ret;
@@ -985,13 +1130,24 @@ int mtk_drm_ioctl_set_ccorr(struct drm_device *dev, void *data,
 
 		ret = mtk_crtc_user_cmd(crtc, comp, SET_CCORR, data);
 
+		if (mtk_crtc->panel_ext && mtk_crtc->panel_ext->params
+				&& mtk_crtc->panel_ext->params->oplus_silky_bl_backup) {
+			panel_bl_backup = 1;
+		}
+
 		if ((ccorr_config->silky_bright_flag) == 1 &&
-			ccorr_config->FinalBacklight != 0) {
+			(ccorr_config->FinalBacklight != 0 || (bl_backup == 1 && panel_bl_backup == 1))) {
 			DDPINFO("brightness = %d, silky_bright_flag = %d",
 				ccorr_config->FinalBacklight,
 				ccorr_config->silky_bright_flag);
-			mt_leds_brightness_set("lcd-backlight",
-				ccorr_config->FinalBacklight);
+			#ifdef OPLUS_BUG_STABILITY
+			oplus_display_brightness = ccorr_config->FinalBacklight;
+			#endif
+			if (bl_backup == 1 && panel_bl_backup == 1)
+				mt_leds_brightness_set("lcd-backlight", bl_backup);
+			else
+				mt_leds_brightness_set("lcd-backlight",
+					ccorr_config->FinalBacklight);
 		}
 
 		mtk_crtc_check_trigger(comp->mtk_crtc, false, true);

@@ -31,13 +31,25 @@ struct mmc_gpio {
 	char cd_label[];
 };
 
+#if defined(CONFIG_MACH_MT6765)
+extern void msdc_sd_power_off_quick(void);
+#endif
+
 static irqreturn_t mmc_gpio_cd_irqt(int irq, void *dev_id)
 {
 	/* Schedule a card detection after a debounce timeout */
 	struct mmc_host *host = dev_id;
 	struct mmc_gpio *ctx = host->slot.handler_priv;
-
+#if defined(CONFIG_MACH_MT6765)
+	msdc_sd_power_off_quick();
+#endif
 	host->trigger_card_event = true;
+
+#ifdef OPLUS_FEATURE_MMC_DRIVER
+	host->card_stuck_in_programing_status = 0;
+	host->detect_change_retry = 5;
+#endif
+
 	mmc_detect_change(host, msecs_to_jiffies(ctx->cd_debounce_delay_ms));
 
 	return IRQ_HANDLED;
@@ -136,7 +148,6 @@ void mmc_gpiod_request_cd_irq(struct mmc_host *host)
 
 	if (host->slot.cd_irq >= 0 || !ctx || !ctx->cd_gpio)
 		return;
-
 	/*
 	 * Do not use IRQ if the platform prefers to poll, e.g., because that
 	 * IRQ number is already used by another unit and cannot be shared.

@@ -1229,7 +1229,9 @@ void show_native_bt_by_pid(int task_pid)
 {
 	struct task_struct *t, *p;
 	struct pid *pid;
+#ifdef CONFIG_MTK_HANG_DETECT_LOG
 	int count = 0;
+#endif
 	unsigned int state = 0;
 	char stat_nam[] = TASK_STATE_TO_CHAR_STR;
 
@@ -1265,8 +1267,10 @@ void show_native_bt_by_pid(int task_pid)
 #endif
 				put_task_struct(t);
 			}
+#ifdef CONFIG_MTK_HANG_DETECT_LOG
 			if ((++count) % 5 == 4)
 				msleep(20);
+#endif
 		} while_each_thread(p, t);
 		/* change send ptrace_stop to send signal stop */
 		if (stat_nam[state] != 'T')
@@ -1642,7 +1646,10 @@ static void show_bt_by_pid(int task_pid)
 #ifdef __aarch64__
 	struct pt_regs *user_ret;
 #endif
-	int count = 0, dump_native = 0;
+#ifdef CONFIG_MTK_HANG_DETECT_LOG
+	int count = 0;
+#endif
+	int dump_native = 0;
 	unsigned int state = 0;
 	char stat_nam[] = TASK_STATE_TO_CHAR_STR;
 	pid = find_get_pid(task_pid);
@@ -1717,8 +1724,10 @@ static void show_bt_by_pid(int task_pid)
 #endif
 				put_task_struct(t);
 			}
+#ifdef CONFIG_MTK_HANG_DETECT_LOG
 			if ((++count) % 5 == 4)
 				msleep(20);
+#endif
 			Log2HangInfo("-\n");
 		} while_each_thread(p, t);
 		put_task_struct(p);

@@ -638,7 +638,7 @@ tfaContWriteVstepMax2(struct tfa_device *tfa,
 			     (regInfo->registerInfo[i] << 8);
 		i++;
 		bitF.value = (uint16_t)regInfo->registerInfo[i] >> 8;
-		err = tfaRunWriteBitfield(tfa, bitF);
+		err = tfaRunWriteBitfield(tfa, &bitF);
 		if (err != Tfa98xx_Error_Ok)
 			return err;
 	}
@@ -951,7 +951,7 @@ int tfa_cont_get_idx(struct tfa_device *tfa)
  * write a bit field
  */
 enum Tfa98xx_Error tfaRunWriteBitfield(struct tfa_device *tfa,
-				       struct nxpTfaBitfield bf)
+				       struct nxpTfaBitfield *bf)
 {
 	enum Tfa98xx_Error error;
 	uint16_t value;
@@ -960,8 +960,8 @@ enum Tfa98xx_Error tfaRunWriteBitfield(struct tfa_device *tfa,
 		struct nxpTfaBfEnum Enum;
 	} bfUni;
 
-	value = bf.value;
-	bfUni.field = bf.field;
+	value = bf->value;
+	bfUni.field = bf->field;
 #ifdef TFA_DEBUG
 	if (tfa->verbose)
 		pr_debug("bitfield: %s=0x%x (0x%x[%d..%d]=0x%x)\n",
@@ -1169,7 +1169,7 @@ enum Tfa98xx_Error tfaContWriteRegsDev(struct tfa_device *tfa)
 		if (dev->list[i].type == dscBitfield) {
 			bitF = (struct nxpTfaBitfield *)(dev->list[i].offset +
 							 (uint8_t *)tfa->cnt);
-			err = tfaRunWriteBitfield(tfa, *bitF);
+			err = tfaRunWriteBitfield(tfa, bitF);
 		}
 		if (dev->list[i].type == dscRegister) {
 			err = tfaRunWriteRegister(
@@ -1213,7 +1213,7 @@ enum Tfa98xx_Error tfaContWriteRegsProf(struct tfa_device *tfa, int prof_idx)
 		if (prof->list[i].type == dscBitfield) {
 			bitf = (struct nxpTfaBitfield *)(prof->list[i].offset +
 							 (uint8_t *)tfa->cnt);
-			err = tfaRunWriteBitfield(tfa, *bitf);
+			err = tfaRunWriteBitfield(tfa, bitf);
 		}
 		if (prof->list[i].type == dscRegister) {
 			err = tfaRunWriteRegister(
@@ -1502,7 +1502,7 @@ static enum Tfa98xx_Error tfaContWriteItem(struct tfa_device *tfa,
 	case dscBitfield:
 		bitf = (struct nxpTfaBitfield *)(dsc->offset +
 						 (uint8_t *)tfa->cnt);
-		return tfaRunWriteBitfield(tfa, *bitf);
+		return tfaRunWriteBitfield(tfa, bitf);
 	case dscFilter:
 		return tfaRunWriteFilter(
 			tfa, (union nxpTfaContBiquad *)(dsc->offset +

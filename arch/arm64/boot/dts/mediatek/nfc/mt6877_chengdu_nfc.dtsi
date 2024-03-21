@@ -1,0 +1,46 @@
+&odm {
+	nfc_chipset:nfc_chipset {
+		compatible = "oplus-nfc-chipset";
+		chipset-22629 = "SN110T";
+	};
+};
+
+&pio {
+        i2c8_pin: i2c8_pin {
+                pins_cmd0_dat {
+                        pinmux = <PINMUX_GPIO136__FUNC_SCL8>;
+                        bias-pull-up;
+                };
+
+                pins_cmd1_dat {
+                        pinmux = <PINMUX_GPIO137__FUNC_SDA8>;
+                        bias-pull-up;
+                };
+        };
+};
+
+
+&i2c8 {
+       status = "okay";
+       nq@28 {
+               compatible = "nxp,sn-nci";
+               reg = <0x28>;
+               nxp,sn-irq = <&pio 11 0x0>;
+               nxp,sn-ven-rstn = <&pio 190 0x0>;
+               nxp,sn-dwl-req = <&pio 8 0x0>;
+               interrupt-parent = <&pio>;
+       };
+
+};
+
+&spi1 {
+       status = "okay";
+       #address-cells = <1>;
+       #size-cells = <0>;
+       spidev1: p61@1 {
+       compatible = "nxp,sn-ese";
+       reg = <0>;
+       spi-max-frequency = <19200000>;
+       nxp,nfcc = "8-0028";
+       };
+};

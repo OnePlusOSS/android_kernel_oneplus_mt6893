@@ -11,6 +11,10 @@
 #include <SCP_sensorHub.h>
 #include "SCP_power_monitor.h"
 
+#ifdef OPLUS_FEATURE_SENSOR
+#include "../../oplus_sensor_devinfo/sensor_devinfo.h"
+#endif
+
 #define MAGHUB_DEV_NAME         "mag_hub"
 #define DRIVER_VERSION          "1.0.1"
 
@@ -207,17 +211,60 @@ static ssize_t regmap_show(struct device_driver *ddri, char *buf)
 
 	return _tLength;
 }
+#ifdef OPLUS_FEATURE_SENSOR
+static int selftest_result = 0;
+static ssize_t test_id_show(struct device_driver *ddri, char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "%d\n", 1);
+}
+static ssize_t magnet_close_show(struct device_driver *ddri, char *buf)
+{
+	int result = 1;
+	return scnprintf(buf, PAGE_SIZE, "%d\n", result);
+}
+static ssize_t magnet_leave_show(struct device_driver *ddri, char *buf)
+{
+	ssize_t _tLength = 0;
+	int res = 0;
+	res = oplus_send_selftest_cmd_to_hub(ID_MAGNETIC, &selftest_result);
+	pr_debug("selftest_result = %d\n",selftest_result);
+
+	_tLength = snprintf(buf, PAGE_SIZE, "%d\n", selftest_result);
+	return _tLength;
+}
+
+static ssize_t chip_selftest_show(struct device_driver *ddri, char *buf)
+{
+	ssize_t _tLength = 0;
+	int res = 0;
+	res = oplus_send_selftest_cmd_to_hub(ID_MAGNETIC, &selftest_result);
+	_tLength = snprintf(buf, PAGE_SIZE, "%d\n", selftest_result);
+	return _tLength;
+}
+#endif /* OPLUS_FEATURE_SENSOR */
 static DRIVER_ATTR_RO(chipinfo);
 static DRIVER_ATTR_RO(sensordata);
 static DRIVER_ATTR_RW(trace);
 static DRIVER_ATTR_RW(orientation);
 static DRIVER_ATTR_RO(regmap);
+#ifdef OPLUS_FEATURE_SENSOR
+static DRIVER_ATTR_RO(magnet_close);
+static DRIVER_ATTR_RO(magnet_leave);
+static DRIVER_ATTR_RO(test_id);
+static DRIVER_ATTR_RO(chip_selftest);
+#endif /* OPLUS_FEATURE_SENSOR */
 static struct driver_attribute *maghub_attr_list[] = {
 	&driver_attr_chipinfo,
 	&driver_attr_sensordata,
 	&driver_attr_trace,
 	&driver_attr_orientation,
 	&driver_attr_regmap,
+#ifdef OPLUS_FEATURE_SENSOR
+	&driver_attr_magnet_close,
+	&driver_attr_magnet_leave,
+	&driver_attr_test_id,
+	&driver_attr_chip_selftest,
+#endif /* OPLUS_FEATURE_SENSOR */
 };
 static int maghub_create_attr(struct device_driver *driver)
 {

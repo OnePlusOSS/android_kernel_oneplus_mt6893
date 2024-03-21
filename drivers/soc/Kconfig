@@ -19,4 +19,58 @@ source "drivers/soc/versatile/Kconfig"
 source "drivers/soc/xilinx/Kconfig"
 source "drivers/soc/zte/Kconfig"
 
+#ifdef OPLUS_FEATURE_LOWMEM_DBG
+source "drivers/soc/oplus/lowmem_dbg/Kconfig"
+##endif /* OPLUS_FEATURE_LOWMEM_DBG */
+
+#ifdef OPLUS_FEATURE_IOMONITOR
+source "drivers/soc/oplus/iomonitor/Kconfig"
+#endif /*OPLUS_FEATURE_IOMONITOR*/
+
+#ifdef OPLUS_FEATURE_MEMLEAK_DETECT
+#Add for svelte
+source "drivers/soc/oplus/svelte/Kconfig"
+#endif /* OPLUS_FEATURE_MEMLEAK_DETECT */
+
+#ifdef OPLUS_BUG_STABILITY
+source "drivers/soc/oplus/system/Kconfig"
+#endif /* OPLUS_BUG_STABILITY */
+
+#ifdef OPLUS_FEATURE_TP_BASIC
+#Qicai.gu  12:00, 2020/06/03  devi info
+source "drivers/soc/oplus/device_info/Kconfig"
+##endif /* OPLUS_FEATURE_TP_BASIC */
+
+#ifdef OPLUS_FEATURE_HEALTHINFO
+source "drivers/soc/oplus/healthinfo/Kconfig"
+#endif /* OPLUS_FEATURE_HEALTHINFO */
+
+#ifdef OPLUS_FEATURE_MIDAS
+source "drivers/soc/oplus/midas/Kconfig"
+#endif
+
+#ifdef OPLUS_FEATURE_MIDAS
+source "drivers/soc/oplus/oplus_als_cali_value/Kconfig"
+#endif
+
+#Add for NandSwap
+source "drivers/soc/oplus/oplus_nandswap/Kconfig"
+
+#ifdef OPLUS_FEATURE_GAME_OPT
+source "drivers/soc/oplus/game_opt/Kconfig"
+#endif /* OPLUS_FEATURE_GAME_OPT */
+
+source "drivers/soc/oplus/oplus_overload/Kconfig"
+
+#ifdef OPLUS_FEATURE_HEALTHINFO
+source "drivers/soc/oplus/healthinfo/Kconfig"
+#endif /* OPLUS_FEATURE_HEALTHINFO */
+
+#ifdef OPLUS_FEATURE_TMEMORY
+#Add for tmemory
+source "drivers/soc/oplus/tmemory/Kconfig"
+#endi
+
+source "drivers/soc/oplus/storage/Kconfig"
+
 endmenu

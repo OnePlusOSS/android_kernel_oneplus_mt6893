@@ -12,6 +12,9 @@
 
 #include "../uapi/mtk_ion/ion.h"
 
+extern atomic_long_t ion_total_size;
+extern bool ion_cnt_enable;
+
 struct ion_handle;
 struct ion_device;
 struct ion_heap;

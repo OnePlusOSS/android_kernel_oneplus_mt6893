@@ -25,6 +25,10 @@
 #else
 #endif
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+#define NTC_PREC_CONV 100
+#endif
+
 #define mtktscharger_TEMP_CRIT (150000) /* 150.000 degree Celsius */
 
 #define mtktscharger_dprintk(fmt, args...) \
@@ -145,7 +149,13 @@ static int mtktscharger_get_hw_temp(void)
 		charger_idx, &tmin, &tmax);
 
 	if (ret >= 0) {
-		t = tmax * 1000;
+/*add for tscharger 0.1C precision support*/
+		if (pthermal_consumer->support_ntc_01c_precision) {
+			t = tmax * NTC_PREC_CONV;
+		} else {
+/*OPLUS_FEATURE_CHG_BASIC*/
+			t = tmax * 1000;
+		}
 		prev_temp = t;
 	} else if (ret == -ENODEV) {
 	} else {

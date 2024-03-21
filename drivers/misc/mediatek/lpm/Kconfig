@@ -106,3 +106,11 @@ config MTK_LPM_MT6885
 	  for power management.
 	  Set Y to select this feature for specific platform-mt6885.
 	  If unsure, set N to disable.
+
+#ifdef OPLUS_FEATURE_POWERINFO_STANDBY_DEBUG
+	config OPLUS_POWERINFO_STANDBY_DEBUG
+	bool "powerinfo standby config"
+	default n
+	help
+	Select this config to enable powerinfo standby debug
+#endif /* OPLUS_FEATURE_POWERINFO_STANDBY_DEBUG */

@@ -26,6 +26,7 @@ obj-y += ../common/$(COMMON_VERSION)/imgsensor_sensor_list.o
 obj-y += ../common/$(COMMON_VERSION)/seninf_clk.o
 obj-y += ../common/$(COMMON_VERSION)/seninf.o
 obj-y += ../common/$(COMMON_VERSION)/imgsensor_pwr_seq.o
+obj-y += ../common/$(COMMON_VERSION)/imgsensor_eeprom.o
 define FILTER_DRV
 ifeq ($(wildcard $(IMGSENSOR_DRIVER_PATH)/$(MTK_PLATFORM)/camera_project/$(ARCH_MTK_PROJECT)/$(1)),)
 ifeq ($(wildcard $(IMGSENSOR_DRIVER_PATH)/$(MTK_PLATFORM)/$(1)),)

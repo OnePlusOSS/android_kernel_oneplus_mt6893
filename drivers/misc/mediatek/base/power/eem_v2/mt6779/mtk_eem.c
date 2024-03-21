@@ -229,7 +229,6 @@ static int get_devinfo(void)
 		eem_error("%s fail to get device node\n", __func__);
 		return 0;
 	}
-
 	pdev = of_device_alloc(node, NULL, NULL);
 	if (pdev == NULL){
 		eem_error("%s failed to get pdev\n",__func__);

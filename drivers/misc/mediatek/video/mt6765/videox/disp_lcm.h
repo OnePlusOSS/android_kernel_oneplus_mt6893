@@ -47,6 +47,7 @@ int disp_lcm_is_support_adjust_fps(struct disp_lcm_handle *plcm);
 int disp_lcm_adjust_fps(void *cmdq, struct disp_lcm_handle *plcm, int fps);
 int disp_lcm_set_backlight(struct disp_lcm_handle *plcm,
 	void *handle, int level);
+int disp_lcm_get_hbm_state(struct disp_lcm_handle *plcm);
 int disp_lcm_read_fb(struct disp_lcm_handle *plcm);
 int disp_lcm_ioctl(struct disp_lcm_handle *plcm, enum LCM_IOCTL ioctl,
 	unsigned int arg);
@@ -79,4 +80,11 @@ void disp_lcm_dynfps_send_cmd(struct disp_lcm_handle *plcm, void *cmdq_handle,
 	unsigned int from_fps, unsigned int to_fps);
 
 /*-----------------------DynFPS end-----------------------------------*/
+#ifdef OPLUS_BUG_STABILITY
+int disp_lcm_oplus_set_lcm_cabc_cmd(struct disp_lcm_handle *plcm, void *handle, unsigned int level);
+int disp_lcm_oplus_set_lcm_gamma_cmd(struct disp_lcm_handle *plcm, void *handle, unsigned int gamma_flag);
+int disp_lcm_shutdown(struct disp_lcm_handle *plcm);
+int disp_lcm_set_esd_flag(struct disp_lcm_handle *plcm,int num);
+#endif
+
 #endif

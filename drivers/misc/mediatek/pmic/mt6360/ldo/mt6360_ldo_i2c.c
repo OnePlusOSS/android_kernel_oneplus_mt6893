@@ -12,6 +12,10 @@
 #include <linux/regulator/driver.h>
 #include <linux/regulator/machine.h>
 
+#ifdef OPLUS_FEATURE_TP_BASIC
+#include <soc/oplus/system/oplus_project.h>
+#endif
+
 #include "../inc/mt6360_ldo.h"
 
 static bool dbg_log_en; /* module param to enable/disable debug log */
@@ -20,7 +24,9 @@ module_param(dbg_log_en, bool, 0644);
 static const struct mt6360_ldo_platform_data def_platform_data = {
 	.sdcard_det_en = true,
 };
-
+#ifdef OPLUS_FEATURE_TP_BASIC
+static const u8 ldo5_ctrl_init[] = { 0x00, 0x80, 0x81, 0x2d, 0xa4 };
+#endif
 struct mt6360_regulator_desc {
 	const struct regulator_desc desc;
 	unsigned int enst_reg;
@@ -615,12 +621,24 @@ static int mt6360_ldo_apply_pdata(struct mt6360_ldo_info *mli,
 				  struct mt6360_ldo_platform_data *pdata)
 {
 	int ret;
+#ifdef OPLUS_FEATURE_TP_BASIC
+    int i;
+#endif
 
 	dev_dbg(mli->dev, "%s ++\n", __func__);
 	ret = mt6360_pdata_apply_helper(mli, pdata, mt6360_pdata_props,
 					ARRAY_SIZE(mt6360_pdata_props));
 	if (ret < 0)
 		return ret;
+#ifdef OPLUS_FEATURE_TP_BASIC
+	for (i = 0; i < MT6360_LDO_CTRLS_NUM && get_project() == 18073; i++) {
+		ret = mt6360_ldo_reg_update_bits(mli,
+				MT6360_LDO_LDO5_EN_CTRL1 + i, ldo_ctrl_mask[i],
+				ldo5_ctrl_init[i]);
+		if (ret < 0)
+			return ret;
+	}
+#endif
 	dev_dbg(mli->dev, "%s --\n", __func__);
 	return 0;
 }

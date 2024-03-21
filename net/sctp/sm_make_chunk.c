@@ -3345,6 +3345,8 @@ static void sctp_asconf_param_success(struct sctp_association *asoc,
 
 	/* We have checked the packet before, so we do not check again.	*/
 	af = sctp_get_af_specific(param_type2af(addr_param->p.type));
+        if (!af)
+                return;
 	if (!af->from_addr_param(&addr, addr_param, htons(bp->port), 0))
 		return;
 

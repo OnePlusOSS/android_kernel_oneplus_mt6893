@@ -1,0 +1,207 @@
+qcom,voocphy_current_default = <30>; 
+qcom,copycat_vooc_support;
+qcom,svooc_cool_down_current_limit = <60 20 20 24 30 34 40 44 50 54 60>;
+qcom,vooc_cool_down_current_limit = <30 20 20 24 30>;
+qcom,abnormal_adapter_current = <60 60 40 40>;
+
+qcom,vooc_little_cold_full_voltage = <4470>;
+qcom,vooc_cool_full_voltage = <4470>;
+qcom,vooc_warm_full_voltage = <4130>;
+qcom,vooc_1time_full_voltage = <4530>;
+qcom,vooc_ntime_full_voltage = <4520>;
+qcom,low_curr_full_t1 = <120>;
+qcom,low_curr_full_t2 = <350>;
+qcom,low_curr_full_t3 = <430>;
+qcom,range1_low_curr_full = <900 4520
+			     800 4515
+			     700 4500
+			     600 4490
+			     500 4480>;
+qcom,range2_low_curr_full = <1000 4520
+			     900 4515
+			     800 4500
+			     700 4490
+			     600 4480>;
+
+qcom,vooc_multistep_initial_batt_temp = <1000>;
+qcom,vooc_little_cool_temp = <200>;
+qcom,vooc_cool_temp = <120>;
+qcom,vooc_little_cold_temp = <50>;
+qcom,vooc_normal_low_temp = <350>;
+qcom,vooc_strategy_normal_current = <100>;
+qcom,vooc_normal_to_little_cool_current = <100>;
+qcom,vooc_batt_over_high_temp = <510>;
+qcom,vooc-low-temp = <0>;
+qcom,vooc-high-temp = <500>;
+qcom,vooc-low-soc = <0>;
+qcom,vooc-high-soc = <90>;
+qcom,vooc-normal-high-temp = <430>;
+qcom,vooc-warm-allow-vol = <4000>;
+qcom,vooc-warm-allow-soc = <50>;
+
+qcom,vooc_strategy1_batt_high_temp0 = <385>;
+qcom,vooc_strategy1_batt_high_temp1 = <395>;
+qcom,vooc_strategy1_batt_high_temp2 = <420>;
+qcom,vooc_strategy1_batt_low_temp2 = <410>;
+qcom,vooc_strategy1_batt_low_temp1 = <385>;
+qcom,vooc_strategy1_batt_low_temp0 = <375>;
+
+qcom,vooc_strategy1_high_current0 = <60>;
+qcom,vooc_strategy1_high_current1 = <60>;
+qcom,vooc_strategy1_high_current2 = <40>;
+qcom,vooc_strategy1_low_current2 = <60>;
+qcom,vooc_strategy1_low_current1 = <60>;
+qcom,vooc_strategy1_low_current0 = <60>;
+
+qcom,vooc_strategy1_high_current0_vooc = <30>;
+qcom,vooc_strategy1_high_current1_vooc = <30>;
+qcom,vooc_strategy1_high_current2_vooc = <30>;
+qcom,vooc_strategy1_low_current2_vooc = <30>;
+qcom,vooc_strategy1_low_current1_vooc = <30>;
+qcom,vooc_strategy1_low_current0_vooc = <30>;
+
+qcom,voocphy_ibat_over_current = <7500>;
+qcom,voocphy_cp_max_ibus = <3500>;
+qcom,voocphy_svooc_cp_max_ibus = <3500>;
+qcom,voocphy_vooc_cp_max_ibus = <3500>;
+qcom,batt_pwd_curr_thd1 = <4300>;
+qcom,batt_pwd_vol_thd1 = <4514>;
+
+qcom,voocphy_freq_mincore = <968000>;
+qcom,voocphy_freq_midcore = <1418000>;
+qcom,voocphy_freq_maxcore = <1418000>;
+qcom,voocphy_current_change_timeout = <100>;
+
+svooc_batt_sys_curve = <0 0 1 1 1 1 0	// 3000mA
+			0 0 0 0 0 0 1	// 3414mV
+			0 0 1 0 1 0 0	// 2000mA
+			1 1 1 1 1 1 0	// 4664mV
+			0 0 0 1 0 1 0	// 1000mA
+			1 1 1 1 1 1 0>;	// 4664mV
+
+vooc_batt_sys_curve =  <0 0 1 1 1 1 0	// 3000mA
+			0 0 0 0 0 0 1	// 3414mV
+			0 0 1 0 1 0 0	// 2000mA
+			1 1 1 1 1 1 0	// 4664mV
+			0 0 0 1 0 1 0	// 1000mA
+			1 1 1 1 1 1 0>;	// 4664mV
+
+svooc_charge_strategy {
+	strategy_soc_0_to_50 {
+		strategy_temp_little_cold =	<4150 15 0 0 0
+						 4470 10 1 0 0>;
+		strategy_temp_cool =		<4150 20 0 0 0
+						 4460 15 0 0 0
+						 4470 10 1 0 0>;
+		strategy_temp_little_cool = 	<4200 30 0 600 0
+						 4480 27 0 600 0
+						 4480 23 0 0 0
+						 4480 20 0 0 0
+						 4510 15 0 0 0
+						 4520 10 1 0 0>;
+		strategy_temp_normal_low = 	<4200 30 0 600 0
+						 4480 27 0 600 0
+						 4480 23 0 0 0
+						 4480 20 0 0 0
+						 4510 15 0 0 0
+						 4520 10 1 0 0>;
+		strategy_temp_normal_high =	<4200 30 0 600 0
+						 4480 27 0 600 0
+						 4480 23 0 0 0
+						 4480 20 0 0 0
+						 4510 15 0 0 0
+						 4520 10 1 0 0>;
+		strategy_temp_warm =		<4130 10 1 0 0>;
+	};
+
+	strategy_soc_50_to_75 {
+		strategy_temp_little_cold =	<4470 10 1 0 0>;
+		strategy_temp_cool =		<4460 15 0 0 0
+						 4470 10 1 0 0>;
+		strategy_temp_little_cool = 	<4480 23 0 0 0
+						 4480 20 0 0 0
+						 4510 15 0 0 0
+						 4520 10 1 0 0>;
+		strategy_temp_normal_low = 	<4480 23 0 0 0
+						 4480 20 0 0 0
+						 4510 15 0 0 0
+						 4520 10 1 0 0>;
+		strategy_temp_normal_high =	<4480 27 0 600 0
+						 4480 23 0 0 0
+						 4480 20 0 0 0
+						 4510 15 0 0 0
+						 4520 10 1 0 0>;
+		strategy_temp_warm =		<4130 10 1 0 0>;
+	};
+
+	strategy_soc_75_to_85 {
+		strategy_temp_little_cold = 	<4470 10 1 0 0>;
+		strategy_temp_cool =		<4470 10 1 0 0>;
+		strategy_temp_little_cool =	<4510 15 0 0 0
+						 4520 10 1 0 0>;
+		strategy_temp_normal_low =	<4510 15 0 0 0
+						 4520 10 1 0 0>;
+		strategy_temp_normal_high =	<4510 15 0 0 0
+						 4520 10 1 0 0>;
+		strategy_temp_warm =		<4130 10 1 0 0>;
+	};
+
+	strategy_soc_85_to_90 {
+		strategy_temp_little_cold = 	<4470 10 1 0 0>;
+		strategy_temp_cool =		<4470 10 1 0 0>;
+		strategy_temp_little_cool =	<4520 10 1 0 0>;
+		strategy_temp_normal_low =	<4520 10 1 0 0>;
+		strategy_temp_normal_high =	<4520 10 1 0 0>;
+		strategy_temp_warm =		<4130 10 1 0 0>;
+	};
+};
+
+vooc_charge_strategy {
+	strategy_soc_0_to_50 {
+		strategy_temp_little_cold =	<4150 30 0 0 0
+						 4470 20 1 0 0>;
+		strategy_temp_cool =		<4460 30 0 0 0
+						 4470 20 1 0 0>;
+		strategy_temp_little_cool =	<4510 30 0 0 0
+						 4520 20 1 0 0>;
+		strategy_temp_normal_low =	<4510 30 0 0 0
+						 4520 20 1 0 0>;
+		strategy_temp_normal_high =	<4510 30 0 0 0
+						 4520 20 1 0 0>;
+		strategy_temp_warm =		<4130 20 1 0 0>;
+	};
+
+	strategy_soc_50_to_75 {
+		strategy_temp_little_cold =	<4470 20 1 0 0>;
+		strategy_temp_cool =		<4460 30 0 0 0
+						 4470 20 1 0 0>;
+		strategy_temp_little_cool =	<4510 30 0 0 0
+						 4520 20 1 0 0>;
+		strategy_temp_normal_low =	<4510 30 0 0 0
+						 4520 20 1 0 0>;
+		strategy_temp_normal_high =	<4510 30 0 0 0
+						 4520 20 1 0 0>;
+		strategy_temp_warm =		<4130 20 1 0 0>;
+	};
+
+	strategy_soc_75_to_85 {
+		strategy_temp_little_cold =	<4470 20 1 0 0>;
+		strategy_temp_cool =		<4470 20 1 0 0>;
+		strategy_temp_little_cool =	<4510 30 0 0 0
+						 4520 20 1 0 0>;
+		strategy_temp_normal_low =	<4510 30 0 0 0
+						 4520 20 1 0 0>;
+		strategy_temp_normal_high =	<4510 30 0 0 0
+						 4520 20 1 0 0>;
+		strategy_temp_warm =		<4130 20 1 0 0>;
+	};
+
+	strategy_soc_85_to_90 {
+		strategy_temp_little_cold =	<4470 20 1 0 0>;
+		strategy_temp_cool =		<4470 20 1 0 0>;
+		strategy_temp_little_cool =	<4520 20 1 0 0>;
+		strategy_temp_normal_low =	<4520 20 1 0 0>;
+		strategy_temp_normal_high =	<4520 20 1 0 0>;
+		strategy_temp_warm =		<4130 20 1 0 0>;
+	};
+};

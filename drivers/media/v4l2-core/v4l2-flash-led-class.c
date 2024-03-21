@@ -229,6 +229,8 @@ static int v4l2_flash_s_ctrl(struct v4l2_ctrl *c)
 					return ret;
 			}
 			/* Stop flash strobing */
+			if (fled_cdev == NULL)
+				return -EINVAL;
 			ret = led_set_flash_strobe(fled_cdev, false);
 			if (ret < 0)
 				return ret;

@@ -12,7 +12,7 @@ bat_gm30: battery{
 /*	The ui_soc will keep 100% until SOC drop X percents after unplugged*/
 	R_FG_VALUE = <(5)>;
 /*	R_sense resistance*/
-	EMBEDDED_SEL = <(0)>;
+	EMBEDDED_SEL = <(1)>;
 /*	Configures whether using embedded battery or not*/
 	PMIC_SHUTDOWN_CURRENT = <(20)>;
 /*	System shutdown current*/

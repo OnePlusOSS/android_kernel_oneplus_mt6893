@@ -1491,9 +1491,9 @@ static void process_dbg_opt(const char *opt)
 			round_corner_offset_enable = 0;
 	} else if (strncmp(opt, "MIPI_CLK:", 9) == 0) {
 		if (strncmp(opt + 9, "on", 2) == 0)
-			mipi_clk_change(0, 1);
+			primary_display_ccci_mipi_callback(0, 1);
 		else if (strncmp(opt + 9, "off", 3) == 0)
-			mipi_clk_change(0, 0);
+			primary_display_ccci_mipi_callback(0, 0);
 	}
 	if (strncmp(opt, "change_mipi_date_rate:", 16) == 0) {
 		int mipi_date_rate = 0;

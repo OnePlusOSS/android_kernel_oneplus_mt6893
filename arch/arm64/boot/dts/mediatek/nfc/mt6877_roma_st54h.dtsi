@@ -1,0 +1,56 @@
+/**********************************************************************************
+copyright (c)  2008-2020  Guangdong oplus Mobile Comm Corp., Ltd
+*
+***********************************************************************************/
+&odm {
+	nfc_chipset:nfc_chipset {
+		compatible = "oplus-nfc-chipset";
+		chipset-22612 = "ST54H";
+		chipset-22694 = "ST54H";
+		chipset-226B1 = "ST54H";
+	};
+
+        nfc:nfc {
+           compatible = "mediatek,nfc-gpio-v2";
+           reg = <0x8>;
+           gpio-rst = <189>;
+           gpio-rst-std = <&pio 189 0x0>;
+           gpio-irq = <11>;
+           gpio-irq-std = <&pio 11 0x0>;
+       };
+
+};
+
+&spi1 {
+       status = "okay";
+       #address-cells = <1>;
+       #size-cells = <0>;
+       st54spi@0 {
+           compatible = "st,st54spi";
+           reg = <0>;
+           spi-max-frequency = <1000000> ;
+           gpio-power_nreset = <190>;
+           gpio-power_nreset-std = <&pio 190 0x0>;
+           power_mode = "ST54H";
+           pinctrl-names = "pinctrl_state_mode_idle", "pinctrl_state_mode_spi";
+           pinctrl-0 = <&pinctrl_state_mode_idle>;
+           pinctrl-1 = <&pinctrl_state_mode_spi>;
+       };
+};
+
+&pio {
+    pinctrl_state_mode_idle: pinctrl_state_mode_idle {
+        pins_cmd0_dat {
+            pinmux = <PINMUX_GPIO183__FUNC_GPIO183>;
+            input-enable;
+            bias-pull-down;
+        };
+    };
+
+    pinctrl_state_mode_spi: pinctrl_state_mode_spi {
+        pins_cmd0_dat {
+            pinmux = <PINMUX_GPIO183__FUNC_SPI1_CSB>;
+            bias-disable;
+        };
+    };
+};

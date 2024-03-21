@@ -22,6 +22,10 @@
 
 struct rw_semaphore;
 
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+#define PREEMPT_DISABLE_RWSEM 3000000
+#endif
+
 #ifdef CONFIG_RWSEM_GENERIC_SPINLOCK
 #include <linux/rwsem-spinlock.h> /* use a generic implementation */
 #define __RWSEM_INIT_COUNT(name)	.count = RWSEM_UNLOCKED_VALUE
@@ -44,6 +48,13 @@ struct rw_semaphore {
 #endif
 #ifdef CONFIG_DEBUG_LOCK_ALLOC
 	struct lockdep_map	dep_map;
+#endif
+#ifdef CONFIG_OPLUS_LOCKING_STRATEGY
+	struct task_struct *ux_dep_task;
+	u64 android_oem_data1[2];
+#endif
+#ifdef CONFIG_KERNEL_LOCK_OPT
+	struct list_head	owner_list;
 #endif
         /* NOTICE: m_count is a vendor variable used for the config
          * CONFIG_RWSEM_PRIO_AWARE. This is included here to maintain ABI
@@ -86,7 +97,11 @@ static inline int rwsem_is_locked(struct rw_semaphore *sem)
 #endif
 
 #ifdef CONFIG_RWSEM_SPIN_ON_OWNER
+#ifdef CONFIG_OPLUS_LOCKING_STRATEGY
+#define __RWSEM_OPT_INIT(lockname) , .osq = OSQ_LOCK_UNLOCKED, .owner = NULL, .ux_dep_task = NULL
+#else /* CONFIG_OPLUS_LOCKING_STRATEGY */
 #define __RWSEM_OPT_INIT(lockname) , .osq = OSQ_LOCK_UNLOCKED, .owner = NULL
+#endif /* CONFIG_OPLUS_LOCKING_STRATEGY */
 #else
 #define __RWSEM_OPT_INIT(lockname)
 #endif
@@ -97,6 +112,16 @@ static inline int rwsem_is_locked(struct rw_semaphore *sem)
 #define __RWSEM_TURBO_OWNER_INIT(lock_name)
 #endif
 
+#ifdef CONFIG_KERNEL_LOCK_OPT
+#define __RWSEM_INITIALIZER(name)				\
+	{ __RWSEM_INIT_COUNT(name),				\
+	  .wait_list = LIST_HEAD_INIT((name).wait_list),	\
+	  .owner_list = LIST_HEAD_INIT((name).owner_list), \
+	  .wait_lock = __RAW_SPIN_LOCK_UNLOCKED(name.wait_lock)	\
+	  __RWSEM_OPT_INIT(name)				\
+	  __RWSEM_DEP_MAP_INIT(name),				\
+	  __RWSEM_TURBO_OWNER_INIT(name)}
+#else
 #define __RWSEM_INITIALIZER(name)				\
 	{ __RWSEM_INIT_COUNT(name),				\
 	  .wait_list = LIST_HEAD_INIT((name).wait_list),	\
@@ -104,6 +129,7 @@ static inline int rwsem_is_locked(struct rw_semaphore *sem)
 	  __RWSEM_OPT_INIT(name)				\
 	  __RWSEM_DEP_MAP_INIT(name),				\
 	  __RWSEM_TURBO_OWNER_INIT(name)}
+#endif
 
 #define DECLARE_RWSEM(name) \
 	struct rw_semaphore name = __RWSEM_INITIALIZER(name)

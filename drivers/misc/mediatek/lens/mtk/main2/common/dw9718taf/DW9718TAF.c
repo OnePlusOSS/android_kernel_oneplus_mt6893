@@ -244,6 +244,28 @@ int DW9718TAF_Release(struct inode *a_pstInode, struct file *a_pstFile)
 		int i4RetValue = 0;
 		u8 data = 0x0;
 		char puSendCmd[2] = {0x00, 0x01};
+		unsigned long af_step = 25;
+
+		#ifdef OPLUS_FEATURE_CAMERA_COMMON
+		if (g_u4CurrPosition > 0 && g_u4CurrPosition <= 1023) {
+			while (g_u4CurrPosition > 150) {
+				if (g_u4CurrPosition > 400)
+					af_step = 70;
+				else if (g_u4CurrPosition > 200)
+					af_step = 40;
+				else
+					af_step = 30;
+
+				if (s4AF_WriteReg(g_u4CurrPosition - af_step) != 0) {
+					break;
+				}
+				g_u4CurrPosition = g_u4CurrPosition - af_step;
+				mdelay(10);
+				if (g_u4CurrPosition <= 0 || g_u4CurrPosition > 1023)
+					break;
+			}
+		}
+		#endif
 
 		LOG_INF("apply\n");
 

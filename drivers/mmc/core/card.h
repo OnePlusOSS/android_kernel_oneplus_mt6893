@@ -25,6 +25,10 @@
 #define MMC_CARD_REMOVED	(1<<4)		/* card has been removed */
 #define MMC_STATE_DOING_BKOPS	(1<<5)		/* card is doing BKOPS */
 #define MMC_STATE_SUSPENDED	(1<<6)		/* card is suspended */
+#ifdef CONFIG_MMC_PASSWORDS
+#define MMC_STATE_LOCKED    (1<<12)     /* card is currently locked */
+#define MMC_STATE_ENCRYPT   (1<<13)     /* card is currently encrypt */
+#endif
 
 #if defined(CONFIG_MTK_EMMC_CQ_SUPPORT) || defined(CONFIG_MTK_EMMC_HW_CQ)
 #define MMC_STATE_CMDQ		(1<<12)         /* card is in cmd queue mode */
@@ -54,6 +58,14 @@
 #define mmc_card_clr_cmdq(c)           ((c)->state &= ~MMC_STATE_CMDQ)
 #endif
 
+#ifdef CONFIG_MMC_PASSWORDS	
+#define mmc_card_locked(c)		((c)->state & MMC_STATE_LOCKED)
+#define mmc_card_encrypt(c)		((c)->state & MMC_STATE_ENCRYPT)
+#define mmc_card_set_locked(c)		((c)->state |= MMC_STATE_LOCKED)
+#define mmc_card_set_encrypted(c)	((c)->state |= MMC_STATE_ENCRYPT)
+#define mmc_card_clr_locked(c)		((c)->state &= ~MMC_STATE_LOCKED)
+#define mmc_card_clr_encrypted(c)	((c)->state &= ~MMC_STATE_ENCRYPT)
+#endif
 
 /*
  * The world is not perfect and supplies us with broken mmc/sdio devices.

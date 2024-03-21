@@ -6,10 +6,18 @@
 / {
 	mt6360_typec: type_c_port0 {
 		mt-tcpc,name = "type_c_port0"; /* tcpc_device's name */
-		/* 0: Unknown, 1: SNK, 2: SRC, 3: DRP, 4: Try.SRC, 5: Try.SNK */
-		mt-tcpc,role_def = <5>;
+
+		/* 0: Unknown, 1: SNK only, 2: SRC only, 3: DRP, 4: Try.SRC, 5: Try.SNK */
+/* #ifndef OPLUS_FEATURE_CHG_BASIC */
+/* Modify for OTG switch */
+/*		mt-tcpc,role_def = <5>; */
+/* else */
+		mt-tcpc,role_def = <1>;
+/* #endif */
+
 		mt-tcpc,rp_level = <1>; /* 0: Default, 1: 1.5, 2: 3.0 */
 		/* 0: Never, 1: Always, 2: EMarkOnly, 3: StartOnly */
+
 		mt-tcpc,vconn_supply  = <1>;
 #if (CONFIG_MTK_GAUGE_VERSION == 30)
 		/* the number of notifier supply */
@@ -44,23 +52,22 @@
 
 			pd,source-pdo-size = <1>;
 			pd,source-pdo-data = <0x00019096>; /* 5V, 1500 mA */
-			pd,sink-pdo-size = <1>;
-			pd,sink-pdo-data = <0x000190c8>;
+			//pd,sink-pdo-size = <1>;
+			//pd,sink-pdo-data = <0x000190c8>;
+			pd,sink-pdo-size = <2>;
+			pd,sink-pdo-data = <0x000190c8 0x0001912c>;
 
 			/*
 			 * No DP, host + device
-			 *	pd,id-vdo-size = <6>;
-			 *	pd,id-vdo-data = <0xd14029cf 0x0 0x63600000
-						  0x41800000 0x0 0x21800000>;
+			 *	pd,id-vdo-size = <3>;
+			 *	pd,id-vdo-data = <0xd10029cf 0x0 0x63600000>;
 			 * With DP
-			 *	pd,id-vdo-size = <6>;
-			 *	pd,id-vdo-data = <0xd54029cf 0x0 0x63600000
-						  0x41800000 0x0 0x21800000>;
+			 *	pd,id-vdo-size = <3>;
+			 *	pd,id-vdo-data = <0xd60029cf 0x0 0x63600000>;
 			 */
 
-			pd,id-vdo-size = <6>;
-			pd,id-vdo-data = <0xd54029cf 0x0 0x63600000
-					  0x41800000 0x0 0x21800000>;
+			pd,id-vdo-size = <3>;
+			pd,id-vdo-data = <0xd60029cf 0x0 0x63600000>;
 
 			bat,nr = <1>;
 			bat-info0 {
@@ -84,7 +91,11 @@
 			// attemp_discover_cable_dfp;
 			attemp_enter_dp_mode;
 			attemp_discover_cable;
+			/* #ifdef OPLUS_FEATURE_CHG_BASIC */
+			/* for pd+svooc */
 			attemp_discover_id;
+			attemp_discover_svid;
+			/* #endif */
 
 			/* 0: disable, 1: prefer_snk, 2: prefer_src */
 			pr_check = <0>;
@@ -104,7 +115,7 @@
 			2nd_connection = "dfp_d";
 			signal,dp_v13;
 			//signal,dp_gen2;
-			//usbr20_not_used;
+			usbr20_not_used;
 			typec,receptacle;
 			ufp_d {
 				//pin_assignment,mode_a;
@@ -114,12 +125,13 @@
 				//pin_assignment,mode_e;
 			};
 			dfp_d {
+				/* Only support mode C & D */
 				//pin_assignment,mode_a;
 				//pin_assignment,mode_b;
 				pin_assignment,mode_c;
 				pin_assignment,mode_d;
 				pin_assignment,mode_e;
-				//pin_assignment,mode_f;
+				pin_assignment,mode_f;
 			};
 		};
 	};

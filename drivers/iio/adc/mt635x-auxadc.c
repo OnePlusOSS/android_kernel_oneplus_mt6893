@@ -816,6 +816,7 @@ int get_auxadc_out(struct mt635x_auxadc_device *adc_dev,
 	return ret;
 }
 
+extern char *saved_command_line;
 static int mt635x_auxadc_read_raw(struct iio_dev *indio_dev,
 				  struct iio_chan_spec const *chan,
 				  int *val,
@@ -877,11 +878,16 @@ static int mt635x_auxadc_read_raw(struct iio_dev *indio_dev,
 	}
 	if (chan->channel == AUXADC_IMP)
 		ret = IIO_VAL_INT_MULTIPLE;
+
+	// do not print this for user version as ALPS06371092
+	if (strstr(saved_command_line, "buildvariant=userdebug") ||
+	    strstr(saved_command_line, "buildvariant=eng")) {
 	if (__ratelimit(&ratelimit)) {
 		dev_info(adc_dev->dev,
 			"name:%s, channel=%d, adc_out=0x%x, adc_result=%d\n",
 			auxadc_chan->ch_name, auxadc_chan->ch_num,
 			auxadc_out, *val);
+	}
 	}
 err:
 	return ret;

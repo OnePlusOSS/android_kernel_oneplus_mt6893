@@ -440,6 +440,9 @@ struct msdc_host {
 #ifdef CONFIG_MTK_EMMC_HW_CQ
 	struct cmdq_host *cq_host;
 #endif
+
+	/* For sd vmch and vmc oc callback */
+	struct notifier_block sd_oc_nb;
 };
 
 enum {

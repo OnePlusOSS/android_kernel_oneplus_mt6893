@@ -70,6 +70,23 @@
 #include <linux/of_irq.h>
 #include <linux/of_address.h>
 #include <linux/io.h>
+//#ifdef OPLUS_BUG_STABILITY
+/*
+ * Add for MATE mode switch RGB display
+ */
+#include "ddp_ovl.h"
+#include "ddp_drv.h"
+#include "ddp_wdma.h"
+#include "ddp_hal.h"
+#include "ddp_path.h"
+#include "ddp_aal.h"
+#include "ddp_pwm.h"
+#include "ddp_dither.h"
+#include "ddp_info.h"
+#include "ddp_dsi.h"
+#include "ddp_rdma.h"
+#include "mtk_boot_common.h"
+//#endif /* OPLUS_BUG_STABILITY */
 
 #define MMSYS_CLK_LOW (0)
 #define MMSYS_CLK_HIGH (1)
@@ -109,6 +126,10 @@ static int _primary_path_idlemgr_monitor_thread(void *data);
 static int _external_path_idlemgr_monitor_thread(void *data);
 #endif
 
+//#ifdef OPLUS_FEATURE_ONSCREENFINGERPRINT
+extern int primary_display_is_directlink_mode(void);
+//#endif
+
 static struct disp_idlemgr_context *__get_idlemgr_context(void)
 {
 	static int is_inited;
@@ -139,12 +160,131 @@ static struct disp_idlemgr_context *__get_idlemgr_context(void)
 
 	return &idlemgr_ctx;
 }
+//#ifdef OPLUS_BUG_STABILITY
+/*
+ * Add for MATE mode switch RGB display
+ */
+unsigned long long enter_idle_time;
+struct task_struct *idle_for_meta_mode;
+static int _primary_path_idle_for_meta_mode(void *data);
+//#endif /* OPLUS_BUG_STABILITY */
 
 static int primary_display_idlemgr_init(void)
 {
 	wake_up_process(idlemgr_pgc->primary_display_idlemgr_task);
+//#ifdef OPLUS_BUG_STABILITY
+/*
+* Add for MATE mode switch RGB display
+*/
+	if (get_boot_mode() == META_BOOT) {
+		idle_for_meta_mode=kthread_create(_primary_path_idle_for_meta_mode,NULL,"disp_idle_meta_mode");
+		wake_up_process(idle_for_meta_mode);
+	}
+
+//#endif/*OPLUS_BUG_STABILITY*/
 	return 0;
 }
+
+//#ifdef OPLUS_BUG_STABILITY
+/*
+ * Add for MATE mode switch RGB display
+ */
+static int _primary_path_idle_for_meta_mode(void *data)
+{
+	static unsigned int layer_enable[4] = {0};
+	unsigned long ovl_base0 = ovl_base_addr(DISP_MODULE_OVL0);
+	unsigned long ovl_base0_2 = ovl_base_addr(DISP_MODULE_OVL0_2L);
+	unsigned long ovl_base1_2 = ovl_base_addr(DISP_MODULE_OVL1_2L);
+	unsigned int ovl0 = 0;
+	unsigned int ovl0_2 = 0;
+	unsigned int ovl1_2 = 0;
+	unsigned int layer_enable_temp0 = 0;
+	unsigned int layer_enable_temp1 = 0;
+	unsigned int layer_enable_temp2 = 0;
+	unsigned int layer_enable_temp3 = 0;
+	unsigned int layer_enable_temp4 = 0;
+	unsigned int layer_enable_temp5 = 0;
+	static int count=0;
+
+	msleep(16000);
+	while (1) {
+		msleep(30000);
+		primary_display_manual_lock();
+		if (primary_get_state() != DISP_ALIVE) {
+			primary_display_manual_unlock();
+			primary_display_wait_state(DISP_ALIVE, MAX_SCHEDULE_TIMEOUT);
+			continue;
+		}
+		/*
+		if (!primary_display_is_idle()) {
+			primary_display_manual_unlock();
+			continue;
+		}
+		*/
+		if (((local_clock()-enter_idle_time)/1000)< 60*1000*1000) {
+			primary_display_manual_unlock();
+			continue;
+		}
+		primary_display_idlemgr_kick((char *)__func__, 0);
+
+		ovl0=(DISP_REG_GET(DISP_REG_OVL_SRC_CON + ovl_base0))&0x0f;
+		ovl0_2=(DISP_REG_GET(DISP_REG_OVL_SRC_CON+ovl_base0_2))&0x03;
+		ovl1_2=(DISP_REG_GET(DISP_REG_OVL_SRC_CON+ovl_base1_2))&0x03;
+		layer_enable_temp3=DISP_REG_GET(DISP_REG_OVL_ROI_BGCLR + ovl_base0);
+		layer_enable_temp4=DISP_REG_GET(DISP_REG_OVL_ROI_BGCLR + ovl_base0_2);
+		layer_enable_temp5=DISP_REG_GET(DISP_REG_OVL_ROI_BGCLR + ovl_base1_2);
+		if (ovl0||ovl0_2||ovl1_2) {
+			layer_enable[0]=(DISP_REG_GET(DISP_REG_OVL_SRC_CON+ovl_base0))&0x0f;
+			layer_enable[1]=(DISP_REG_GET(DISP_REG_OVL_SRC_CON+ovl_base0_2))&0x03;
+			layer_enable[2]=(DISP_REG_GET(DISP_REG_OVL_SRC_CON+ovl_base1_2))&0x03;
+
+			layer_enable_temp0=DISP_REG_GET(DISP_REG_OVL_SRC_CON+ovl_base0);
+			layer_enable_temp1=DISP_REG_GET(DISP_REG_OVL_SRC_CON+ovl_base0_2);
+			layer_enable_temp2=DISP_REG_GET(DISP_REG_OVL_SRC_CON+ovl_base1_2);
+
+			DISP_CPU_REG_SET((DISP_REG_OVL_SRC_CON + ovl_base0),layer_enable_temp0&0xfffffff0);
+			layer_enable_temp0=DISP_REG_GET(DISP_REG_OVL_SRC_CON+ovl_base0);
+			DISP_CPU_REG_SET((DISP_REG_OVL_SRC_CON + ovl_base0_2),layer_enable_temp1&0xffffffFC);
+			layer_enable_temp1=DISP_REG_GET(DISP_REG_OVL_SRC_CON+ovl_base0_2);
+			DISP_CPU_REG_SET((DISP_REG_OVL_SRC_CON + ovl_base1_2),layer_enable_temp2&0xffffffFC);
+			layer_enable_temp2=DISP_REG_GET(DISP_REG_OVL_SRC_CON+ovl_base1_2);
+
+			count ++;
+			if (count%2) {
+				DISP_CPU_REG_SET((DISP_REG_OVL_ROI_BGCLR + ovl_base0),0xffff0000);
+				DISP_CPU_REG_SET((DISP_REG_OVL_ROI_BGCLR + ovl_base0_2),0xffff0000);
+				DISP_CPU_REG_SET((DISP_REG_OVL_ROI_BGCLR + ovl_base1_2),0xffff0000);
+				layer_enable_temp0=DISP_REG_GET(DISP_REG_OVL_ROI_BGCLR + ovl_base0);
+				layer_enable_temp1=DISP_REG_GET(DISP_REG_OVL_ROI_BGCLR + ovl_base0_2);
+				layer_enable_temp2=DISP_REG_GET(DISP_REG_OVL_ROI_BGCLR + ovl_base1_2);
+			} else {
+				DISP_CPU_REG_SET((DISP_REG_OVL_ROI_BGCLR + ovl_base0),0xff00ff00);
+				DISP_CPU_REG_SET((DISP_REG_OVL_ROI_BGCLR + ovl_base0_2),0xff00ff00);
+				DISP_CPU_REG_SET((DISP_REG_OVL_ROI_BGCLR + ovl_base1_2),0xff00ff00);
+				layer_enable_temp0=DISP_REG_GET(DISP_REG_OVL_ROI_BGCLR + ovl_base0);
+				layer_enable_temp1=DISP_REG_GET(DISP_REG_OVL_ROI_BGCLR + ovl_base0_2);
+				layer_enable_temp2=DISP_REG_GET(DISP_REG_OVL_ROI_BGCLR + ovl_base1_2);
+			}
+		} else {
+			unsigned int layer_enable_temp,layer_enable_temp1,layer_enable_temp2;
+			layer_enable_temp=DISP_REG_GET(DISP_REG_OVL_SRC_CON+ovl_base0);
+			DISP_CPU_REG_SET((DISP_REG_OVL_SRC_CON + ovl_base0),layer_enable_temp|layer_enable[0]);
+			layer_enable_temp=DISP_REG_GET(DISP_REG_OVL_SRC_CON+ovl_base0_2);
+			DISP_CPU_REG_SET((DISP_REG_OVL_SRC_CON + ovl_base0_2),layer_enable_temp|layer_enable[1]);
+			layer_enable_temp=DISP_REG_GET(DISP_REG_OVL_SRC_CON+ovl_base1_2);
+			DISP_CPU_REG_SET((DISP_REG_OVL_SRC_CON + ovl_base1_2),layer_enable_temp|layer_enable[2]);
+
+			layer_enable_temp=DISP_REG_GET(DISP_REG_OVL_SRC_CON+ovl_base0);
+			layer_enable_temp1=DISP_REG_GET(DISP_REG_OVL_SRC_CON+ovl_base0_2);
+			layer_enable_temp2=DISP_REG_GET(DISP_REG_OVL_SRC_CON+ovl_base1_2);
+		}
+
+		dpmgr_module_notify(DISP_MODULE_AAL0,DISP_PATH_EVENT_TRIGGER);
+		primary_display_manual_unlock();
+	}
+	return 0;
+}
+//#endif /* OPLUS_BUG_STABILITY */
 
 static struct golden_setting_context *__get_golden_setting_context(void)
 {
@@ -1337,13 +1477,21 @@ int primary_display_lowpower_init(void)
 
 	params = primary_get_lcm()->params;
 	backup_vfp_for_lp_cust(params->dsi.vertical_frontporch_for_low_power);
-
+/* #ifndef OPLUS_BUG_STABILITY */
+    /*
+    * Add for MATE mode switch RGB display
+    */
 	/* init idlemgr */
-	if (disp_helper_get_option(DISP_OPT_IDLE_MGR)
+	/*if (disp_helper_get_option(DISP_OPT_IDLE_MGR)*/
 		/* get_boot_mode() == NORMAL_BOOT */
-		)
+		/*)
+		primary_display_idlemgr_init();*/
+/* #else */
+	if (((get_boot_mode() == NORMAL_BOOT) || (get_boot_mode() == META_BOOT))
+		&& disp_helper_get_option(DISP_OPT_IDLE_MGR)) {
 		primary_display_idlemgr_init();
-
+	}
+/* #endif */ /*OPLUS_BUG_STABILITY*/
 	if (disp_helper_get_option(DISP_OPT_SODI_SUPPORT))
 		primary_display_sodi_rule_init();
 

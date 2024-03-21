@@ -21,22 +21,56 @@
 #include <linux/timer.h>
 #include <linux/workqueue.h>
 
+#if !defined(CONFIG_DRM_MEDIATEK)
+int get_half_backlight_level(void);
+int get_full_backlight_level(void);
+#endif
+
 struct device;
 /*
  * LED Core
  */
-
+#if defined(CONFIG_DRM_MEDIATEK)
 enum led_brightness {
 	LED_OFF		= 0,
 	LED_ON		= 1,
 	LED_HALF	= 127,
 	LED_FULL	= 255,
+#ifdef OPLUS_BUG_STABILITY
+/* MM.Display.LCD, 2022/07/07, add for backlight */
+	LED_MIN		= 1,
+#endif
 };
-
+#else
+enum led_brightness {
+	LED_OFF		= 0,
+	LED_ON		= 1,
+#ifdef OPLUS_BUG_STABILITY
+        LED_MIN         = 1,
+#if defined(CONFIG_DRM_PANEL_BOE_BOE_ILI7807S_VDO) || \
+	defined(CONFIG_DRM_PANEL_BOE_ILI7807S_60HZ_VDO) || \
+	defined(CONFIG_DRM_PANEL_TM_NT36672C_60HZ_VDO)
+	LED_HALF	= 1024,
+	LED_FULL	= 1728,
+#else
+	LED_HALF	= 2047,
+	LED_FULL	= 4095,
+#endif
+#endif
+};
+extern int get_half_backlight_level(void);
+extern int get_full_backlight_level(void);
+#define LED_HALF  (get_half_backlight_level())
+#define LED_FULL  (get_full_backlight_level())
+#endif
 struct led_classdev {
 	const char		*name;
 	enum led_brightness	 brightness;
 	enum led_brightness	 max_brightness;
+#ifdef OPLUS_BUG_STABILITY
+/* MM.Display.LCD, 2022/07/07, add for backlight */
+	enum led_brightness	 min_brightness;
+#endif
 	int			 flags;
 
 	/* Lower 16 bits reflect status */

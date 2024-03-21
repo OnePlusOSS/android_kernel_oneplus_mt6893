@@ -1,0 +1,302 @@
+/*
+ * Copyright (c) 2019 MediaTek Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+/* CAMERA GPIO standardization */
+&pio {
+	camera0_rst_low: camera0_rst_output_low@gpio109 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO109__FUNC_GPIO109>;
+			output-low;
+		};
+	};
+	camera0_rst_high: camera0_rst_output_high@gpio109 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO109__FUNC_GPIO109>;
+			output-high;
+		};
+	};
+	camera1_rst_low: camera1_rst_output_low@gpio102 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO102__FUNC_GPIO102>;
+			output-low;
+		};
+	};
+	camera1_rst_high: camera1_rst_output_high@gpio102 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO102__FUNC_GPIO102>;
+			output-high;
+		};
+	};
+	camera2_rst_low: camera2_rst_output_low@gpio101 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO101__FUNC_GPIO101>;
+			output-low;
+		};
+	};
+	camera2_rst_high: camera2_rst_output_high@gpio101 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO101__FUNC_GPIO101>;
+			output-high;
+		};
+	};
+	camera0_vcama_on: camera0_vcama_output_low@gpio107 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO107__FUNC_GPIO107>;
+			output-high;
+		};
+	};
+	camera0_vcama_off: camera0_vcama_output_high@gpio107 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO107__FUNC_GPIO107>;
+			output-low;
+		};
+	};
+	camera0_vcamd_on: camera0_vcamd_output_low@gpio178 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO178__FUNC_GPIO178>;
+			output-high;
+		};
+	};
+	camera0_vcamd_off: camera0_vcamd_output_high@gpio178 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO178__FUNC_GPIO178>;
+			output-low;
+		};
+	};
+	camera0_mclk_2mA: camera0_mclk_2mA@gpio108 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO108__FUNC_CMMCLK2>;
+			drive-strength = <MTK_DRIVE_2mA>;
+		};
+	};
+	camera0_mclk_4mA: camera0_mclk_4mA@gpio108 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO108__FUNC_CMMCLK2>;
+			drive-strength = <MTK_DRIVE_4mA>;
+		};
+	};
+	camera0_mclk_6mA: camera0_mclk_6mA@gpio108 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO108__FUNC_CMMCLK2>;
+			drive-strength = <MTK_DRIVE_6mA>;
+		};
+	};
+	camera0_mclk_8mA: camera0_mclk_8mA@gpio108 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO108__FUNC_CMMCLK2>;
+			drive-strength = <7>;
+		};
+	};
+	camera0_mclk_off: camera0_mclk_gpio_mode@gpio108 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO108__FUNC_GPIO108>;
+			drive-strength = <MTK_DRIVE_4mA>;
+		};
+	};
+	camera1_mclk_2mA: camera1_mclk_2mA@gpio100 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO100__FUNC_CMMCLK1>;
+			drive-strength = <MTK_DRIVE_2mA>;
+		};
+	};
+	camera1_mclk_4mA: camera1_mclk_4mA@gpio100 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO100__FUNC_CMMCLK1>;
+			drive-strength = <MTK_DRIVE_4mA>;
+		};
+	};
+	camera1_mclk_6mA: camera1_mclk_6mA@gpio100 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO100__FUNC_CMMCLK1>;
+			drive-strength = <MTK_DRIVE_6mA>;
+		};
+	};
+	camera1_mclk_8mA: camera1_mclk_8mA@gpio100 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO100__FUNC_CMMCLK1>;
+			drive-strength = <7>;
+		};
+	};
+	camera1_mclk_off: camera1_mclk_gpio_mode@gpio100 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO100__FUNC_GPIO100>;
+			drive-strength = <MTK_DRIVE_4mA>;
+		};
+	};
+	camera2_mclk_2mA: camera2_mclk_2mA@gpio99 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO99__FUNC_CMMCLK0>;
+			drive-strength = <MTK_DRIVE_2mA>;
+		};
+	};
+	camera2_mclk_4mA: camera2_mclk_4mA@gpio99 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO99__FUNC_CMMCLK0>;
+			drive-strength = <MTK_DRIVE_4mA>;
+		};
+	};
+	camera2_mclk_6mA: camera2_mclk_6mA@gpio99 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO99__FUNC_CMMCLK0>;
+			drive-strength = <MTK_DRIVE_6mA>;
+		};
+	};
+	camera2_mclk_8mA: camera2_mclk_8mA@gpio99 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO99__FUNC_CMMCLK0>;
+			drive-strength = <7>;
+		};
+	};
+	camera2_mclk_off: camera2_mclk_gpio_mode@gpio99 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO99__FUNC_GPIO99>;
+			drive-strength = <MTK_DRIVE_4mA>;
+		};
+	};
+	camera_pins_default: camdefault {
+	};
+
+};
+
+&kd_camera_hw1 {
+	cam0_enable_sensor = "miami_ov64b miami_aac2_ov64b miami_s5kjn1";
+	cam1_enable_sensor = "miami_sc800cs miami_ov8856";
+	cam2_enable_sensor = "miami_gc02m1 miami_sp2507";
+
+	pinctrl-names = "default",
+			"cam0_rst0", "cam0_rst1",
+			"cam1_rst0", "cam1_rst1",
+			"cam2_rst0", "cam2_rst1",
+
+			"cam0_vcama_on",
+			"cam0_vcama_off",
+			"cam0_vcamd_on",
+			"cam0_vcamd_off",
+
+			"cam0_mclk_off",
+			"cam0_mclk_2mA", "cam0_mclk_4mA",
+			"cam0_mclk_6mA", "cam0_mclk_8mA",
+
+			"cam1_mclk_off",
+			"cam1_mclk_2mA", "cam1_mclk_4mA",
+			"cam1_mclk_6mA", "cam1_mclk_8mA",
+
+			"cam2_mclk_off",
+			"cam2_mclk_2mA", "cam2_mclk_4mA",
+			"cam2_mclk_6mA", "cam2_mclk_8mA";
+
+	pinctrl-0 = <&camera_pins_default>;
+	pinctrl-1 = <&camera0_rst_low>;
+	pinctrl-2 = <&camera0_rst_high>;
+	pinctrl-3 = <&camera1_rst_low>;
+	pinctrl-4 = <&camera1_rst_high>;
+	pinctrl-5 = <&camera2_rst_low>;
+	pinctrl-6 = <&camera2_rst_high>;
+
+	pinctrl-7 = <&camera0_vcama_on>;
+	pinctrl-8 = <&camera0_vcama_off>;
+	pinctrl-9 = <&camera0_vcamd_on>;
+	pinctrl-10 = <&camera0_vcamd_off>;
+
+	pinctrl-11 = <&camera0_mclk_off>;
+	pinctrl-12 = <&camera0_mclk_2mA>;
+	pinctrl-13 = <&camera0_mclk_4mA>;
+	pinctrl-14 = <&camera0_mclk_6mA>;
+	pinctrl-15 = <&camera0_mclk_8mA>;
+	pinctrl-16 = <&camera1_mclk_off>;
+	pinctrl-17 = <&camera1_mclk_2mA>;
+	pinctrl-18 = <&camera1_mclk_4mA>;
+	pinctrl-19 = <&camera1_mclk_6mA>;
+	pinctrl-20 = <&camera1_mclk_8mA>;
+	pinctrl-21 = <&camera2_mclk_off>;
+	pinctrl-22 = <&camera2_mclk_2mA>;
+	pinctrl-23 = <&camera2_mclk_4mA>;
+	pinctrl-24 = <&camera2_mclk_6mA>;
+	pinctrl-25 = <&camera2_mclk_8mA>;
+
+
+	cam0_vcamio-supply = <&mt_pmic_vcamio_ldo_reg>;
+	cam1_vcamio-supply = <&mt_pmic_vcamio_ldo_reg>;
+	cam2_vcamio-supply = <&mt_pmic_vcamio_ldo_reg>;
+
+	cam0_vcamaf-supply = <&mt_pmic_vldo28_ldo_reg>;
+
+	cam1_vcama-supply = <&mt_pmic_vcama1_ldo_reg>;
+	cam1_vcamd-supply = <&mt_pmic_vcamd_ldo_reg>;
+
+	cam2_vcama-supply = <&mt_pmic_vcama2_ldo_reg>;
+	cam2_vcamd-supply = <&mt_pmic_vcamd_ldo_reg>;
+
+	status = "okay";
+
+};
+&flashlights_miami {
+        pinctrl-names = "default",
+                "flash_light_en_pin_0",
+                "flash_light_en_pin_1",
+                "flash_light_flash_pin_0",
+                "flash_light_flash_pin_1",
+                "flash_light_pwm_pin";
+
+        pinctrl-0 = <&flashlights_miami_pins_default>;
+		/*ENF GPIO152*/
+        pinctrl-1 = <&flash_light_en_pin_0>;
+        pinctrl-2 = <&flash_light_en_pin_1>;
+		/*ENM GPIO153*/
+        pinctrl-3 = <&flash_light_flash_pin_0>;
+        pinctrl-4 = <&flash_light_flash_pin_1>;
+        pinctrl-5 = <&flash_light_pwm_pin>;
+
+        status = "okay";
+};
+
+&pio {
+        flashlights_miami_pins_default:default {
+        };
+        flash_light_en_pin_0: flash_light_en_pin_0 {
+                pins_cmd_dat {
+                        pinmux = <PINMUX_GPIO152__FUNC_GPIO152>;
+                        slew-rate = <1>;
+                        output-low;
+                };
+        };
+        flash_light_en_pin_1: flash_light_en_pin_1 {
+                pins_cmd_dat {
+                        pinmux = <PINMUX_GPIO152__FUNC_GPIO152>;
+                        slew-rate = <1>;
+                        output-high;
+                };
+        };
+        flash_light_flash_pin_0: flash_light_flash_pin_0 {
+                pins_cmd_dat {
+                        pinmux = <PINMUX_GPIO153__FUNC_GPIO153>;
+                        slew-rate = <1>;
+                        output-low;
+                };
+        };
+        flash_light_flash_pin_1: flash_light_flash_pin_1 {
+                pins_cmd_dat {
+                        pinmux = <PINMUX_GPIO153__FUNC_GPIO153>;
+                        slew-rate = <1>;
+                        output-high;
+                };
+        };
+        flash_light_pwm_pin: flash_light_pwm_pin {
+                pins_cmd_dat {
+                        pinmux = <PINMUX_GPIO153__FUNC_PWM0>;
+                        slew-rate = <1>;
+                        output-high;
+                };
+        };
+};
+
+/* CAMERA GPIO end */

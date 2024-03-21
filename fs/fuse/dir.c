@@ -16,6 +16,11 @@
 #include <linux/xattr.h>
 #include <linux/posix_acl.h>
 
+#ifdef CONFIG_OPLUS_FEATURE_ACM
+#include <linux/acm_fs.h>
+#define ACM_DELETE_ERR  999
+#endif
+
 static bool fuse_use_readdirplus(struct inode *dir, struct dir_context *ctx)
 {
 	struct fuse_conn *fc = get_fuse_conn(dir);
@@ -525,6 +530,9 @@ static int fuse_create_open(struct inode *dir, struct dentry *entry,
 		file->private_data = ff;
 		fuse_finish_open(inode, file);
 	}
+#ifdef CONFIG_OPLUS_FEATURE_ACM
+	monitor_acm2(entry, NULL, args.in.h.opcode);
+#endif
 	return err;
 
 out_free_ff:
@@ -632,6 +640,11 @@ static int create_new_entry(struct fuse_conn *fc, struct fuse_args *args,
 		fuse_change_entry_timeout(entry, &outarg);
 	}
 	fuse_invalidate_attr(dir);
+#ifdef CONFIG_OPLUS_FEATURE_ACM
+	if ((args->in.h.opcode == FUSE_MKNOD) ||
+		(args->in.h.opcode == FUSE_MKDIR))
+		monitor_acm2(entry, NULL, args->in.h.opcode);
+#endif
 	return 0;
 
  out_put_forget_req:
@@ -732,6 +745,13 @@ static int fuse_unlink(struct inode *dir, struct dentry *entry)
 	args.in.numargs = 1;
 	args.in.args[0].size = entry->d_name.len + 1;
 	args.in.args[0].value = entry->d_name.name;
+#ifdef CONFIG_OPLUS_FEATURE_ACM
+	err = monitor_acm2(entry, NULL, args.in.h.opcode);
+	if (err) {
+		err = ACM_DELETE_ERR;
+		return err;
+	}
+#endif
 	err = fuse_simple_request(fc, &args);
 	if (!err) {
 		struct inode *inode = d_inode(entry);
@@ -768,6 +788,13 @@ static int fuse_rmdir(struct inode *dir, struct dentry *entry)
 	args.in.numargs = 1;
 	args.in.args[0].size = entry->d_name.len + 1;
 	args.in.args[0].value = entry->d_name.name;
+#ifdef CONFIG_OPLUS_FEATURE_ACM
+	err = monitor_acm2(entry, NULL, args.in.h.opcode);
+	if (err) {
+		err = ACM_DELETE_ERR;
+		return err;
+	}
+#endif
 	err = fuse_simple_request(fc, &args);
 	if (!err) {
 		clear_nlink(d_inode(entry));
@@ -830,7 +857,9 @@ static int fuse_rename_common(struct inode *olddir, struct dentry *oldent,
 		if (d_really_is_positive(newent))
 			fuse_invalidate_entry(newent);
 	}
-
+#ifdef CONFIG_OPLUS_FEATURE_ACM
+	monitor_acm2(oldent, newent, args.in.h.opcode);
+#endif
 	return err;
 }
 
@@ -860,7 +889,6 @@ static int fuse_rename2(struct inode *olddir, struct dentry *oldent,
 					 FUSE_RENAME,
 					 sizeof(struct fuse_rename_in));
 	}
-
 	return err;
 }
 
@@ -1815,6 +1843,67 @@ error:
 	return err;
 }
 
+static int fuse_setattr2(struct vfsmount *mnt,struct dentry *entry, struct iattr *attr)
+{
+	struct inode *inode = d_inode(entry);
+	struct fuse_conn *fc = get_fuse_conn(inode);
+	struct file *file = (attr->ia_valid & ATTR_FILE) ? attr->ia_file : NULL;
+	int ret;
+	if (!fuse_allow_current_process(get_fuse_conn(inode))){
+		return -EACCES;
+	}
+
+	if (attr->ia_valid & (ATTR_KILL_SUID | ATTR_KILL_SGID)) {
+		attr->ia_valid &= ~(ATTR_KILL_SUID | ATTR_KILL_SGID |
+				    ATTR_MODE);
+
+		/*
+		 * The only sane way to reliably kill suid/sgid is to do it in
+		 * the userspace filesystem
+		 *
+		 * This should be done on write(), truncate() and chown().
+		 */
+		if (!fc->handle_killpriv) {
+			/*
+			 * ia_mode calculation may have used stale i_mode.
+			 * Refresh and recalculate.
+			 */
+			ret = fuse_do_getattr(inode, NULL, file);
+			if (ret){
+				return ret;
+			}
+
+			attr->ia_mode = inode->i_mode;
+			if (inode->i_mode & S_ISUID) {
+				attr->ia_valid |= ATTR_MODE;
+				attr->ia_mode &= ~S_ISUID;
+			}
+			if ((inode->i_mode & (S_ISGID | S_IXGRP)) == (S_ISGID | S_IXGRP)) {
+				attr->ia_valid |= ATTR_MODE;
+				attr->ia_mode &= ~S_ISGID;
+			}
+		}
+	}
+	if (!attr->ia_valid)
+		return 0;
+
+	attr->ia_valid |= ATTR_FORCE;
+
+	ret = fuse_do_setattr(entry, attr, file);
+	if (!ret) {
+		/*
+		 * If filesystem supports acls it may have updated acl xattrs in
+		 * the filesystem, so forget cached acls for the inode.
+		 */
+		if (fc->posix_acl)
+			forget_all_cached_acls(inode);
+
+		/* Directory mode changed, may need to revalidate access */
+		if (d_is_dir(entry) && (attr->ia_valid & ATTR_MODE))
+			fuse_invalidate_entry_cache(entry);
+	}
+	return ret;
+}
 static int fuse_setattr(struct dentry *entry, struct iattr *attr)
 {
 	struct inode *inode = d_inode(entry);
@@ -1895,6 +1984,7 @@ static const struct inode_operations fuse_dir_inode_operations = {
 	.rename		= fuse_rename2,
 	.link		= fuse_link,
 	.setattr	= fuse_setattr,
+	.setattr2	= fuse_setattr2,
 	.create		= fuse_create,
 	.atomic_open	= fuse_atomic_open,
 	.mknod		= fuse_mknod,
@@ -1918,6 +2008,7 @@ static const struct file_operations fuse_dir_operations = {
 
 static const struct inode_operations fuse_common_inode_operations = {
 	.setattr	= fuse_setattr,
+	.setattr2	= fuse_setattr2,
 	.permission	= fuse_permission,
 	.getattr	= fuse_getattr,
 	.listxattr	= fuse_listxattr,
@@ -1927,6 +2018,7 @@ static const struct inode_operations fuse_common_inode_operations = {
 
 static const struct inode_operations fuse_symlink_inode_operations = {
 	.setattr	= fuse_setattr,
+	.setattr2	= fuse_setattr2,
 	.get_link	= fuse_get_link,
 	.getattr	= fuse_getattr,
 	.listxattr	= fuse_listxattr,

@@ -1,0 +1,1 @@
+obj-y += gc02m1shine_mipi_Sensor.o

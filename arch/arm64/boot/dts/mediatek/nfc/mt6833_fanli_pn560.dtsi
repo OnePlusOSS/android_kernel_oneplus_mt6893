@@ -1,0 +1,30 @@
+/**********************************************************************************
+* Copyright (c)  2008-2020  Guangdong oplus Mobile Comm Corp., Ltd
+*
+***********************************************************************************/
+&odm {
+	nfc_chipset:nfc_chipset {
+		compatible = "oplus-nfc-chipset";
+		chipset-22333 = "PN560";
+		chipset-22869 = "PN560";
+	};
+};
+
+&i2c3 {
+       status = "okay";
+       clock-frequency = <400000>;
+       nq@28 {
+               compatible = "nxp,sn-nci";
+               reg = <0x28>;
+               nxp,sn-irq = <&pio 5 0x0>;
+               nxp,sn-ven-rstn = <&pio 11 0x0>;
+               //nxp,sn-dwl-req = <&pio 22 0x0>;
+               interrupt-parent = <&pio>;
+       };
+};
+
+//mtk case ALPS08225966:add "nfc_clk_mode" node in device tree,
+//to modify nfc clk output from software control to hardware(mt6382) control
+&mt6382_nfc {
+    nfc_clk_mode = <1>;
+};

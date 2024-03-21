@@ -16,6 +16,16 @@
 #include <linux/regulator/consumer.h>
 #include <linux/sched/signal.h>
 
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+#include <linux/regulator/driver.h>
+#include "../../../../../../../../drivers/regulator/internal.h"
+#include "kd_imgsensor.h"
+#include <linux/mfd/mt6397/core.h>
+#include <linux/of.h>
+#include <linux/of_platform.h>
+#include <linux/regmap.h>
+#endif /* ALPS07853033 */
+
 static struct REGULATOR *preg_own;
 static bool Is_Notify_call[IMGSENSOR_SENSOR_IDX_MAX_NUM][REGULATOR_TYPE_MAX_NUM];
 
@@ -35,6 +45,9 @@ static struct reg_oc_debug_t
 static const int regulator_voltage[] = {
 	REGULATOR_VOLTAGE_0,
 	REGULATOR_VOLTAGE_1000,
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	REGULATOR_VOLTAGE_1050,
+#endif
 	REGULATOR_VOLTAGE_1100,
 	REGULATOR_VOLTAGE_1200,
 	REGULATOR_VOLTAGE_1210,
@@ -50,9 +63,14 @@ struct REGULATOR_CTRL regulator_control[REGULATOR_TYPE_MAX_NUM] = {
 	{"vcama"},
 	{"vcamd"},
 	{"vcamio"},
+	{"vcamaf"},
 };
 
 static struct REGULATOR reg_instance;
+
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+struct regmap *g_regmap;
+#endif /* ALPS07853033 */
 
 static int regulator_oc_notify(
 	struct notifier_block *nb, unsigned long event, void *data)
@@ -162,6 +180,12 @@ static enum IMGSENSOR_RETURN regulator_init(void *pinstance)
 	int j, i;
 	char str_regulator_name[LENGTH_FOR_SNPRINTF];
 
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	struct device_node	 *pmic_node;
+	struct platform_device	 *pmic_pdev;
+	struct mt6397_chip	 *chip;
+#endif /* ALPS07853033 */
+
 	pdevice  = gimgsensor_device;
 	pof_node = pdevice->of_node;
 	pdevice->of_node =
@@ -172,6 +196,29 @@ static enum IMGSENSOR_RETURN regulator_init(void *pinstance)
 		pdevice->of_node = pof_node;
 		return IMGSENSOR_RETURN_ERROR;
 	}
+
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	pmic_node = of_parse_phandle(pdevice->of_node, "pmic", 0);
+	if (!pmic_node)	{
+		pr_debug("regulator get pmic_node fail!\n");
+		return IMGSENSOR_RETURN_ERROR;
+	}
+	pmic_pdev = of_find_device_by_node(pmic_node);
+	if (!pmic_pdev)	{
+		pr_debug("get pmic_pdev fail!\n");
+		return IMGSENSOR_RETURN_ERROR;
+	}
+	chip = dev_get_drvdata(&(pmic_pdev->dev));
+	if (!chip) {
+		pr_debug("get chip fail!\n");
+		return IMGSENSOR_RETURN_ERROR;
+	}
+	g_regmap = chip->regmap;
+	if (IS_ERR_VALUE(g_regmap)) {
+		g_regmap = NULL;
+		pr_debug("get g_regmap fail\n");
+	}
+#endif /* ALPS07853033 */
 
 	for (j = IMGSENSOR_SENSOR_IDX_MIN_NUM;
 		j < IMGSENSOR_SENSOR_IDX_MAX_NUM;
@@ -235,7 +282,11 @@ static enum IMGSENSOR_RETURN regulator_set(
 	int reg_type_offset;
 	atomic_t	*enable_cnt;
 
-	if (pin > IMGSENSOR_HW_PIN_DOVDD   ||
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	int regval;
+#endif /* ALPS07853033 */
+
+	if (pin > IMGSENSOR_HW_PIN_AFVDD   ||
 	    pin < IMGSENSOR_HW_PIN_AVDD    ||
 	    pin_state < IMGSENSOR_HW_PIN_STATE_LEVEL_0 ||
 	    pin_state >= IMGSENSOR_HW_PIN_STATE_LEVEL_HIGH)
@@ -254,6 +305,10 @@ static enum IMGSENSOR_RETURN regulator_set(
 	if (pregulator) {
 		if (pin_state != IMGSENSOR_HW_PIN_STATE_LEVEL_0) {
 
+		#ifdef OPLUS_FEATURE_CAMERA_COMMON
+			unsigned int voltage = regulator_voltage[pin_state - IMGSENSOR_HW_PIN_STATE_LEVEL_0];
+		#endif /* ALPS07853033 */
+
 			if (regulator_set_voltage(
 				pregulator,
 				regulator_voltage[
@@ -267,6 +322,19 @@ static enum IMGSENSOR_RETURN regulator_set(
 				    regulator_voltage[
 				   pin_state - IMGSENSOR_HW_PIN_STATE_LEVEL_0]);
 			}
+
+		#ifdef OPLUS_FEATURE_CAMERA_COMMON
+			if (voltage == REGULATOR_VOLTAGE_1050 && sensor_idx == 0) {
+				pr_debug("set_sub_sensor vcamd to %dmV\n", voltage/1000);
+				regmap_write(g_regmap, MT6358_VCAMD_ANA_CON0, 0x405);
+				regmap_read(g_regmap, MT6358_VCAMD_ANA_CON0, &regval);
+				pr_debug("regval=%d\n", regval);
+				if (regval == 0x405) {
+				    pr_debug("set vcamd to %dmV success!\n", voltage/1000);
+				}
+			}
+		#endif /* ALPS07853033 */
+
 			if (regulator_enable(pregulator)) {
 				pr_err(
 				    "[regulator]fail to regulator_enable, powertype:%d powerId:%d\n",

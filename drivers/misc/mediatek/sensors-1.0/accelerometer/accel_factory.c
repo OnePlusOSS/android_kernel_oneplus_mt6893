@@ -60,6 +60,9 @@ static long acc_factory_unlocked_ioctl(struct file *file, unsigned int cmd,
 				pr_err("GSENSOR_IOCTL_INIT fail!\n");
 				return -EINVAL;
 			}
+			#ifdef OPLUS_FEATURE_SENSOR
+			msleep(500);
+			#endif /*OPLUS_FEATURE_SENSOR*/
 			pr_debug("GSENSOR_IOCTL_INIT, enable: %d, s_p:%dms\n",
 				flag, 5);
 		} else {

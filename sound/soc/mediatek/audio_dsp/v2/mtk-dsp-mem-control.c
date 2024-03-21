@@ -570,7 +570,7 @@ struct gen_pool *mtk_get_adsp_dram_gen_pool(int id)
 
 void dump_mtk_adsp_dram(struct audio_dsp_dram buffer)
 {
-	pr_debug("%s phy vir_addr = %p  size = %llu\n",
+	pr_debug("%s vir_addr = %p  size = %llu\n",
 		       __func__, buffer.vir_addr, buffer.size);
 }
 
@@ -648,7 +648,7 @@ int mtk_adsp_gen_pool_create(int min_alloc_order, int nid)
 			__func__, va_chunk, dsp_dram_pool[i]);
 	}
 	dump_mtk_adsp_gen_pool();
-	return ret;
+	return 0;
 }
 
 void mtk_dump_sndbuffer(struct snd_dma_buffer *dma_audio_buffer)

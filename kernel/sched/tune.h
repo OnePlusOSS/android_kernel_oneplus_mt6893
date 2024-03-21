@@ -1,4 +1,7 @@
 
+#ifndef _TUNE_H_
+#define _TUNE_H_
+
 #ifdef CONFIG_SCHED_TUNE
 
 #include <linux/reciprocal_div.h>
@@ -19,6 +22,11 @@ int schedtune_prefer_idle(struct task_struct *tsk);
 
 void schedtune_enqueue_task(struct task_struct *p, int cpu);
 void schedtune_dequeue_task(struct task_struct *p, int cpu);
+
+#ifdef CONFIG_SCHEDUTIL_USE_TL
+unsigned int schedtune_window_policy(struct task_struct *p);
+unsigned int uclamp_discount_wait_time(struct task_struct *p);
+#endif
 
 unsigned long stune_util(int cpu, unsigned long other_util);
 
@@ -42,3 +50,5 @@ void uclamp_update_root_st(void);
 #define schedtune_dequeue_task(task, cpu) do { } while (0)
 
 #endif /* CONFIG_SCHED_TUNE */
+
+#endif

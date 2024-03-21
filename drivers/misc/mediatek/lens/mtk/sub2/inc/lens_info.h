@@ -53,7 +53,9 @@
 #define AFDRV_MT9P017AF "MT9P017AF"
 #define AFDRV_OV8825AF "OV8825AF"
 #define AFDRV_WV511AAF "WV511AAF"
-
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+#define AFDRV_BU64253TEAF "BU64253TEAF"
+#endif
 
 #define CONVERT_CCU_TIMESTAMP 0x1000
 
@@ -121,6 +123,7 @@ struct stAF_DrvList {
 	int (*pAF_Release)(struct inode *a_pstInode, struct file *a_pstFile);
 	int (*pAF_GetFileName)(unsigned char *pFileName);
 	int (*pAF_OisGetHallPos)(int *PosX, int *PosY);
+	int (*pAF_OisGetHallInfo)(void *a_pOisPosInfo);
 };
 
 /* Control commnad */

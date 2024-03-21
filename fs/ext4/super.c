@@ -986,7 +986,9 @@ static void ext4_put_super(struct super_block *sb)
 		if ((err < 0) && !aborted)
 			ext4_abort(sb, "Couldn't clean up the journal");
 	}
-
+#if defined(CONFIG_EXT4_ASYNC_DISCARD_SUPPORT)
+	destroy_discard_cmd_control(sbi);
+#endif
 	ext4_unregister_sysfs(sb);
 	ext4_es_unregister_shrinker(sbi);
 	del_timer_sync(&sbi->s_err_report);
@@ -1493,6 +1495,9 @@ enum {
 	Opt_inode_readahead_blks, Opt_journal_ioprio,
 	Opt_dioread_nolock, Opt_dioread_lock,
 	Opt_discard, Opt_nodiscard, Opt_init_itable, Opt_noinit_itable,
+#if defined(CONFIG_EXT4_ASYNC_DISCARD_SUPPORT)
+	Opt_async_discard, Opt_noasync_discard,
+#endif
 	Opt_max_dir_size_kb, Opt_nojournal_checksum, Opt_nombcache,
 };
 
@@ -1573,6 +1578,10 @@ static const match_table_t tokens = {
 	{Opt_dioread_lock, "dioread_lock"},
 	{Opt_discard, "discard"},
 	{Opt_nodiscard, "nodiscard"},
+#if defined(CONFIG_EXT4_ASYNC_DISCARD_SUPPORT)
+	{Opt_async_discard, "async_discard"},
+	{Opt_noasync_discard, "noasync_discard"},
+#endif
 	{Opt_init_itable, "init_itable=%u"},
 	{Opt_init_itable, "init_itable"},
 	{Opt_noinit_itable, "noinit_itable"},
@@ -1716,6 +1725,10 @@ static const struct mount_opts {
 	 MOPT_EXT4_ONLY | MOPT_SET},
 	{Opt_dioread_lock, EXT4_MOUNT_DIOREAD_NOLOCK,
 	 MOPT_EXT4_ONLY | MOPT_CLEAR},
+#if defined(CONFIG_EXT4_ASYNC_DISCARD_SUPPORT)
+	{Opt_async_discard, EXT4_MOUNT_ASYNC_DISCARD, MOPT_SET},
+	{Opt_noasync_discard, EXT4_MOUNT_ASYNC_DISCARD, MOPT_CLEAR},
+#endif
 	{Opt_discard, EXT4_MOUNT_DISCARD, MOPT_SET},
 	{Opt_nodiscard, EXT4_MOUNT_DISCARD, MOPT_CLEAR},
 	{Opt_delalloc, EXT4_MOUNT_DELALLOC,
@@ -2115,6 +2128,12 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
 		sbi->s_mount_opt |= m->mount_opt;
 	} else if (token == Opt_data_err_ignore) {
 		sbi->s_mount_opt &= ~m->mount_opt;
+#if defined(CONFIG_OPLUS_FEATURE_EXT4_ASYNC_DISCARD)
+	} else if (token == Opt_async_discard) {
+		set_opt2(sb, ASYNC_DISCARD);
+	} else if (token == Opt_noasync_discard) {
+		clear_opt2(sb, ASYNC_DISCARD);
+#endif
 	} else {
 		if (!args->from)
 			arg = 1;
@@ -2333,7 +2352,16 @@ static int _ext4_show_options(struct seq_file *seq, struct super_block *sb,
 		SEQ_OPTS_PUTS("data_err=abort");
 
 	fscrypt_show_test_dummy_encryption(seq, sep, sb);
-
+#if defined(CONFIG_OPLUS_FEATURE_EXT4_ASYNC_DISCARD)
+	if ((m->token == Opt_async_discard) &&
+		(test_opt2(sb, ASYNC_DISCARD))) {
+		SEQ_OPTS_PRINT("%s", token2str(m->token));
+	}
+	if ((m->token == Opt_noasync_discard) &&
+		(!test_opt2(sb, ASYNC_DISCARD))) {
+		SEQ_OPTS_PRINT("%s", token2str(m->token));
+	}
+#endif
 	ext4_show_quota_options(seq, sb);
 	return 0;
 }
@@ -3959,11 +3987,24 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
 			   &journal_ioprio, 0))
 		goto failed_mount;
 
+#if defined(CONFIG_EXT4_ASYNC_DISCARD_SUPPORT)
+	if (test_opt(sb, ASYNC_DISCARD)&&test_opt(sb,DISCARD)) {
+        clear_opt(sb, DISCARD);
+        ext4_msg(sb, KERN_WARNING, "mount option discard/async_discard conflict, use async_discard default");
+    }
+#endif
+
 #ifdef CONFIG_UNICODE
 	if (ext4_has_feature_casefold(sb) && !sb->s_encoding) {
 		const struct ext4_sb_encodings *encoding_info;
 		struct unicode_map *encoding;
 		__u16 encoding_flags;
+
+		if (ext4_has_feature_encrypt(sb)) {
+			ext4_msg(sb, KERN_ERR,
+				 "Can't mount with encoding and encryption");
+			goto failed_mount;
+		}
 
 		if (ext4_sb_read_encoding(es, &encoding_info,
 					  &encoding_flags)) {
@@ -4712,7 +4753,11 @@ no_journal:
 	} else
 		descr = "out journal";
 
-	if (test_opt(sb, DISCARD)) {
+	if (test_opt(sb, DISCARD)
+#if defined(CONFIG_EXT4_ASYNC_DISCARD_SUPPORT)
+        || test_opt(sb, ASYNC_DISCARD)
+#endif
+    ) {
 		struct request_queue *q = bdev_get_queue(sb->s_bdev);
 		if (!blk_queue_discard(q))
 			ext4_msg(sb, KERN_WARNING,
@@ -4736,6 +4781,15 @@ no_journal:
 	ratelimit_state_init(&sbi->s_msg_ratelimit_state, 5 * HZ, 10);
 
 	kfree(orig_data);
+#if defined(CONFIG_EXT4_ASYNC_DISCARD_SUPPORT)
+	if (test_opt(sb, ASYNC_DISCARD)) {
+		sbi->interval_time = DEF_IDLE_INTERVAL;
+		err = create_discard_cmd_control(sbi);
+		if (err)
+			ext4_msg(sb, KERN_ERR, "mount creat async discard thread fail");
+    }
+	ext4_update_time(sbi);
+#endif
 	return 0;
 
 cantfind_ext4:

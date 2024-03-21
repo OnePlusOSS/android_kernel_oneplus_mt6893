@@ -38,6 +38,14 @@ extern int valid_cpu_prefer(int task_prefer);
 extern bool big_task_rotation_enable;
 #endif
 
+#if defined(OPLUS_FEATURE_SCHEDUTIL_USE_TL) && defined(CONFIG_SCHEDUTIL_USE_TL)
+extern void set_capacity_margin(unsigned int margin);
+extern unsigned int get_capacity_margin(void);
+extern void set_capacity_margin_dvfs(unsigned int margin);
+extern unsigned int get_capacity_margin_dvfs(void);
+extern void set_capacity_margin_dvfs_changed(bool changed);
+#endif
+
 #endif /* CONFIG_MTK_SCHED_EXTENSION */
 
 #endif

@@ -35,6 +35,11 @@ struct mmc_bus_ops {
 	int (*hw_reset)(struct mmc_host *);
 	int (*sw_reset)(struct mmc_host *);
 	bool (*cache_enabled)(struct mmc_host *);
+	
+#ifdef CONFIG_MMC_PASSWORDS
+	int (*sysfs_add)(struct mmc_host *, struct mmc_card *card);
+	void (*sysfs_remove)(struct mmc_host *, struct mmc_card *card);
+#endif
 };
 
 void mmc_attach_bus(struct mmc_host *host, const struct mmc_bus_ops *ops);
@@ -140,6 +145,8 @@ int __mmc_claim_host(struct mmc_host *host, struct mmc_ctx *ctx,
 void mmc_release_host(struct mmc_host *host);
 void mmc_get_card(struct mmc_card *card, struct mmc_ctx *ctx);
 void mmc_put_card(struct mmc_card *card, struct mmc_ctx *ctx);
+
+int mmc_try_claim_host(struct mmc_host *host, unsigned int delay);
 
 /**
  *	mmc_claim_host - exclusively claim a host

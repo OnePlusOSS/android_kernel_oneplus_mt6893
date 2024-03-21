@@ -13,6 +13,10 @@
 #include "ddp_manager.h"
 #include "disp_lcm.h"
 
+#ifdef OPLUS_ARCH_EXTENDS
+#include "../../../../oplus/oplus_display_private_api.h"
+#endif
+
 #if defined(MTK_LCM_DEVICE_TREE_SUPPORT)
 #include <linux/of.h>
 #endif
@@ -21,6 +25,13 @@
 /* for multiple LCM, we should assign I/F Port id in lcm driver, */
 /* such as DPI0, DSI0/1 */
 /* static struct disp_lcm_handle _disp_lcm_driver[MAX_LCM_NUMBER]; */
+extern bool flag_lcd_off;
+#ifdef OPLUS_BUG_STABILITY
+extern unsigned int g_shutdown_flag;
+extern unsigned int custom_lcm_flag;
+/* add for silence reboot */
+extern unsigned long silence_mode;
+#endif
 
 int _lcm_count(void)
 {
@@ -1100,6 +1111,7 @@ struct disp_lcm_handle *disp_lcm_probe(char *plcm_name,
 
 			for (i = 0; i < _lcm_count(); i++) {
 				lcm_drv = lcm_driver_list[i];
+				DISPERR("lcm driver:%s\n", lcm_drv->name);
 				if (!strcmp(lcm_drv->name, plcm_name)) {
 					isLCMFound = true;
 					isLCMInited = true;
@@ -1412,14 +1424,37 @@ int disp_lcm_suspend(struct disp_lcm_handle *plcm)
 		}
 
 		if (lcm_drv->suspend_power)
-			lcm_drv->suspend_power();
-
-
+		{
+			if( g_shutdown_flag == 1 && custom_lcm_flag == 1 && lcm_drv->shutdown_power)
+				lcm_drv->shutdown_power();
+			else
+				lcm_drv->suspend_power();
+		}
+//ifdef OPLUS_BUG_STABILITY
+		flag_lcd_off = true;
+//#endif
 		return 0;
 	}
 	DISPERR("lcm_drv is null\n");
 	return -1;
 }
+
+#ifdef OPLUS_BUG_STABILITY
+int disp_lcm_shutdown(struct disp_lcm_handle *plcm)
+{
+    struct LCM_DRIVER *lcm_drv = NULL;
+    DISPFUNC();
+    if (_is_lcm_inited(plcm)) {
+        lcm_drv = plcm->drv;
+        if (lcm_drv->shutdown_power) {
+            lcm_drv->shutdown_power();
+        }
+        return 0;
+    }
+    DISPERR("lcm_drv is null\n");
+    return -1;
+}
+#endif
 
 int disp_lcm_resume(struct disp_lcm_handle *plcm)
 {
@@ -1439,6 +1474,9 @@ int disp_lcm_resume(struct disp_lcm_handle *plcm)
 			DISPERR("FATAL ERROR, lcm_drv->resume is null\n");
 			return -1;
 		}
+//ifdef OPLUS_BUG_STABILITY
+		flag_lcd_off = false;
+//#endif
 
 		return 0;
 	}
@@ -1496,6 +1534,29 @@ int disp_lcm_adjust_fps(void *cmdq, struct disp_lcm_handle *plcm, int fps)
 	return -1;
 }
 
+#ifdef OPLUS_BUG_STABILITY
+int disp_lcm_oplus_set_lcm_gamma_cmd(struct disp_lcm_handle *plcm, void *handle, unsigned int gamma_flag)
+{
+	struct LCM_DRIVER *lcm_drv = NULL;
+
+	DISPFUNC();
+	pr_info("check disp_lcm_oplus_set_lcm_gamma_cmd in disp_lcm_c\n");
+	if (_is_lcm_inited(plcm)) {
+		lcm_drv = plcm->drv;
+		if (lcm_drv->set_gamma_mode_cmdq) {
+			lcm_drv->set_gamma_mode_cmdq(handle, gamma_flag);
+		} else {
+			pr_err("FATAL ERROR, lcm_drv->oplus_set_gamma_mode_cmdq is null\n");
+			return -1;
+		}
+
+		return 0;
+	}
+
+	pr_info("lcm_drv is null\n");
+	return -1;
+}
+#endif
 int disp_lcm_set_backlight(struct disp_lcm_handle *plcm,
 	void *handle, int level)
 {
@@ -1506,6 +1567,10 @@ int disp_lcm_set_backlight(struct disp_lcm_handle *plcm,
 		DISPERR("lcm_drv is null\n");
 		return -1;
 	}
+	if(silence_mode) {
+		DISPERR("silence reboot, set backlight to 0\n");
+		level = 0;
+	}
 
 	lcm_drv = plcm->drv;
 	if (lcm_drv->set_backlight_cmdq) {
@@ -1514,10 +1579,44 @@ int disp_lcm_set_backlight(struct disp_lcm_handle *plcm,
 		DISPERR("FATAL ERROR, lcm_drv->set_backlight is null\n");
 		return -1;
 	}
-
 	return 0;
 }
+#ifdef OPLUS_BUG_STABILITY
+int disp_lcm_set_esd_flag(struct disp_lcm_handle *plcm,int num)
+{
+	struct LCM_DRIVER *lcm_drv = NULL;
+	DISPFUNC();
+	if (!_is_lcm_inited(plcm)) {
+		DISPERR("lcm_drv is null\n");
+		return -1;
+	}
+	lcm_drv = plcm->drv;
+	if (lcm_drv->set_esd_flag) {
+		lcm_drv->set_esd_flag(num);
+	} else {
+		DISPERR("FATAL ERROR, lcm_drv->set_esd_flag is null\n");
+		return -1;
+	}
+	return 0;
+}
+#endif
+int disp_lcm_get_hbm_state(struct disp_lcm_handle *plcm)
+{
+	if (!disp_helper_get_option(DISP_OPT_LCM_HBM))
+		return -1;
 
+	if (!_is_lcm_inited(plcm)) {
+		DISPERR("lcm_drv is null\n");
+		return -1;
+	}
+
+	if (!plcm->drv->get_hbm_state) {
+		DISPERR("FATAL ERROR, lcm_drv->get_hbm_state is null\n");
+		return -1;
+	}
+
+	return plcm->drv->get_hbm_state();
+}
 int disp_lcm_ioctl(struct disp_lcm_handle *plcm, enum LCM_IOCTL ioctl,
 	unsigned int arg)
 {
@@ -1645,6 +1744,30 @@ int disp_lcm_set_lcm_cmd(struct disp_lcm_handle *plcm, void *cmdq_handle,
 	DISPERR("lcm_drv is null\n");
 	return -1;
 }
+
+#ifdef OPLUS_BUG_STABILITY
+int disp_lcm_oplus_set_lcm_cabc_cmd(struct disp_lcm_handle *plcm, void *handle, unsigned int level)
+{
+	struct LCM_DRIVER *lcm_drv = NULL;
+
+	DISPFUNC();
+	pr_err("check disp_lcm_oplus_set_lcm_cabc_cmd in disp_lcm_c\n");
+	if (_is_lcm_inited(plcm)) {
+		lcm_drv = plcm->drv;
+		if (lcm_drv->set_cabc_mode_cmdq) {
+			lcm_drv->set_cabc_mode_cmdq(handle, level);
+		} else {
+			pr_err("FATAL ERROR, lcm_drv->oplus_set_cabc_mode_cmdq is null\n");
+			return -1;
+		}
+
+		return 0;
+	}
+
+	pr_err("lcm_drv is null\n");
+	return -1;
+}
+#endif
 
 int disp_lcm_is_partial_support(struct disp_lcm_handle *plcm)
 {

@@ -22,6 +22,7 @@
 #if defined(CONFIG_MEDIATEK_MT6577_AUXADC)
 #include <linux/iio/consumer.h>
 #endif
+#include <soc/oplus/system/oplus_project.h>
 
 int __attribute__ ((weak))
 IMM_IsAdcInitReady(void)
@@ -820,7 +821,10 @@ struct thermal_cooling_device *cdev, unsigned long state)
 		/* To trigger data abort to reset the system
 		 * for thermal protection.
 		 */
-		BUG();
+		if (get_eng_version() != HIGH_TEMP_AGING)
+			BUG();
+		else
+			pr_info("%s should reset but bypass\n", __func__);
 	}
 
 	return 0;

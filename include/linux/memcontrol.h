@@ -311,6 +311,17 @@ struct mem_cgroup {
 	struct list_head event_list;
 	spinlock_t event_list_lock;
 
+#if defined(CONFIG_CONT_PTE_HUGEPAGE) && CONFIG_CONT_PTE_HUGEPAGE_LRU
+	struct deferred_split deferred_split_queue;
+#endif
+
+	u64 android_oem_data1;
+
+#ifdef CONFIG_LRU_GEN
+	/* per-memcg mm_struct list */
+	struct lru_gen_mm_list mm_list;
+#endif
+
 	struct mem_cgroup_per_node *nodeinfo[0];
 	/* WARNING: nodeinfo must be the last member here */
 };
@@ -390,7 +401,46 @@ out:
 	return lruvec;
 }
 
+
+#if defined(CONFIG_CONT_PTE_HUGEPAGE) && CONFIG_CONT_PTE_HUGEPAGE_LRU
+static inline struct lruvec *mem_cgroup_chp_lruvec(struct mem_cgroup *memcg,
+		struct pglist_data *pgdat)
+{
+	struct chp_lruvec *chp_lruvec = NULL;
+	struct lruvec *lruvec = NULL;
+
+	if (mem_cgroup_disabled()) {
+		chp_lruvec = (struct chp_lruvec *)pgdat->split_queue_len;
+		CHP_BUG_ON(!chp_lruvec);
+		lruvec = &chp_lruvec->lruvec;
+		CHP_BUG_ON(!lruvec);
+		goto out;
+	}
+
+	if (!memcg)
+		memcg = root_mem_cgroup;
+
+	CHP_BUG_ON(MAX_NUMNODES > 1);
+	chp_lruvec = (struct chp_lruvec *)memcg->deferred_split_queue.split_queue_len;
+	CHP_BUG_ON(!chp_lruvec);
+	lruvec = &chp_lruvec->lruvec;
+	CHP_BUG_ON(!lruvec);
+out:
+	/*
+	 * Since a node can be onlined after the mem_cgroup was created,
+	 * we have to be prepared to initialize lruvec->pgdat here;
+	 * and if offlined then reonlined, we need to reinitialize it.
+	 */
+	if (unlikely(lruvec->pgdat != pgdat))
+		lruvec->pgdat = pgdat;
+	return lruvec;
+
+}
+#endif
 struct lruvec *mem_cgroup_page_lruvec(struct page *, struct pglist_data *);
+#if defined(CONFIG_CONT_PTE_HUGEPAGE) && CONFIG_CONT_PTE_HUGEPAGE_LRU
+struct lruvec *mem_cgroup_chp_page_lruvec(struct page *, struct pglist_data *);
+#endif
 
 bool task_in_mem_cgroup(struct task_struct *task, struct mem_cgroup *memcg);
 struct mem_cgroup *mem_cgroup_from_task(struct task_struct *p);
@@ -436,7 +486,12 @@ static inline struct mem_cgroup *lruvec_memcg(struct lruvec *lruvec)
 	if (mem_cgroup_disabled())
 		return NULL;
 
-	mz = container_of(lruvec, struct mem_cgroup_per_node, lruvec);
+#if defined(CONFIG_CONT_PTE_HUGEPAGE) && CONFIG_CONT_PTE_HUGEPAGE_LRU
+	if (is_chp_lruvec(lruvec))
+		mz = chp_lruvec_to_memcg_pn(lruvec);
+	else
+#endif
+		mz = container_of(lruvec, struct mem_cgroup_per_node, lruvec);
 	return mz->memcg;
 }
 
@@ -506,9 +561,23 @@ unsigned long mem_cgroup_get_lru_size(struct lruvec *lruvec, enum lru_list lru)
 	unsigned long nr_pages = 0;
 	int zid;
 
-	mz = container_of(lruvec, struct mem_cgroup_per_node, lruvec);
-	for (zid = 0; zid < MAX_NR_ZONES; zid++)
-		nr_pages += mz->lru_zone_size[zid][lru];
+#if defined(CONFIG_CONT_PTE_HUGEPAGE) && CONFIG_CONT_PTE_HUGEPAGE_LRU
+	struct chp_lruvec *chp_lruvec = NULL;
+
+	if (is_chp_lruvec(lruvec))
+		chp_lruvec = container_of(lruvec, struct chp_lruvec, lruvec);
+	else
+#endif
+		mz = container_of(lruvec, struct mem_cgroup_per_node, lruvec);
+
+	for (zid = 0; zid < MAX_NR_ZONES; zid++) {
+#if defined(CONFIG_CONT_PTE_HUGEPAGE) && CONFIG_CONT_PTE_HUGEPAGE_LRU
+		if (is_chp_lruvec(lruvec)) {
+			nr_pages += READ_ONCE(chp_lruvec->lru_zone_size[zid][lru]);
+		} else
+#endif
+			nr_pages += mz->lru_zone_size[zid][lru];
+	}
 	return nr_pages;
 }
 
@@ -518,8 +587,22 @@ unsigned long mem_cgroup_get_zone_lru_size(struct lruvec *lruvec,
 {
 	struct mem_cgroup_per_node *mz;
 
-	mz = container_of(lruvec, struct mem_cgroup_per_node, lruvec);
-	return mz->lru_zone_size[zone_idx][lru];
+#if defined(CONFIG_CONT_PTE_HUGEPAGE) && CONFIG_CONT_PTE_HUGEPAGE_LRU
+		if (is_chp_lruvec(lruvec)) {
+			struct chp_lruvec *chp_lruvec = NULL;
+			unsigned long chp_zone_lru_size;
+
+			chp_lruvec = container_of(lruvec, struct chp_lruvec, lruvec);
+			chp_zone_lru_size = READ_ONCE(chp_lruvec->lru_zone_size[zone_idx][lru]);
+
+			return chp_zone_lru_size;
+		} else
+#endif
+		{
+			mz = container_of(lruvec, struct mem_cgroup_per_node, lruvec);
+
+			return READ_ONCE(mz->lru_zone_size[zone_idx][lru]);
+		}
 }
 
 void mem_cgroup_handle_over_high(void);
@@ -558,6 +641,23 @@ extern int do_swap_account;
 struct mem_cgroup *lock_page_memcg(struct page *page);
 void __unlock_page_memcg(struct mem_cgroup *memcg);
 void unlock_page_memcg(struct page *page);
+
+/* try to stablize page_memcg() for all the pages in a memcg */
+static inline bool mem_cgroup_trylock_pages(struct mem_cgroup *memcg)
+{
+	rcu_read_lock();
+
+	if (mem_cgroup_disabled() || !atomic_read(&memcg->moving_account))
+		return true;
+
+	rcu_read_unlock();
+	return false;
+}
+
+static inline void mem_cgroup_unlock_pages(void)
+{
+	rcu_read_unlock();
+}
 
 /*
  * idx can be of type enum memcg_stat_item or node_stat_item.
@@ -642,7 +742,12 @@ static inline unsigned long lruvec_page_state(struct lruvec *lruvec,
 	if (mem_cgroup_disabled())
 		return node_page_state(lruvec_pgdat(lruvec), idx);
 
-	pn = container_of(lruvec, struct mem_cgroup_per_node, lruvec);
+#if defined(CONFIG_CONT_PTE_HUGEPAGE) && CONFIG_CONT_PTE_HUGEPAGE_LRU
+	if (is_chp_lruvec(lruvec))
+		pn = chp_lruvec_to_memcg_pn(lruvec);
+	else
+#endif
+		pn = container_of(lruvec, struct mem_cgroup_per_node, lruvec);
 	x = atomic_long_read(&pn->lruvec_stat[idx]);
 #ifdef CONFIG_SMP
 	if (x < 0)
@@ -663,7 +768,12 @@ static inline void __mod_lruvec_state(struct lruvec *lruvec,
 	if (mem_cgroup_disabled())
 		return;
 
-	pn = container_of(lruvec, struct mem_cgroup_per_node, lruvec);
+#if defined(CONFIG_CONT_PTE_HUGEPAGE) && CONFIG_CONT_PTE_HUGEPAGE_LRU
+	if (is_chp_lruvec(lruvec))
+		pn = chp_lruvec_to_memcg_pn(lruvec);
+	else
+#endif
+		pn = container_of(lruvec, struct mem_cgroup_per_node, lruvec);
 
 	/* Update memcg */
 	__mod_memcg_state(pn->memcg, idx, val);
@@ -699,7 +809,12 @@ static inline void __mod_lruvec_page_state(struct page *page,
 		return;
 	}
 
-	lruvec = mem_cgroup_lruvec(pgdat, page->mem_cgroup);
+#if defined(CONFIG_CONT_PTE_HUGEPAGE) && CONFIG_CONT_PTE_HUGEPAGE_LRU
+	if (ContPteCMAHugePageHead(page)) /* FIXME: chp lruvec */
+		lruvec = mem_cgroup_chp_lruvec(page->mem_cgroup, pgdat);
+	else
+#endif
+		lruvec = mem_cgroup_lruvec(pgdat, page->mem_cgroup);
 	__mod_lruvec_state(lruvec, idx, val);
 }
 
@@ -881,6 +996,14 @@ static inline struct lruvec *mem_cgroup_page_lruvec(struct page *page,
 	return &pgdat->lruvec;
 }
 
+#if defined(CONFIG_CONT_PTE_HUGEPAGE) && CONFIG_CONT_PTE_HUGEPAGE_LRU
+static inline struct lruvec *mem_cgroup_chp_page_lruvec(struct page *page,
+		¦   struct pglist_data *pgdat)
+{
+	return ((structsplit_queue_len)->lruvec;
+}
+#endif
+
 static inline bool mm_match_cgroup(struct mm_struct *mm,
 		struct mem_cgroup *memcg)
 {
@@ -990,6 +1113,18 @@ static inline void unlock_page_memcg(struct page *page)
 {
 }
 
+static inline bool mem_cgroup_trylock_pages(struct mem_cgroup *memcg)
+{
+	/* to match page_memcg_rcu() */
+	rcu_read_lock();
+	return true;
+}
+
+static inline void mem_cgroup_unlock_pages(void)
+{
+	rcu_read_unlock();
+}
+
 static inline void mem_cgroup_handle_over_high(void)
 {
 }
@@ -1091,6 +1226,12 @@ unsigned long mem_cgroup_soft_limit_reclaim(pg_data_t *pgdat, int order,
 }
 
 static inline void mem_cgroup_split_huge_fixup(struct page *head)
+{
+}
+
+static inline void __count_memcg_events(struct mem_cgroup *memcg,
+					enum vm_event_item idx,
+					unsigned long count)
 {
 }
 

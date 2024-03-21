@@ -1,0 +1,40 @@
+// SPDX-License-Identifier: GPL-2.0+
+/*
+ * Copyright (c) 2019 MediaTek Inc.
+ *
+ */
+
+&i2c5 {
+	sgm7220_typec: usb_type_c_sgm7220@47 {
+		compatible = "sgm,usb_type_c"; //
+		reg = <0x47>;
+		mt-dual,supported_modes = <0>; /* 0: dfp/ufp, 1: dfp, 2: ufp */
+		sgm7220-tcpc,name = "type_c_port0"; /* tcpc_device's name */ //
+		/* 0: SNK Only, 1: SRC Only, 2: DRP, 3: Try.SRC, 4: Try.SNK */
+//#ifndef OPLUS_FEATURE_CHG_BASIC
+//Modify for OTG switch
+		//sgm7220-tcpc,role_def = <0>;
+//else
+		sgm7220-tcpc,role_def = <1>;
+//#endif
+
+		sgm7220-tcpc,rp_level = <0>; /* 0: Default, 1: 1.5, 2: 3.0 */ //
+		/* 0: Never, 1: Always, 2: EMarkOnly, 3: StartOnly */
+		sgm7220-tcpc,vconn_supply  = <1>; //
+
+		/* the number of notifier supply */
+		sgm7220-tcpc,notifier_supply_num = <3>; //
+
+		sgm7220,intr_gpio = <&pio 17 0x0>; //
+		sgm7220,intr_gpio_num = <17>; //
+
+		// mt6360pd,pcb_gpio = <&pio 5 0x0>;
+		// mt6360pd,pcb_gpio_num = <5>;
+		// interrupt-parent = <&subpmic_mtk>;
+		// interrupts = <64 0>;
+		// interrupt-names = "usbid_evt";
+		// bootmode = <&chosen>;
+        status = "okay";
+	};
+};
+

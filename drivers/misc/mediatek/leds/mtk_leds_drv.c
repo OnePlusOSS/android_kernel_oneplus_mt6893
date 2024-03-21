@@ -47,6 +47,7 @@ static unsigned int bl_div = CLK_DIV1;
 #define PWM_DIV_NUM 8
 static unsigned int div_array[PWM_DIV_NUM];
 struct mt65xx_led_data *g_leds_data[MT65XX_LED_TYPE_TOTAL];
+unsigned int oplus_backlight_backup = 0;
 
 #ifdef CONFIG_BACKLIGHT_SUPPORT_LP8557
 static unsigned int last_level1 = 102;
@@ -62,7 +63,9 @@ static int I2C_SET_FOR_BACKLIGHT  = 350;
 #define CONTROL_BL_TEMPERATURE
 #endif
 
+#ifndef MT_LED_INTERNAL_LEVEL_BIT_CNT
 #define MT_LED_INTERNAL_LEVEL_BIT_CNT 10
+#endif
 
 /******************************************************************************
  * for DISP backlight High resolution
@@ -136,8 +139,17 @@ int setMaxbrightness(int max_level, int enable)
 	}
 #else
 	pr_info("Set max brightness go through AAL\n");
-	disp_bls_set_max_backlight(((((1 << LED_INTERNAL_LEVEL_BIT_CNT) -
-				      1) * max_level + 127) / 255));
+
+	/* #ifndef OPLUS_BUG_STABILITY */
+	/*
+	Jianbin.Zhang@PSW.MultiMedia.Display.LCD.Machine, 2020/06/12,
+		modify for multibits backlight.
+	*/
+	/* disp_bls_set_max_backlight(((((1 << LED_INTERNAL_LEVEL_BIT_CNT) -
+				      1) * max_level + 127) / 255)); */
+	/* #else */
+	disp_bls_set_max_backlight(LED_FULL);
+	/* #endif */ /* OPLUS_BUG_STABILITY */
 #endif				/* endif CONFIG_MTK_AAL_SUPPORT */
 	return 0;
 }
@@ -355,10 +367,22 @@ int backlight_brightness_set(int level)
 {
 	struct cust_mt65xx_led *cust_led_list = mt_get_cust_led_list();
 
-	if (level > ((1 << MT_LED_INTERNAL_LEVEL_BIT_CNT) - 1))
+	/* #ifndef OPLUS_BUG_STABILITY */
+	/*
+	Jianbin.Zhang@PSW.MultiMedia.Display.LCD.Machine, 2020/06/12,
+		modify for multibits backlight.
+	*/
+	/* if (level > ((1 << MT_LED_INTERNAL_LEVEL_BIT_CNT) - 1))
 		level = ((1 << MT_LED_INTERNAL_LEVEL_BIT_CNT) - 1);
 	else if (level < 0)
+		level = 0; */
+	/* #else */ /* OPLUS_BUG_STABILITY */
+	oplus_backlight_backup = level;
+	if (level > LED_FULL)
+		level = LED_FULL;
+	else if (level < 0)
 		level = 0;
+	/* #endif */ /* OPLUS_BUG_STABILITY */
 
 	if (MT65XX_LED_MODE_CUST_BLS_PWM ==
 	    cust_led_list[MT65XX_LED_TYPE_LCD].mode) {
@@ -384,10 +408,18 @@ int backlight_brightness_set(int level)
 		    mt_mt65xx_led_set_cust(&cust_led_list[MT65XX_LED_TYPE_LCD],
 					   level);
 	} else {
-		return mt65xx_led_set_cust(&cust_led_list[MT65XX_LED_TYPE_LCD],
+		/* #ifndef OPLUS_BUG_STABILITY */
+		/*
+		Jianbin.Zhang@PSW.MultiMedia.Display.LCD.Machine, 2020/06/12,
+			modify for multibits backlight.
+		*/
+		/* return mt65xx_led_set_cust(&cust_led_list[MT65XX_LED_TYPE_LCD],
 					   (level >>
 					    (MT_LED_INTERNAL_LEVEL_BIT_CNT -
-					     8)));
+					     8))); */
+		/* #else */ /* OPLUS_BUG_STABILITY */
+		return mt65xx_led_set_cust(&cust_led_list[MT65XX_LED_TYPE_LCD],level);
+		/* #endif */ /* OPLUS_BUG_STABILITY */
 	}
 
 }

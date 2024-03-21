@@ -20,6 +20,7 @@
 #include "mt_dramc.h"
 #include <linux/uidgid.h>
 #include <linux/slab.h>
+#include <soc/oplus/system/oplus_project.h>
 
 static kuid_t uid = KUIDT_INIT(0);
 static kgid_t gid = KGIDT_INIT(1000);
@@ -242,8 +243,10 @@ struct thermal_cooling_device *cdev, unsigned long state)
 		/* To trigger data abort to reset the system
 		 * for thermal protection.
 		 */
-		BUG();
-
+		if (get_eng_version() != HIGH_TEMP_AGING)
+			BUG();
+		else
+			pr_info("%s should reset but bypass\n", __func__);
 	}
 	return 0;
 }

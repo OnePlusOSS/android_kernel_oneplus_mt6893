@@ -219,6 +219,9 @@ static void mmstat_trace_vmstat(void)
 static void mmstat_trace_buddyinfo(void)
 {
 	struct zone *zone;
+#if defined(OPLUS_FEATURE_MULTI_FREEAREA) && defined(CONFIG_PHYSICAL_ANTI_FRAGMENTATION)
+    unsigned int flc;
+#endif
 
 	/* imitate for_each_populated_zone */
 	for (zone = (NODE_DATA(0))->node_zones;
@@ -230,9 +233,17 @@ static void mmstat_trace_buddyinfo(void)
 
 			buddyinfo[0] = zone_idx(zone);
 			spin_lock_irqsave(&zone->lock, flags);
-			for (order = 0; order < MAX_ORDER; ++order)
+#if defined(OPLUS_FEATURE_MULTI_FREEAREA) && defined(CONFIG_PHYSICAL_ANTI_FRAGMENTATION)
+			for (flc = 0; flc < FREE_AREA_COUNTS; flc++) {
+#endif
+
+			for (order = 0; order < MAX_ORDER; ++order) {
 				buddyinfo[order + 1] =
-					zone->free_area[order].nr_free;
+					zone->free_area[flc][order].nr_free;
+			}
+#if defined(OPLUS_FEATURE_MULTI_FREEAREA) && defined(CONFIG_PHYSICAL_ANTI_FRAGMENTATION)
+        }
+#endif
 			spin_unlock_irqrestore(&zone->lock, flags);
 
 			trace_mmstat_trace_buddyinfo((unsigned long *)buddyinfo,

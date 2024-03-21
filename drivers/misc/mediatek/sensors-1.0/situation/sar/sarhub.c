@@ -51,6 +51,29 @@ static int sar_factory_enable_sensor(bool enabledisable,
 	return 0;
 }
 
+#ifdef OPLUS_FEATURE_SENSOR
+static int sar_factory_get_data(int32_t sensor_data[8])
+{
+	int err = 0;
+	struct data_unit_t data;
+
+	err = sensor_get_data_from_hub(ID_SAR, &data);
+	if (err < 0) {
+		pr_err_ratelimited("sensor_get_data_from_hub fail!!\n");
+		return -1;
+	}
+	sensor_data[0] = data.data[0];
+	sensor_data[1] = data.data[1];
+	sensor_data[2] = data.data[2];
+	sensor_data[3] = data.data[3];
+	sensor_data[4] = data.data[4];
+	sensor_data[5] = data.data[5];
+	sensor_data[6] = data.data[6];
+	sensor_data[7] = data.data[7];
+
+	return err;
+}
+#else
 static int sar_factory_get_data(int32_t sensor_data[3])
 {
 	int err = 0;
@@ -67,6 +90,7 @@ static int sar_factory_get_data(int32_t sensor_data[3])
 
 	return err;
 }
+#endif
 
 static int sar_factory_enable_calibration(void)
 {

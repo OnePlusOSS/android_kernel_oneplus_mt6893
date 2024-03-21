@@ -12,6 +12,9 @@
 #include <linux/pm_runtime.h>
 #include <drm/drmP.h>
 #include <linux/soc/mediatek/mtk-cmdq.h>
+#ifdef OPLUS_BUG_STABILITY
+#include <soc/oplus/system/oplus_mm_kevent_fb.h>
+#endif
 
 #include "mtk_drm_ddp.h"
 #include "mtk_drm_crtc.h"
@@ -6211,7 +6214,7 @@ void mtk_ddp_dual_pipe_dump(struct mtk_drm_crtc *mtk_crtc)
 void mtk_ddp_connect_dual_pipe_path(struct mtk_drm_crtc *mtk_crtc,
 	struct mtk_disp_mutex *mutex)
 {
-	DDPFUNC();
+	DDPDBG("%s: line:%d",__func__,__LINE__);
 	if (drm_crtc_index(&mtk_crtc->base) == 1) {
 		if ((&mtk_crtc->base)->state->adjusted_mode.vrefresh == 60)
 			mtk_ddp_ext_dual_pipe_dsc_MT6885(mtk_crtc,
@@ -8304,6 +8307,9 @@ static int mtk_ddp_probe(struct platform_device *pdev)
 		DDPAEE("%s:%d, failed to request irq:%d ret:%d\n",
 				__func__, __LINE__,
 				irq, ret);
+		#ifdef OPLUS_BUG_STABILITY
+		mm_fb_display_kevent("DisplayDriverID@@504$$", MM_FB_KEY_RATELIMIT_1H, "mtk_ddp_probe failed to request irq:%d ret:%d", irq, ret);
+		#endif
 		return ret;
 	}
 

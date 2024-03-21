@@ -63,6 +63,18 @@ void __attribute__((weak)) usb_dpdm_pulldown(bool enable)
 	pr_notice("%s is not defined\n", __func__);
 }
 
+static void battery_event_update(void) {
+	struct power_supply *batt_psy = NULL;
+
+	batt_psy = power_supply_get_by_name("battery");
+	if (!batt_psy) {
+		pr_notice("%s batt_psy is null,return\n", __func__);
+		return;
+	}
+
+	power_supply_changed(batt_psy);
+}
+
 static int pd_tcp_notifier_call(struct notifier_block *nb,
 				unsigned long event, void *data)
 {
@@ -164,11 +176,13 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 			}
 			typec_set_pwr_opmode(rpmd->typec_port, opmode);
 			typec_set_vconn_role(rpmd->typec_port, TYPEC_SOURCE);
+			battery_event_update();
 		} else if ((old_state == TYPEC_ATTACHED_SRC ||
 			    old_state == TYPEC_ATTACHED_DEBUG) &&
 			    new_state == TYPEC_UNATTACHED) {
 			dev_info(rpmd->dev, "%s OTG plug out\n", __func__);
 			/* disable host connection */
+			battery_event_update();
 		} else if (old_state == TYPEC_UNATTACHED &&
 			   new_state == TYPEC_ATTACHED_AUDIO) {
 			dev_info(rpmd->dev, "%s Audio plug in\n", __func__);
@@ -556,7 +570,11 @@ static int tcpc_typec_port_type_set(const struct typec_capability *cap,
 			typec_role = TYPEC_ROLE_TRY_SNK;
 		else
 			typec_role = TYPEC_ROLE_DRP;
+#ifndef OPLUS_FEATURE_CHG_BASIC
 		return tcpm_typec_change_role(rpmd->tcpc, typec_role);
+#else
+		return tcpm_typec_change_role_postpone(rpmd->tcpc, typec_role, false);
+#endif
 	default:
 		return 0;
 	}
@@ -699,7 +717,12 @@ err_get_chg_psy:
 #endif /* ADAPT_CHARGER_V1 */
 err_get_chg_dev:
 #endif /* CONFIG_MTK_CHARGER */
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/* add for typec init fail && vts test fail */
+	return -EPROBE_DEFER;
+#else
 	return ret;
+#endif
 }
 
 static int rt_pd_manager_remove(struct platform_device *pdev)

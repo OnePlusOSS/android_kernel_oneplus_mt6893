@@ -94,6 +94,9 @@ int chr_get_debug_level(void)
 
 void _wake_up_charger(struct mtk_charger *info)
 {
+#if (defined CONFIG_OPLUS_CHARGER_MTK6765S) && (defined OPLUS_FEATURE_CHG_BASIC)
+	return;
+#else
 	unsigned long flags;
 
 	if (info == NULL)
@@ -105,6 +108,7 @@ void _wake_up_charger(struct mtk_charger *info)
 	spin_unlock_irqrestore(&info->slock, flags);
 	info->charger_thread_timeout = true;
 	wake_up(&info->wait_que);
+#endif
 }
 
 bool is_disable_charger(struct mtk_charger *info)
@@ -1825,11 +1829,6 @@ static int psy_charger_get_property(struct power_supply *psy,
 	struct charger_device *chg;
 
 	info = (struct mtk_charger *)power_supply_get_drvdata(psy);
-
-	chr_err("%s psp:%d\n",
-		__func__, psp);
-
-
 	if (info->psy1 != NULL &&
 		info->psy1 == psy)
 		chg = info->chg1_dev;
@@ -1880,6 +1879,7 @@ static int psy_charger_get_property(struct power_supply *psy,
 		val->intval = get_charger_zcv(info, chg);
 		break;
 	default:
+                chr_err("%s psp:%d\n", __func__, psp);
 		return -EINVAL;
 	}
 

@@ -17,6 +17,10 @@
 #include "../../codecs/mt6359.h"
 #include "../common/mtk-sp-spk-amp.h"
 
+#ifdef OPLUS_ARCH_EXTENDS
+#include "../../codecs/audio_extend_drv.h"
+#endif /* OPLUS_ARCH_EXTENDS */
+
 #ifdef CONFIG_SND_SOC_MT8185_EVB
 #include <linux/of_gpio.h>
 #include <linux/gpio.h>
@@ -117,6 +121,80 @@ static const struct soc_enum mt6785_spk_type_enum[] = {
 			    mt6785_spk_i2s_type_str),
 };
 
+#ifdef OPLUS_BUG_COMPATIBILITY//OPLUS_BUG_COMPATIBILITY
+enum oplus_pa_type_def {
+	OPLUS_PA_NXP = 0,
+	OPLUS_PA_AWINIC,
+	OPLUS_PA_SIA,
+	OPLUS_PA_AWINIC_DIGITAL,
+	OPLUS_PA_TYPE_NUM
+};
+static int oplus_pa_type = OPLUS_PA_NXP;
+
+//if more config values, set a bigger number
+#define AUDIO_EXTERN_CONFIG_MAX_NUM  4
+#define OPLUS_PA_TYPE_OFFSET 0
+int audio_extern[AUDIO_EXTERN_CONFIG_MAX_NUM] = {0};
+
+static int read_audio_extern_config_dts(struct platform_device *pdev)
+{
+	int ret;
+	int count, i;
+	count = of_property_count_u32_elems(pdev->dev.of_node, "audio_extern_config");
+	if (count <= 0) {
+		dev_err(&pdev->dev, "%s: no property match audio_extern_config\n", __func__);
+		return -ENODATA;
+	} else if (count > AUDIO_EXTERN_CONFIG_MAX_NUM) {
+		dev_err(&pdev->dev, "%s: audio_extern_config num=%d > %d(max numbers)\n",
+				__func__, count, AUDIO_EXTERN_CONFIG_MAX_NUM);
+		return -EINVAL;
+	}
+
+	ret = of_property_read_u32_array(pdev->dev.of_node, "audio_extern_config",
+			audio_extern, count);
+	if (ret) {
+		dev_err(&pdev->dev, "%s: read audio_extern_config error = %d\n", __func__, ret);
+		return ret;
+	}
+	for (i = 0; i < count; i++) {
+		dev_info(&pdev->dev, "%s: audio_extern[%d] = %d\n",
+				__func__, i ,audio_extern[i]);
+	}
+
+	if (OPLUS_PA_TYPE_OFFSET < count) {
+		oplus_pa_type = audio_extern[OPLUS_PA_TYPE_OFFSET];
+		dev_info(&pdev->dev, "%s: pa_type = audio_extern[%d] = %d\n",
+				__func__, OPLUS_PA_TYPE_OFFSET , oplus_pa_type);
+	}
+
+	return ret;
+}
+
+static int mt6785_audio_extern_config_get(struct snd_kcontrol *kcontrol,
+			       struct snd_ctl_elem_value *ucontrol)
+{
+	int i;
+
+	for (i = 0; i < AUDIO_EXTERN_CONFIG_MAX_NUM; i++) {
+		ucontrol->value.integer.value[i] = audio_extern[i];
+		pr_info("%s(), OPLUS_AUDIO_EXTERN_CONFIG get value(%d) = %d",
+				__func__, i, audio_extern[i]);
+	}
+
+	return 0;
+}
+
+static int mt6785_audio_extern_config_ctl(struct snd_kcontrol *kcontrol,
+			       struct snd_ctl_elem_info *uinfo)
+{
+	uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
+	uinfo->count = AUDIO_EXTERN_CONFIG_MAX_NUM;
+	uinfo->value.integer.min = 0;
+	uinfo->value.integer.max = 0x7fffffff; /* 32 bit value,  */
+
+	return 0;
+}
+#endif  /*OPLUS_BUG_COMPATIBILITY*/
 static int mt6785_spk_type_get(struct snd_kcontrol *kcontrol,
 			       struct snd_ctl_elem_value *ucontrol)
 {
@@ -231,6 +309,15 @@ static const struct snd_kcontrol_new mt6785_mt6359_controls[] = {
 		     mt6785_spk_i2s_out_type_get, NULL),
 	SOC_ENUM_EXT("MTK_SPK_I2S_IN_TYPE_GET", mt6785_spk_type_enum[1],
 		     mt6785_spk_i2s_in_type_get, NULL),
+#ifdef OPLUS_BUG_COMPATIBILITY
+	{
+		.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+		.name = "OPLUS_AUDIO_EXTERN_CONFIG",
+		.access = SNDRV_CTL_ELEM_ACCESS_READ,
+		.info = mt6785_audio_extern_config_ctl,
+		.get = mt6785_audio_extern_config_get
+	},
+#endif //OPLUS_BUG_COMPATIBILITY
 };
 
 /*
@@ -1442,6 +1529,11 @@ static int mt6785_mt6359_dev_probe(struct platform_device *pdev)
 	struct device_node *prince_codec_of_node;
 	const char *prince_name_prefix[1];
 #endif
+
+#ifdef OPLUS_BUG_COMPATIBILITY//OPLUS_BUG_COMPATIBILITY
+	read_audio_extern_config_dts(pdev);
+#endif  /*OPLUS_BUG_COMPATIBILITY*/
+
 	ret = mtk_spk_update_info(card, pdev,
 				  &spk_out_dai_link_idx, &spk_iv_dai_link_idx,
 				  &mt6785_mt6359_i2s_ops);
@@ -1490,6 +1582,10 @@ static int mt6785_mt6359_dev_probe(struct platform_device *pdev)
 	if (!dsp_node)
 		dev_info(&pdev->dev, "Property 'snd_audio_dsp' missing or invalid\n");
 
+#ifdef OPLUS_ARCH_EXTENDS
+    extend_codec_i2s_be_dailinks(mt6785_mt6359_dai_links, ARRAY_SIZE(mt6785_mt6359_dai_links));
+#endif /* OPLUS_ARCH_EXTENDS */
+
 	for (i = 0; i < card->num_links; i++) {
 		if (mt6785_mt6359_dai_links[i].platform_name)
 			continue;
@@ -1515,6 +1611,10 @@ static int mt6785_mt6359_dev_probe(struct platform_device *pdev)
 		    i == spk_out_dai_link_idx ||
 		    i == spk_iv_dai_link_idx)
 			continue;
+#ifdef OPLUS_ARCH_EXTENDS
+		if (extend_codec_i2s_compare(mt6785_mt6359_dai_links, i))
+			continue;
+#endif /* OPLUS_ARCH_EXTENDS */
 		mt6785_mt6359_dai_links[i].codec_of_node = codec_node;
 	}
 #ifdef CONFIG_SND_SOC_MT8185_EVB

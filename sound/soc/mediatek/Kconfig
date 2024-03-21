@@ -443,3 +443,18 @@ config MTK_ULTRASND_PROXIMITY
 	  emulate physical proximity sensor. Using
 	  IPI interface to communicate with SCP side and
 	  be controlled by sensor hal.
+	  
+#ifdef ODM_HQ_EDIT
+	config SND_SOC_AW87319
+	tristate "SoC Audio for awinic AW87319 Smart K PA"
+	depends on I2C
+	help
+	  This option enables support for AW87319 Smart K PA.
+
+config SND_SOC_SIA81XX
+	tristate "SoC Audio for awinic SIA81XX Smart PA"
+	depends on I2C
+	help
+	  This option enables support for SIA81XX Smart K PA.
+#endif
+	  

@@ -1,0 +1,5 @@
+
+&audio_extend {
+	//for aw speaker
+	oplus,speaker-vendor = "awinic";
+};

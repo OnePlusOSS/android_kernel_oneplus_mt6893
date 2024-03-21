@@ -149,6 +149,9 @@ static int g_aal_dre_en_cmd_id;
 static int g_aal_ess_en_cmd_id;
 #define aal_min(a, b)			(((a) < (b)) ? (a) : (b))
 
+#if (defined(OPLUS_BUG_STABILITY) && (defined(CONFIG_LEDS_MTK_DISP) || defined(CONFIG_LEDS_MTK_I2C)))
+extern int max_brightness_custom;
+#endif
 static bool isDualPQ;
 enum AAL_IOCTL_CMD {
 	INIT_REG = 0,
@@ -502,6 +505,10 @@ int led_brightness_changed_event(struct notifier_block *nb, unsigned long event,
 			* led_conf->cdev.brightness
 			+ ((led_conf->cdev.max_brightness) / 2))
 			/ (led_conf->cdev.max_brightness));
+#if (defined(OPLUS_BUG_STABILITY) && (defined(CONFIG_LEDS_MTK_DISP) || defined(CONFIG_LEDS_MTK_I2C)))
+               	if(max_brightness_custom)
+                       trans_level = led_conf->cdev.brightness;
+#endif
 		if (led_conf->cdev.brightness != 0 &&
 			trans_level == 0)
 			trans_level = 1;
@@ -548,8 +555,20 @@ int mtk_drm_ioctl_aal_eventctl(struct drm_device *dev, void *data,
 	int ret = 0;
 	unsigned long flags, clockflags;
 	int *enabled = (int *)data;
+	int retry = 10;
 
 	AALFLOW_LOG("%d\n", *enabled);
+
+	if (*enabled) {
+		mtk_drm_idlemgr_kick(__func__,
+				&default_comp->mtk_crtc->base, 1);
+		mtk_crtc_check_trigger(comp->mtk_crtc, true, true);
+
+		while ((atomic_read(&aal_data->is_clock_on) != 1) && (retry != 0)) {
+			usleep_range(500, 1000);
+			retry--;
+		}
+	}
 
 	spin_lock_irqsave(&g_aal_irq_en_lock, flags);
 	if (atomic_read(&g_aal_force_enable_irq) == 1) {

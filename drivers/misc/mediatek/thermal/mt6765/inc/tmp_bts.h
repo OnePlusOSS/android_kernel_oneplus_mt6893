@@ -31,6 +31,7 @@
 #define BTSMDPA_TAP_OVER_CRITICAL_LOW	4397119 /* base on 100K NTC temp
 						 * default value -40 deg
 						 */
+#define APPLY_PRECISE_BTS_TEMP
 
 #define BTSMDPA_RAP_PULL_UP_VOLTAGE	1800 /* 1.8V ,pull up voltage */
 

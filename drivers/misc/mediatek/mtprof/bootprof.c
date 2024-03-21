@@ -19,6 +19,10 @@
 #include <trace/events/initcall.h>
 #endif
 
+#ifdef OPLUS_BUG_STABILITY
+#include <linux/reboot.h>
+#endif /* OPLUS_BUG_STABILITY */
+
 #define BOOT_STR_SIZE 256
 #define BUF_COUNT 12
 #define LOGS_PER_BUF 80
@@ -239,6 +243,19 @@ static void bootup_finish(void)
 {
 	initcall_debug = 0;
 }
+
+#ifdef OPLUS_BUG_STABILITY
+static int bootprof_reboot_notifier(struct notifier_block *nb,
+				unsigned long code, void *unused)
+{
+	initcall_debug = 1;
+	return NOTIFY_DONE;
+}
+
+static struct notifier_block bootprof_reboot_nb = {
+	.notifier_call = bootprof_reboot_notifier,
+};
+#endif /* OPLUS_BUG_STABILITY */
 #endif /*MODULE END*/
 
 static void mt_bootprof_switch(int on)
@@ -494,6 +511,13 @@ static int __init init_boot_prof(void)
 	pe = proc_create("bootprof", 0664, NULL, &mt_bootprof_fops);
 	if (!pe)
 		return -ENOMEM;
+
+#ifdef OPLUS_BUG_STABILITY
+	if (register_reboot_notifier(&bootprof_reboot_nb)) {
+		pr_err("BOOTPROF: %s fail\n", __func__);
+	}
+#endif /* OPLUS_BUG_STABILITY */
+
 	return 0;
 }
 

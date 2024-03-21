@@ -241,6 +241,21 @@ enum mtk_ddp_io_cmd {
 	DSI_LFR_STATUS_CHECK,
 	WDMA_WRITE_DST_ADDR0,
 	WDMA_READ_DST_SIZE,
+	#ifdef OPLUS_BUG_STABILITY
+#ifdef CONFIG_OPLUS_OFP_V2
+	DSI_SET_DOZE,
+#endif
+	DSI_READ,
+	LCM_HBM,
+	LCM_CABC,
+	DC_BACKLIGHT,
+	LCM_SEED,
+	PANEL_SN_SET,
+	DC_POST_EXIT,
+        OPLUS_GET_INFO,
+	DISP_OFF,
+	PANEL_OSC_MIPI_HOPPING,
+	#endif
 };
 
 struct golden_setting_context {

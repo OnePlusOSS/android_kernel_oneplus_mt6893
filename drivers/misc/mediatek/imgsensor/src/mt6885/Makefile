@@ -10,20 +10,22 @@ subdir-ccflags-y += -I$(IMGSENSOR_DRIVER_PATH)/common/$(COMMON_VERSION) \
 	-I$(IMGSENSOR_DRIVER_PATH)/$(MTK_PLATFORM)/seninf/ \
 	-I$(MTK_DRIVER_PATH)/mmdvfs \
 	-I$(srctree)/drivers/i2c/busses/
+obj-y				+= ../common/$(COMMON_VERSION)/imgsensor.o
+obj-y				+= ../common/$(COMMON_VERSION)/imgsensor_hw.o
+obj-y				+= ../common/$(COMMON_VERSION)/imgsensor_i2c.o
+obj-y				+= ../common/$(COMMON_VERSION)/imgsensor_legacy.o
+obj-y				+= ../common/$(COMMON_VERSION)/imgsensor_proc.o
+obj-y				+= ../common/$(COMMON_VERSION)/imgsensor_sensor_list.o
+obj-y                           += ../common/$(COMMON_VERSION)/seninf_clk.o
+obj-y				+= ../common/$(COMMON_VERSION)/seninf.o
+obj-y                           += ../common/$(COMMON_VERSION)/imgsensor_pwr_seq.o
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+obj-y				+= ../OplusImgsensor/imgsensor_eeprom.o
+obj-y				+= ../OplusImgsensor/imgsensor_hwcfg_custom.o
+obj-y				+= ../OplusImgsensor/imgsensor_hwcfg_mt6885.o
 
-ifeq ($(CONFIG_MTK_PLATFORM), "mt6885")
-subdir-ccflags-y += -DIMGSENSOR_MT6885
-endif
-
-obj-y += ../common/$(COMMON_VERSION)/imgsensor.o
-obj-y += ../common/$(COMMON_VERSION)/imgsensor_hw.o
-obj-y += ../common/$(COMMON_VERSION)/imgsensor_i2c.o
-obj-y += ../common/$(COMMON_VERSION)/imgsensor_legacy.o
-obj-y += ../common/$(COMMON_VERSION)/imgsensor_proc.o
-obj-y += ../common/$(COMMON_VERSION)/imgsensor_sensor_list.o
-obj-y += ../common/$(COMMON_VERSION)/seninf_clk.o
-obj-y += ../common/$(COMMON_VERSION)/seninf.o
-obj-y += ../common/$(COMMON_VERSION)/imgsensor_pwr_seq.o
+obj-y				+= ../common/$(COMMON_VERSION)/imgsensor_eeprom_v1.o
+#endif
 define FILTER_DRV
 ifeq ($(wildcard $(IMGSENSOR_DRIVER_PATH)/$(MTK_PLATFORM)/camera_project/$(ARCH_MTK_PROJECT)/$(1)),)
 ifeq ($(wildcard $(IMGSENSOR_DRIVER_PATH)/$(MTK_PLATFORM)/$(1)),)
@@ -61,7 +63,10 @@ endif
 subdir-ccflags-y		+= -I$(IMGSENSOR_DRIVER_PATH)/common/$(COMMON_VERSION)/camera_hw
 
 # Enable parallelism
-# subdir-ccflags-y += -DNO_I2C_MTK -DSENSOR_PARALLEISM
-
+subdir-ccflags-y += -DSENSOR_PARALLEISM
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+#oplus platformflag
+subdir-ccflags-y += -DSENSOR_PLATFORM_5G_H
+#endif
 obj-y += seninf/
 

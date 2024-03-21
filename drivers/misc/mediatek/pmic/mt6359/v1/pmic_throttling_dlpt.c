@@ -1114,6 +1114,7 @@ static int get_dlpt_imix_charging(struct platform_device *pdev)
 			pr_notice("[%s] iio channel consumer error, (%d, %d)\n",
 				__func__, is_isense_supported(),
 				is_power_path_supported());
+		return 0;
 	}
 	ret = iio_read_channel_processed(chan, &zcv_val);
 	if (ret < 0) {

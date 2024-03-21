@@ -161,6 +161,11 @@ static void move_ptes(struct vm_area_struct *vma, pmd_t *old_pmd,
 		if (pte_none(*old_pte))
 			continue;
 
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+		/* in mremap case, new_addres might not be aligned */
+		if (pte_cont(*old_pte))
+			__split_huge_cont_pte(vma, old_pte, old_addr, false, NULL, old_ptl);
+#endif
 		pte = ptep_get_and_clear(mm, old_addr, old_pte);
 		/*
 		 * If we are remapping a valid PTE, make sure
@@ -225,12 +230,12 @@ unsigned long move_page_tables(struct vm_area_struct *vma,
 			if (extent == HPAGE_PMD_SIZE) {
 				bool moved;
 				/* See comment in move_ptes() */
-				if (need_rmap_locks)
-					take_rmap_locks(vma);
+				take_rmap_locks(vma);
+
 				moved = move_huge_pmd(vma, old_addr, new_addr,
 						    old_end, old_pmd, new_pmd);
-				if (need_rmap_locks)
-					drop_rmap_locks(vma);
+				drop_rmap_locks(vma);
+
 				if (moved)
 					continue;
 			}

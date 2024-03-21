@@ -244,8 +244,17 @@ void DSI_dynfps_send_cmd(
 	void *cmdq, unsigned int cmd,
 	unsigned char count, unsigned char *para_list,
 	unsigned char force_update, enum LCM_Send_Cmd_Mode sendmode);
-
 /*-------------------------------DynFPS end------------------------------*/
+#endif
+#ifdef CONFIG_MTK_MT6382_BDG
+void mt6382_send_backlight_cmd(
+	void *cmdq, unsigned int cmd,
+	unsigned char count, unsigned char *para_list,
+	unsigned char force_update);
+void mt6382_send_cabc_cmd(
+	void *cmdq, unsigned int cmd,
+	unsigned char count, unsigned char *para_list,
+	unsigned char force_update);
 #endif
 #ifdef __cplusplus
 }

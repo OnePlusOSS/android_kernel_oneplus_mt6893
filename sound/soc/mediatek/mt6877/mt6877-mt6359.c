@@ -18,8 +18,28 @@
 #include "../../codecs/mt6359.h"
 #include "../common/mtk-sp-spk-amp.h"
 
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_FEEDBACK)
+#include "../feedback/oplus_audio_kernel_fb.h"
+#ifdef dev_err
+#undef dev_err
+#define dev_err dev_err_fb_delay
+#endif
+#endif /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
+
 #ifdef CONFIG_SND_SOC_AW87339
 #include "aw87339.h"
+#endif
+
+#if IS_ENABLED(CONFIG_SIA_PA_ALGO)
+#include "../../codecs/audio/sia81xx/sia81xx_aux_dev_if.h"
+#endif
+#if IS_ENABLED(CONFIG_SND_SOC_OPLUS_PA_MANAGER)
+#include "../../codecs/audio/oplus_speaker_manager/oplus_speaker_manager_platform.h"
+#include "../../codecs/audio/oplus_speaker_manager/oplus_speaker_manager_codec.h"
+#endif /*CONFIG_SND_SOC_OPLUS_PA_MANAGER*/
+
+#if IS_ENABLED(CONFIG_SND_SOC_SIA91XX_V3_1_0)
+#include "../../codecs/audio/sia91xx_v3.1.0/sipa_aux_dev_if.h"
 #endif
 
 /*
@@ -28,6 +48,20 @@
  * mt6877_mt6359_spk_amp_event()
  */
 #define EXT_SPK_AMP_W_NAME "Ext_Speaker_Amp"
+#if IS_ENABLED(CONFIG_SND_SOC_OPLUS_PA_MANAGER)
+#define EXT_RCV_AMP_W_NAME "Ext_Reciver_Amp"
+#endif
+
+#ifdef OPLUS_ARCH_EXTENDS
+extern void extend_codec_i2s_be_dailinks(struct snd_soc_dai_link *dailink, size_t size);
+extern bool extend_codec_i2s_compare(struct snd_soc_dai_link *dailink, int dailink_num);
+#endif
+
+#ifdef CONFIG_SND_SOC_TFA_HAPTIC
+static const char *const tfa_haptic_ring_sync_str[] = {"Off","On"};
+static int tfa_haptic_sync_status = 0;
+extern void tfa_haptic_i2s_be_dailink(struct snd_soc_dai_link *dailink, size_t size);
+#endif /* CONFIG_SND_SOC_TFA_HAPTIC */
 
 static const char *const mt6877_spk_type_str[] = {MTK_SPK_NOT_SMARTPA_STR,
 						  MTK_SPK_RICHTEK_RT5509_STR,
@@ -54,6 +88,13 @@ static const struct soc_enum mt6877_spk_type_enum[] = {
 	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(mt6877_spk_i2s_type_str),
 			    mt6877_spk_i2s_type_str),
 };
+
+#ifdef CONFIG_SND_SOC_TFA_HAPTIC
+static const struct soc_enum tfa_haptic_type_enum[] = {
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(tfa_haptic_ring_sync_str),
+				tfa_haptic_ring_sync_str),
+};
+#endif /* CONFIG_SND_SOC_TFA_HAPTIC */
 
 static int mt6877_spk_type_get(struct snd_kcontrol *kcontrol,
 			       struct snd_ctl_elem_value *ucontrol)
@@ -85,6 +126,91 @@ static int mt6877_spk_i2s_in_type_get(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+#if IS_ENABLED(CONFIG_SND_SOC_OPLUS_PA_MANAGER)
+static int rcv_amp_mode;
+static const char *rcv_amp_type_str[] = {"SPEAKER_MODE", "RECIEVER_MODE"};
+static const struct soc_enum rcv_amp_type_enum =
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(rcv_amp_type_str), rcv_amp_type_str);
+
+static int mt6877_rcv_amp_mode_get(struct snd_kcontrol *kcontrol,
+				   struct snd_ctl_elem_value *ucontrol)
+{
+	pr_info("%s() = %d\n", __func__, rcv_amp_mode);
+	ucontrol->value.integer.value[0] = rcv_amp_mode;
+	return 0;
+}
+
+static int mt6877_rcv_amp_mode_set(struct snd_kcontrol *kcontrol,
+				   struct snd_ctl_elem_value *ucontrol)
+{
+	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
+
+	if (ucontrol->value.enumerated.item[0] >= e->items)
+		return -EINVAL;
+
+	rcv_amp_mode = ucontrol->value.integer.value[0];
+	pr_info("%s() = %d\n", __func__, rcv_amp_mode);
+	return 0;
+}
+
+static int mt6877_mt6359_rcv_amp_event(struct snd_soc_dapm_widget *w,
+					struct snd_kcontrol *kcontrol,
+					int event)
+{
+	struct snd_soc_dapm_context *dapm = w->dapm;
+	struct snd_soc_card *card = dapm->card;
+
+	dev_info(card->dev, "%s(), event %d\n", __func__, event);
+
+	switch (event) {
+	case SND_SOC_DAPM_POST_PMU:
+		/* rcv amp on control */
+		if(rcv_amp_mode == 1)
+		{
+			oplus_ext_amp_recv_l_enable(true);
+		} else {
+			oplus_ext_amp_l_enable(true);
+		}
+		break;
+	case SND_SOC_DAPM_PRE_PMD:
+		/* rcv amp off control */
+		if(rcv_amp_mode == 1)
+		{
+			oplus_ext_amp_recv_l_enable(false);
+		} else {
+			oplus_ext_amp_l_enable(false);
+		}
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+};
+#endif  /*CONFIG_SND_SOC_OPLUS_PA_MANAGER*/
+
+#ifdef CONFIG_SND_SOC_TFA_HAPTIC
+static int tfa_haptic_ring_sync_set(struct snd_kcontrol *kcontrol,
+				       struct snd_ctl_elem_value *ucontrol)
+{
+	tfa_haptic_sync_status = ucontrol->value.integer.value[0];
+
+	return 0;
+}
+
+static int tfa_haptic_ring_sync_get(struct snd_kcontrol *kcontrol,
+				      struct snd_ctl_elem_value *ucontrol)
+{
+	int idx = tfa_haptic_sync_status;
+
+	pr_debug("%s() = %d\n", __func__, idx);
+	ucontrol->value.integer.value[0] = idx;
+	return 0;
+}
+#endif /*CONFIG_SND_SOC_TFA_HAPTIC*/
+
+
+
 static int mt6877_mt6359_spk_amp_event(struct snd_soc_dapm_widget *w,
 				       struct snd_kcontrol *kcontrol,
 				       int event)
@@ -100,12 +226,18 @@ static int mt6877_mt6359_spk_amp_event(struct snd_soc_dapm_widget *w,
 #ifdef CONFIG_SND_SOC_AW87339
 		aw87339_spk_enable_set(true);
 #endif
+#if IS_ENABLED(CONFIG_SND_SOC_OPLUS_PA_MANAGER)
+		oplus_ext_amp_r_enable(true);
+#endif  /*CONFIG_SND_SOC_OPLUS_PA_MANAGER*/
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
 		/* spk amp off control */
 #ifdef CONFIG_SND_SOC_AW87339
 		aw87339_spk_enable_set(false);
 #endif
+#if IS_ENABLED(CONFIG_SND_SOC_OPLUS_PA_MANAGER)
+		oplus_ext_amp_r_enable(false);
+#endif  /*CONFIG_SND_SOC_OPLUS_PA_MANAGER*/
 		break;
 	default:
 		break;
@@ -116,22 +248,51 @@ static int mt6877_mt6359_spk_amp_event(struct snd_soc_dapm_widget *w,
 
 static const struct snd_soc_dapm_widget mt6877_mt6359_widgets[] = {
 	SND_SOC_DAPM_SPK(EXT_SPK_AMP_W_NAME, mt6877_mt6359_spk_amp_event),
+#if IS_ENABLED(CONFIG_SND_SOC_OPLUS_PA_MANAGER)
+	SND_SOC_DAPM_SPK(EXT_RCV_AMP_W_NAME, mt6877_mt6359_rcv_amp_event),
+#endif
 };
 
 static const struct snd_soc_dapm_route mt6877_mt6359_routes[] = {
 	{EXT_SPK_AMP_W_NAME, NULL, "LINEOUT L"},
+#if IS_ENABLED(CONFIG_SND_SOC_OPLUS_PA_MANAGER)
+	{EXT_RCV_AMP_W_NAME, NULL, "Receiver"},
+#endif
 	{EXT_SPK_AMP_W_NAME, NULL, "Headphone L Ext Spk Amp"},
 	{EXT_SPK_AMP_W_NAME, NULL, "Headphone R Ext Spk Amp"},
 };
 
+#ifdef CONFIG_OPLUS_FEATURE_MM_FEEDBACK
+#define HAL_FEEDBACK_MAX_BYTES         (256)
+extern int hal_feedback_config_get(struct snd_kcontrol *kcontrol,
+			unsigned int __user *bytes,
+			unsigned int size);
+extern int hal_feedback_config_set(struct snd_kcontrol *kcontrol,
+			const unsigned int __user *bytes,
+			unsigned int size);
+#endif  /*CONFIG_OPLUS_FEATURE_MM_FEEDBACK*/
 static const struct snd_kcontrol_new mt6877_mt6359_controls[] = {
 	SOC_DAPM_PIN_SWITCH(EXT_SPK_AMP_W_NAME),
+#if IS_ENABLED(CONFIG_SND_SOC_OPLUS_PA_MANAGER)
+	SOC_DAPM_PIN_SWITCH(EXT_RCV_AMP_W_NAME),
+	SOC_ENUM_EXT("RCV_AMP_MODE", rcv_amp_type_enum,
+		     mt6877_rcv_amp_mode_get, mt6877_rcv_amp_mode_set),
+#endif
 	SOC_ENUM_EXT("MTK_SPK_TYPE_GET", mt6877_spk_type_enum[0],
 		     mt6877_spk_type_get, NULL),
 	SOC_ENUM_EXT("MTK_SPK_I2S_OUT_TYPE_GET", mt6877_spk_type_enum[1],
 		     mt6877_spk_i2s_out_type_get, NULL),
 	SOC_ENUM_EXT("MTK_SPK_I2S_IN_TYPE_GET", mt6877_spk_type_enum[1],
 		     mt6877_spk_i2s_in_type_get, NULL),
+#ifdef CONFIG_SND_SOC_TFA_HAPTIC
+	SOC_ENUM_EXT("TFA_HAPTIC_RING_SYNC", tfa_haptic_type_enum[0],
+		    tfa_haptic_ring_sync_get, tfa_haptic_ring_sync_set),
+#endif /*CONFIG_SND_SOC_TFA_HAPTIC*/
+#ifdef CONFIG_OPLUS_FEATURE_MM_FEEDBACK
+	SND_SOC_BYTES_TLV("HAL FEEDBACK",
+			  HAL_FEEDBACK_MAX_BYTES,
+			  hal_feedback_config_get, hal_feedback_config_set),
+#endif //CONFIG_OPLUS_FEATURE_MM_FEEDBACK
 };
 
 /*
@@ -244,9 +405,15 @@ static int mt6877_mt6359_mtkaif_calibration(struct snd_soc_pcm_runtime *rtd)
 
 			/* handle if never test done */
 			if (++counter > 10000) {
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_FEEDBACK)
+				dev_err_not_fb(afe->dev, "%s(), test fail, cycle_1 %d, cycle_2 %d, cycle_3 %d, monitor 0x%x\n",
+					__func__,
+					cycle_1, cycle_2, cycle_3, monitor);
+#else
 				dev_err(afe->dev, "%s(), test fail, cycle_1 %d, cycle_2 %d, cycle_3 %d, monitor 0x%x\n",
 					__func__,
 					cycle_1, cycle_2, cycle_3, monitor);
+#endif /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
 				mtkaif_calib_ok = false;
 				break;
 			}
@@ -1199,8 +1366,13 @@ static int mt6877_mt6359_dev_probe(struct platform_device *pdev)
 		spk_node = of_get_child_by_name(pdev->dev.of_node,
 					"mediatek,speaker-codec");
 		if (!spk_node) {
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_MM_FEEDBACK)
+			dev_err_not_fb(&pdev->dev,
+				"spk_codec of_get_child_by_name fail\n");
+#else
 			dev_err(&pdev->dev,
 				"spk_codec of_get_child_by_name fail\n");
+#endif /* CONFIG_OPLUS_FEATURE_MM_FEEDBACK */
 			return -EINVAL;
 		}
 		ret = snd_soc_of_get_dai_link_codecs(
@@ -1255,15 +1427,35 @@ static int mt6877_mt6359_dev_probe(struct platform_device *pdev)
 			"Property 'audio-codec' missing or invalid\n");
 		return -EINVAL;
 	}
+
+#ifdef CONFIG_SND_SOC_TFA_HAPTIC
+	tfa_haptic_i2s_be_dailink(mt6877_mt6359_dai_links, ARRAY_SIZE(mt6877_mt6359_dai_links));
+#endif /* CONFIG_SND_SOC_TFA_HAPTIC */
+
+//#ifdef OPLUS_ARCH_EXTENDS
+	extend_codec_i2s_be_dailinks(mt6877_mt6359_dai_links, ARRAY_SIZE(mt6877_mt6359_dai_links));
+//#endif /* OPLUS_ARCH_EXTENDS */
+
 	for (i = 0; i < card->num_links; i++) {
 		if (mt6877_mt6359_dai_links[i].codec_name ||
 		    i == spk_out_dai_link_idx ||
 		    i == spk_iv_dai_link_idx)
 			continue;
+//#ifdef OPLUS_ARCH_EXTENDS
+		if (extend_codec_i2s_compare(mt6877_mt6359_dai_links, i))
+			continue;
+//#endif /* OPLUS_ARCH_EXTENDS */
 		mt6877_mt6359_dai_links[i].codec_of_node = codec_node;
 	}
 
 	card->dev = &pdev->dev;
+#if IS_ENABLED(CONFIG_SIA_PA_ALGO)
+	soc_aux_init_only_sia81xx(pdev, card);
+#endif
+
+#if IS_ENABLED(CONFIG_SND_SOC_SIA91XX_V3_1_0)
+	soc_codec_conf_sia91xx(pdev, card);
+#endif
 
 	dev_info(&pdev->dev, "%s(), devm_snd_soc_register_card\n", __func__);
 

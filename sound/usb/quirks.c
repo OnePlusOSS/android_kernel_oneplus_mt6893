@@ -1266,6 +1266,19 @@ int snd_usb_select_mode_quirk(struct snd_usb_substream *subs,
 	return 0;
 }
 
+void snd_usb_endpoint_stop_quirk(struct snd_usb_endpoint *ep)
+{
+	if (!ep)
+		return;
+
+	/*
+	 * Headset Meizu Corp Meizu HiFi DAC Headphone Amplifier needs a
+	 * tiny delay for stop_endpoint().
+	 */
+	if(snd_usb_get_speed(ep->chip->dev) >= USB_SPEED_HIGH)
+		mdelay(10);
+}
+
 void snd_usb_endpoint_start_quirk(struct snd_usb_endpoint *ep)
 {
 	/*

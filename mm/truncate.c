@@ -179,7 +179,11 @@ static void
 truncate_cleanup_page(struct address_space *mapping, struct page *page)
 {
 	if (page_mapped(page)) {
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+		pgoff_t nr = PageTransHuge(page) ? thp_nr_pages(page) : 1;
+#else
 		pgoff_t nr = PageTransHuge(page) ? HPAGE_PMD_NR : 1;
+#endif
 		unmap_mapping_pages(mapping, page->index, nr, false);
 	}
 
@@ -581,7 +585,11 @@ unsigned long invalidate_mapping_pages(struct address_space *mapping,
 				unlock_page(page);
 				continue;
 			} else if (PageTransHuge(page)) {
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+				index += thp_nr_pages(page) - 1;
+#else
 				index += HPAGE_PMD_NR - 1;
+#endif
 				i += HPAGE_PMD_NR - 1;
 				/*
 				 * 'end' is in the middle of THP. Don't

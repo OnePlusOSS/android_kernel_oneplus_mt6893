@@ -76,4 +76,7 @@ void nq_stop(void);
 int nq_init(void);
 void nq_exit(void);
 
+void boost_tee(void);
+void deboost_tee(void);
+
 #endif /* _MC_NQ_H_ */

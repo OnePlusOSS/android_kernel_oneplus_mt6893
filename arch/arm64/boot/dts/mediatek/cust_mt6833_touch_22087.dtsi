@@ -1,0 +1,186 @@
+/* touch bringup */
+&spi4 {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	touchscreen@0 {
+		compatible = "oplus,tp_noflash";
+		reg = <0>;
+		chip-name = "OPLUS_TP_NOFLASH";
+		status = "okay";
+
+		spi-max-frequency = <9600000>;	//4800000,9600000,15000000,19200000
+		interrupt-parent = <&pio>;
+		interrupts = <14 IRQ_TYPE_EDGE_FALLING 14 0>;
+		irq-gpio = <&pio 14 0x2002>;
+		reset-gpio = <&pio 15 0>;
+
+		/*remove tp_type and firmware_name for 2nd source compatible*/
+		/*type and firmwar will define in touch.c*/
+		/*driver match info*/
+		/*tp_type = <7>;*/ /*type:7 TIANMA*/
+		/*firmware_name = "0xAC102TN00";*/
+		platform_support_project = <22087 22088 22331 22332 22333 22334 22869>;
+		platform_support_project_dir = <22087 22087 22087 22087 22087 22087 22087>;
+		platform_support_project_commandline = "default_commandline", "default_commandline", "default_commandline", "default_commandline", "default_commandline", "default_commandline", "default_commandline";
+
+		/*panel properities*/
+		touchpanel,max-num-support = <10>;
+		touchpanel,tx-rx-num = <16 36>;
+		touchpanel,display-coords = <1080 2400>;
+		touchpanel,panel-coords = <4320 9600>;
+		touchpanel,touchmajor-limit = <0 54>;
+		touchpanel,button-type = <4>;
+		touchpanel.button-TRx = <0 0>;
+		touchpanel,irq_need_dev_resume_time = <500>;
+
+		touchpanel,smooth-level = <255 0 96 192 223 254>;
+		touchpanel,sensitive-level = <255 20 15 10 6 3>;
+		touchpanel,single-optimized-time = <8>;
+		touchpanel,msecs-to-jiffies-time = <500>;
+
+		/*tp-pinctrl*/
+		pinctrl-names = "default","pin_set_low", "pin_set_high";
+		pinctrl-0 = <&ctp_tp_spi_mode &ctp_tp_clk_spi_mode>;
+		pinctrl-1 = <&ctp_ts_cs_poweroff &ctp_ts_int_poweroff &ctp_ts_reset_poweroff &ctp_ts_clk_poweroff &ctp_ts_miso_poweroff>;
+		pinctrl-2 = <&ctp_ts_cs_poweron  &ctp_ts_int_poweron  &ctp_ts_reset_poweron &ctp_ts_clk_poweron &ctp_ts_miso_poweron>;
+
+		/*sw-feature*/
+		incell_screen;
+		irq_need_dev_resume_ok;
+		fw_edge_limit_support;
+		black_gesture_support;
+		charger_pump_support;
+		//headset_pump_support;
+		esd_handle_support;
+		black_gesture_test_support;
+		//game_switch_support;
+		noflash_support;
+		lcd_trigger_load_tp_fw_support;
+		smart_gesture_support;
+		pressure_report_support;
+		fw_update_app_support;
+		health_monitor_v2_support;
+		fw_update_in_probe_with_headfile;
+		nf_nt36672c {
+                        label = "TIANMA";
+                        tx-rx-num = <16 36>;
+                        panel-coords = <4320 9600>;
+                        display-coords = <1080 2400>;
+                        touchmajor-limit = <0 54>;
+                        single-optimized-time = <8>;
+                        smooth-level = <255 0 96 192 223 254>;
+                        sensitive-level = <255 20 15 10 6 3>;
+                };
+		ili7807s {
+                        label = "DSJM";
+                        tx-rx-num = <16 36>;
+                        panel-coords = <4320 9600>;
+                        display-coords = <1080 2400>;
+                        touchmajor-limit = <0 54>;
+                        single-optimized-time = <8>;
+                        smooth-level = <255 5 4 3 2 1>;
+                        sensitive-level = <255 1 2 3 4 5>;
+                };
+	};
+};
+
+&pio {
+	ctp_tp_spi_mode:ctp_tp_spi_mode{
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO12__FUNC_SPI4_MI>,
+				<PINMUX_GPIO13__FUNC_SPI4_MO>,
+				<PINMUX_GPIO98__FUNC_SPI4_CSB>;
+			drive-strength = <1>;
+		};
+	};
+	ctp_tp_clk_spi_mode:ctp_tp_clk_spi_mode{
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO97__FUNC_SPI4_CLK>;
+			mediatek,drive-strength-adv = <0>;/*EH[2:0]*/
+			drive-strength = <1>;
+		};
+	};
+	ctp_ts_cs_poweroff: ctp_ts_cs_poweroff {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO98__FUNC_GPIO98>;
+			slew-rate = <1>;
+			output-low;
+			bias-disable;
+			//drive-strength = <4>;
+		};
+	};
+	ctp_ts_cs_poweron: ctp_ts_cs_poweron {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO98__FUNC_SPI4_CSB>;
+			drive-strength = <1>;
+			//output-high;
+		};
+	};
+	ctp_ts_clk_poweroff: ctp_ts_clk_poweroff {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO97__FUNC_GPIO97>;
+			slew-rate = <1>;
+			output-low;
+			bias-disable;
+			//drive-strength = <4>;
+		};
+	};
+	ctp_ts_clk_poweron: ctp_ts_clk_poweron {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO97__FUNC_SPI4_CLK>;
+			mediatek,drive-strength-adv = <0>;/*EH[2:0]*/
+			drive-strength = <1>;
+		};
+	};
+	ctp_ts_miso_poweroff: ctp_ts_miso_poweroff {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO12__FUNC_GPIO12>;
+			slew-rate = <1>;
+			output-low;
+			bias-disable;
+			//drive-strength = <4>;
+		};
+	};
+	ctp_ts_miso_poweron: ctp_ts_miso_poweron {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO12__FUNC_SPI4_MI>;
+			drive-strength = <1>;
+		};
+	};
+	ctp_ts_int_poweroff: ctp_ts_int_poweroff {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO14__FUNC_GPIO14>;
+			slew-rate = <1>;
+			output-low;
+			bias-disable;
+		};
+	};
+	ctp_ts_int_poweron: ctp_ts_int_poweron {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO14__FUNC_GPIO14>;
+			slew-rate = <0>;
+			input-enable;
+			bias-pull-up = <00>;
+		};
+	};
+	ctp_ts_reset_poweroff: ctp_ts_reset_poweroff {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO15__FUNC_GPIO15>;
+			slew-rate = <1>;
+			output-low;
+			bias-disable;
+		};
+	};
+
+	ctp_ts_reset_poweron: ctp_ts_reset_poweron {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO15__FUNC_GPIO15>;
+			slew-rate = <1>;
+			output-high;
+			bias-disable;
+		};
+	};
+};
+/* touch bringup */

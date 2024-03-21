@@ -519,6 +519,49 @@ out:
 	return ret;
 }
 
+#if defined(OPLUS_FEATURE_SCHED_ASSIST)
+
+static unsigned long backtrace[4];
+
+unsigned long* get_backtrace(struct task_struct *p)
+{
+	struct stackframe frame;
+	unsigned long stack_page = 0;
+	int count = 0;
+	int layer_count = 0;
+
+	memset(backtrace, 0, sizeof(backtrace));
+    if (!p || p == current || p->state == TASK_RUNNING)
+		return NULL;
+
+	stack_page = (unsigned long)try_get_task_stack(p);
+	if (!stack_page)
+		return NULL;
+
+	frame.fp = thread_saved_fp(p);
+	frame.pc = thread_saved_pc(p);
+#ifdef CONFIG_FUNCTION_GRAPH_TRACER
+	frame.graph = p->curr_ret_stack;
+#endif
+
+    do {
+        if (unwind_frame(p, &frame))
+			goto out;
+		if (!in_sched_functions(frame.pc) ) {
+			backtrace[layer_count] = frame.pc;
+			if(++layer_count == 4)
+				goto out;
+		}
+    } while (count++ < 16);
+
+out:
+    put_task_stack(p);
+
+    return backtrace;
+}
+
+#endif /* defined(OPLUS_FEATURE_SCHED_ASSIST) */
+
 unsigned long arch_align_stack(unsigned long sp)
 {
 	if (!(current->personality & ADDR_NO_RANDOMIZE) && randomize_va_space)

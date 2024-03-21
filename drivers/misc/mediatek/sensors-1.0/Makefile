@@ -18,6 +18,14 @@ obj-$(CONFIG_CUSTOM_KERNEL_STEP_COUNTER) += step_counter/
 obj-$(CONFIG_CUSTOM_KERNEL_SIGNIFICANT_MOTION_SENSOR) += step_counter/
 obj-$(CONFIG_CUSTOM_KERNEL_SITUATION) += situation/
 obj-$(CONFIG_CUSTOM_KERNEL_SENSOR_FUSION) += sensorfusion/
+#ifdef OPLUS_FEATURE_SENSOR
+obj-y += oplus_sensor_devinfo/
+#endif //OPLUS_FEATURE_SENSOR
+#ifdef OPLUS_FEATURE_SENSORR_ALGORITHM
+#ifneq ($(OPLUS_FEATURE_SENSOR_ALGORITHM),)
+obj-y += oplus_virtual_sensor/
+#endif
+#endif //OPLUS_FEATURE_SENSOR_ALGORITHM
 else
 obj-y += dummy.o
 endif

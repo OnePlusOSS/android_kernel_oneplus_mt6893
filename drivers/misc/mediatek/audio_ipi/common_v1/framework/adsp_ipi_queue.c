@@ -22,6 +22,7 @@
 
 #include <audio_assert.h>
 #include <audio_ipi_platform.h>
+#include <uapi/linux/sched/types.h>
 
 #ifdef CONFIG_MTK_AUDIODSP_SUPPORT
 #include <adsp_ipi.h>
@@ -863,6 +864,7 @@ static int scp_init_single_msg_queue(
 	char thread_name[32] = {0};
 
 	int i = 0, n = 0;
+	struct sched_param param = { .sched_priority = 3 };
 
 	if (msg_queue == NULL) {
 		pr_info("NULL!! msg_queue: %p", msg_queue);
@@ -945,6 +947,7 @@ static int scp_init_single_msg_queue(
 	} else {
 		msg_queue->thread_enable = true;
 		dsb(SY);
+		sched_setscheduler_nocheck(msg_queue->scp_thread_task, SCHED_FIFO, &param);
 		wake_up_process(msg_queue->scp_thread_task);
 	}
 

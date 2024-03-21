@@ -17,6 +17,12 @@
 #define CPU_FOOTPRINT_SHIFT 24
 
 #define MTK_SUSPEND_FEATURE_ENABLE (1)
+struct spm_wakesrc_irq_list {
+	unsigned int wakesrc;
+	const char *name;
+	int order;
+	unsigned int irq_no;
+};
 
 enum spm_suspend_step {
 	SPM_SUSPEND_ENTER = 0x00000001,

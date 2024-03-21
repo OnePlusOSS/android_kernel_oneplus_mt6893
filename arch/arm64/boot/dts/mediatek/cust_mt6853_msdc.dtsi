@@ -124,7 +124,11 @@
 };
 
 &mmc1 {
-	status = "okay";
+	/* #ifndef OPLUS_BUG_STABILITY */
+	/* status = "okay"; */
+	/* #else */
+	status = "disabled";
+	/* #endif */
 	host-index = <1>;
 	host-function = <MSDC_SD>;
 	pinctrl-names = "default", "state_uhs", "pull_down";

@@ -1159,6 +1159,7 @@ int audio_ipi_dma_write_region(const uint8_t task,
 		return -ENODATA;
 	}
 
+	#ifndef OPLUS_ARCH_EXTENDS
 	region = &g_dma[dsp_id]->region[task][AUDIO_IPI_DMA_AP_TO_SCP];
 	DUMP_REGION(ipi_dbg, "region", region, data_size);
 
@@ -1168,6 +1169,23 @@ int audio_ipi_dma_write_region(const uint8_t task,
 	/* write data */
 	ret = audio_region_write_from_linear(dsp_id,
 					     region, data_buf, data_size);
+
+	#else
+	/*Solve the crash in adsp.*/
+	mutex_lock(&region_lock);
+
+	region = &g_dma[dsp_id]->region[task][AUDIO_IPI_DMA_AP_TO_SCP];
+	DUMP_REGION(ipi_dbg, "region", region, data_size);
+
+	/* keep the data index before write */
+	*write_idx = region->write_idx;
+
+	/* write data */
+	ret = audio_region_write_from_linear(dsp_id,
+					     region, data_buf, data_size);
+
+	mutex_unlock(&region_lock);
+	#endif
 
 	return ret;
 }

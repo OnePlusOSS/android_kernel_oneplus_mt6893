@@ -7,7 +7,11 @@
 #ifndef _LCM_DEFINE_H
 #define _LCM_DEFINE_H
 
-#if defined(MTK_LCM_DEVICE_TREE_SUPPORT)
+//#ifndef OPLUS_BUG_STABILITY
+//#if defined(MTK_LCM_DEVICE_TREE_SUPPORT)
+//#else
+#if (defined(MTK_LCM_DEVICE_TREE_SUPPORT) || defined(MTK_LCM_DEVICE_TREE_SUPPORT_PASCAL_E))
+//#endif
 /* LCM_FUNC */
 #define LCM_FUNC_GPIO	1
 #define LCM_FUNC_I2C	2

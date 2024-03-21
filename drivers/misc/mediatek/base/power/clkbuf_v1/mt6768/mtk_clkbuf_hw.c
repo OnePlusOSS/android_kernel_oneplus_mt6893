@@ -767,34 +767,38 @@ bool clk_buf_ctrl(enum clk_buf_id id, bool onoff)
 	else
 		return true;
 }
-EXPORT_SYMBOL(clk_buf_ctrl); 
+EXPORT_SYMBOL(clk_buf_ctrl);
 
 void clk_buf_disp_ctrl(bool onoff)
 {
+#if 0
 	int pwrap_dcxo_en;
 
 	pwrap_dcxo_en = clkbuf_readl(DCXO_ENABLE) & ~DCXO_NFC_ENABLE;
 	clkbuf_writel(DCXO_ENABLE, pwrap_dcxo_en);
+#endif
+
 	if (onoff) {
-		pmic_config_interface(PMIC_DCXO_CW00_CLR_ADDR,
-			PMIC_XO_EXTBUF3_MODE_MASK,
-			PMIC_XO_EXTBUF3_MODE_MASK,
-			PMIC_XO_EXTBUF3_MODE_SHIFT);
-		pmic_config_interface(PMIC_DCXO_CW00_SET_ADDR,
-			PMIC_XO_EXTBUF3_EN_M_MASK,
-			PMIC_XO_EXTBUF3_EN_M_MASK,
-			PMIC_XO_EXTBUF3_EN_M_SHIFT);
-		pmic_clk_buf_swctrl[XO_NFC] = 1;
+		pr_info("----------mtk clk buf 7--------\n");
+		pmic_config_interface(PMIC_DCXO_CW11_CLR_ADDR,
+			PMIC_XO_EXTBUF7_MODE_MASK,
+			PMIC_XO_EXTBUF7_MODE_MASK,
+			PMIC_XO_EXTBUF7_MODE_SHIFT);
+		pmic_config_interface(PMIC_DCXO_CW11_SET_ADDR,
+			PMIC_XO_EXTBUF7_EN_M_MASK,
+			PMIC_XO_EXTBUF7_EN_M_MASK,
+			PMIC_XO_EXTBUF7_EN_M_SHIFT);
+		pmic_clk_buf_swctrl[XO_EXT] = 1;
 	} else {
-		pmic_config_interface(PMIC_DCXO_CW00_CLR_ADDR,
-			PMIC_XO_EXTBUF3_MODE_MASK,
-			PMIC_XO_EXTBUF3_MODE_MASK,
-			PMIC_XO_EXTBUF3_MODE_SHIFT);
-		pmic_config_interface(PMIC_DCXO_CW00_CLR_ADDR,
-			PMIC_XO_EXTBUF3_EN_M_MASK,
-			PMIC_XO_EXTBUF3_EN_M_MASK,
-			PMIC_XO_EXTBUF3_EN_M_SHIFT);
-		pmic_clk_buf_swctrl[XO_NFC] = 0;
+		pmic_config_interface(PMIC_DCXO_CW11_CLR_ADDR,
+			PMIC_XO_EXTBUF7_MODE_MASK,
+			PMIC_XO_EXTBUF7_MODE_MASK,
+			PMIC_XO_EXTBUF7_MODE_SHIFT);
+		pmic_config_interface(PMIC_DCXO_CW11_CLR_ADDR,
+			PMIC_XO_EXTBUF7_EN_M_MASK,
+			PMIC_XO_EXTBUF7_EN_M_MASK,
+			PMIC_XO_EXTBUF7_EN_M_SHIFT);
+		pmic_clk_buf_swctrl[XO_EXT] = 0;
 	}
 }
 EXPORT_SYMBOL(clk_buf_disp_ctrl);
@@ -1615,11 +1619,14 @@ void clk_buf_post_init(void)
 	CLK_BUF7_STATUS = CLOCK_BUFFER_DISABLE;
 #endif
 #endif
-#ifndef CONFIG_NFC_CHIP_SUPPORT
-	/* no need to use XO_NFC if no NFC */
-	clk_buf_ctrl_internal(CLK_BUF_NFC, CLK_BUF_FORCE_OFF);
-	CLK_BUF3_STATUS = CLOCK_BUFFER_DISABLE;
-#endif
+//#ifdef VENDOR_EDIT
+//Remove for: adaption nfc
+//#ifndef CONFIG_NFC_CHIP_SUPPORT
+//	/* no need to use XO_NFC if no NFC */
+//	clk_buf_ctrl_internal(CLK_BUF_NFC, CLK_BUF_FORCE_OFF);
+//	CLK_BUF3_STATUS = CLOCK_BUFFER_DISABLE;
+//#endif
+//#endif /* VENDOR_EDIT */
 #ifdef CLKBUF_USE_BBLPM
 	if (bblpm_switch == 2) {
 		clk_buf_ctrl_bblpm_mask(CLK_BUF_BB_MD, true);

@@ -2,6 +2,8 @@
 /*
  * Scheduler internal types and methods:
  */
+#ifndef __KERNEL_SCHED_H__
+#define __KERNEL_SCHED_H__
 #include <linux/sched.h>
 
 #include <linux/sched/autogroup.h>
@@ -87,9 +89,18 @@
 struct rq;
 struct cpuidle_state;
 
+#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_SPREAD)
+extern unsigned int sched_capacity_margin_up[NR_CPUS];
+extern unsigned int sched_capacity_margin_down[NR_CPUS];
+#endif
+
 /* task_struct::on_rq states: */
 #define TASK_ON_RQ_QUEUED	1
 #define TASK_ON_RQ_MIGRATING	2
+
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+extern int sysctl_uxchain_v2;
+#endif
 
 extern __read_mostly int scheduler_running;
 
@@ -1022,7 +1033,17 @@ struct rq {
 	struct cpuidle_state	*idle_state;
 	int			idle_state_idx;
 #endif
-
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+	struct list_head ux_thread_list;
+#endif /* OPLUS_FEATURE_SCHED_ASSIST */
+#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_SCHED_WALT)
+	u64 window_start;
+#endif /* defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_SCHED_WALT) */
+#ifdef CONFIG_LOCKING_PROTECT
+	int rq_locking_task;
+	int rq_picked_locking_cont;
+	struct list_head locking_thread_list;
+#endif
 };
 
 #ifdef CONFIG_FAIR_GROUP_SCHED
@@ -2444,6 +2465,13 @@ static inline unsigned long capacity_orig_of(int cpu)
 {
 	return cpu_rq(cpu)->cpu_capacity_orig;
 }
+
+#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_SCHED_WALT)
+extern unsigned int sysctl_sched_use_walt_cpu_util;
+extern unsigned int sysctl_sched_use_walt_task_util;
+extern unsigned int walt_ravg_window;
+extern bool walt_disabled;
+#endif /* defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_SCHED_WALT) */
 #endif
 
 /**
@@ -2544,3 +2572,5 @@ extern struct static_key_false sched_energy_present;
 #endif
 
 #include "extension/eas_plus.h"
+
+#endif /* __KERNEL_SCHED_H__ */

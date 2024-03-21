@@ -253,8 +253,12 @@ int fuse_passthrough_open(struct fuse_dev *fud,
 	passthrough_sb = passthrough_inode->i_sb;
 	if (passthrough_sb->s_stack_depth >= FILESYSTEM_MAX_STACK_DEPTH) {
 		pr_err("FUSE: fs stacking depth exceeded for passthrough\n");
-		res = -EINVAL;
-		goto err_free_file;
+//		pr_err("FUSE: file name = , super block magic = 0x%x\n",
+//					 passthrough_sb->s_magic);
+		pr_err("FUSE: file name = %s, super block magic = 0x%x\n",
+					passthrough_filp->f_path.dentry->d_name.name, passthrough_sb->s_magic);
+//		res = -EINVAL;
+//		goto err_free_file;
 	}
 
 	passthrough = kmalloc(sizeof(struct fuse_passthrough), GFP_KERNEL);

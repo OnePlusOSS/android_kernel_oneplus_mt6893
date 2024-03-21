@@ -1,0 +1,132 @@
+
+&charger {
+	io-channels =  <&auxadc 3>,<&auxadc 4>,<&auxadc 5>;
+	io-channel-names = "auxadc6-subboard_temp","auxadc4-usb_temp_v_l","auxadc5-usb_temp_v_r";
+};
+
+&bat_gm30 {
+	RBAT_PULL_UP_R = <(12000)>;
+};
+
+/* accdet start */
+&accdet {
+//#ifdef OPLUS_BUG_STABILITY
+	/* moisture HW mode config start. Enable moisture detection or not
+	 * default use HW mode for moisture detection
+	 */
+	moisture_detect_enable = <1>;
+//#endif /* OPLUS_BUG_STABILITY */
+//#ifdef OPLUS_BUG_STABILITY
+	/* enable eint detection mode, if moisture detection enable
+	 * eint_detect_mode = moisture_detect_mode;otherwise, select
+	 * eint_detect_mode = 4 as DEFAULT
+	 */
+	eint_detect_mode = <5>;
+	/* enable moisture detection mode, if moisture detection enable
+	 * eint_detect_mode = moisture_detect_mode
+	 */
+	moisture_detect_mode = <5>;
+	/* select 0: 2.8V; 1: 2.4V; 2: 2V; 3: VTH=MVTH(VTH2) */
+	moisture_comp_vth = <2>;
+	/* vref2 voltage for different water impedance */
+//#ifdef PLUS_BUG_STABILITY
+	moisture_comp_vref2 = <2>;
+//
+	/* vref2 voltage for different water impedance */
+//	moisture_comp_vref2 = <0>;
+//#endif
+	/* moisture HW mode config end */
+
+	/* moisture SW mode config start, use external resister or not.
+	 * DEFAULT NOT NEED
+	 */
+	moisture_use_ext_res = <0>;
+	/* moisture external resister ohm, SW mode by auxadc */
+	moisture-external-r = <2000000>;
+	/* moisture internal resister ohm, SW mode by auxadc */
+	moisture-internal-r = <47000>;
+	/* moisture of water resister ohm, SW mode by auxadc*/
+	moisture-water-r = <10000>;
+	/* moisture SW mode config end */
+//#endif /* OPLUS_BUG_STABILITY */
+};
+/* accdet end */
+
+&i2c7 {
+	rt5125-fastcg@0e{
+	#include "../../../fastchg_fw/rt5125_fw_data_4450_vooc_ffc_5v6a_7bit_20619.dtsi"
+	};
+};
+
+&vooc_asic_id_active {
+	pins_cmd_dat {
+		pinmux = <PINMUX_GPIO56__FUNC_GPIO56>;
+		input-enable;
+		slew-rate = <0>;
+		bias-pull-up = <MTK_PUPD_SET_R1R0_10>;
+	};
+};
+
+&vooc_asic_id_sleep {
+	pins_cmd_dat {
+		pinmux = <PINMUX_GPIO56__FUNC_GPIO56>;
+		input-enable;
+		slew-rate = <0>;
+		bias-pull-down = <MTK_PUPD_SET_R1R0_10>;
+	};
+};
+
+&mt6360_pmu {
+	chg {
+		cdp_first_ignore;
+	};
+};
+
+&odm {
+	oplus_devinfo:oplus_devinfo {
+	compatible = "oplus-devinfo";
+	main-sub {
+		compatible = "hw-match, main-sub";
+		aboard-patterns = <0>;
+		/*main board*/
+		match-projects = <20619>;
+	};
+	};
+
+        mediatek_phy_tuning: mediatek_phy_tuning {
+                phy_tuning {
+                        compatible = "mediatek,phy_tuning";
+                        eye-vrt = <7>;
+                        eye-term = <7>;
+                        eye-rev6 = <2>;
+                        host-eye-vrt = <7>;
+                        host-eye-term = <6>;
+                        host-eye-rev6 = <3>;
+                };
+        };
+
+        oplus,track-charge {
+                compatible = "oplus,track-charge";
+                track,fast_chg_break_t_thd = <1000>;
+                track,general_chg_break_t_thd = <200>;
+                track,voocphy_type = <0>;
+                track,wired_max_power = <30000>;
+                track,wired_fast_chg_scheme = <4>;
+        };
+};
+
+&rear_cct_1 {
+        config_id = <1>;
+};
+
+&light_1 {
+        als_type = <2>;
+};
+
+//#endif
+
+&swtp {
+    compatible = "mediatek, swtp-eint";
+    debounce = <512000>;
+};
+

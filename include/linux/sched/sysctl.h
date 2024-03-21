@@ -12,6 +12,9 @@ extern unsigned int  sysctl_hung_task_panic;
 extern unsigned long sysctl_hung_task_timeout_secs;
 extern unsigned long sysctl_hung_task_check_interval_secs;
 extern int sysctl_hung_task_warnings;
+#ifdef CONFIG_OPLUS_FEATURE_HUNG_TASK_ENHANCE
+extern int sysctl_hung_task_selective_monitoring;
+#endif
 extern int proc_dohung_task_timeout_secs(struct ctl_table *table, int write,
 					 void __user *buffer,
 					 size_t *lenp, loff_t *ppos);
@@ -26,6 +29,11 @@ extern unsigned int sysctl_sched_sync_hint_enable;
 extern unsigned int sysctl_sched_cstate_aware;
 extern unsigned int sysctl_sched_wakeup_granularity;
 extern unsigned int sysctl_sched_child_runs_first;
+#if defined (OPLUS_FEATURE_SCHED_ASSIST) && defined (CONFIG_SCHED_WALT)
+extern unsigned int sysctl_sched_use_walt_cpu_util;
+extern unsigned int sysctl_sched_use_walt_task_util;
+extern unsigned int sysctl_sched_walt_init_task_load_pct;
+#endif /* defined (OPLUS_FEATURE_SCHED_ASSIST) && defined (CONFIG_SCHED_WALT) */
 
 enum sched_tunable_scaling {
 	SCHED_TUNABLESCALING_NONE,
@@ -102,5 +110,12 @@ extern int sched_energy_aware_handler(struct ctl_table *table, int write,
 				 void __user *buffer, size_t *lenp,
 				 loff_t *ppos);
 #endif
+
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+extern int sysctl_sched_assist_scene_handler(struct ctl_table *table, int write,
+	void __user *buffer, size_t *lenp, loff_t *ppos);
+extern int sysctl_sched_assist_input_boost_ctrl_handler(struct ctl_table *table, int write,
+	void __user *buffer, size_t *lenp, loff_t *ppos);
+#endif /* OPLUS_FEATURE_SCHED_ASSIST */
 
 #endif /* _LINUX_SCHED_SYSCTL_H */

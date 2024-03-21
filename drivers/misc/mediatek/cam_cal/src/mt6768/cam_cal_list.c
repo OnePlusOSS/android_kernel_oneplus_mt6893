@@ -9,6 +9,10 @@
 #include "eeprom_i2c_custom_driver.h"
 #include "kd_imgsensor.h"
 
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+#define MAX_EEPROM_SIZE_16K 0x4000
+#endif
+
 struct stCAM_CAL_LIST_STRUCT g_camCalList[] = {
 	/*Below is commom sensor */
 	{IMX519_SENSOR_ID, 0xA0, Common_read_region},
@@ -22,6 +26,27 @@ struct stCAM_CAL_LIST_STRUCT g_camCalList[] = {
 	{IMX350_SENSOR_ID, 0xA0, Common_read_region},
 	{IMX318_SENSOR_ID, 0xA0, Common_read_region},
 	{IMX386_MONO_SENSOR_ID, 0xA0, Common_read_region},
+	{MIAMI_OV64B_SENSOR_ID, 0xA0, Common_read_region},
+	{MIAMI_AAC2_OV64B_SENSOR_ID, 0xA0, Common_read_region},
+	{MIAMI_S5KJN1_SENSOR_ID, 0xA0, Common_read_region},
+	{MIAMI_SC800CS_SENSOR_ID, 0xA2, Common_read_region},
+	{MIAMI_OV8856_SENSOR_ID, 0xA2, Common_read_region},
+	{ALADDIN_OV50D40_SENSOR_ID, 0xA0, Common_read_region},
+	{ALADDIN_OV08D10_SENSOR_ID, 0xA0, Common_read_region},
+	{ATOM_OV50D40_SENSOR_ID, 0xA0, Common_read_region},
+	{ATOM_IMX355_SENSOR_ID, 0xA0, Common_read_region},
+	{ATOM_S5K5E9YX04_SENSOR_ID, 0xA8, Common_read_region},
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	{EVEN_QTECH_MAIN_S5KGM1ST03_SENSOR_ID, 0xA0, Common_read_region, MAX_EEPROM_SIZE_16K},
+	{EVEN_QTECH_MAIN_OV13B10_SENSOR_ID, 0xA0, Common_read_region},
+	{EVEN_HLT_DEPTH_GC02M1B_MIPI_SENSOR_ID, 0xA2, Common_read_region},
+	{EVEN_SHENGTAI_MACRO_OV02B10_SENSOR_ID, 0xA4, Common_read_region},
+	{EVEN_SHENGTAI_FRONT_OV8856_SENSOR_ID, 0xA0, Common_read_region},
+	{EVEN_SHINETECH_MAIN_S5KJN103_SENSOR_ID, 0xA0, Common_read_region},
+	{EVENC_SHENGTAI_FRONT_OV8856_SENSOR_ID, 0xA0, Common_read_region},
+	{EVENC_SHENGTAI_MACRO_OV02B10_SENSOR_ID, 0xA4, Common_read_region},
+#endif
+
 	/*B+B. No Cal data for main2 OV8856*/
 	{S5K2P7_SENSOR_ID, 0xA0, Common_read_region},
 #ifdef SUPPORT_S5K4H7

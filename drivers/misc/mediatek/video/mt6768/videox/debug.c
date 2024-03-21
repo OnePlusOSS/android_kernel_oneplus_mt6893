@@ -971,7 +971,11 @@ static void process_dbg_opt(const char *opt)
 			return;
 		}
 		DISPCHECK("clk_change:%d\n", clk);
+#ifdef CONFIG_MTK_MT6382_BDG
+		primary_display_mipi_clk_change(1, clk);
+#else
 		primary_display_mipi_clk_change(clk);
+#endif
 	} else if (strncmp(opt, "dsipattern:", 11) == 0) {
 		char *p = (char *)opt + 11;
 		unsigned int pattern;

@@ -1500,11 +1500,13 @@ short is_clkbuf_bringup(void)
 
 void clk_buf_post_init(void)
 {
-#ifndef CONFIG_NFC_CHIP_SUPPORT
-	/* no need to use XO_NFC if no NFC */
-	clk_buf_ctrl_internal(CLK_BUF_NFC, CLK_BUF_FORCE_OFF);
-	CLK_BUF3_STATUS = CLOCK_BUFFER_DISABLE;
-#endif
+//#ifdef OPLUS_FEATURE_NFC_BRINGUP
+//#ifndef CONFIG_NFC_CHIP_SUPPORT
+//	/* no need to use XO_NFC if no NFC */
+//	clk_buf_ctrl_internal(CLK_BUF_NFC, CLK_BUF_FORCE_OFF);
+//	CLK_BUF3_STATUS = CLOCK_BUFFER_DISABLE;
+//#endif
+//#endif /* OPLUS_FEATURE_NFC_BRINGUP */
 #ifdef CLKBUF_USE_BBLPM
 	if (bblpm_switch == 2) {
 		clk_buf_ctrl_bblpm_mask(CLK_BUF_BB_MD, true);

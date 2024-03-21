@@ -47,7 +47,11 @@ int gpio_get_tristate_input(unsigned int pin)
 {
 	struct mtk_pinctrl *hw = NULL;
 	const struct mtk_pin_desc *desc;
+#if defined(CONFIG_MACH_MT6768)
 	int val, val_up, val_down, ret, pullup, pullen, pull_type;
+#else
+	int val, val_up, val_down, ret, pullup, pullen, pull_type, pin_temp;
+#endif
 
 	if (!g_hw)
 		mtk_gpio_find_mtk_pinctrl_dev();
@@ -69,15 +73,27 @@ int gpio_get_tristate_input(unsigned int pin)
 		pr_notice(FUN_3STATE ": please use virtual pin number\n");
 		return -EINVAL;
 	}
-
+#if defined(CONFIG_MACH_MT6768)
 	pin -= hw->chip.base;
 	if (pin >= hw->soc->npins) {
 		pr_notice(FUN_3STATE ": invalid pin number: %u\n",
 			pin);
 		return -EINVAL;
 	}
+#else
+	pin_temp = pin - hw->chip.base;
+	if (pin_temp >= hw->soc->npins) {
+		pr_notice(FUN_3STATE ": invalid pin number: %u\n",
+			pin_temp);
+		return -EINVAL;
+	}
+#endif
 
+#if defined(CONFIG_MACH_MT6768)
 	desc = (const struct mtk_pin_desc *)&hw->soc->pins[pin];
+#else
+	desc = (const struct mtk_pin_desc *)&hw->soc->pins[pin - hw->chip.base];
+#endif
 	ret = mtk_hw_get_value(hw, desc, PINCTRL_PIN_REG_MODE, &val);
 	if (ret)
 		return ret;
@@ -93,9 +109,17 @@ int gpio_get_tristate_input(unsigned int pin)
 	if (pullen == 0 ||  pullen == MTK_PUPD_SET_R1R0_00) {
 		pr_notice(FUN_3STATE ":GPIO%d not pullen, skip floating test\n",
 			pin);
-		return gpio_get_value(pin+hw->chip.base);
+#if defined(CONFIG_MACH_MT6768)
+		//return gpio_get_value(pin+hw->chip.base);
+#else
+		return gpio_get_value(pin);
+#endif
 	}
+#if defined(CONFIG_MACH_MT6768)
+	if (pullen >= MTK_PUPD_SET_R1R0_00)
+#else
 	if (pullen > MTK_PUPD_SET_R1R0_00)
+#endif
 		pull_type = 1;
 	else
 		pull_type = 0;
@@ -103,21 +127,37 @@ int gpio_get_tristate_input(unsigned int pin)
 	/* set pullsel as pull-up and get input value */
 	pr_notice(FUN_3STATE ":pull up GPIO%d\n", pin);
 	ret = hw->soc->bias_set_combo(hw, desc, 1,
+#if defined(CONFIG_MACH_MT6768)
+		(pull_type ? MTK_PUPD_SET_R1R0_01 : MTK_ENABLE));
+#else
 		(pull_type ? MTK_PUPD_SET_R1R0_11 : MTK_ENABLE));
+#endif
 	if (ret)
 		goto out;
 	mdelay(PULL_DELAY);
+#if defined(CONFIG_MACH_MT6768)
 	val_up = gpio_get_value(pin+hw->chip.base);
+#else
+	val_up = gpio_get_value(pin);
+#endif
 	pr_notice(FUN_3STATE ":GPIO%d input %d\n", pin, val_up);
 
 	/* set pullsel as pull-down and get input value */
 	pr_notice(FUN_3STATE ":pull down GPIO%d\n", pin);
 	ret = hw->soc->bias_set_combo(hw, desc, 0,
+#if defined(CONFIG_MACH_MT6768)
+		(pull_type ? MTK_PUPD_SET_R1R0_01 : MTK_ENABLE));
+#else
 		(pull_type ? MTK_PUPD_SET_R1R0_11 : MTK_ENABLE));
+#endif
 	if (ret)
 		goto out;
 	mdelay(PULL_DELAY);
+#if defined(CONFIG_MACH_MT6768)
 	val_down = gpio_get_value(pin+hw->chip.base);
+#else
+	val_down = gpio_get_value(pin);
+#endif
 	pr_notice(FUN_3STATE ":GPIO%d input %d\n", pin, val_down);
 
 	if (val_up && val_down)

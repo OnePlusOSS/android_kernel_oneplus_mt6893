@@ -366,7 +366,7 @@ static const u32 vfe28_voltages[] = {
 static const u32 vcn13_voltages[] = {
 	900000,
 	1000000,
-	0,
+	1050000,
 	1200000,
 	1300000,
 };

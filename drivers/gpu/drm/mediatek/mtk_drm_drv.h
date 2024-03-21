@@ -203,6 +203,8 @@ struct mtk_drm_private {
 
 	/* Due to 2nd display share 1 secure gce client, need store here */
 	struct cmdq_client *ext_sec_client;
+
+	bool already_first_config;
 };
 
 struct mtk_drm_property {

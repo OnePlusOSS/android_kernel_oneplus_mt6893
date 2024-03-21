@@ -1,0 +1,1 @@
+bringup lcm for project S91369AA1,and this panel is nt36525b_hlt_even_boe_hdp_dsi_vdo_lcm.c

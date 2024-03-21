@@ -43,7 +43,11 @@
  ***********************************************************/
 static struct mt6358_chip *chip;
 struct regmap *pmic_nolock_regmap;
-
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/*********workaround：error code start issue NO.230506103757615893********/
+bool pmic_not_support_lpm = false;
+/*********workaround：error code end********/
+#endif
 static int pmic_read_device(struct regmap *map,
 			    unsigned int RegNum,
 			    unsigned int *val,
@@ -557,7 +561,7 @@ static struct regmap_bus regmap_pmic_ipi_bus = {
 static int pmic_mt_probe(struct platform_device *pdev)
 {
 	int ret = 0;
-
+	struct device_node *np = NULL;
 	chip = dev_get_drvdata(pdev->dev.parent);
 #ifdef IPIMB
 	pmic_read_regmap = dev_get_regmap(chip->dev->parent, NULL);
@@ -581,6 +585,12 @@ static int pmic_mt_probe(struct platform_device *pdev)
 	}
 #else
 	pmic_nolock_regmap = chip->regmap;
+#endif
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/*********workaround：error code start issue NO.230506103757615893********/
+	np = of_find_node_by_name(NULL, "oplus_project");
+	pmic_not_support_lpm = of_property_read_bool(np, "qcom,pmic_not_support_lpm");
+/*********workaround：error code end********/
 #endif
 
 	pr_info("******** MT pmic driver probe!! ********\n");

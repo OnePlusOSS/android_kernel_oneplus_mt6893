@@ -22,6 +22,9 @@
 #include "adsp_excep.h"
 #include "adsp_feature_define.h"
 #include "adsp_reserved_mem.h"
+#ifdef OPLUS_FEATURE_MM_FEEDBACK
+#include <soc/oplus/system/oplus_mm_kevent_fb.h>
+#endif /* OPLUS_FEATURE_MM_FEEDBACK */
 
 static unsigned char *adsp_ke_buffer;
 static unsigned char *adsp_A_dump_buffer;
@@ -322,6 +325,9 @@ void adsp_aed(enum adsp_excep_id type, enum adsp_core_id id)
 	char *aed_type;
 	int db_opt = DB_OPT_DEFAULT;
 	int ret = 0;
+#ifdef OPLUS_FEATURE_MM_FEEDBACK
+	unsigned char fb_str[256] = "";
+#endif /* OPLUS_FEATURE_MM_FEEDBACK */
 
 	mutex_lock(&adsp_excep_mutex);
 	/* get adsp title and exception type*/
@@ -372,7 +378,11 @@ void adsp_aed(enum adsp_excep_id type, enum adsp_core_id id)
 		      coredump->task_name);
 	n += snprintf(detail + n, ADSP_AED_STR_LEN - n, "%s",
 		      coredump->assert_log);
+#ifdef OPLUS_BUG_DEBUG
+	pr_info("%s", detail);
+#else
 	pr_debug("%s", detail);
+#endif
 
 #ifdef CFG_RECOVERY_SUPPORT
 	if (ret > 0 && /* if dram backup done, notify reset.work it's okay */
@@ -387,6 +397,17 @@ void adsp_aed(enum adsp_excep_id type, enum adsp_core_id id)
 	/* adsp aed api, only detail information available*/
 	aed_common_exception_api("adsp", NULL, 0, NULL, 0, detail, db_opt);
 
+#ifndef OPLUS_FEATURE_MM_FEEDBACK
+	pr_debug("[ADSP] adsp exception dump is done\n");
+#else //OPLUS_FEATURE_MM_FEEDBACK
+	pr_info("[ADSP] adsp exception dump is done\n");
+#endif //OPLUS_FEATURE_MM_FEEDBACK
+
+#ifdef OPLUS_FEATURE_MM_FEEDBACK
+	scnprintf(fb_str, sizeof(fb_str), "payload@@%s:task:%s,%s$$fid@@123456",
+			aed_type, coredump->task_name, coredump->assert_log);
+	upload_mm_fb_kevent_to_atlas_limit(OPLUS_AUDIO_EVENTID_ADSP_CRASH, fb_str, OPLUS_FB_ADSP_CRASH_RATELIMIT);
+#endif //OPLUS_FEATURE_MM_FEEDBACK
 	pr_info("[ADSP] adsp exception dump is done\n");
 	mutex_unlock(&adsp_excep_mutex);
 }

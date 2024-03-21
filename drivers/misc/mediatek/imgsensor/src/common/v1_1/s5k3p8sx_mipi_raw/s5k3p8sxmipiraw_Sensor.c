@@ -393,7 +393,6 @@ static void write_shutter(kal_uint32 shutter)
 	kal_uint16 realtime_fps = 0;
 
 	#if 1
-	/*zhengjiang.zhu@camera.driver,20170819,add for slow shutter */
 	kal_uint32 exp_time = 0;/* shutter * 5120 * 1000 / 560000000;*/
 	kal_uint32 value_coarse_2frame = 0;/* reg_0x303E*/
 	kal_uint32 value_coarse_1frame = 0;/* reg_0x304A*/
@@ -430,7 +429,6 @@ static void write_shutter(kal_uint32 shutter)
 	}
 	/* Update Shutter*/
 	#if 1
-	/*zhengjiang.zhu@camera.driver,20170819,add for slow shutter */
 	exp_time = (shutter * 512) / 56000;
 
 	if (exp_time < 1100) {

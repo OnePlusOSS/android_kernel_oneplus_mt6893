@@ -38,3 +38,6 @@ obj-$(CONFIG_PSI) += psi.o
 
 obj-y += extension/
 
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+obj-$(CONFIG_SCHED_WALT) += walt.o
+#endif /* OPLUS_FEATURE_SCHED_ASSIST */

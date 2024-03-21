@@ -21,3 +21,8 @@ else ifeq ($(CONFIG_ION),y)
 else
   $(info ION: ION disable)
 endif
+
+#ifdef OPLUS_FEATURE_HANS_FREEZE
+obj-$(CONFIG_OPLUS_HANS) += hans.o
+obj-$(CONFIG_OPLUS_HANS) += hans_netfilter.o
+#endif /*OPLUS_FEATURE_HANS_FREEZE*/

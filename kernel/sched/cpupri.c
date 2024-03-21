@@ -27,6 +27,9 @@
  *  of the License.
  */
 #include "sched.h"
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+#include <linux/sched_assist/sched_assist_common.h>
+#endif /* OPLUS_FEATURE_SCHED_ASSIST */
 
 /* Convert between a 140 based task->prio, and our 102 based cpupri */
 static int convert_prio(int prio)
@@ -45,6 +48,12 @@ static int convert_prio(int prio)
 	return cpupri;
 }
 
+#if defined(OPLUS_FEATURE_SCHED_ASSIST)
+extern void drop_ux_task_cpus(struct task_struct *p, struct cpumask *lowest_mask);
+#endif /* OPLUS_FEATURE_SCHED_ASSIST */
+
+extern bool oplus_task_misfit(struct task_struct *p, int cpu);
+extern void kick_min_cpu_from_mask(struct cpumask *lowest_mask);
 static inline int __cpupri_find(struct cpupri *cp, struct task_struct *p,
 				struct cpumask *lowest_mask, int idx)
 {
@@ -82,7 +91,14 @@ static inline int __cpupri_find(struct cpupri *cp, struct task_struct *p,
 
 	if (lowest_mask) {
 		cpumask_and(lowest_mask, &p->cpus_allowed, vec->mask);
-
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+                if(sysctl_sched_assist_enabled)
+                        drop_ux_task_cpus(p, lowest_mask);
+#endif /* OPLUS_FEATURE_SCHED_ASSIST */
+#if defined (CONFIG_SCHED_WALT) && defined (OPLUS_FEATURE_SCHED_ASSIST)
+		if (sysctl_sched_assist_enabled && (sched_assist_scene(SA_SLIDE)|| sched_assist_scene(SA_INPUT) || sched_assist_scene(SA_LAUNCHER_SI) || sched_assist_scene(SA_ANIM)) && oplus_task_misfit(p, task_cpu(p)))
+			kick_min_cpu_from_mask(lowest_mask);
+#endif /* OPLUS_FEATURE_SCHED_ASSIST */
 		/*
 		 * We have to ensure that we have at least one bit
 		 * still set in the array, since the map could have

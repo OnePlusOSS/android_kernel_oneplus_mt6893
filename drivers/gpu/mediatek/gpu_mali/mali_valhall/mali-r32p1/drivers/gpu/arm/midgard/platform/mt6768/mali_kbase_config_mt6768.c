@@ -29,12 +29,33 @@ DEFINE_MUTEX(g_mfg_lock);
 static void *g_MFG_base;
 static int g_curFreqID;
 
+static void debug_dump_reg(void) {
+	/* mfg memif0 gals tx */
+	mali_pr_info("@%s: mfg memif0 gals tx ...\n", __func__);
+	writel(0x80000, g_MFG_base + 0x180); /* write 0x13000180 = 0x80000, [19:16]=0x8 */
+	writel(0x0, g_MFG_base + 0x184);
+	mali_pr_info("@%s: 0x80000, val = 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x\n",
+			__func__, readl(g_MFG_base + 0x17c),
+			readl(g_MFG_base + 0x180), readl(g_MFG_base + 0x184),
+			readl(g_MFG_base + 0x188), readl(g_MFG_base + 0x18c));
+
+	/* mfg memif1 gals tx */
+	mali_pr_info("@%s: mfg memif1 gals tx ...\n", __func__);
+	writel(0x90000, g_MFG_base + 0x180); /* write 0x13000180 = 0x90000, [19:16]=0x9 */
+	writel(0x0, g_MFG_base + 0x184);
+	mali_pr_info("@%s: 0x90000, val = 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x\n",
+			__func__, readl(g_MFG_base + 0x17c),
+			readl(g_MFG_base + 0x180), readl(g_MFG_base + 0x184),
+			readl(g_MFG_base + 0x188), readl(g_MFG_base + 0x18c));
+}
+
 /**
  * For GPU idle check
  */
 static void __mtk_check_MFG_idle(void)
 {
 	u32 val;
+	int i = 0;
 
 	/* MFG_QCHANNEL_CON (0x130000b4) bit [1:0] = 0x1 */
 	writel(0x00000001, g_MFG_base + 0xb4);
@@ -50,6 +71,16 @@ static void __mtk_check_MFG_idle(void)
 	do {
 		val = readl(g_MFG_base + 0x178);
 		mali_pr_debug("@%s: 0x13000178 val = 0x%x\n", __func__, val);
+		/* wait for about 1s then timeout, GPU can power off directly */
+		if(i>100)
+			udelay(1000);
+
+		if(1000 == i) {
+			mali_pr_info("timeout waiting for 0x13000178 val = 0x%x\n", __func__, val);
+			debug_dump_reg();
+			return;
+		}
+		i++;
 	} while ((val & 0x4) != 0x4);
 }
 

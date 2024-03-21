@@ -709,6 +709,7 @@ static int vidioc_try_fmt(struct v4l2_format *f, struct mtk_video_fmt *fmt,
 	unsigned int step_height_in_pixel;
 	unsigned int saligned;
 	unsigned int imagePixels;
+	unsigned int calc_max_height;
 	// for AFBC
 	unsigned int block_w = 16;
 	unsigned int block_h = 16;
@@ -740,12 +741,14 @@ static int vidioc_try_fmt(struct v4l2_format *f, struct mtk_video_fmt *fmt,
 		}
 
 		mtk_v4l2_debug(1,
-			       "pix_fmt_mp->pixelformat %d bs fmt %d min_w %d min_h %d max_w %d max_h %d\n",
+			       "pix_fmt_mp->pixelformat %d bs fmt %d min_w %d min_h %d max_w %d max_h %d step_w %d step_h %d\n",
 			       pix_fmt_mp->pixelformat, bs_fourcc,
 			       spec_size_info->stepwise.min_width,
 			       spec_size_info->stepwise.min_height,
 			       spec_size_info->stepwise.max_width,
-			       spec_size_info->stepwise.max_height);
+			       spec_size_info->stepwise.max_height,
+			       spec_size_info->stepwise.step_width,
+			       spec_size_info->stepwise.step_height);
 
 		if ((spec_size_info->stepwise.step_width &
 		     (spec_size_info->stepwise.step_width - 1)) != 0)
@@ -832,70 +835,40 @@ static int vidioc_try_fmt(struct v4l2_format *f, struct mtk_video_fmt *fmt,
 		 * (with MBAFF height align should be 32)
 		 * width height swappable
 		 */
-
-		if (pix_fmt_mp->height > pix_fmt_mp->width) {
-			pix_fmt_mp->height = clamp(pix_fmt_mp->height,
-				(spec_size_info->stepwise.min_height),
-				(spec_size_info->stepwise.max_width));
-			pix_fmt_mp->width = clamp(pix_fmt_mp->width,
-				(spec_size_info->stepwise.min_width),
-				(spec_size_info->stepwise.max_height));
-			org_w = pix_fmt_mp->width;
-			org_h = pix_fmt_mp->height;
-			v4l_bound_align_image(&pix_fmt_mp->width,
-				spec_size_info->stepwise.min_width,
-				spec_size_info->stepwise.max_height,
-				log2_enc(step_width_in_pixel),
-				&pix_fmt_mp->height,
-				spec_size_info->stepwise.min_height,
-				spec_size_info->stepwise.max_width,
-				log2_enc(step_height_in_pixel),
-				saligned);
-
-			if (pix_fmt_mp->width < org_w &&
-			    (pix_fmt_mp->width +
-			     step_width_in_pixel) <=
-			    spec_size_info->stepwise.max_height)
-				pix_fmt_mp->width +=
-					step_width_in_pixel;
-			if (pix_fmt_mp->height < org_h &&
-			    (pix_fmt_mp->height +
-			     step_height_in_pixel) <=
-			    spec_size_info->stepwise.max_width)
-				pix_fmt_mp->height +=
-					step_height_in_pixel;
-		} else {
-			pix_fmt_mp->height = clamp(pix_fmt_mp->height,
-				(spec_size_info->stepwise.min_height),
-				(spec_size_info->stepwise.max_height));
-			pix_fmt_mp->width = clamp(pix_fmt_mp->width,
-				(spec_size_info->stepwise.min_width),
-				(spec_size_info->stepwise.max_width));
-			org_w = pix_fmt_mp->width;
-			org_h = pix_fmt_mp->height;
-			v4l_bound_align_image(&pix_fmt_mp->width,
-				spec_size_info->stepwise.min_width,
-				spec_size_info->stepwise.max_width,
-				log2_enc(step_width_in_pixel),
-				&pix_fmt_mp->height,
-				spec_size_info->stepwise.min_height,
-				spec_size_info->stepwise.max_height,
-				log2_enc(step_height_in_pixel),
-				saligned);
-
-			if (pix_fmt_mp->width < org_w &&
-			    (pix_fmt_mp->width +
-			     step_width_in_pixel) <=
-			    spec_size_info->stepwise.max_width)
-				pix_fmt_mp->width +=
-					step_width_in_pixel;
-			if (pix_fmt_mp->height < org_h &&
-			    (pix_fmt_mp->height +
-			     step_height_in_pixel) <=
-			    spec_size_info->stepwise.max_height)
-				pix_fmt_mp->height +=
-					step_height_in_pixel;
-		}
+		pix_fmt_mp->width = clamp(ALIGN(pix_fmt_mp->width,
+			spec_size_info->stepwise.step_width),
+			spec_size_info->stepwise.min_width,
+			spec_size_info->stepwise.max_width);
+		calc_max_height = ALIGN_DOWN(spec_size_info->stepwise.max_width
+			* spec_size_info->stepwise.max_height
+			/ pix_fmt_mp->width,
+			spec_size_info->stepwise.step_height);
+		pix_fmt_mp->height = clamp(pix_fmt_mp->height,
+			spec_size_info->stepwise.min_height,
+			calc_max_height);
+		org_w = pix_fmt_mp->width;
+		org_h = pix_fmt_mp->height;
+		v4l_bound_align_image(&pix_fmt_mp->width,
+			spec_size_info->stepwise.min_width,
+			spec_size_info->stepwise.max_width,
+			log2_enc(step_width_in_pixel),
+			&pix_fmt_mp->height,
+			spec_size_info->stepwise.min_height,
+			calc_max_height,
+			log2_enc(step_height_in_pixel),
+			saligned);
+		if (pix_fmt_mp->width < org_w &&
+			(pix_fmt_mp->width +
+			step_width_in_pixel) <=
+			spec_size_info->stepwise.max_width)
+			pix_fmt_mp->width +=
+				step_width_in_pixel;
+		if (pix_fmt_mp->height < org_h &&
+			(pix_fmt_mp->height +
+			step_height_in_pixel) <=
+			calc_max_height)
+			pix_fmt_mp->height +=
+				step_height_in_pixel;
 
 		pix_fmt_mp->num_planes = fmt->num_planes;
 		imagePixels = pix_fmt_mp->width * pix_fmt_mp->height;
@@ -2590,10 +2563,6 @@ static void mtk_venc_worker(struct work_struct *work)
 
 	v4l2_m2m_job_finish(ctx->dev->m2m_dev_enc, ctx->m2m_ctx);
 
-	mtk_v4l2_debug(1, "<=== src_buf[%d] dst_buf[%d] venc_if_encode ret=%d Size=%u===>",
-			src_buf->index, dst_buf->index, ret,
-			enc_result.bs_size);
-
 	mutex_unlock(&ctx->worker_lock);
 }
 
@@ -2771,7 +2740,7 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	v4l2_ctrl_new_std_menu(handler, ops,
 		V4L2_CID_MPEG_VIDEO_HEVC_LEVEL,
 		V4L2_MPEG_VIDEO_HEVC_LEVEL_5_1,
-		0, V4L2_MPEG_VIDEO_HEVC_LEVEL_4);
+		0, V4L2_MPEG_VIDEO_HEVC_LEVEL_1);
 	v4l2_ctrl_new_std_menu(handler, ops,
 		V4L2_CID_MPEG_VIDEO_HEVC_TIER,
 		V4L2_MPEG_VIDEO_HEVC_TIER_HIGH,

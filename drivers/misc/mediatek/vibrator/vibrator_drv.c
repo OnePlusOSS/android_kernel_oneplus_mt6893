@@ -151,6 +151,9 @@ static ssize_t vibr_activate_store(struct device *dev,
 {
 	unsigned int activate = 0, dur = 0;
 	ssize_t ret;
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	struct vibrator_hw *hw = mt_get_cust_vibrator_hw();
+#endif /*OPLUS_FEATURE_CHG_BASIC*/
 
 	ret = kstrtouint(buf, 10, &activate);
 	if (ret) {
@@ -158,6 +161,14 @@ static ssize_t vibr_activate_store(struct device *dev,
 		return ret;
 	}
 	dur = atomic_read(&g_mt_vib->vibr_dur);
+
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	if(hw && dur < hw->vib_timer && (hrtimer_active(&g_mt_vib->vibr_timer))) {
+		ret = size;
+		return ret;
+	}
+#endif /*OPLUS_FEATURE_CHG_BASIC*/
+
 	vibrator_enable(dur, activate);
 	ret = size;
 	return ret;

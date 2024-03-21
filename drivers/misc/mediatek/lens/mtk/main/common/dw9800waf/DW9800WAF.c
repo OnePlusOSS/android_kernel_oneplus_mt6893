@@ -1,18 +1,26 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2019 MediaTek Inc.
+ * Copyright (C) 2015 MediaTek Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
  */
 
-
 /*
- * DW9814AF voice coil motor driver
+ * DW9800WAF voice coil motor driver
  *
  *
  */
-#include <linux/delay.h>
-#include <linux/fs.h>
+
 #include <linux/i2c.h>
+#include <linux/delay.h>
 #include <linux/uaccess.h>
+#include <linux/fs.h>
 
 #include "lens_info.h"
 
@@ -43,10 +51,11 @@ static int i2c_read(u8 a_u2Addr, u8 *a_puBuff)
 {
 	int i4RetValue = 0;
 	char puReadCmd[1] = { (char)(a_u2Addr) };
-
+	g_pstAF_I2Cclient->addr = AF_I2C_SLAVE_ADDR;
+	g_pstAF_I2Cclient->addr = g_pstAF_I2Cclient->addr >> 1;
 	i4RetValue = i2c_master_send(g_pstAF_I2Cclient, puReadCmd, 1);
-	if (i4RetValue != 2) {
-		LOG_INF(" I2C write failed!!\n");
+	if (i4RetValue < 0) {
+		LOG_INF(" I2C failed!!\n");
 		return -1;
 	}
 
@@ -113,7 +122,7 @@ static inline int getAFInfo(__user struct stAF_MotorInfo *pstMotorInfo)
 		stMotorInfo.bIsMotorOpen = 0;
 
 	if (copy_to_user(pstMotorInfo, &stMotorInfo,
-		sizeof(struct stAF_MotorInfo)))
+				sizeof(struct stAF_MotorInfo)))
 		LOG_INF("copy to user failed when getting motor information\n");
 
 	return 0;
@@ -124,14 +133,14 @@ static int initdrv(void)
 	int i4RetValue = 0;
 	char puSendCmdArray[7][2] = {
 	{0x02, 0x01}, {0x02, 0x00}, {0xFE, 0xFE},
-	{0x02, 0x02}, {0x06, 0x40}, {0x07, 0x60}, {0xFE, 0xFE},
+	{0x02, 0x02}, {0x06, 0x80}, {0x07, 0x7E}, {0xFE, 0xFE},
 	};
 	unsigned char cmd_number;
 
 	LOG_INF("InitDrv[1] %p, %p\n", &(puSendCmdArray[1][0]),
-		puSendCmdArray[1]);
+			puSendCmdArray[1]);
 	LOG_INF("InitDrv[2] %p, %p\n", &(puSendCmdArray[2][0]),
-		puSendCmdArray[2]);
+			puSendCmdArray[2]);
 
 	for (cmd_number = 0; cmd_number < 7; cmd_number++) {
 		if (puSendCmdArray[cmd_number][0] != 0xFE) {
@@ -141,7 +150,7 @@ static int initdrv(void)
 			if (i4RetValue < 0)
 				return -1;
 		} else {
-			udelay(100);
+			udelay(2000);
 		}
 	}
 
@@ -195,15 +204,15 @@ static inline int setAFMacro(unsigned long a_u4Position)
 }
 
 /* ////////////////////////////////////////////////////////////// */
-long DW9800WAF_Ioctl(struct file *a_pstFile, unsigned int a_u4Command,
-		unsigned long a_u4Param)
+long DW9800WAF_Ioctl_Main(struct file *a_pstFile,
+		unsigned int a_u4Command, unsigned long a_u4Param)
 {
 	long i4RetValue = 0;
 
 	switch (a_u4Command) {
 	case AFIOC_G_MOTORINFO:
-		i4RetValue = getAFInfo((__user struct stAF_MotorInfo *)
-				(a_u4Param));
+		i4RetValue = getAFInfo((__user struct
+					stAF_MotorInfo *) (a_u4Param));
 		break;
 
 	case AFIOC_T_MOVETO:
@@ -232,10 +241,35 @@ long DW9800WAF_Ioctl(struct file *a_pstFile, unsigned int a_u4Command,
 /* 2.Shut down the device on last close. */
 /* 3.Only called once on last time. */
 /* Q1 : Try release multiple times. */
-int DW9800WAF_Release(struct inode *a_pstInode, struct file *a_pstFile)
+int DW9800WAF_Release_Main(struct inode *a_pstInode, struct file *a_pstFile)
 {
-	LOG_INF("Start\n");
+    LOG_INF("Start\n");
 
+    if (g_u4CurrPosition > g_u4AF_INF && g_u4CurrPosition <= g_u4AF_MACRO) {
+        while (g_u4CurrPosition > 512) {
+            if (g_u4CurrPosition < 582) {
+                spin_lock(g_pAF_SpinLock);
+                g_u4CurrPosition += -15;
+                spin_unlock(g_pAF_SpinLock);
+                if (512 > g_u4CurrPosition) {
+                    spin_lock(g_pAF_SpinLock);
+                    g_u4CurrPosition = 512;
+                    spin_unlock(g_pAF_SpinLock);
+                }
+            } else {
+                spin_lock(g_pAF_SpinLock);
+                g_u4CurrPosition += -50;
+                spin_unlock(g_pAF_SpinLock);
+            }
+            if (s4AF_WriteReg(g_u4CurrPosition) != 0) {
+                LOG_INF("AF DW9800WAF_Release I2C failed");
+            }
+            LOG_INF("DW9800WAF_Release pos %d", g_u4CurrPosition);
+            udelay(1000);
+        }
+            s4AF_WriteReg(512);
+            udelay(1000);
+    }
 	if (*g_pAF_Opened == 2)
 		LOG_INF("Wait\n");
 
@@ -252,8 +286,8 @@ int DW9800WAF_Release(struct inode *a_pstInode, struct file *a_pstFile)
 	return 0;
 }
 
-int DW9800WAF_SetI2Cclient(struct i2c_client *pstAF_I2Cclient,
-	spinlock_t *pAF_SpinLock, int *pAF_Opened)
+int DW9800WAF_SetI2Cclient_Main(struct i2c_client *pstAF_I2Cclient,
+		spinlock_t *pAF_SpinLock, int *pAF_Opened)
 {
 	int ret = 0;
 	unsigned short InitPos = 0;
@@ -287,7 +321,7 @@ int DW9800WAF_SetI2Cclient(struct i2c_client *pstAF_I2Cclient,
 	return 1;
 }
 
-int DW9800WAF_GetFileName(unsigned char *pFileName)
+int DW9800WAF_GetFileName_Main(unsigned char *pFileName)
 {
 	#if SUPPORT_GETTING_LENS_FOLDER_NAME
 	char FilePath[256];

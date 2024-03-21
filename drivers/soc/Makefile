@@ -25,3 +25,60 @@ obj-$(CONFIG_ARCH_U8500)	+= ux500/
 obj-$(CONFIG_PLAT_VERSATILE)	+= versatile/
 obj-y				+= xilinx/
 obj-$(CONFIG_ARCH_ZX)		+= zte/
+
+#ifdef OPLUS_FEATURE_LOWMEM_DBG
+obj-$(CONFIG_OPLUS_FEATURE_LOWMEM_DBG)	+=  oplus/lowmem_dbg/
+#endif /* OPLUS_FEATURE_LOWMEM_DBG */
+
+#ifdef OPLUS_FEATURE_IOMONITOR
+obj-$(CONFIG_IOMONITOR)    +=  oplus/iomonitor/
+#endif /*OPLUS_FEATURE_IOMONITOR*/
+
+#ifdef OPLUS_FEATURE_MEMLEAK_DETECT
+#Add for svelte
+obj-$(CONFIG_SVELTE)     +=  oplus/svelte/
+#endif /* OPLUS_FEATURE_MEMLEAK_DETECT */
+
+#ifdef OPLUS_BUG_STABILITY
+obj-y += oplus/system/
+#endif /* OPLUS_BUG_STABILITY */
+
+#ifdef OPLUS_FEATURE_TP_BASIC
+#Qicai.gu  12:00, 2020/06/03  devi info
+obj-y +=   oplus/device_info/
+##endif /* OPLUS_FEATURE_TP_BASIC */
+
+#ifdef OPLUS_FEATURE_GAME_OPT
+obj-$(CONFIG_OPLUS_FEATURE_GAME_OPT) += oplus/game_opt/
+#endif /* OPLUS_FEATURE_GAME_OPT */
+
+#ifdef OPLUS_FEATURE_HEALTHINFO
+obj-y  +=  oplus/healthinfo/
+#endif /* OPLUS_FEATURE_HEALTHINFO */
+
+#ifdef OPLUS_FEATURE_MIDAS
+obj-$(CONFIG_OPLUS_FEATURE_MIDAS)    += oplus/midas/
+#endif
+
+obj-$(CONFIG_OPLUS_FEATURE_ABNORMAL_FLAG) += oplus/oplus_overload/
+
+#ifdef OPLUS_BUG_STABILITY
+obj-y +=  oplus/oplus_custom/
+#endif /* OPLUS_BUG_STABILITY */
+
+# ifdef OPLUS_FEATURE_SENSOR 
+obj-$(CONFIG_OPLUS_ALS_CALI)   +=  oplus/oplus_als_cali_value/
+# endif /* OPLUS_FEATURE_SENSOR */
+
+#Add for NandSwap
+obj-$(CONFIG_NANDSWAP)		+= oplus/oplus_nandswap/
+
+#ifdef OPLUS_FEATURE_MODEM_MINIDUMP
+obj-y += oplus/oplus_criticallog/
+#endif OPLUS_FEATURE_MODEM_MINIDUMP
+
+#ifdef OPLUS_FEATURE_TMEMORY
+obj-y += oplus/tmemory/
+#endif OPLUS_FEATURE_TMEMORY
+
+obj-y				+= oplus/storage/

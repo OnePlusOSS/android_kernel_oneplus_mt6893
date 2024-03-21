@@ -79,9 +79,10 @@ again:
 	/* CMA can be used only in the context which permits sleeping */
 	if (gfpflags_allow_blocking(gfp)) {
 		if (attrs & DMA_ATTR_FORCE_CONTIGUOUS) {
-			page = dma_alloc_from_contiguous(dev, count, page_order,
+		page = dma_alloc_from_contiguous(dev, count, page_order,
 						 gfp & __GFP_NOWARN);
-		}else
+		}
+		else
 			page = NULL;
 		if (page && !dma_coherent_ok(dev, page_to_phys(page), size)) {
 			dma_release_from_contiguous(dev, page, count);

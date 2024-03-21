@@ -23,3 +23,24 @@ config MTK_LCM_DEVICE_TREE_SUPPORT
 	  Please also turn on MTK_LCM_DEVICE_TREE_SUPPORT in ProjectConfig.mk.
 	  If not define MTK_LCM_DEVICE_TREE_SUPPORT
 	  there will not connect between display driver and LCM devices.
+#ifdef OPLUS_BUG_STABILITY
+config MTK_LCM_DEVICE_TREE_SUPPORT_PASCAL_E
+	bool "support LCM device tree connect with display drivers"
+	help
+	  Decide whether to support LCM device tree based configuration.
+	  This feature requires the connection between display driver and LCM devices.
+	  Please also turn on MTK_LCM_DEVICE_TREE_SUPPORT in ProjectConfig.mk.
+	  If not define MTK_LCM_DEVICE_TREE_SUPPORT
+	  there will not connect between display driver and LCM devices.
+#endif
+
+#ifdef OPLUS_BUG_STABILITY
+config MTK_CUSTOM_LCM_DIFFERENT
+	bool "define MTK custom lcm driver"
+	help
+	  Decide whether to support LCM device tree based configuration.
+	  This feature requires the connection between display driver and LCM devices.
+	  Please also turn on MTK_LCM_DEVICE_TREE_SUPPORT in ProjectConfig.mk.
+	  If not define MTK_CUSTOM_LCM_DIFFERENT
+	  there will not connect between display driver and LCM devices.
+#endif

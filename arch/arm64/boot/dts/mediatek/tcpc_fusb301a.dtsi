@@ -1,0 +1,36 @@
+// SPDX-License-Identifier: GPL-2.0+
+/*
+ * Copyright (c) 2019 MediaTek Inc.
+ *
+ */
+
+ 
+&i2c5 {
+	fusb301_typec: usb_type_c_fusb301@21 {
+		compatible = "fusb,usb_type_c0"; //
+		reg = <0x21>;
+		mt-dual,supported_modes = <0>; /* 0: dfp/ufp, 1: dfp, 2: ufp */
+		fusb301-tcpc,name = "type_c_port0"; /* tcpc_device's name */ //
+		/* 0: SNK Only, 1: SRC Only, 2: DRP, 3: Try.SRC, 4: Try.SNK */
+		fusb301-tcpc,role_def = <0>;
+
+		fusb301-tcpc,rp_level = <0>; /* 0: Default, 1: 1.5, 2: 3.0 */ //
+		/* 0: Never, 1: Always, 2: EMarkOnly, 3: StartOnly */
+		fusb301-tcpc,vconn_supply  = <1>; //
+
+		/* the number of notifier supply */
+		fusb301-tcpc,notifier_supply_num = <3>; //
+
+		fusb301,intr_gpio = <&pio 17 0x0>; //
+		fusb301,intr_gpio_num = <17>; //
+
+		// mt6360pd,pcb_gpio = <&pio 5 0x0>;
+		// mt6360pd,pcb_gpio_num = <5>;
+		// interrupt-parent = <&subpmic_mtk>;
+		// interrupts = <64 0>;
+		// interrupt-names = "usbid_evt";
+		// bootmode = <&chosen>;
+        status = "okay";
+	};
+};
+

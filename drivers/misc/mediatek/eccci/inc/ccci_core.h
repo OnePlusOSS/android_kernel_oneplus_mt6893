@@ -286,6 +286,12 @@ extern void mtk_ccci_ccb_info_peek(void);
 /* RILD nodify ccci power off md */
 #define CCCI_IOC_RILD_POWER_OFF_MD		\
 	_IO(CCCI_IOC_MAGIC,  125)
+//#ifdef VENDOR_EDIT
+//Add for caple detect when SIM plug in
+/* RILD  */
+#define CCCI_IOC_SIM_INSERTED_FOR_SWITCH_RF_SAR     \
+    _IO(CCCI_IOC_MAGIC,  126)
+//#endif /* VENDOR_EDIT */
 
 
 #define CCCI_IPC_MAGIC 'P' /* only for IPC user */

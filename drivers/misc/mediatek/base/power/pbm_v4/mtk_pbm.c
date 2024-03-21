@@ -180,8 +180,11 @@ static int get_battery_volt(void)
 		pr_info("%s: POWER_SUPPLY_PROP_VOLTAGE_NOW fail\n", __func__);
 		return -EINVAL;
 	}
-
-	return prop.intval / 1000;
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	return prop.intval;
+#else
+	return prop.intval/1000;
+#endif
 }
 #endif
 unsigned int ma_to_mw(unsigned int val)

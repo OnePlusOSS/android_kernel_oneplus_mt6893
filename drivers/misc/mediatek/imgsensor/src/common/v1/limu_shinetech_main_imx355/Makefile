@@ -1,0 +1,1 @@
+obj-y += limu_shinetech_main_imx355.o

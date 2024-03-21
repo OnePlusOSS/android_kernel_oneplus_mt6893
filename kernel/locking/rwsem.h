@@ -26,6 +26,10 @@
 # define DEBUG_RWSEMS_WARN_ON(c)
 #endif
 
+#ifdef CONFIG_KERNEL_LOCK_OPT
+#include <linux/klockopt/klockopt.h>
+#endif
+
 #ifdef CONFIG_RWSEM_SPIN_ON_OWNER
 /*
  * All writes to owner are protected by WRITE_ONCE() to make sure that
@@ -37,10 +41,16 @@
 static inline void rwsem_set_owner(struct rw_semaphore *sem)
 {
 	WRITE_ONCE(sem->owner, current);
+#ifdef CONFIG_KERNEL_LOCK_OPT
+	add_owner(current, sem);
+#endif
 }
 
 static inline void rwsem_clear_owner(struct rw_semaphore *sem)
 {
+#ifdef CONFIG_KERNEL_LOCK_OPT
+	delete_owner(sem);
+#endif
 	WRITE_ONCE(sem->owner, NULL);
 }
 
@@ -51,6 +61,9 @@ static inline void rwsem_set_reader_owned(struct rw_semaphore *sem)
 	 * do a write to the rwsem cacheline when it is really necessary
 	 * to minimize cacheline contention.
 	 */
+#ifdef CONFIG_KERNEL_LOCK_OPT
+	add_owner(current, sem);
+#endif
 	if (READ_ONCE(sem->owner) != RWSEM_READER_OWNED)
 		WRITE_ONCE(sem->owner, RWSEM_READER_OWNED);
 }

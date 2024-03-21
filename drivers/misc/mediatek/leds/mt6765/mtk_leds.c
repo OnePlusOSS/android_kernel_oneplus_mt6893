@@ -47,6 +47,12 @@ static unsigned int backlight_PWM_div_hal = CLK_DIV1;
 #include <mt-plat/met_drv.h>
 #endif
 
+#ifdef OPLUS_BUG_STABILITY
+#include <mt-plat/mtk_boot_common.h>
+extern unsigned long silence_mode;
+#endif /* OPLUS_BUG_STABILITY */
+
+
 #undef pr_fmt
 #define pr_fmt(fmt) KBUILD_MODNAME " %s(%d) :" fmt, __func__, __LINE__
 
@@ -580,6 +586,13 @@ int mt_mt65xx_led_set_cust(struct cust_mt65xx_led *cust, int level)
 	unsigned int BacklightLevelSupport =
 	    Cust_GetBacklightLevelSupport_byPWM();
 
+#ifdef OPLUS_BUG_STABILITY
+	if (silence_mode) {
+		printk("%s silence_mode is %ld, set backlight to 0\n",__func__, silence_mode);
+		level = 0;
+	}
+#endif /* OPLUS_BUG_STABILITY */
+
 	switch (cust->mode) {
 
 	case MT65XX_LED_MODE_PWM:
@@ -674,6 +687,13 @@ void mt_mt65xx_led_work(struct work_struct *work)
 	mutex_unlock(&leds_mutex);
 }
 
+#ifdef OPLUS_BUG_STABILITY
+extern int primary_display_set_gamma_mode(unsigned int gamma_flag);
+int gamma_flag = 1;
+extern unsigned int custom_lcm_flag;
+extern char *mtkfb_find_lcm_driver(void);
+#endif
+
 void mt_mt65xx_led_set(struct led_classdev *led_cdev, enum led_brightness level)
 {
 	struct mt65xx_led_data *led_data =
@@ -698,6 +718,7 @@ void mt_mt65xx_led_set(struct led_classdev *led_cdev, enum led_brightness level)
 				    255;
 			}
 			backlight_debug_log(led_data->level, level);
+#ifndef OPLUS_BUG_STABILITY
 			disp_pq_notify_backlight_changed((((1 <<
 					MT_LED_INTERNAL_LEVEL_BIT_CNT)
 							    - 1) * level +
@@ -706,6 +727,44 @@ void mt_mt65xx_led_set(struct led_classdev *led_cdev, enum led_brightness level)
 					MT_LED_INTERNAL_LEVEL_BIT_CNT)
 							    - 1) * level +
 							   127) / 255);
+#else
+			if (silence_mode) {
+				printk("%s silence_mode is %ld, set backlight to 0\n", __func__, silence_mode);
+				level = 0;
+			}
+	        	if (custom_lcm_flag) {
+				if (!strcmp(mtkfb_find_lcm_driver(), "oplus21331_ili9883c_boe_hdp_dsi_vdo_lcm")
+					|| !strcmp(mtkfb_find_lcm_driver(), "oplus22261_td4160_truly_hdp_dsi_vdo_lcm")
+					|| !strcmp(mtkfb_find_lcm_driver(), "oplus22261_ili9883c_hlt_hdp_dsi_vdo_lcm")
+					|| !strcmp(mtkfb_find_lcm_driver(), "oplus22261_ili9883c_yfhlt_hdp_dsi_vdo_lcm")) {
+					if (13 == level) {
+						if (1 == gamma_flag) {
+							primary_display_set_gamma_mode(1);
+							gamma_flag = 0;
+						}
+					} else if (level > 13) {
+						if (0 == gamma_flag) {
+							primary_display_set_gamma_mode(0);
+							gamma_flag = 1;
+						}
+					}
+				} else {
+					if (14 == level) {
+						if (1 == gamma_flag) {
+							primary_display_set_gamma_mode(1);
+							gamma_flag = 0;
+						}
+					} else if (level > 14) {
+						if (0 == gamma_flag) {
+							primary_display_set_gamma_mode(0);
+							gamma_flag = 1;
+						}
+					}
+				}
+			}
+			disp_pq_notify_backlight_changed(level);
+			disp_aal_notify_backlight_changed(level);
+#endif
 		}
 	}
 #else

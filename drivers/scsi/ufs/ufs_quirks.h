@@ -110,6 +110,18 @@ struct ufs_dev_fix {
 
 /*
  * MTK PATCH
+ * For some devices, the performance is very low when TW buffer is fill full.
+ * Mark this in order to optimize it in block layer
+ */
+#define UFS_DEVICE_QUIRK_WORSE_PERFORMANCE  (1 << 27)
+
+/*
+ * Some UFS need do urgent gc to resovle its performance
+ * while the storage used in 80%+
+ */
+#define UFS_DEVICE_QUIRK_URGENT_GC  (1 << 28)
+/*
+ * MTK PATCH
  * Some UFS device need 5ms delay in VCC off. In order to wait VCC discharged
  * to 0V. Some device may have issue when VCC is not discharged to 0V
  * and power up.

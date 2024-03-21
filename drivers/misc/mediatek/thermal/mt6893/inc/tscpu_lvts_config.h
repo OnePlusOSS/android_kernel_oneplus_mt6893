@@ -92,4 +92,22 @@
 
 #define THERMINTST	(THERM_CTRL_BASE_2 + 0xF04)
 
+#define PROTOFFSET	GENMASK(15, 0)
+#define STAGE3_INT_EN	(1 << 31)
+#define HIGH_OFFSET3_INT_EN	(1 << 25)
+#define HIGH_OFFSET2_INT_EN	(1 << 13)
+#define HIGH_OFFSET1_INT_EN	(1 << 8)
+#define HIGH_OFFSET0_INT_EN	(1 << 3)
+
+#define LOW_OFFSET3_INT_EN	(1 << 24)
+#define LOW_OFFSET2_INT_EN	(1 << 12)
+#define LOW_OFFSET1_INT_EN	(1 << 7)
+#define LOW_OFFSET0_INT_EN	(1 << 2)
+
+#define HOT_INT3_EN		(1 << 23)
+#define HOT_INT2_EN		(1 << 11)
+#define HOT_INT1_EN		(1 << 6)
+#define HOT_INT0_EN		(1 << 1)
+
+
 #endif	/* __TSCPU_LVTS_SETTINGS_H__ */

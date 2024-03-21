@@ -512,6 +512,18 @@ firmware_class.path=/vendor/firmware loop.max_part=7";
 		};
 	};
 
+    shell_front {
+        compatible = "oplus,shell-temp";
+    };
+
+    shell_frame {
+        compatible = "oplus,shell-temp";
+    };
+
+    shell_back {
+        compatible = "oplus,shell-temp";
+    };
+
 	mtk_lpm: mtk_lpm {
 		compatible = "mediatek,mtk-lpm";
 		#address-cells = <2>;
@@ -861,6 +873,41 @@ firmware_class.path=/vendor/firmware loop.max_part=7";
 			reg = <0 0x10005000 0 0x1000>;
 		};
 
+	iocfg_rm: iocfg_rm@11c20000 {
+		compatible = "mediatek,iocfg_rm", "syscon";
+		reg = <0 0x11c20000 0 0x1000>;
+	};
+
+	iocfg_br: iocfg_br@11d10000 {
+		compatible = "mediatek,iocfg_br", "syscon";
+		reg = <0 0x11d10000 0 0x1000>;
+	};
+
+	iocfg_lm: iocfg_lm@11e20000 {
+		compatible = "mediatek,iocfg_lm", "syscon";
+		reg = <0 0x11e20000 0 0x1000>;
+	};
+
+	iocfg_lb: iocfg_lb@11e70000 {
+		compatible = "mediatek,iocfg_lb", "syscon";
+		reg = <0 0x11e70000 0 0x1000>;
+	};
+
+	iocfg_rt: iocfg_rt@11ea0000 {
+		compatible = "mediatek,iocfg_rt", "syscon";
+		reg = <0 0x11ea0000 0 0x1000>;
+	};
+
+	iocfg_lt: iocfg_lt@11f20000 {
+		compatible = "mediatek,iocfg_lt", "syscon";
+		reg = <0 0x11f20000 0 0x1000>;
+	};
+
+	iocfg_tl: iocfg_tl@11f30000 {
+		compatible = "mediatek,iocfg_tl", "syscon";
+		reg = <0 0x11f30000 0 0x1000>;
+	};
+
 		pio: pinctrl@10005000 {
 			compatible = "mediatek,mt6779-pinctrl", "syscon";
 			reg = <0 0x10005000 0 0x1000>,
@@ -986,6 +1033,18 @@ firmware_class.path=/vendor/firmware loop.max_part=7";
 				mode-ddr-reserve = <BOOT_DDR_RSVD>;
 				mode-meta = <BOOT_META>;
 				mode-rpmbpk = <BOOT_RPMBPK>;
+				//#ifdef OPLUS_BUG_STABILITY
+				mode-kernel = <BOOT_KERNEL>;
+				mode-sau = <BOOT_SAU>;
+				mode-silence = <BOOT_SILENCE>;
+				mode-safe = <BOOT_SAFE>;
+				//#ifdef OPLUS_FEATURE_AGINGTEST
+				mode-usermemaging = <BOOT_AGINGTEST>;
+				mode-sblmemtest = <BOOT_AGINGTEST>;
+				//#endif
+				mode-ftm = <BOOT_FACTORY>;
+				//#endif
+				mode-edl = <BOOT_EDL>;
 			};
 		};
 
@@ -1546,6 +1605,7 @@ firmware_class.path=/vendor/firmware loop.max_part=7";
 			mdp_hdr0 = <&mdp_hdr>;
 			mdp_color0 = <&disp_color0>;
 			smi_larb0 = <&smi_larb0>;
+			msdc0 = <&msdc0>;
 			sram_share_cnt = <2>;
 			sram_share_engine = <21>, <22>;
 			sram_share_event = <710>, <711>;
@@ -2141,9 +2201,9 @@ firmware_class.path=/vendor/firmware loop.max_part=7";
 
 		regulator_vibrator {
 			compatible = "regulator-vibrator";
-			min-volt = <2300000>;
+			min-volt = <2900000>;
 			max-volt = <3200000>;
-			min-limit = <15>;
+			min-limit = <30>;
 			max-limit = <15000>;
 			vib-supply = <&mt_pmic_vibr_ldo_reg>;
 		};
@@ -2225,31 +2285,27 @@ firmware_class.path=/vendor/firmware loop.max_part=7";
 			clock-names = "parent-clk", "sel-clk", "spi-clk";
 		};
 
-		mmc0: mmc@11230000 {
-			compatible = "mediatek,mt6779-mmc";
-			reg = <0 0x11230000 0 0x10000>,
-			      <0 0x11f50000 0 0x10000>;
-			interrupts = <GIC_SPI 101 IRQ_TYPE_LEVEL_LOW>;
-			clocks = <&topckgen CLK_TOP_MSDC50_0>,
-				 <&infracfg_ao CLK_INFRA_MSDC0>,
-				 <&infracfg_ao CLK_INFRA_MSDC0_SCK>,
-				 <&infracfg_ao CLK_INFRA_AES_UFSFDE>;
-			clock-names = "source", "hclk", "source_cg",
-				"crypto_clk";
-			status = "disabled";
-		};
+	msdc0:msdc@11230000 {
+		compatible = "mediatek,msdc";
+		reg = <0x0 0x11230000 0x0 0x10000>;
+		interrupts = <GIC_SPI 101 IRQ_TYPE_LEVEL_LOW>;
+	};
 
-		mmc1: mmc@11240000 {
-			compatible = "mediatek,mt6779-mmc";
-			reg = <0 0x11240000 0 0x1000>,
-			      <0 0x11e10000 0 0x1000>;
-			interrupts = <GIC_SPI 102 IRQ_TYPE_LEVEL_LOW>;
-			clocks = <&topckgen CLK_TOP_MSDC30_1>,
-				 <&infracfg_ao CLK_INFRA_MSDC1>,
-				 <&infracfg_ao CLK_INFRA_MSDC1_SCK>;
-			clock-names = "source", "hclk", "source_cg";
-			status = "disabled";
-		};
+	msdc1:msdc@11240000 {
+		compatible = "mediatek,msdc";
+		reg = <0x0 0x11240000 0x0 0x10000>;
+		interrupts = <GIC_SPI 102 IRQ_TYPE_LEVEL_LOW>;
+	};
+
+	msdc0_top@11f50000 {
+		compatible = "mediatek,msdc0_top";
+		reg = <0 0x11f50000 0 0x1000>;
+	};
+
+	msdc1_top@11e10000 {
+		compatible = "mediatek,msdc1_top";
+		reg = <0 0x11e10000 0 0x1000>;
+	};
 
 		ufshci@11270000 {
 			compatible = "mediatek,mt8183-ufshci";
@@ -3617,7 +3673,11 @@ firmware_class.path=/vendor/firmware loop.max_part=7";
 			};
 		};
 	};
-
+//#ifdef OPLUS_FEATURE_CHG_BASIC
+		mediatek_phy_tuning:mediatek_phy_tuning {
+			//add for tuning arg;
+		};
+//#endif
 	boot_dramboost {
 		compatible = "mediatek,dvfsrc-qosboost";
 		required-opps = <&dvfsrc_freq_opp0>;
@@ -3738,6 +3798,14 @@ firmware_class.path=/vendor/firmware loop.max_part=7";
 		compatible = "mediatek,mt6660";
 	};
 
+//#ifdef OPLUS_ARCH_EXTENDS
+	audio_extend: audio_extend {
+		compatible = "oplus,asoc-audio";
+	};
+//#endif
+
+
+
 	sound: sound {
 		compatible = "mediatek,mt6779-mt6359-sound";
 		mediatek,audio-codec = <&mt6359_snd>;
@@ -3788,7 +3856,11 @@ firmware_class.path=/vendor/firmware loop.max_part=7";
 		/*INFRA MISC, conn_bt_cvsd_mask*/
 		/*cvsd_mcu_read, write, packet_indicator*/
 		mediatek,offset =<0xf00 0x800 0x140 0x144 0x148>;
-		disable_write_silence = <0>;
+		//#ifdef OPLUS_ARCH_EXTENDS
+		disable_write_silence = <1>;
+		//#else
+		//#disable_write_silence = <0>;
+		//#endif
 	};
 
 	atf_logger {
@@ -4250,14 +4322,6 @@ firmware_class.path=/vendor/firmware loop.max_part=7";
 		sleep = <&sleep>;
 	};
 
-	nfc:nfc {
-		compatible = "mediatek,nfc-gpio-v2";
-		gpio-rst = <36>;
-		gpio-rst-std = <&pio 36 0x0>;
-		gpio-irq = <35>;
-		gpio-irq-std = <&pio 35 0x0>;
-	};
-
 	irq_nfc: irq_nfc {
 		compatible = "mediatek,irq_nfc-eint";
 	};
@@ -4265,6 +4329,11 @@ firmware_class.path=/vendor/firmware loop.max_part=7";
 	bat_gm30: battery {
 		compatible = "mediatek,bat_gm30";
 	};
+	//#ifdef OPLUS_FEATURE_SENSOR
+	oplus_sensorhub:oplus_sensorhub {
+		compatible = "sensorhub,sensor_ldo_vio";
+	};
+	//#endif //OPLUS_FEATURE_SENSOR
 
 	mtk_m4u_debug {
 		compatible = "mediatek,mt6779-m4u-debug";
@@ -4304,8 +4373,21 @@ firmware_class.path=/vendor/firmware loop.max_part=7";
 	msdc1_ins: msdc1_ins {
 	};
 
-	goodix_fp: fingerprint {
-		compatible = "mediatek,goodix-fp";
+//#ifdef OPLUS_FEATURE_SECURITY_COMMON
+	oplus_secure_common:oplus_secure_common {
+		compatible = "oplus,secure_common";
+		oplus,sec_reg_num = <0>;
+		oplus,sec_en_anti_reg = <0>;
+		oplus,sec_override1_reg = <0>;
+		oplus,override1_en_value = <0>;
+	};
+//#endif  OPLUS_FEATURE_SECURITY_COMMON
+
+	goodix_fp: goodix_fp {
+		compatible = "goodix,goodix_fp";
+	};
+	oplus_fp_common:oplus_fp_common { //Slave driver and CS ID
+		compatible = "oplus,fp_common"; //Manufacture, and Model
 	};
 
 	lk_charger: lk_charger {
@@ -4505,7 +4587,9 @@ firmware_class.path=/vendor/firmware loop.max_part=7";
 		charger = <&mt6360_chg>;
 		vbus-supply = <&otg_vbus>;
 		vbus-voltage = <5000000>;
-		vbus-current = <1800000>;
+/*#ifdef OPLUS_FEATURE_CHG_BASIC*/
+		vbus-current = <1300000>;
+/*#endif*/
 		dev-conn = <&ssusb>;
 		mediatek,bypss-typec-sink = <1>;
 	};
@@ -4536,3 +4620,4 @@ firmware_class.path=/vendor/firmware loop.max_part=7";
 #include "mediatek/cust_mt6779_msdc.dtsi"
 #include "mediatek/cust_mt6779_camera.dtsi"
 #include "mediatek/trusty.dtsi"
+#include "mediatek/mt6779-sia81xx-algorithm.dtsi"

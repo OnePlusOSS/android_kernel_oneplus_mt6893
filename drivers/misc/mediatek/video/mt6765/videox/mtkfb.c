@@ -69,6 +69,13 @@
 #ifdef CONFIG_MTK_SMI_EXT
 #include "smi_public.h"
 #endif
+#ifdef OPLUS_BUG_STABILITY
+#include <soc/oplus/system/oplus_project.h>
+#endif
+
+#ifdef OPLUS_FEATURE_DISPLAY
+#include <soc/oplus/system/oplus_mm_kevent_fb.h>
+#endif
 
 /* static variable */
 static u32 MTK_FB_XRES;
@@ -131,6 +138,18 @@ do {                   \
 
 #define PRNERR(fmt, args...) \
 	DISP_LOG_PRINT(ANDROID_LOG_INFO, "MTKFB", fmt, ## args)
+
+#ifdef OPLUS_BUG_STABILITY
+extern bool oplus_display_elevenbits_support;
+#endif
+
+#ifdef OPLUS_BUG_STABILITY
+extern bool oplus_display_twelvebits_support;
+unsigned int backlight_twelve_bit_flag = 0;
+unsigned int custom_lcm_flag = 0;
+extern unsigned int oplus_display_normal_max_brightness;
+extern bool oplus_display_local_dre_support;
+#endif
 
 /* ------------------------------------------------------------------------- */
 /* local variables */
@@ -1983,7 +2002,7 @@ static void _mtkfb_draw_block(unsigned long addr, unsigned int x,
 char *mtkfb_find_lcm_driver(void)
 {
 	_parse_tag_videolfb();
-	DISPMSG("%s, %s\n", __func__, mtkfb_lcm_name);
+	DISPINFO("%s, %s\n", __func__, mtkfb_lcm_name);
 	return mtkfb_lcm_name;
 }
 
@@ -2385,6 +2404,9 @@ static int mtkfb_probe(struct platform_device *pdev)
 	struct ion_handle *ion_display_handle = NULL;
 	size_t temp_va = 0;
 #endif
+#ifdef OPLUS_BUG_STABILITY
+	int of_ret = 0;
+#endif
 	/* struct platform_device *pdev; */
 	long dts_gpio_state = 0;
 
@@ -2399,6 +2421,67 @@ static int mtkfb_probe(struct platform_device *pdev)
 	_parse_tag_videolfb();
 
 	init_state = 0;
+#ifdef OPLUS_BUG_STABILITY
+	of_ret = of_property_read_u32(pdev->dev.of_node, "oplus_display_normal_max_brightness", &oplus_display_normal_max_brightness);
+	if (!of_ret)
+		dev_err(&pdev->dev, "read property oplus_display_normal_max_brightness failed.");
+	else
+		DISPMSG("%s:oplus_display_normal_max_brightness=%u\n", __func__, oplus_display_normal_max_brightness);
+#endif
+#ifdef OPLUS_BUG_STABILITY
+	switch (get_project()) {
+		case 21331:
+		case 21332:
+		case 21333:
+		case 21334:
+		case 21335:
+		case 21336:
+		case 21337:
+		case 21338:
+		case 21339:
+		case 22875:
+		case 22876:
+		case 22301:
+		case 22302:
+		case 22303:
+		case 22304:
+		case 22309:
+		case 21361:
+		case 21362:
+		case 21363:
+		case 21107:
+		case 20375: //jelly
+		case 21251: //paker-b
+		case 21253: //paker-b
+		case 21254: //paker-b
+		case 20376:
+		case 20377:
+		case 20378:
+		case 20379:
+		case 131962://2037A
+		case 22261: /* limu */
+		case 22262:
+		case 22263:
+		case 22264:
+		case 22266:
+		case 22081:
+		case 22265:
+			custom_lcm_flag = 1;
+			backlight_twelve_bit_flag = 1;
+			break;
+		default:
+			pr_err("[LCM] ERROR! is not twelvebits project.\n");
+			break;
+	}
+
+	if (backlight_twelve_bit_flag) {
+		printk("backlight_twelve_bit_flag =%d\n", backlight_twelve_bit_flag);
+		oplus_display_twelvebits_support = 1;
+	} else {
+		oplus_display_elevenbits_support = 1;
+	}
+	oplus_display_local_dre_support = of_property_read_bool(pdev->dev.of_node, "oplus_display_local_dre_support");
+#endif
 
 	/* pdev = to_platform_device(dev); */
 	/* repo call DTS gpio module, if not necessary, invoke nothing */
@@ -2450,6 +2533,9 @@ static int mtkfb_probe(struct platform_device *pdev)
 
 	if (!fbdev->fb_va_base) {
 		DISPERR("unable to allocate memory for frame buffer\n");
+		#ifdef OPLUS_FEATURE_DISPLAY
+		mm_fb_display_kevent("DisplayDriverID@@509$$", MM_FB_KEY_RATELIMIT_1H, "unable to allocate memory for frame buffer");
+		#endif
 		r = -ENOMEM;
 		goto cleanup;
 	}
@@ -2516,7 +2602,10 @@ static int mtkfb_probe(struct platform_device *pdev)
 
 
 	fbdev->state = MTKFB_ACTIVE;
-
+#ifdef OPLUS_BUG_STABILITY
+	register_ccci_sys_call_back(MD_SYS1, MD_DISPLAY_DYNAMIC_MIPI, primary_display_ccci_mipi_callback);
+	pr_info("mtkfb_probe: mipi_clk_change is regist ok\n");
+#endif
 	MSG_FUNC_LEAVE();
 	pr_info("disp driver(2) mtkfb_probe end\n");
 	return 0;
@@ -2579,10 +2668,17 @@ static void mtkfb_shutdown(struct platform_device *pdev)
 
 	if (primary_display_is_sleepd()) {
 		MTKFB_LOG("mtkfb has been power off\n");
+#ifdef OPLUS_BUG_STABILITY
+		primary_display_shutdown();
+#endif
 		return;
 	}
 	primary_display_set_power_mode(FB_SUSPEND);
 	primary_display_suspend();
+#ifdef OPLUS_BUG_STABILITY
+	primary_display_shutdown();
+#endif
+
 	MTKFB_LOG("[FB Driver] leave mtkfb_shutdown\n");
 }
 

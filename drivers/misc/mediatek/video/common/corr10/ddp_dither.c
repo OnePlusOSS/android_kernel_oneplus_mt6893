@@ -187,21 +187,21 @@ static int disp_dither_config(enum DISP_MODULE_ENUM module,
 
 static int disp_dither_bypass(enum DISP_MODULE_ENUM module, int bypass)
 {
-	int relay = 0;
+        int relay = 0;
 
-	if (bypass) {
-		relay = 1;
-		g_dither_relay_value[index_of_dither(module)] = 0x1;
-	} else {
-		g_dither_relay_value[index_of_dither(module)] = 0x0;
-	}
+        if (bypass) {
+                relay = 1;
+                g_dither_relay_value[index_of_dither(module)] = 0x1;
+        } else {
+                g_dither_relay_value[index_of_dither(module)] = 0x0;
+        }
 
-	DISP_REG_MASK(NULL, DISP_REG_DITHER_CFG + dither_get_offset(module),
-		relay, 0x1);
+        DISP_REG_MASK(NULL, DISP_REG_DITHER_CFG + dither_get_offset(module),
+                relay, 0x1);
 
-	DITHER_DBG("Module(%d) (bypass = %d)", module, bypass);
+        DITHER_DBG("Module(%d) (bypass = %d)", module, bypass);
 
-	return 0;
+        return 0;
 }
 
 
@@ -238,7 +238,7 @@ static int disp_dither_power_on(enum DISP_MODULE_ENUM module, void *handle)
 }
 
 static int disp_dither_power_off(enum DISP_MODULE_ENUM module, void *handle)
-{
+{ 
 #if defined(CONFIG_MACH_MT6755)
 	/* dither is DCM , do nothing */
 #elif defined(CONFIG_MACH_MT6759) || defined(CONFIG_MACH_MT6758) || \

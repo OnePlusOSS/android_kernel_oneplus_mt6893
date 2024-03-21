@@ -24,7 +24,10 @@
 
 #include "flashlight-core.h"
 #include "flashlight-dt.h"
-
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+#include "oplus/flashlight_custom.h"
+#include <soc/oplus/system/oplus_project.h>
+#endif
 /* device tree should be defined in flashlight-dt.h */
 #ifndef MT6360_DTNAME
 #define MT6360_DTNAME "mediatek,flashlights_mt6360"
@@ -46,7 +49,11 @@
 
 #define MT6360_LEVEL_NUM 32
 #define MT6360_LEVEL_TORCH 16
+#define MT6360_LEVEL_NUM_20291      (12)
+#define MT6360_LEVEL_TORCH_20291    (6)
+#define MT6360_LEVEL_NUM_FANLI 31
 #define MT6360_LEVEL_FLASH MT6360_LEVEL_NUM
+#define MT6360_LEVEL_FLASH_FANLI MT6360_LEVEL_NUM_FANLI
 #define MT6360_WDT_TIMEOUT 1248 /* ms */
 #define MT6360_HW_TIMEOUT 400 /* ms */
 
@@ -57,7 +64,6 @@ static struct work_struct mt6360_work_ch2;
 static struct hrtimer mt6360_timer_ch1;
 static struct hrtimer mt6360_timer_ch2;
 static unsigned int mt6360_timeout_ms[MT6360_CHANNEL_NUM];
-
 /* define usage count */
 static int use_count;
 static int fd_use_count;
@@ -68,6 +74,10 @@ static struct flashlight_device *flashlight_dev_ch2;
 #define RT_FLED_DEVICE_CH1  "mt-flash-led1"
 #define RT_FLED_DEVICE_CH2  "mt-flash-led2"
 
+/* define charger consumer */
+static struct charger_consumer *flashlight_charger_consumer;
+#define CHARGER_SUPPLY_NAME "charger_port1"
+
 /* is decrease voltage */
 static int is_decrease_voltage;
 
@@ -77,13 +87,7 @@ struct mt6360_platform_data {
 	struct flashlight_device_id *dev_id;
 };
 
-#if defined(CONFIG_MACH_MT6877) || defined(CONFIG_MACH_MT6833) \
-|| defined(CONFIG_MACH_MT6893) || defined(CONFIG_MACH_MT6785) \
-|| defined(CONFIG_MACH_MT6885) || defined(CONFIG_MACH_MT6873)
-/* define charger consumer */
-static struct charger_consumer *flashlight_charger_consumer;
-#define CHARGER_SUPPLY_NAME "charger_port1"
-#else
+#if defined(CONFIG_MACH_MT6779)
 /******************************************************************************
  * Charger power supply class
  *****************************************************************************/
@@ -92,7 +96,6 @@ static int mt6360_high_voltage_supply(int enable)
 	union power_supply_propval prop;
 	static struct power_supply *chg_psy;
 	int ret;
-
 	if (chg_psy == NULL)
 		chg_psy = power_supply_get_by_name("mtk-master-charger");
 	if (chg_psy == NULL || IS_ERR(chg_psy)) {
@@ -105,19 +108,97 @@ static int mt6360_high_voltage_supply(int enable)
 		pr_notice("%s enable_hv:%d\n", __func__, prop.intval);
 		power_supply_changed(chg_psy);
 	}
-
 	return ret;
 }
+#else
+/* define charger consumer */
+static struct charger_consumer *flashlight_charger_consumer;
+#define CHARGER_SUPPLY_NAME "charger_port1"
 #endif
 
-/******************************************************************************
- * mt6360 operations
- *****************************************************************************/
+static const int mt6360_current_19357[MT6360_LEVEL_NUM] = {
+	75, 125, 175, 225, 300, 350, 400, 550, 700, 850, 1000, 1100
+};
+
+static const int mt6360_current_19537[MT6360_LEVEL_NUM] = {
+	50, 63, 75, 100, 150, 200, 400, 550, 700, 850, 1000, 1100
+};
+
+static const int mt6360_current_20291[MT6360_LEVEL_NUM] = {
+	50, 63, 75, 100, 150, 200, 400, 550, 700, 850, 1000, 1150
+};
+
+static const int mt6360_current_19551[MT6360_LEVEL_NUM] = {
+	150, 300, 450, 600, 800, 900, 1000, 1050, 1100, 1150, 1200, 1300
+};
+
+static const int mt6360_current_22693[MT6360_LEVEL_NUM] = {
+	  25,   50,  75, 100, 125, 150, 175,  200,  225,  250,
+	 275,  300, 325, 350, 375, 400, 450,  500,  550,  600,
+	 650,  700, 750, 800, 850, 900, 950, 1000, 1050, 1100,
+	1150, 1200
+};
+/* 25+12.5*n*/
+static const unsigned char mt6360_torch_level_19301[MT6360_LEVEL_TORCH] = {
+	0x02, 0x03, 0x04, 0x06, 0x0A, 0x0E
+};
+
+/* 25+12.5*n*/
+static const unsigned char mt6360_torch_level_19551[MT6360_LEVEL_TORCH] = {
+	0x03, 0x03, 0x03, 0x03, 0x03, 0x03
+};
+
+static const unsigned char mt6360_torch_level_19357[MT6360_LEVEL_TORCH] = {
+	0x07, 0x07, 0x07, 0x07, 0x07, 0x07
+};
+
+static const unsigned char mt6360_torch_level_19537[MT6360_LEVEL_TORCH] = {
+	0x02, 0x03, 0x04, 0x06, 0x0A, 0x0E
+};
+
+static const unsigned char mt6360_torch_level_20291[MT6360_LEVEL_TORCH] = {
+	0x02, 0x03, 0x04, 0x06, 0x0A, 0x0E
+};
+
+static const unsigned char mt6360_torch_level_22693[MT6360_LEVEL_TORCH] = {
+	0x00, 0x02, 0x04, 0x06, 0x08, 0x0A, 0x0C, 0x0E, 0x10, 0x12,
+	0x14, 0x16, 0x18, 0x1A, 0x1C, 0x1E
+};
+
+static const unsigned char mt6360_strobe_level_19357[MT6360_LEVEL_FLASH] = {
+	0x08, 0x10, 0x18, 0x20, 0x28, 0x30, 0x3C, 0x54, 0x6C, 0x7C, 0x88, 0x90
+};
+
+static const unsigned char mt6360_strobe_level_19537[MT6360_LEVEL_FLASH] = {
+	0x08, 0x10, 0x18, 0x20, 0x28, 0x30, 0x3C, 0x54, 0x6C, 0x7C, 0x88, 0x90
+};
+
+static const unsigned char mt6360_strobe_level_20291[MT6360_LEVEL_FLASH] = {
+	0x08, 0x10, 0x18, 0x20, 0x28, 0x30, 0x3C, 0x54, 0x6C, 0x7C, 0x88, 0x94
+};
+
+static const unsigned char mt6360_strobe_level_19551[MT6360_LEVEL_FLASH] = {
+	0x08, 0x14, 0x20, 0x2C, 0x3C, 0x44, 0x4C, 0x50, 0x54, 0x58, 0x5C, 0x64
+};
+
+static const unsigned char mt6360_strobe_level_22693[MT6360_LEVEL_FLASH] = {
+	0x00, 0x04, 0x08, 0x0C, 0x10, 0x14, 0x18, 0x1C, 0x20, 0x24,
+	0x28, 0x2C, 0x30, 0x34, 0x38, 0x3C, 0x44, 0x4C, 0x54, 0x5C,
+	0x64, 0x6C, 0x74, 0x78, 0x7C, 0x80, 0x84, 0x88, 0x8C, 0x90,
+	0x94, 0x98
+};
+
 static const int mt6360_current[MT6360_LEVEL_NUM] = {
 	  25,   50,  75, 100, 125, 150, 175,  200,  225,  250,
 	 275,  300, 325, 350, 375, 400, 450,  500,  550,  600,
 	 650,  700, 750, 800, 850, 900, 950, 1000, 1050, 1100,
 	1150, 1200
+};
+
+static const int mt6360_current_fanli[MT6360_LEVEL_NUM_FANLI] = {
+	 25,   50,  75, 100, 125, 150,  175,  200,  225,  250,
+	275,  300, 325, 350, 375, 400,  450,  500,  550,  600,
+	650,  700, 750, 800, 850, 900,  950, 1000, 1050, 1100,
 };
 
 static const unsigned char mt6360_torch_level[MT6360_LEVEL_TORCH] = {
@@ -133,6 +214,57 @@ static const unsigned char mt6360_strobe_level[MT6360_LEVEL_FLASH] = {
 	0x94, 0x98
 };
 
+static const unsigned char mt6360_strobe_level_fanli[MT6360_LEVEL_FLASH_FANLI] = {
+	0x00, 0x04, 0x08, 0x0C, 0x10, 0x14, 0x18, 0x1C, 0x20, 0x24,
+	0x28, 0x2C, 0x30, 0x34, 0x38, 0x3C, 0x44, 0x4C, 0x54, 0x5C,
+	0x64, 0x6C, 0x74, 0x78, 0x7C, 0x80, 0x84, 0x88, 0x8C, 0x90
+};
+
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+/* 2021/02/19, lishaoyang@Camera.Tunning, add for 20001&20200 torch level */
+static const unsigned char mt6360_torch_level_19165[MT6360_LEVEL_TORCH] = {
+    0x00, 0x02, 0x04, 0x07, 0x08, 0x0A, 0x0C, 0x0E, 0x10, 0x12,
+    0x14, 0x16, 0x18, 0x1A, 0x1C, 0x1E
+};
+
+static const unsigned char mt6360_torch_level_19131[MT6360_LEVEL_TORCH] = {
+    0x00, 0x02, 0x06, 0x07, 0x08, 0x0A, 0x0C, 0x0E, 0x10, 0x12,
+    0x14, 0x16, 0x18, 0x1A, 0x1C, 0x1E
+};
+
+static const unsigned char mt6360_torch_level_20001[MT6360_LEVEL_TORCH] = {
+    0x00, 0x05, 0x06, 0x07, 0x08, 0x0A, 0x0C, 0x0E, 0x10, 0x12,
+    0x14, 0x16, 0x18, 0x1A, 0x1C, 0x1E
+};
+static const unsigned char mt6360_torch_level_20075[MT6360_LEVEL_TORCH] = {
+    0x00, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0C, 0x0E, 0x10, 0x12,
+    0x14, 0x16, 0x18, 0x1A, 0x1C, 0x1E
+};
+static const unsigned char mt6360_torch_level_20181[MT6360_LEVEL_TORCH] = {
+	0x00, 0x02, 0x04, 0x06, 0x07, 0x0A, 0x0C, 0x0E, 0x10, 0x12,
+	0x14, 0x16, 0x18, 0x1A, 0x1C, 0x1E
+};
+static const unsigned char mt6360_torch_level_21127[MT6360_LEVEL_TORCH] = {
+	0x00, 0x01, 0x03, 0x06, 0x07, 0x0A, 0x0C, 0x0E, 0x10, 0x12,
+	0x14, 0x16, 0x18, 0x1A, 0x1C, 0x1E
+};
+static const unsigned char mt6360_torch_level_6833[MT6360_LEVEL_TORCH] = {
+	0x00, 0x02, 0x04, 0x06, 0x07, 0x0A, 0x0C, 0x0E, 0x10, 0x12,
+	0x14, 0x16, 0x18, 0x1A, 0x1C, 0x1E
+};
+static const unsigned char mt6360_torch_level_20609[MT6360_LEVEL_TORCH] = {
+	0x00, 0x02, 0x04, 0x05, 0x06, 0x0A, 0x0C, 0x0E, 0x10, 0x12,
+	0x14, 0x16, 0x18, 0x1A, 0x1C, 0x1E
+};
+static const unsigned char mt6360_torch_level_rm_20730[MT6360_LEVEL_TORCH] = {
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x08, 0x10, 0x12,
+	0x14, 0x16, 0x18, 0x1A, 0x1C, 0x1E
+};
+static const unsigned char mt6360_torch_level_rm_20682[MT6360_LEVEL_TORCH] = {
+	0x00, 0x01, 0x02, 0x04, 0x06, 0x0A, 0x06, 0x0E, 0x10, 0x12,
+	0x14, 0x16, 0x18, 0x1A, 0x1C, 0x1E
+};
+#endif
 static int mt6360_decouple_mode;
 static int mt6360_en_ch1;
 static int mt6360_en_ch2;
@@ -150,7 +282,11 @@ static int mt6360_is_charger_ready(void)
 
 static int mt6360_is_torch(int level)
 {
-	if (level >= MT6360_LEVEL_TORCH)
+	if (is_project(20291) || is_project(20292) || is_project(20293)
+		|| is_project(20294) || is_project(20295)) {
+		if (level >= MT6360_LEVEL_TORCH_20291)
+			return -1;
+	} else if (level >= MT6360_LEVEL_TORCH)
 		return -1;
 
 	return 0;
@@ -160,7 +296,11 @@ static int mt6360_verify_level(int level)
 {
 	if (level < 0)
 		level = 0;
-	else if (level >= MT6360_LEVEL_NUM)
+	else if (is_project(20291) || is_project(20292) || is_project(20293)
+		|| is_project(20294) || is_project(20295)) {
+		if (level >= MT6360_LEVEL_NUM_20291)
+			level = MT6360_LEVEL_NUM_20291 - 1;
+	} else if (level >= MT6360_LEVEL_NUM)
 		level = MT6360_LEVEL_NUM - 1;
 
 	return level;
@@ -184,7 +324,32 @@ static int mt6360_enable(void)
 
 	pr_debug("enable(%d,%d), mode:%d.\n",
 		mt6360_en_ch1, mt6360_en_ch2, mode);
-
+	#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	if (mt6360_decouple_mode == FLASHLIGHT_SCENARIO_COUPLE &&
+			mt6360_en_ch1 != MT6360_DISABLE &&
+			mt6360_en_ch2 != MT6360_DISABLE) {
+		pr_info("dual flash mode\n");
+		if (mode == FLASHLIGHT_MODE_TORCH)
+			ret |= flashlight_set_mode(
+				flashlight_dev_ch1, FLASHLIGHT_MODE_DUAL_TORCH);
+		else
+			ret |= flashlight_set_mode(
+				flashlight_dev_ch1, FLASHLIGHT_MODE_DUAL_FLASH);
+	} else {
+		if (mt6360_en_ch1)
+			ret |= flashlight_set_mode(
+				flashlight_dev_ch1, mode);
+		else if (mt6360_decouple_mode == FLASHLIGHT_SCENARIO_COUPLE)
+			ret |= flashlight_set_mode(
+				flashlight_dev_ch1, FLASHLIGHT_MODE_OFF);
+		if (mt6360_en_ch2)
+			ret |= flashlight_set_mode(
+				flashlight_dev_ch2, mode);
+		else if (mt6360_decouple_mode == FLASHLIGHT_SCENARIO_COUPLE)
+			ret |= flashlight_set_mode(
+				flashlight_dev_ch2, FLASHLIGHT_MODE_OFF);
+	}
+	#else
 	/* enable channel 1 and channel 2 */
 	if (mt6360_decouple_mode == FLASHLIGHT_SCENARIO_COUPLE &&
 			mt6360_en_ch1 != MT6360_DISABLE &&
@@ -210,6 +375,7 @@ static int mt6360_enable(void)
 			ret |= flashlight_set_mode(
 				flashlight_dev_ch2, FLASHLIGHT_MODE_OFF);
 	}
+	#endif
 	if (ret < 0)
 		pr_info("Failed to enable.\n");
 
@@ -296,6 +462,10 @@ static int mt6360_disable(int channel)
 /* set flashlight level */
 static int mt6360_set_level_ch1(int level)
 {
+	#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	int torch_level, strobe_level;
+	#endif
+
 	level = mt6360_verify_level(level);
 	mt6360_level_ch1 = level;
 
@@ -305,17 +475,127 @@ static int mt6360_set_level_ch1(int level)
 	}
 
 	/* set brightness level */
+	#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	Oplus_get_torch_and_strobe_level_custom(mt6360_torch_level[level], mt6360_strobe_level[level], level, &torch_level, &strobe_level);
+	if (!mt6360_is_torch(level)) {
+		if (is_project(19165)) {
+			flashlight_set_torch_brightness(
+				flashlight_dev_ch1, mt6360_torch_level_19165[level]);
+		} else if (is_project(19131) || is_project(19132) || is_project(19133) || is_project(19420)
+			|| is_project(20041) || is_project(20042)) {
+			flashlight_set_torch_brightness(
+				flashlight_dev_ch1, mt6360_torch_level_19131[level]);
+                } else if (is_project(20001) || is_project(20002) || is_project(20003) || is_project(20200)){
+                        flashlight_set_torch_brightness(
+                                flashlight_dev_ch1, mt6360_torch_level_20001[level]);
+		} else if (is_project(20075) || is_project(20076)
+			|| is_project(20151) || is_project(20301) || is_project(20302)
+			|| is_project(20391) || is_project(20392)) {
+			flashlight_set_torch_brightness(
+				flashlight_dev_ch1, mt6360_torch_level_20075[level]);
+		} else if (is_project(20181) || is_project(20355)){
+			flashlight_set_torch_brightness(
+				flashlight_dev_ch1, mt6360_torch_level_20181[level]);
+		} else if (is_project(21127) || is_project(21305)){
+			flashlight_set_torch_brightness(
+				flashlight_dev_ch1, mt6360_torch_level_21127[level]);
+		} else if (is_project(20015) || is_project(20016) || is_project(20108) || is_project(20109) || is_project(20307) || is_project(20651)
+			       || is_project(20652) || is_project(20653) || is_project(20654) || is_project(21037)){
+			flashlight_set_torch_brightness(
+				flashlight_dev_ch1, mt6360_torch_level_6833[level]);
+		} else if (is_project(20609) || is_project(0x2060A) || is_project(0x2060B) || is_project(20796) || is_project(0x206F0) || is_project(0x206FF)
+			       || is_project(0x2070C) || is_project(0x2070B) || is_project(0x2070E) || is_project(20795)
+			       || is_project(21041) || is_project(21042) || is_project(0x210A0) || is_project(21747) || is_project(21748)){
+			flashlight_set_torch_brightness(
+				flashlight_dev_ch1, mt6360_torch_level_20609[level]);
+		} else if (is_project(20732) || is_project(20731) || is_project(20730)){
+			flashlight_set_torch_brightness(
+				flashlight_dev_ch1, mt6360_torch_level_rm_20730[level]);
+		} else if (is_project(20827) || is_project(20831) || is_project(21881) || is_project(21882) || is_project(21015) || is_project(21217) || is_project(21218)){
+			flashlight_set_torch_brightness(
+				flashlight_dev_ch1, torch_level);
+		} else if (is_project(20682)){
+			flashlight_set_torch_brightness(
+				flashlight_dev_ch1, mt6360_torch_level_rm_20682[level]);
+		} else if (is_project(19551) || is_project(19597)||is_project(19553)||is_project(19550)||is_project(19556)) {
+			flashlight_set_torch_brightness(
+				flashlight_dev_ch1, mt6360_torch_level_19551[level]);
+		} else if (is_project(19354) || is_project(19357) || is_project(19358) || is_project(19359)) {
+			flashlight_set_torch_brightness(
+				flashlight_dev_ch1, mt6360_torch_level_19357[level]);
+		} else if (is_project(19301) || is_project(19011)) {
+		        flashlight_set_torch_brightness(
+			        flashlight_dev_ch1, mt6360_torch_level_19301[level]);
+		} else if (is_project(19537) || is_project(19538) ||
+			is_project(19536) || is_project(19539) ||
+			is_project(19541)) {
+		        flashlight_set_torch_brightness(
+			        flashlight_dev_ch1, mt6360_torch_level_19537[level]);
+		} else if (is_project(20291) || is_project(20292) ||
+		    is_project(20293) || is_project(20294) ||
+		    is_project(20295)) {
+		        flashlight_set_torch_brightness(
+			        flashlight_dev_ch1, mt6360_torch_level_20291[level]);
+		} else if (is_project(22693) || is_project(22694) || is_project(22612) || is_project(0x226B1)) {
+		        flashlight_set_torch_brightness(
+			        flashlight_dev_ch1, mt6360_torch_level_22693[level]);
+		} else {
+			flashlight_set_torch_brightness(
+				flashlight_dev_ch1, mt6360_torch_level[level]);
+		}
+	}
+	#else
 	if (!mt6360_is_torch(level))
 		flashlight_set_torch_brightness(
-				flashlight_dev_ch1, mt6360_torch_level[level]);
-	flashlight_set_strobe_brightness(
+			flashlight_dev_ch1, mt6360_torch_level[level]);
+	#endif
+
+	#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	if (is_project(20827) || is_project(20831) || is_project(21881) || is_project(21882) || is_project(21015) || is_project(21217) || is_project(21218)){
+		flashlight_set_strobe_brightness(
+			flashlight_dev_ch1, strobe_level);
+	} else if (is_project(19354) || is_project(19357) || is_project(19358) || is_project(19359))
+	{
+		flashlight_set_strobe_brightness(
+			flashlight_dev_ch1, mt6360_strobe_level_19357[level]);
+	} else if (is_project(19551) || is_project(19597)||is_project(19553)||is_project(19550)||is_project(19556)){
+		flashlight_set_strobe_brightness(
+			flashlight_dev_ch1, mt6360_strobe_level_19551[level]);
+	} else if (is_project(22693) || is_project(22694) || is_project(22612) || is_project(0x226B1)){
+		flashlight_set_strobe_brightness(
+			flashlight_dev_ch1, mt6360_strobe_level_22693[level]);
+	} else if (is_project(19537) || is_project(19538) ||
+		is_project(19536) || is_project(19539) ||
+		is_project(19541)){
+		flashlight_set_strobe_brightness(
+			flashlight_dev_ch1, mt6360_strobe_level_19537[level]);
+	} else if (is_project(20291) || is_project(20292) ||
+		is_project(20293) || is_project(20294) ||
+		is_project(20295)){
+		flashlight_set_strobe_brightness(
+			flashlight_dev_ch1, mt6360_strobe_level_20291[level]);
+	} else if (is_project(22087) || is_project(22088) || is_project(22331) ||
+		is_project(22332) || is_project(22333) || is_project(22334)) {
+		flashlight_set_strobe_brightness(
+			flashlight_dev_ch1, mt6360_strobe_level_fanli[level]);
+	} else {
+		flashlight_set_strobe_brightness(
 			flashlight_dev_ch1, mt6360_strobe_level[level]);
+	}
+	#else
+	flashlight_set_strobe_brightness(
+		flashlight_dev_ch1, mt6360_strobe_level[level]);
+	#endif
 
 	return 0;
 }
 
 static int mt6360_set_level_ch2(int level)
 {
+	#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	int torch_level, strobe_level;
+	#endif
+
 	level = mt6360_verify_level(level);
 	mt6360_level_ch2 = level;
 
@@ -325,11 +605,87 @@ static int mt6360_set_level_ch2(int level)
 	}
 
 	/* set brightness level */
+	#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	/* 2021/02/19, lishaoyang@Camera.Tunning, add for 19165 torch duty*/
+	Oplus_get_torch_and_strobe_level_custom(mt6360_torch_level[level], mt6360_strobe_level[level], level, &torch_level, &strobe_level);
+	if (!mt6360_is_torch(level)) {
+		if (is_project(19165)) {
+			flashlight_set_torch_brightness(
+				flashlight_dev_ch2, mt6360_torch_level_19165[level]);
+		} else if (is_project(21127) || is_project(21305)){
+			flashlight_set_torch_brightness(
+				flashlight_dev_ch2, mt6360_torch_level_21127[level]);
+		} else if (is_project(20827) || is_project(20831) || is_project(21881) || is_project(21882) || is_project(21015) || is_project(21217) || is_project(21218)) {
+			flashlight_set_torch_brightness(
+				flashlight_dev_ch2, torch_level);
+		} else if (is_project(19551) || is_project(19597)||is_project(19553)||is_project(19550)||is_project(19556)) {
+			flashlight_set_torch_brightness(
+				flashlight_dev_ch2, mt6360_torch_level_19551[level]);
+		} else if (is_project(19354) || is_project(19357) || is_project(19358) || is_project(19359)) {
+			flashlight_set_torch_brightness(
+				flashlight_dev_ch2, mt6360_torch_level_19357[level]);
+		} else if (is_project(19301) || is_project(19011)) {
+		        flashlight_set_torch_brightness(
+			        flashlight_dev_ch2, mt6360_torch_level_19301[level]);
+		} else if (is_project(19537) || is_project(19538) ||
+			is_project(19536) || is_project(19539) ||
+			is_project(19541)) {
+		        flashlight_set_torch_brightness(
+			        flashlight_dev_ch2, mt6360_torch_level_19537[level]);
+		} else if (is_project(20291) || is_project(20292) ||
+			is_project(20293) || is_project(20294) ||
+			is_project(20295)) {
+		        flashlight_set_torch_brightness(
+			        flashlight_dev_ch2, mt6360_torch_level_20291[level]);
+		} else if (is_project(22693) || is_project(22693) || is_project(22612)) {
+		        flashlight_set_torch_brightness(
+			        flashlight_dev_ch2, mt6360_torch_level_22693[level]);
+		} else {
+			flashlight_set_torch_brightness(
+				flashlight_dev_ch2, mt6360_torch_level[level]);
+		}
+	}
+	#else
 	if (!mt6360_is_torch(level))
 		flashlight_set_torch_brightness(
-				flashlight_dev_ch2, mt6360_torch_level[level]);
-	flashlight_set_strobe_brightness(
+			flashlight_dev_ch2, mt6360_torch_level[level]);
+	#endif
+
+	#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	if (is_project(20827) || is_project(20831) || is_project(21881) || is_project(21882) || is_project(21015) || is_project(21217) || is_project(21218)) {
+		flashlight_set_strobe_brightness(
+			flashlight_dev_ch2, strobe_level);
+	} else if (is_project(19354) || is_project(19357) || is_project(19358) || is_project(19359)) {
+		flashlight_set_strobe_brightness(
+			flashlight_dev_ch2, mt6360_strobe_level_19357[level]);
+	} else if (is_project(19551) || is_project(19597)||is_project(19553)||is_project(19550)||is_project(19556)){
+		flashlight_set_strobe_brightness(
+			flashlight_dev_ch2, mt6360_strobe_level_19551[level]);
+	} else if (is_project(22693) || is_project(22694) || is_project(22612) || is_project(0x226B1)){
+		flashlight_set_strobe_brightness(
+			flashlight_dev_ch2, mt6360_strobe_level_22693[level]);
+	} else if (is_project(19537) || is_project(19538) ||
+		is_project(19536) || is_project(19539) ||
+		is_project(19541)){
+		flashlight_set_strobe_brightness(
+			flashlight_dev_ch2, mt6360_strobe_level_19537[level]);
+	} else if (is_project(20291) || is_project(20292) ||
+		is_project(20293) || is_project(20294) ||
+		is_project(20295)){
+		flashlight_set_strobe_brightness(
+			flashlight_dev_ch2, mt6360_strobe_level_20291[level]);
+	} else if (is_project(22087) || is_project(22088) || is_project(22331) ||
+		is_project(22332) || is_project(22333) || is_project(22334)) {
+		flashlight_set_strobe_brightness(
+			flashlight_dev_ch2, mt6360_strobe_level_fanli[level]);
+	} else {
+		flashlight_set_strobe_brightness(
 			flashlight_dev_ch2, mt6360_strobe_level[level]);
+	}
+	#else
+	flashlight_set_strobe_brightness(
+		flashlight_dev_ch2, mt6360_strobe_level[level]);
+	#endif
 
 	return 0;
 }
@@ -354,30 +710,32 @@ static int mt6360_set_scenario(int scenario)
 	mt6360_decouple_mode = scenario & FLASHLIGHT_SCENARIO_DECOUPLE_MASK;
 
 	/* notify charger to increase or decrease voltage */
+	if (!flashlight_charger_consumer) {
+		pr_info("Failed with no charger consumer handler.\n");
+		return -1;
+	}
+
 	mutex_lock(&mt6360_mutex);
 	if (scenario & FLASHLIGHT_SCENARIO_CAMERA_MASK) {
 		if (!is_decrease_voltage) {
 			pr_info("Decrease voltage level.\n");
-#if defined(CONFIG_MACH_MT6877) || defined(CONFIG_MACH_MT6833) \
-|| defined(CONFIG_MACH_MT6893) || defined(CONFIG_MACH_MT6785) \
-|| defined(CONFIG_MACH_MT6885) || defined(CONFIG_MACH_MT6873)
+#if defined(CONFIG_MACH_MT6779)
+			mt6360_high_voltage_supply(0);
+
+#else
 			charger_manager_enable_high_voltage_charging(
 				flashlight_charger_consumer, false);
-#else
-			mt6360_high_voltage_supply(0);
 #endif
 			is_decrease_voltage = 1;
 		}
 	} else {
 		if (is_decrease_voltage) {
 			pr_info("Increase voltage level.\n");
-#if defined(CONFIG_MACH_MT6877) || defined(CONFIG_MACH_MT6833) \
-|| defined(CONFIG_MACH_MT6893) || defined(CONFIG_MACH_MT6785) \
-|| defined(CONFIG_MACH_MT6885) || defined(CONFIG_MACH_MT6873)
+#if defined(CONFIG_MACH_MT6779)
+			mt6360_high_voltage_supply(1);
+#else
 			charger_manager_enable_high_voltage_charging(
 				flashlight_charger_consumer, true);
-#else
-			mt6360_high_voltage_supply(1);
 #endif
 			is_decrease_voltage = 0;
 		}
@@ -417,8 +775,12 @@ static int mt6360_uninit(void)
 
 	/* clear charger status */
 	is_decrease_voltage = 0;
-
+	#ifdef OPLUS_FEATURE_CAMERA_COMMON
 	ret = mt6360_disable(MT6360_CHANNEL_ALL);
+	#else
+	ret = mt6360_disable(MT6360_CHANNEL_CH1);
+	ret |= mt6360_disable(MT6360_CHANNEL_CH2);
+	#endif
 
 	return ret;
 }
@@ -572,6 +934,19 @@ static int mt6360_ioctl(unsigned int cmd, unsigned long arg)
 {
 	struct flashlight_dev_arg *fl_arg;
 	int channel;
+	#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	int ch1_timeout = 0;
+	int ch2_timeout = 0;
+	int ch1_duty    = 0;
+	int ch2_duty    = 0;
+	int ch1_status  = 0;
+	int ch2_status  = 0;
+	int need_op_ch_number; // need_op_ch_number: 0:ch1 1:ch2 2:ch1&ch2
+	int cur_duty;
+	int max_level_torch;
+	int max_level_num;
+	int hw_timeout;
+	#endif
 
 	fl_arg = (struct flashlight_dev_arg *)arg;
 	channel = fl_arg->channel;
@@ -586,13 +961,30 @@ static int mt6360_ioctl(unsigned int cmd, unsigned long arg)
 	case FLASH_IOC_SET_TIME_OUT_TIME_MS:
 		pr_debug("FLASH_IOC_SET_TIME_OUT_TIME_MS(%d): %d\n",
 				channel, (int)fl_arg->arg);
+		#ifdef OPLUS_FEATURE_CAMERA_COMMON
+		Oplus2Channel_set_timeout_custom(mt6360_timeout_ms, channel, fl_arg->arg, &ch1_timeout, &ch2_timeout);
+		mt6360_timeout_ms[MT6360_CHANNEL_CH1] = ch1_timeout;
+		mt6360_timeout_ms[MT6360_CHANNEL_CH2] = ch2_timeout;
+		#else
 		mt6360_timeout_ms[channel] = fl_arg->arg;
+		#endif
 		break;
 
 	case FLASH_IOC_SET_DUTY:
 		pr_debug("FLASH_IOC_SET_DUTY(%d): %d\n",
 				channel, (int)fl_arg->arg);
+		#ifdef OPLUS_FEATURE_CAMERA_COMMON
+		Oplus2Channel_set_duty_custom(mt6360_level_ch1, mt6360_level_ch2, channel, fl_arg->arg, &ch1_duty, &ch2_duty);
+		if (is_project(20291) || is_project(20292) || is_project(20293) ||
+			is_project(20294) || is_project(20295)) {
+			mt6360_set_level(channel, fl_arg->arg);
+		} else {
+			mt6360_set_level(MT6360_CHANNEL_CH1, ch1_duty);
+			mt6360_set_level(MT6360_CHANNEL_CH2, ch2_duty);
+		}
+		#else
 		mt6360_set_level(channel, fl_arg->arg);
+		#endif
 		break;
 
 	case FLASH_IOC_SET_SCENARIO:
@@ -604,7 +996,34 @@ static int mt6360_ioctl(unsigned int cmd, unsigned long arg)
 	case FLASH_IOC_SET_ONOFF:
 		pr_debug("FLASH_IOC_SET_ONOFF(%d): %d\n",
 				channel, (int)fl_arg->arg);
+		#ifdef OPLUS_FEATURE_CAMERA_COMMON
+		need_op_ch_number = -1;
+		Oplus2Channel_set_onoff_custom(channel, fl_arg->arg, &ch1_status, &ch2_status, &need_op_ch_number);
+		if (need_op_ch_number == 0) {
+			mt6360_operate(channel, ch1_status);
+		}else if (need_op_ch_number == 1) {
+			mt6360_operate(channel, ch2_status);
+		}else if (need_op_ch_number == 2) {
+			if(is_project(21127) || is_project(21305)){
+				mt6360_decouple_mode = FLASHLIGHT_SCENARIO_COUPLE;
+				mt6360_operate(MT6360_CHANNEL_CH1, ch1_status);
+				mt6360_operate(MT6360_CHANNEL_CH2, ch2_status);
+			} else {
+				mt6360_operate(MT6360_CHANNEL_CH1, ch1_status);
+				mt6360_operate(MT6360_CHANNEL_CH2, ch2_status);
+			}
+		} else {
+			if (is_project(20291) || is_project(20292) || is_project(20293) ||
+				is_project(20294) || is_project(20295)) {
+				mt6360_operate(channel, fl_arg->arg);
+			} else {
+				mt6360_operate(MT6360_CHANNEL_CH1, ch1_status);
+				mt6360_operate(MT6360_CHANNEL_CH2, ch2_status);
+			}
+		}
+		#else
 		mt6360_operate(channel, fl_arg->arg);
+		#endif
 		break;
 
 	case FLASH_IOC_IS_CHARGER_READY:
@@ -615,24 +1034,70 @@ static int mt6360_ioctl(unsigned int cmd, unsigned long arg)
 
 	case FLASH_IOC_GET_DUTY_NUMBER:
 		pr_debug("FLASH_IOC_GET_DUTY_NUMBER(%d)\n", channel);
+		#ifdef OPLUS_FEATURE_CAMERA_COMMON
+		max_level_num = Oplus_get_max_duty_num_custom(MT6360_LEVEL_NUM);
+		if (is_project(22087) || is_project(22088) || is_project(22331) ||
+			is_project(22332) || is_project(22333) || is_project(22334)) {
+				max_level_num = Oplus_get_max_duty_num_custom(MT6360_LEVEL_NUM_FANLI);
+		}
+		fl_arg->arg = max_level_num -1;
+		#else
 		fl_arg->arg = MT6360_LEVEL_NUM;
+		#endif
 		break;
 
 	case FLASH_IOC_GET_MAX_TORCH_DUTY:
 		pr_debug("FLASH_IOC_GET_MAX_TORCH_DUTY(%d)\n", channel);
+		#ifdef OPLUS_FEATURE_CAMERA_COMMON
+		max_level_torch = Oplus_get_max_duty_torch_custom(MT6360_LEVEL_TORCH);
+		fl_arg->arg = max_level_torch -1;
+		#else
 		fl_arg->arg = MT6360_LEVEL_TORCH - 1;
+		#endif
 		break;
 
 	case FLASH_IOC_GET_DUTY_CURRENT:
 		fl_arg->arg = mt6360_verify_level(fl_arg->arg);
 		pr_debug("FLASH_IOC_GET_DUTY_CURRENT(%d): %d\n",
 				channel, (int)fl_arg->arg);
-		fl_arg->arg = mt6360_current[fl_arg->arg];
+		#ifdef OPLUS_FEATURE_CAMERA_COMMON
+		if (is_project(19354) || is_project(19357) || is_project(19358) || is_project(19359))
+		{
+			fl_arg->arg = mt6360_current_19357[fl_arg->arg];
+		} else if(is_project(19551) || is_project(19597)||is_project(19553)||is_project(19550)||is_project(19556)){
+			fl_arg->arg = mt6360_current_19551[fl_arg->arg];
+		} else if(is_project(22693) || is_project(22694) || is_project(22612) || is_project(0x226B1)){
+			fl_arg->arg = mt6360_current_22693[fl_arg->arg];
+		} else if (is_project(19537) || is_project(19538) ||
+			is_project(19539) || is_project(19536) ||
+			is_project(19541)) {
+			fl_arg->arg = mt6360_current_19537[fl_arg->arg];
+		} else if (is_project(20291) || is_project(20292) ||
+			is_project(20293) || is_project(20294) ||
+			is_project(20295)) {
+			fl_arg->arg = mt6360_current_20291[fl_arg->arg];
+		} else if (is_project(22087) || is_project(22088) || is_project(22331) ||
+			is_project(22332) || is_project(22333) || is_project(22334)) {
+			fl_arg->arg = mt6360_current_fanli[fl_arg->arg];
+		} else {
+			cur_duty = Oplus_get_current_duty_custom(mt6360_current, fl_arg->arg);
+			fl_arg->arg = cur_duty;
+		}
+		#else
+		{
+			fl_arg->arg = mt6360_current[fl_arg->arg];
+		}
+		#endif
 		break;
 
 	case FLASH_IOC_GET_HW_TIMEOUT:
 		pr_debug("FLASH_IOC_GET_HW_TIMEOUT(%d)\n", channel);
+		#ifdef OPLUS_FEATURE_CAMERA_COMMON
+		hw_timeout = Oplus_get_hw_timeout_custom(MT6360_HW_TIMEOUT);
+		fl_arg->arg = hw_timeout;
+		#else
 		fl_arg->arg = MT6360_HW_TIMEOUT;
+		#endif
 		break;
 
 	default:
@@ -663,13 +1128,11 @@ static int mt6360_release(void)
 	/* If camera NE, we need to enable pe by ourselves*/
 	if (fd_use_count == 0 && is_decrease_voltage) {
 		pr_info("Increase voltage level.\n");
-#if defined(CONFIG_MACH_MT6877) || defined(CONFIG_MACH_MT6833) \
-|| defined(CONFIG_MACH_MT6893) || defined(CONFIG_MACH_MT6785) \
-|| defined(CONFIG_MACH_MT6885) || defined(CONFIG_MACH_MT6873)
+#if defined(CONFIG_MACH_MT6779)
+			mt6360_high_voltage_supply(1);
+#else
 			charger_manager_enable_high_voltage_charging(
 				flashlight_charger_consumer, true);
-#else
-			mt6360_high_voltage_supply(1);
 #endif
 		is_decrease_voltage = 0;
 	}
@@ -703,7 +1166,15 @@ static int mt6360_set_driver(int set)
 
 static ssize_t mt6360_strobe_store(struct flashlight_arg arg)
 {
+	#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	int scenario;
+	#endif
+
 	mt6360_set_driver(1);
+	#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	scenario = Oplusflashlight_get_scenairo_custom(arg.decouple);
+	mt6360_set_scenario(scenario);
+	#else
 	if (arg.decouple)
 		mt6360_set_scenario(
 			FLASHLIGHT_SCENARIO_CAMERA |
@@ -712,6 +1183,7 @@ static ssize_t mt6360_strobe_store(struct flashlight_arg arg)
 		mt6360_set_scenario(
 			FLASHLIGHT_SCENARIO_CAMERA |
 			FLASHLIGHT_SCENARIO_COUPLE);
+	#endif
 	mt6360_set_level(arg.channel, arg.level);
 	mt6360_timeout_ms[arg.channel] = 0;
 
@@ -851,13 +1323,17 @@ static int mt6360_probe(struct platform_device *pdev)
 		return -EFAULT;
 	}
 
+	#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	/* setup strobe mode timeout */
+	if(Oplusflashlight_set_strobe_timeout_custom(flashlight_dev_ch1, MT6360_HW_TIMEOUT) < 0)
+		pr_info("Failed to set strobe timeout.\n");
+	#else
 	/* setup strobe mode timeout */
 	if (flashlight_set_strobe_timeout(flashlight_dev_ch1,
 				MT6360_HW_TIMEOUT, MT6360_HW_TIMEOUT + 200) < 0)
 		pr_info("Failed to set strobe timeout.\n");
-#if defined(CONFIG_MACH_MT6877) || defined(CONFIG_MACH_MT6833) \
-|| defined(CONFIG_MACH_MT6893) || defined(CONFIG_MACH_MT6785) \
-|| defined(CONFIG_MACH_MT6885) || defined(CONFIG_MACH_MT6873)
+	#endif
+#if !defined(CONFIG_MACH_MT6779)
 	/* get charger consumer manager */
 	flashlight_charger_consumer = charger_manager_get_by_name(
 			&flashlight_dev_ch1->dev, CHARGER_SUPPLY_NAME);

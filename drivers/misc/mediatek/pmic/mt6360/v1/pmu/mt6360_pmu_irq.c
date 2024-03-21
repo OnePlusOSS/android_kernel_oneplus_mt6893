@@ -10,13 +10,48 @@
 #include <linux/pm_runtime.h>
 #include <linux/irq.h>
 #include "../inc/mt6360_pmu.h"
+#include "../../../../../power/oplus/oplus_chg_track.h"
+#ifdef OPLUS_FEATURE_CHG_BASIC
+extern bool mt6360_get_vbus_status(void);
+extern int mt6360_chg_enable(bool en);
+extern int mt6360_chg_enable_wdt(bool enable);
+extern bool oplus_chg_wake_update_work(void);
+extern void oplus_chg_check_break(int vbus_rising);
+extern bool oplus_vooc_get_fastchg_started(void);
+extern int oplus_vooc_get_adapter_update_status(void);
+extern void oplus_vooc_reset_fastchg_after_usbout(void);
+extern void oplus_chg_clear_chargerid_info(void);
+extern void oplus_chg_set_chargerid_switch_val(int);
+extern bool oplus_vooc_get_fastchg_to_normal(void);
+extern bool oplus_vooc_get_fastchg_to_warm(void);
+extern void oplus_chg_set_charger_type_unknown(void);
+#ifndef CONFIG_OPLUS_CHARGER_MTK6873
+extern bool oplus_otgctl_by_buckboost(void);
+#endif
+int __attribute__((weak)) oplus_chg_get_mmi_status(void)
+{
+	return 1;
+}
+int __attribute__((weak)) oplus_mtk_hv_flashled_plug(int plug)
+{
+	return 1;
+}
+#endif
 
+#ifdef CONFIG_MT6360_PMU_DEBUG
+#define PMU_ARRAY_SIZE 8
+static unsigned long long duration_index[PMU_ARRAY_SIZE], pmu_irq_duration;
+static int count_index[PMU_ARRAY_SIZE];
+#endif
 static irqreturn_t mt6360_pmu_irq_handler(int irq, void *data)
 {
 	struct mt6360_pmu_info *mpi = data;
 	u8 irq_events[MT6360_PMU_IRQ_REGNUM] = {0};
 	u8 irq_masks[MT6360_PMU_IRQ_REGNUM] = {0};
 	int i, j, ret;
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	bool vbus_status = false;
+#endif
 
 	mt_dbg(mpi->dev, "%s ++\n", __func__);
 	pm_runtime_get_sync(mpi->dev);
@@ -41,9 +76,61 @@ static irqreturn_t mt6360_pmu_irq_handler(int irq, void *data)
 				if ((i == 5 && j == 4) || (i == 0 && j == 6))
 					mt_dbg(mpi->dev,
 					       "handle_irq [%d,%d]\n", i, j);
+#ifdef OPLUS_FEATURE_CHG_BASIC
+				else {
+					if (i == 7) {
+						vbus_status = mt6360_get_vbus_status();
+						oplus_chg_check_break(vbus_status);
+						oplus_chg_track_check_wired_charging_break(vbus_status);
+						printk(KERN_ERR "!!!!! mt6360_pmu_irq_handler: [%d]\n", vbus_status);
+#if !defined CONFIG_OPLUS_CHARGER_MTK6873 && !defined CONFIG_OPLUS_CHARGER_MTK6833
+						if (!oplus_otgctl_by_buckboost()) {
+							mt6360_chg_enable_wdt(vbus_status);
+						}
+#else
+						mt6360_chg_enable_wdt(vbus_status);
+#endif
+						if(vbus_status == 0) {
+							oplus_mtk_hv_flashled_plug(0);
+						}
+						if (oplus_vooc_get_fastchg_started() == true
+								&& oplus_vooc_get_adapter_update_status() != 1) {
+							printk(KERN_ERR "[OPLUS_CHG] %s oplus_vooc_get_fastchg_started = true!\n", __func__);
+							if (vbus_status) {
+								/*vooc adapters MCU vbus reset time is about 800ms(default standard),
+								 * but some adapters reset time is about 350ms, so when vbus plugin irq
+								 * was trigger, fastchg_started is true(default standard is false).
+								 */
+								mt6360_chg_enable(false);
+							}
+						} else {
+							if (!vbus_status) {
+								oplus_vooc_reset_fastchg_after_usbout();
+								if (oplus_vooc_get_fastchg_started() == false) {
+									oplus_chg_set_chargerid_switch_val(0);
+									oplus_chg_clear_chargerid_info();
+								}
+								oplus_chg_set_charger_type_unknown();
+							} else {
+								if ((oplus_vooc_get_fastchg_to_normal() == true)
+										|| (oplus_vooc_get_fastchg_to_warm() == true)
+										|| (oplus_chg_get_mmi_status() == 0)) {
+									mt6360_chg_enable(false);
+								}
+							}
+							oplus_chg_wake_update_work();
+						}
+					} else {
+						dev_dbg(mpi->dev,
+							"handle_irq [%d,%d]\n", i, j);
+					}
+				}
+#else
 				else
 					dev_dbg(mpi->dev,
 						"handle_irq [%d,%d]\n", i, j);
+#endif
+/* OPLUS_FEATURE_CHG_BASIC end */
 				handle_nested_irq(ret);
 			} else
 				dev_err(mpi->dev, "unmapped [%d,%d]\n", i, j);

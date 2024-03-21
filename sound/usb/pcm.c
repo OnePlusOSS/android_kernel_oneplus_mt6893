@@ -370,6 +370,7 @@ static void stop_endpoints(struct snd_usb_substream *subs, bool wait)
 	if (wait) {
 		snd_usb_endpoint_sync_pending_stop(subs->sync_endpoint);
 		snd_usb_endpoint_sync_pending_stop(subs->data_endpoint);
+		snd_usb_endpoint_stop_quirk(subs->data_endpoint);
 	}
 }
 

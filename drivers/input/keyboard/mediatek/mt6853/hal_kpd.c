@@ -21,11 +21,12 @@ static u16 kpd_keymap_state[KPD_NUM_MEMS] = {
 	0xffff, 0xffff, 0xffff, 0xffff, 0x00ff
 };
 
+/* remove for build error
 unsigned int get_boot_mode(void)
 {
 	return 0;
 }
-
+*/
 
 static void enable_kpd(int enable)
 {

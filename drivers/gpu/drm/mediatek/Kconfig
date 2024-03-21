@@ -75,6 +75,20 @@ config MTK_MT6382_BDG
 	  Normal project will disable it first
 	  If you are not sure about this, do not set it to y
 
+config OPLUS_OFP_V2
+    bool "Support Oplus OnScreen FingerPrint Solution V2"
+    default n
+    help
+      This config decide if support onscreen fingerprint unlock V2 solution
+      If you are not sure about this, do not set it to y
+
+config OPLUS_CRC_CHECK_SUPPORT
+    bool "Support Oplus Panel Crc Check"
+    default n
+    help
+      This config decide if support oplus panel crc check solution
+      If you are not sure about this, do not set it to y
+
 config MTK_SLD_SUPPORT
 	bool "Support subdued light display feature"
 	default n

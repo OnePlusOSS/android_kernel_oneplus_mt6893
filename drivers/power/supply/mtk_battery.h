@@ -241,6 +241,7 @@ enum fg_daemon_cmds {
 	FG_DAEMON_CMD_GET_DIFF_SOC_SET,
 	FG_DAEMON_CMD_SET_ZCV_INTR_EN,
 	FG_DAEMON_CMD_GET_IS_FORCE_FULL,
+	FG_DAEMON_CMD_SET_BATTERY_CAPACITY,
 
 	FG_DAEMON_CMD_FROM_USER_NUMBER
 
@@ -300,7 +301,11 @@ struct fuelgauge_profile_struct {
 	unsigned short voltage;
 	unsigned short resistance; /* Ohm*/
 	unsigned short resistance2; /* Ohm*/
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	signed short percentage;
+#else
 	unsigned short percentage;
+#endif
 };
 
 struct fuel_gauge_table {
@@ -323,6 +328,11 @@ struct fuel_gauge_table_cust_temperture_table {
 	int tb_size;
 	int tb_construct_temp;
 	struct fuelgauge_profile_struct fg_profile_node[100];
+};
+
+struct fgd_cmd_param_t_8 {
+	int size;
+	int data[512];
 };
 
 struct fuel_gauge_table_custom_data {
@@ -730,10 +740,14 @@ struct simulator_log {
 #define BAT_VOLTAGE_LOW_BOUND 3400
 #define BAT_VOLTAGE_HIGH_BOUND 3450
 #define LOW_TMP_BAT_VOLTAGE_LOW_BOUND 3350
+#ifndef OPLUS_FEATURE_CHG_BASIC
 #define SHUTDOWN_TIME 40
+#else
+#define SHUTDOWN_TIME 60
+#endif
 #define AVGVBAT_ARRAY_SIZE 30
 #define INIT_VOLTAGE 3450
-#define BATTERY_SHUTDOWN_TEMPERATURE 60
+#define BATTERY_SHUTDOWN_TEMPERATURE 90
 
 struct shutdown_condition {
 	bool is_overheat;
@@ -817,6 +831,13 @@ struct mtk_battery {
 	bool ntc_disable_nafg;
 	bool cmd_disable_nafg;
 
+/*fcc*/
+	int prev_batt_fcc;
+	int prev_batt_remaining_capacity;
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	struct delayed_work	 oplus_startup_rm_check_work;
+#endif /* OPLUS_FEATURE_CHG_BASIC */
+
 /*battery full*/
 	bool is_force_full;
 
@@ -867,6 +888,8 @@ struct mtk_battery {
 	int last_nafg_cnt;
 	struct timespec last_nafg_update_time;
 	bool is_nafg_broken;
+	int old_pid;
+	int force_restart_daemon;
 
 	/* information from LK */
 	signed int ptim_lk_v;
@@ -945,6 +968,7 @@ struct mtk_battery {
 	int enable_tmp_intr_suspend;
 	struct battery_temperature_table rbat;
 	struct fuelgauge_temperature *tmp_table;
+	struct fuelgauge_temperature *tmp_table_high_precision;
 
 	void (*shutdown)(struct mtk_battery *gm);
 	int (*suspend)(struct mtk_battery *gm, pm_message_t state);

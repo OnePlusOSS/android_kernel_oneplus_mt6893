@@ -1,0 +1,87 @@
+/* Copyright (c) 2018, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&pio {
+	sia91xx_gpio_L: sia91xx_gpio_L {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO111__FUNC_GPIO111>;
+			slew-rate = <1>;
+			bias-disable;
+		};
+	};
+
+	sia91xx_gpio_R: sia91xx_gpio_R {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO107__FUNC_GPIO107>;
+			slew-rate = <1>;
+			bias-disable;
+		};
+	};
+};
+
+&si_pa_L {
+	compatible = "si,sia91xx";
+	si,si_pa_type = "sia9175";
+	si,si_pa_reset = <&pio 111 0>;
+	pinctrl-names = "si_pa_gpio";
+	pinctrl-0 = <&sia91xx_gpio_L>;
+	si,si_pa_disable_pin = <0>;
+	sipa_min_range = <5000>;
+	sipa_max_range = <7800>;
+
+	channel_num = <0>;
+};
+
+&si_pa_R {
+	compatible = "si,sia91xx";
+	si,si_pa_type = "sia9175";
+	si,si_pa_reset = <&pio 107 0>;
+	pinctrl-names = "si_pa_gpio";
+	pinctrl-0 = <&sia91xx_gpio_R>;
+	si,si_pa_disable_pin = <0>;
+	sipa_min_range = <5000>;
+	sipa_max_range = <7800>;
+
+	channel_num = <1>;
+};
+
+&i2c6 {
+	sipa_i2c_L: sipa_i2c@6c{
+		compatible = "si,sia91xx-i2c";
+		#sound-dai-cells = <0>;
+		reg = <0x6c>;
+		si,sipa-dev = <&si_pa_L>;
+		status = "okay";
+	};
+
+	sipa_i2c_R: sipa_i2c@6d{
+		compatible = "si,sia91xx-i2c";
+		#sound-dai-cells = <0>;
+		reg = <0x6d>;
+		si,sipa-dev = <&si_pa_R>;
+		status = "okay";
+	};
+};
+
+&sound {
+	si,sia81xx-max-num = <2>;
+	si,sia81xx-aux-devs = <&sipa_i2c_L>, <&sipa_i2c_R>;
+	si,sia81xx-aux-devs-prefix = "SpkrLeft", "SpkrRight";
+
+	mtk_spk_i2s_out = <3>;
+	mtk_spk_i2s_in = <9>;
+	mediatek,speaker-codec {
+		sound-dai = <&sipa_i2c_L>, <&sipa_i2c_R>;
+	};
+
+};
+

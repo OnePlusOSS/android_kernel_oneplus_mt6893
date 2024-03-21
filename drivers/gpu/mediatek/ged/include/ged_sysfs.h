@@ -21,6 +21,13 @@
 		__ATTR(_name, 0440,	\
 		_name##_show, NULL)
 
+#ifdef CONFIG_MTK_GPU_OPP_STATS_SUPPORT
+#define KOBJ_OPLUS_ATTR_RO(_name)	\
+	struct kobj_attribute kobj_attr_##_name =	\
+		__ATTR(_name, 0444,	\
+		_name##_show, NULL)
+#endif
+
 GED_ERROR ged_sysfs_create_dir(struct kobject *parent,
 		const char *name, struct kobject **ppsKobj);
 void ged_sysfs_remove_dir(struct kobject **ppsKobj);

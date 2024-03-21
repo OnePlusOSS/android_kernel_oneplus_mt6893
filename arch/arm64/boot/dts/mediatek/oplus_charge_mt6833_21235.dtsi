@@ -1,0 +1,6 @@
+#include "mediatek/oplus_charge_mt6833_21101.dtsi"
+
+&charger {
+	//GPIO config:
+	qcom,ntcctrl-gpio = <&pio 46 0x00>;
+};

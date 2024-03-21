@@ -1,0 +1,11 @@
+config AW8697_HAPTIC
+    tristate "Haptic driver for awinic aw8697 series"
+    depends on I2C
+    help
+      This option enables support for aw8697 series Haptic Driver.
+
+config HAPTIC_FEEDBACK
+    tristate "Haptic feedback for awinic aw8697 series"
+    depends on I2C
+    help
+      This option enables support for aw8697 series Haptic Driver.

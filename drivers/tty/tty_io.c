@@ -527,6 +527,11 @@ void tty_wakeup(struct tty_struct *tty)
 {
 	struct tty_ldisc *ld;
 
+	if (tty == NULL) {
+		tty_err(tty, "tty closed\n");;
+		return;
+	}
+
 	if (test_bit(TTY_DO_WRITE_WAKEUP, &tty->flags)) {
 		ld = tty_ldisc_ref(tty);
 		if (ld) {

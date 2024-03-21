@@ -16,5 +16,24 @@ unsigned int Custom_read_region(struct i2c_client *client,
 				unsigned int addr,
 				unsigned char *data,
 				unsigned int size);
-
+unsigned int Hi556_read_region(struct i2c_client *client,
+				unsigned int addr,
+				unsigned char *data,
+				unsigned int size);
+unsigned int Hi556a_read_region(struct i2c_client *client,
+				unsigned int addr,
+				unsigned char *data,
+				unsigned int size);
+unsigned int Hi846_read_region(struct i2c_client *client,
+				unsigned int addr,
+				unsigned char *data,
+				unsigned int size);
+unsigned int Hi846a_read_region(struct i2c_client *client,
+				unsigned int addr,
+				unsigned char *data,
+				unsigned int size);
+unsigned int sc520cs_read_region(struct i2c_client *client,
+				unsigned int addr,
+				unsigned char *data,
+				unsigned int size);
 #endif				/* __CAM_CAL_LIST_H */

@@ -77,7 +77,7 @@ static unsigned int esd_check_mode;
 static unsigned int esd_check_enable;
 unsigned int esd_checking;
 static int te_irq;
-
+extern bool oplus_display_mt6382_esd_check;
 #if defined(CONFIG_MTK_DUAL_DISPLAY_SUPPORT) && \
 	(CONFIG_MTK_DUAL_DISPLAY_SUPPORT == 2)
 /***********external display dual LCM ESD check******************/
@@ -222,12 +222,17 @@ int _esd_check_config_handle_vdo(struct cmdqRecStruct *qhandle)
 	/* mutex sof wait*/
 	ddp_mutex_set_sof_wait(dpmgr_path_get_mutex(phandle), qhandle, 0);
 
+	if (!oplus_display_mt6382_esd_check) {
+		primary_display_manual_unlock();
+	}
 	/* 6.flush instruction */
 	dprec_logger_start(DPREC_LOGGER_ESD_CMDQ, 0, 0);
 	ret = cmdqRecFlush(qhandle);
 	dprec_logger_done(DPREC_LOGGER_ESD_CMDQ, 0, 0);
 	DISPINFO("[ESD]%s ret=%d\n", __func__, ret);
-	primary_display_manual_unlock();
+	if (oplus_display_mt6382_esd_check) {
+		primary_display_manual_unlock();
+	}
 
 	if (ret)
 		ret = 1;
@@ -701,6 +706,9 @@ static int primary_display_check_recovery_worker_kthread(void *data)
 	}
 	return 0;
 }
+#ifdef OPLUS_BUG_STABILITY
+extern bool __attribute((weak)) oplus_flag_lcd_off;
+#endif
 
 /* ESD RECOVERY */
 int primary_display_esd_recovery(void)
@@ -763,13 +771,20 @@ int primary_display_esd_recovery(void)
 	DISPDBG("[POWER]lcm suspend[begin]\n");
 	/*after dsi_stop, we should enable the dsi basic irq.*/
 	dsi_basic_irq_enable(DISP_MODULE_DSI0, NULL);
+#ifdef OPLUS_BUG_STABILITY
+	disp_lcm_set_esd_flag(primary_get_lcm(),1);
+#endif
 	disp_lcm_suspend(primary_get_lcm());
+#ifdef OPLUS_BUG_STABILITY
+	disp_lcm_set_esd_flag(primary_get_lcm(),0);
+#endif
 	DISPCHECK("[POWER]lcm suspend[end]\n");
 
 	mmprofile_log_ex(mmp_r, MMPROFILE_FLAG_PULSE, 0, 7);
 
 	DISPDBG("[ESD]dsi power reset[begine]\n");
 	dpmgr_path_dsi_power_off(primary_get_dpmgr_handle(), NULL);
+	disp_lcm_suspend_1p8(primary_get_lcm());
 	if (bdg_is_bdg_connected() == 1) {
 		struct disp_ddp_path_config *data_config = NULL;
 
@@ -868,6 +883,9 @@ int primary_display_esd_recovery(void)
 
 done:
 	primary_display_manual_unlock();
+#ifdef OPLUS_BUG_STABILITY
+	oplus_flag_lcd_off = false;
+#endif
 	DISPCHECK("[ESD]ESD recovery end\n");
 	mmprofile_log_ex(mmp_r, MMPROFILE_FLAG_END, 0, 0);
 	dprec_logger_done(DPREC_LOGGER_ESD_RECOVERY, 0, 0);

@@ -65,6 +65,7 @@ config ARM64
 	select ARCH_SUPPORTS_NUMA_BALANCING
 	select ARCH_WANT_COMPAT_IPC_PARSE_VERSION
 	select ARCH_WANT_FRAME_POINTERS
+	select ARCH_WANTS_THP_SWAP if ARM64_4K_PAGES
 	select ARCH_HAS_UBSAN_SANITIZE_ALL
 	select ARM_AMBA
 	select ARM_ARCH_TIMER
@@ -1423,6 +1424,38 @@ config DMI
 	  However, even with this option, the resultant kernel should
 	  continue to boot on existing non-UEFI platforms.
 
+#ifdef OPLUS_BUG_STABILITY
+config BUILD_ARM64_APPENDED_DTB_IMAGE
+	bool "Build a concatenated Image.gz/dtb by default"
+	depends on OF
+	help
+	  Enabling this option will cause a concatenated Image.gz and list of
+	  DTBs to be built by default (instead of a standalone Image.gz.)
+	  The image will built in arch/arm64/boot/Image.gz-dtb
+
+config BUILD_ARM64_DTB_OVERLAY_IMAGE
+	bool "Build a device tree overlay image"
+	depends on OF
+	help
+	  Enabling this option will casue overlay device tree
+	  to be built by default.
+	  Overlay DT contains device-specific configurations.
+	  Please be aware that bootloader supports DT merging.
+
+config BUILD_ARM64_APPENDED_DTB_IMAGE_NAMES
+	string "Default dtb names"
+	depends on BUILD_ARM64_APPENDED_DTB_IMAGE
+	help
+	  Space separated list of names of dtbs to append when
+	  building a concatenated Image.gz-dtb.
+
+config BUILD_ARM64_DTB_OVERLAY_IMAGE_NAMES
+	string "Default dtb overlay names"
+	depends on BUILD_ARM64_DTB_OVERLAY_IMAGE
+	help
+	  Space separated list of names of dtbs to append when
+	  building a concatenated overlay image
+#endif
 endmenu
 
 config COMPAT
@@ -1510,3 +1543,5 @@ source "arch/arm64/kvm/Kconfig"
 if CRYPTO
 source "arch/arm64/crypto/Kconfig"
 endif
+
+source "arch/arm64/kernel/rootguard/Kconfig"

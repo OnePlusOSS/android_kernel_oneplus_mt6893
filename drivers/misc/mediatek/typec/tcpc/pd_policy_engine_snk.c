@@ -73,8 +73,14 @@ void pe_snk_evaluate_capability_entry(struct pd_port *pd_port)
 	pd_handle_hard_reset_recovery(pd_port);
 	pd_handle_first_pd_command(pd_port);
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/* add for pd Without E-Marker IC  */
+	pd_dpm_snk_evaluate_caps(pd_port);
+	pd_port->pe_data.explicit_contract = false;
+#else
 	pd_port->pe_data.explicit_contract = false;
 	pd_dpm_snk_evaluate_caps(pd_port);
+#endif
 }
 
 void pe_snk_select_capability_entry(struct pd_port *pd_port)
@@ -151,7 +157,15 @@ void pe_snk_ready_entry(struct pd_port *pd_port)
 
 void pe_snk_hard_reset_entry(struct pd_port *pd_port)
 {
+	int rv = 0;
+	uint32_t chip_vid = 0;
+
 	pd_send_hard_reset(pd_port);
+
+	rv = tcpci_get_chip_vid(pd_port->tcpc, &chip_vid);
+
+	if (!rv && SOUTHCHIP_PD_VID == chip_vid)
+		pd_enable_timer(pd_port, PD_TIMER_HARD_RESET_COMPLETE);
 }
 
 void pe_snk_transition_to_default_entry(struct pd_port *pd_port)

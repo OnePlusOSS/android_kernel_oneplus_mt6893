@@ -14,9 +14,22 @@
 #include "disp_lcm.h"
 #include "disp_helper.h"
 
+/* #ifdef OPLUS_ARCH_EXTENDS */
+#include "oplus_display_private_api.h"
+/* #endif */
+
 #if defined(MTK_LCM_DEVICE_TREE_SUPPORT)
 #include <linux/of.h>
 #endif
+
+/* #ifdef OPLUS_BUG_STABILITY */
+/*
+* add for lcd status flag
+*/
+extern bool flag_lcd_off;
+extern int disp_lcm_poweron_before_ulps(struct disp_lcm_handle *plcm);
+extern int disp_lcm_poweroff_after_ulps(struct disp_lcm_handle *plcm);
+/* #endif */ /* OPLUS_BUG_STABILITY */
 
 /* This macro and arrya is designed for multiple LCM support */
 /* for multiple LCM, we should assign I/F Port id in lcm driver, */
@@ -1419,6 +1432,12 @@ int disp_lcm_suspend(struct disp_lcm_handle *plcm)
 
 		if (lcm_drv->suspend_power)
 			lcm_drv->suspend_power();
+        /* #ifdef OPLUS_BUG_STABILITY */
+		/*
+		* add for lcd status flag
+		*/
+		flag_lcd_off = true;
+        /* #endif */ /*OPLUS_BUG_STABILITY*/
 
 		return 0;
 	}
@@ -1443,6 +1462,12 @@ int disp_lcm_resume(struct disp_lcm_handle *plcm)
 			DISP_PR_ERR("FATAL ERROR, lcm_drv->resume is null\n");
 			return -1;
 		}
+		/* #ifdef OPLUS_BUG_STABILITY */
+		/*
+		* add for lcd status flag
+		*/
+		flag_lcd_off = false;
+		/* #endif */ /*OPLUS_BUG_STABILITY*/
 
 		return 0;
 	}
@@ -1457,12 +1482,23 @@ int disp_lcm_aod(struct disp_lcm_handle *plcm, int enter)
 	DISPMSG("%s, enter:%d\n", __func__, enter);
 	if (_is_lcm_inited(plcm)) {
 		lcm_drv = plcm->drv;
+		/* #ifdef OPLUS_FEATURE_AOD */
+		if (lcm_drv->resume_power)
+			lcm_drv->resume_power();
+		/* #endif */ /*OPLUS_FEATURE_AOD*/
 		if (lcm_drv->aod) {
 			lcm_drv->aod(enter);
 		} else {
 			DISP_PR_ERR("FATAL ERROR, lcm_drv->aod is null\n");
 			return -1;
 		}
+		/* #ifdef OPLUS_BUG_STABILITY */
+		/*
+		* add for lcd status flag
+		*/
+		flag_lcd_off = false;
+		/* #endif */ /*OPLUS_BUG_STABILITY*/
+
 		return 0;
 	}
 

@@ -27,6 +27,7 @@
 #define IMGSENSOR_DFS_CTRL_ENABLE
 #ifdef IMGSENSOR_DFS_CTRL_ENABLE
 #include <linux/soc/mediatek/mtk-pm-qos.h>
+#include <linux/pm_qos.h>
 #include <mmdvfs_pmqos.h>
 
 enum DFS_OPTION {

@@ -1,0 +1,41 @@
+// EVT to DVT - Hardware different
+
+
+/delete-node/ &i2c7_i2c_state;
+/delete-node/ &i2c7_output_low_state;
+
+&i2c7 {
+	pinctrl-names = "i2c-state", "output-low-state";
+	pinctrl-0 = <&i2c7_i2c_state>;
+	pinctrl-1 = <&i2c7_output_low_state>;
+};
+&pio {
+	i2c7_i2c_state: i2c7_sda_i2c_state {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO125__FUNC_SDA7>;
+			slew-rate = <0>;
+			bias-pull-up;
+		};
+	};
+	i2c7_output_low_state: i2c7_sda_output_low_state {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO125__FUNC_GPIO125>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+};
+
+&i2c9 {
+       status = "okay";
+       nfc_nxp@28 {
+               compatible = "nxp,pn544";
+               reg = <0x28>;
+               nxp,pn544-irq = <&pio 7 0x0>;
+               nxp,pn544-ven = <&pio 16 0x0>;
+               nxp,pn544-fw-dwnld = <&pio 6 0x0>;
+               nxp,pn544-clkreq = <&pio 17 0x0>;
+               interrupt-parent = <&pio>;
+       };
+};
+//#endif /* OPLUS_FEATURE_NFC_BRINGUP */

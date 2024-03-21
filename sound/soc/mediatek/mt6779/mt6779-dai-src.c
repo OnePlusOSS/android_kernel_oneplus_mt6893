@@ -531,6 +531,10 @@ static const struct snd_soc_dapm_route mtk_dai_src_routes[] = {
 	{"HW_SRC_1_IN_CH2", "DL3_CH2", "DL3"},
 	{"HW_SRC_2_IN_CH1", "DL3_CH1", "DL3"},
 	{"HW_SRC_2_IN_CH2", "DL3_CH2", "DL3"},
+	#ifdef OPLUS_BUG_COMPATIBILITY
+	{"HW_SRC_1_IN_CH1", "DL4_CH1", "DL4"},
+	{"HW_SRC_1_IN_CH2", "DL4_CH2", "DL4"},
+	#endif /* OPLUS_BUG_COMPATIBILITY */
 	{"HW_SRC_1_IN_CH1", "DL6_CH1", "DL6"},
 	{"HW_SRC_1_IN_CH2", "DL6_CH2", "DL6"},
 	{"HW_SRC_2_IN_CH1", "DL6_CH1", "DL6"},

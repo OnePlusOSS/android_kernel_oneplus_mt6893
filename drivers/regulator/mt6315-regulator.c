@@ -14,6 +14,10 @@
 #include <linux/regulator/mt6315-misc.h>
 #include <linux/regulator/mt6315-regulator.h>
 #include <linux/regulator/of_regulator.h>
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+#include <soc/oplus/system/oplus_project.h>
+#include <mt-plat/mtk_boot.h>
+#endif
 
 #define MT6315_REG_WIDTH		8
 
@@ -739,6 +743,22 @@ static int mt6315_regulator_probe(struct platform_device *pdev)
 	ret = device_create_file(&pdev->dev, &dev_attr_dump_rec_pmic);
 	if (ret)
 		dev_notice(&pdev->dev, "failed to create regs record file\n");
+
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	if (is_project(22277) || is_project(23231)) {
+		int boot_mode = get_boot_mode();
+		if(boot_mode == FACTORY_BOOT) {
+			dev_notice(&pdev->dev, "FACTORY_BOOT no write FCCM reg \n");
+		} else {
+			ret = regmap_update_bits(regmap,
+					MT6315_BUCK_TOP_4PHASE_ANA_CON42,
+					0x1 << MT6315_PMIC_RG_VBUCK3_FCCM_SHIFT,
+					0x1 << MT6315_PMIC_RG_VBUCK3_FCCM_SHIFT);
+			if (ret)
+				dev_notice(&pdev->dev, "failed to write FCCM reg \n");
+		}
+	}
+#endif
 
 	return 0;
 }

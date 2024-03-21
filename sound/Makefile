@@ -17,3 +17,24 @@ ifeq ($(CONFIG_SND),y)
 endif
 
 soundcore-objs  := sound_core.o
+
+# TODO:remove
+ifndef OPLUS_BUG_COMPATIBILITY
+subdir-ccflags-y += -DOPLUS_BUG_COMPATIBILITY
+endif
+
+ifndef OPLUS_BUG_STABILITY
+subdir-ccflags-y += -DOPLUS_BUG_STABILITY
+endif
+
+ifndef OPLUS_BUG_DEBUG
+subdir-ccflags-y += -DOPLUS_BUG_DEBUG
+endif
+
+ifndef OPLUS_FEATURE_SPEAKER_MUTE
+subdir-ccflags-y += -DOPLUS_FEATURE_SPEAKER_MUTE
+endif
+
+ifndef OPLUS_ARCH_EXTENDS
+subdir-ccflags-y += -DOPLUS_ARCH_EXTENDS
+endif

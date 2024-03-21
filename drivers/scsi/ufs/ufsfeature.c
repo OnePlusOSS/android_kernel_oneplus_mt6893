@@ -13,6 +13,7 @@
 #endif
 
 #define QUERY_REQ_TIMEOUT				1500 /* msec */
+struct ufsf_feature_para ufsf_para;
 
 static inline void ufsf_init_query(struct ufs_hba *hba,
 				   struct ufs_query_req **request,
@@ -271,6 +272,15 @@ void ufsf_device_check(struct ufs_hba *hba)
 	unsigned int lun;
 	u8 selector = 0;
 
+        #if defined(CONFIG_SCSI_UFS_HPB)
+               if (ufsf->ufshpb_state == HPB_RESET)
+                       return;
+        #endif
+        #if defined(CONFIG_SCSI_UFS_TW)
+               if (atomic_read(&ufsf->tw_state) == TW_RESET)
+                       return;
+        #endif
+
 	ufsf->slave_conf_cnt = 0;
 
 	ufsf->hba = hba;
@@ -292,6 +302,8 @@ void ufsf_device_check(struct ufs_hba *hba)
 		if (ret == -ENOMEM)
 			goto out_free_mem;
 	}
+
+	create_ufsplus_ctrl_proc(ufsf);
 
 	return;
 out_free_mem:
@@ -702,3 +714,27 @@ inline void ufsf_tw_reset_lu(struct ufsf_feature *ufsf) {}
 inline void ufsf_tw_reset_host(struct ufsf_feature *ufsf) {}
 inline void ufsf_tw_ee_handler(struct ufsf_feature *ufsf) {}
 #endif
+
+int create_ufsplus_ctrl_proc(struct ufsf_feature *ufsf)
+{
+	ufsf_para.ctrl_dir = NULL;
+	ufsf_para.ufsf = NULL;
+
+	ufsf_para.ctrl_dir = proc_mkdir("ufsplus_ctrl", NULL);
+	if (!ufsf_para.ctrl_dir)
+		return -ENOMEM;
+	ufsf_para.ufsf = ufsf;
+
+	return 0;
+}
+
+void remove_ufsplus_ctrl_proc(void)
+{
+	if (ufsf_para.ctrl_dir) {
+		remove_proc_entry("ufsplus_ctrl", NULL);
+		ufsf_para.ctrl_dir = NULL;
+		ufsf_para.ufsf = NULL;
+	}
+
+	return;
+}

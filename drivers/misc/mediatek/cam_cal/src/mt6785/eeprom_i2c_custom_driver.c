@@ -2,6 +2,7 @@
 /*
  * Copyright (c) 2019 MediaTek Inc.
 */
+
 #define PFX "CAM_CAL"
 #define pr_fmt(fmt) PFX "[%s] " fmt, __func__
 

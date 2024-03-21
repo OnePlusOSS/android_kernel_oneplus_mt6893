@@ -5,11 +5,15 @@
  */
 &mtk_gauge{
 	compatible = "mediatek,bat_gm30";
-	DIFFERENCE_FULLOCV_ITH = <(200)>;
+/*ifdef OPLUS_FEATURE_CHG_BASIC*/
+	io-channels = <&auxadc 3>;
+	io-channel-names = "auxadc6-batt_id_v";
+/*endif OPLUS_FEATURE_CHG_BASIC*/
+	DIFFERENCE_FULLOCV_ITH = <(250)>;
 /*	Charging termination current*/
 	SHUTDOWN_1_TIME = <(5)>;
 /*	If ui_soc shows 1% more than X minites, system will shutdown*/
-	KEEP_100_PERCENT = <(1)>;
+	KEEP_100_PERCENT = <(5)>;
 /*	The ui_soc will keep 100% until SOC drop X percents after unplugged*/
 	R_FG_VALUE = <(5)>;
 /*	R_sense resistance*/
@@ -19,7 +23,7 @@
 /*	System shutdown current*/
 	FG_METER_RESISTANCE = <(100)>;
 /*	The resistance of PCB*/
-	CAR_TUNE_VALUE = <(100)>;
+	CAR_TUNE_VALUE = <(97)>;
 /*	Tune value for current measurement*/
 	PMIC_MIN_VOL = <(33500)>;
 /*	vboot voltage for gauge 0%*/
@@ -39,15 +43,15 @@
 /*	Battery temperature T4*/
 	TEMPERATURE_T5 = <(-10)>;
 /*	Battery temperature T5*/
-	g_FG_PSEUDO100_T0 = <(100)>;
+	g_FG_PSEUDO100_T0 = <(98)>;
 /*	Pseudo 100% percentage at T0*/
-	g_FG_PSEUDO100_T1 = <(100)>;
+	g_FG_PSEUDO100_T1 = <(98)>;
 /*	Pseudo 100% percentage at T1*/
-	g_FG_PSEUDO100_T2 = <(100)>;
+	g_FG_PSEUDO100_T2 = <(102)>;
 /*	Pseudo 100% percentage at T2*/
-	g_FG_PSEUDO100_T3 = <(100)>;
+	g_FG_PSEUDO100_T3 = <(102)>;
 /*	Pseudo 100% percentage at T3*/
-	g_FG_PSEUDO100_T4 = <(100)>;
+	g_FG_PSEUDO100_T4 = <(102)>;
 /*	Pseudo 100% percentage at T4*/
 	Q_MAX_SYS_VOLTAGE_BAT0 = <(3350)>;
 /*	Pseudo1 for hide percentage*/
@@ -68,4 +72,5 @@
 	MULTI_TEMP_GAUGE0 = <(1)>;
 /* Multi gauge0 enable*/
 #include "mt6779_battery_table_ext.dtsi"
+#include "mt6779_battery_table_ext_atl_4450.dtsi"
 };

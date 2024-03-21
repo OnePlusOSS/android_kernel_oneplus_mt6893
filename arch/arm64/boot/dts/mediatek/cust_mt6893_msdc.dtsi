@@ -30,7 +30,11 @@
 
 &mmc1 {
 	host-index = <1>;
-	status = "okay";
+	/* #ifndef OPLUS_BUG_STABILITY */
+	/* status = "okay"; */
+	/* #else */
+	status = "disabled";
+	/* #endif */
 	pinctrl-names = "default", "state_uhs";
 	pinctrl-0 = <&mmc1_pins_default>;
 	pinctrl-1 = <&mmc1_pins_uhs>;
@@ -110,8 +114,7 @@
 	};
 	mmc1_pins_default: mmc1default {
 		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO54__FUNC_MSDC1_DAT0>,
-				<PINMUX_GPIO56__FUNC_MSDC1_DAT1>,
+			pinmux = <PINMUX_GPIO56__FUNC_MSDC1_DAT1>,
 				<PINMUX_GPIO55__FUNC_MSDC1_DAT2>,
 				<PINMUX_GPIO53__FUNC_MSDC1_DAT3>,
 				<PINMUX_GPIO52__FUNC_MSDC1_CMD>;
@@ -128,8 +131,7 @@
 	};
 	mmc1_pins_uhs: mmc1@0{
 		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO54__FUNC_MSDC1_DAT0>,
-				<PINMUX_GPIO56__FUNC_MSDC1_DAT1>,
+			pinmux = <PINMUX_GPIO56__FUNC_MSDC1_DAT1>,
 				<PINMUX_GPIO55__FUNC_MSDC1_DAT2>,
 				<PINMUX_GPIO53__FUNC_MSDC1_DAT3>,
 				<PINMUX_GPIO52__FUNC_MSDC1_CMD>;

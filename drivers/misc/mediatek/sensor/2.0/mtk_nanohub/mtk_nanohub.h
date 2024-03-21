@@ -7,6 +7,9 @@
 #define SCP_SENSOR_HUB_H
 
 #include <linux/ioctl.h>
+#ifdef OPLUS_FEATURE_SENSOR_ALGORITHM
+#include <oplus_sensor.h>
+#endif /*OPLUS_FEATURE_SENSOR_ALGORITHM*/
 
 #define EVT_NO_SENSOR_CONFIG_EVENT 0x00000300
 #define SENSOR_RATE_ONCHANGE       0xFFFFFF01UL
@@ -253,6 +256,9 @@ struct data_unit_t {
 		struct geofence_event_t geofence_data_t;
 		struct sar_event_t sar_event;
 		int32_t data[8];
+		#ifdef OPLUS_FEATURE_SENSOR_ALGORITHM
+		union oplus_data_unit_t oplus_data_t;
+		#endif /*OPLUS_FEATURE_SENSOR_ALGORITHM*/
 	};
 } __packed;
 

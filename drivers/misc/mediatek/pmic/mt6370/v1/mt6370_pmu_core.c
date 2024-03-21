@@ -14,7 +14,9 @@
 #include "inc/mt6370_pmu_core.h"
 
 #define MT6370_PMU_CORE_DRV_VERSION	"1.0.1_MTK"
-
+#if (defined(OPLUS_BUG_STABILITY) && defined(CONFIG_MFD_MT6370_PMU))
+	unsigned int pmic_custom_flag = 0;
+#endif
 struct mt6370_pmu_core_data {
 	struct mt6370_pmu_chip *chip;
 	struct device *dev;
@@ -114,7 +116,6 @@ static inline int mt_parse_dt(struct device *dev)
 	struct mt6370_pmu_core_platdata *pdata = dev_get_platdata(dev);
 	struct device_node *np = dev->of_node;
 	u32 tmp = 0;
-
 	if (of_property_read_bool(np, "i2cstmr_rst_en"))
 		pdata->i2cstmr_rst_en = 1;
 	if (of_property_read_u32(np, "i2cstmr_rst_tmr", &tmp) < 0)
@@ -145,7 +146,6 @@ static int mt6370_pmu_core_reset(struct mt6370_pmu_core_data *core_data)
 	int ret = 0;
 
 	dev_info(core_data->dev, "%s\n", __func__);
-
 	if (chip_vid == MT6372_VENDOR_ID || chip_vid == MT6372C_VENDOR_ID)
 		return 0;
 
@@ -158,7 +158,14 @@ static int mt6370_pmu_core_reset(struct mt6370_pmu_core_data *core_data)
 	if (ret < 0)
 		dev_err(core_data->dev, "set passcode2 fail\n");
 	/* reset chg/fled/ldo/rgb/bl/dsv logic and all pmu register */
-	ret = mt6370_pmu_reg_write(core_data->chip,
+#if (defined(OPLUS_BUG_STABILITY) && defined(CONFIG_MFD_MT6370_PMU))
+	if (pmic_custom_flag) {
+		ret = mt6370_pmu_reg_write(core_data->chip,
+                                   MT6370_PMU_REG_CORECTRL2, 0x7C);
+	}
+	else
+#endif
+		ret = mt6370_pmu_reg_write(core_data->chip,
 				   MT6370_PMU_REG_CORECTRL2, 0x7F);
 	if (ret < 0)
 		dev_err(core_data->dev, "reset all reg/logic fail\n");
@@ -172,8 +179,17 @@ static int mt6370_pmu_core_reset(struct mt6370_pmu_core_data *core_data)
 	if (ret < 0)
 		dev_err(core_data->dev, "excute reset pascode fail\n");
 	/* add dsvp discharge bit */
-	return mt6370_pmu_reg_write(core_data->chip,
-				    MT6370_PMU_REG_DBCTRL2, 0x32);
+#if (defined(OPLUS_BUG_STABILITY) && defined(CONFIG_MFD_MT6370_PMU))
+	pr_err("[BLED] %s  pmic_custom_flag:%d  MT6370_DB_VPOS_DISCMASK:%d\n", __func__, pmic_custom_flag, MT6370_DB_VPOS_DISCMASK);
+	if (pmic_custom_flag) {
+		return mt6370_pmu_reg_update_bits(core_data->chip,
+						MT6370_PMU_REG_DBCTRL2, MT6370_DB_VPOS_DISCMASK,
+						MT6370_DB_VPOS_DISCMASK);
+	}
+	else
+#endif
+		return mt6370_pmu_reg_write(core_data->chip,
+					    MT6370_PMU_REG_DBCTRL2, 0x32);
 }
 
 static int mt6370_pmu_core_probe(struct platform_device *pdev)
@@ -216,6 +232,12 @@ static int mt6370_pmu_core_probe(struct platform_device *pdev)
 		goto out_init_reg;
 
 	mt6370_pmu_core_irq_register(pdev);
+#ifdef CONFIG_MACH_MT6781
+	ret = mt6370_pmu_reg_write(core_data->chip, MT6370_PMU_REG_CHGPUMP, 0xE0);
+	if (ret < 0){
+		dev_err(core_data->dev, "set MT6370_PMU_REG_CHGPUMP fail\n");
+	}
+#endif
 	dev_info(&pdev->dev, "%s successfully\n", __func__);
 	return 0;
 out_init_reg:

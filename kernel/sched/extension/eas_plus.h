@@ -19,6 +19,8 @@
 #define LB_WAKE_AFFINE   (0x2  << LB_POLICY_SHIFT)
 #define LB_IDLEST        (0x4  << LB_POLICY_SHIFT)
 #define LB_IDLE_SIBLING  (0x8  << LB_POLICY_SHIFT)
+#define LB_UX_BOOST      (0x88  << LB_POLICY_SHIFT)
+#define LB_SCHED_SPREAD  (0x11  << LB_POLICY_SHIFT)
 #ifdef CONFIG_MTK_SCHED_CPU_PREFER
 #define LB_CPU_PREFER   (0x10  << LB_POLICY_SHIFT)
 #endif
@@ -84,7 +86,12 @@ unsigned int aggressive_idle_pull(int this_cpu);
 #define SCHED_PREFER_NONE   0
 #define SCHED_PREFER_BIG    1
 #define SCHED_PREFER_LITTLE 2
+#ifdef CONFIG_OPLUS_FG_BOOST
+#define SCHED_PREFER_MEDIUM 3
+#define SCHED_PREFER_END    4
+#else
 #define SCHED_PREFER_END    3
+#endif /* CONFIG_OPLUS_FG_BOOST */
 
 int task_prefer_fit(struct task_struct *p, int cpu);
 int select_task_prefer_cpu(struct task_struct *p, int new_cpu);
@@ -164,6 +171,11 @@ int task_cs_cpu_perfer(struct task_struct *task);
 static inline int rq_cpu(const struct rq *rq) { return rq->cpu; }
 #else
 static inline int rq_cpu(const struct rq *rq) { return 0; }
+#endif
+
+#if defined(OPLUS_FEATURE_SCHEDUTIL_USE_TL) && defined(CONFIG_SCHEDUTIL_USE_TL)
+extern unsigned int capacity_margin_dvfs;
+extern unsigned int capacity_margin_dvfs;
 #endif
 
 #ifdef CONFIG_MTK_SCHED_EXTENSION

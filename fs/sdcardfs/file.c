@@ -237,10 +237,12 @@ static int sdcardfs_open(struct inode *inode, struct file *file)
 	struct sdcardfs_sb_info *sbi = SDCARDFS_SB(dentry->d_sb);
 	const struct cred *saved_cred = NULL;
 
+	if (!(file->f_flags & O_CREAT)) {
 	/* don't open unhashed/deleted files */
-	if (d_unhashed(dentry)) {
-		err = -ENOENT;
-		goto out_err;
+		if (d_unhashed(dentry)) {
+			err = -ENOENT;
+			goto out_err;
+		}
 	}
 
 	if (!check_caller_access_to_name(d_inode(parent), &dentry->d_name)) {

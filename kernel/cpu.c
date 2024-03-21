@@ -37,7 +37,9 @@
 #include <trace/events/cpuhp.h>
 
 #include "smpboot.h"
-
+#ifdef OPLUS_FEATURE_SCHED_ASSIST
+#include <linux/sched_assist/sched_assist_common.h>
+#endif
 /**
  * cpuhp_cpu_state - Per cpu hotplug state storage
  * @state:	The current cpu state
@@ -1023,7 +1025,9 @@ static int cpu_down_maps_locked(unsigned int cpu, enum cpuhp_state target)
 static int do_cpu_down(unsigned int cpu, enum cpuhp_state target)
 {
 	int err;
-
+#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_SPREAD)
+	init_rq_cpu(cpu);
+#endif
 	cpu_maps_update_begin();
 	err = cpu_down_maps_locked(cpu, target);
 	cpu_maps_update_done();

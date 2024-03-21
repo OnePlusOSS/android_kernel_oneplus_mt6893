@@ -248,3 +248,9 @@ config ARCH_USE_QUEUED_RWLOCKS
 config QUEUED_RWLOCKS
 	def_bool y if ARCH_USE_QUEUED_RWLOCKS
 	depends on SMP
+
+config LOCKING_PROTECT
+	bool "locking protect"
+	default n
+	help
+	  protect locking protect
