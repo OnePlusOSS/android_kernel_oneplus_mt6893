@@ -51,6 +51,11 @@ void pe_idle2_entry(struct pd_port *pd_port)
 	memset(&pd_port->pe_data, 0, sizeof(struct pe_data));
 	pd_set_rx_enable(pd_port, PD_RX_CAP_PE_IDLE);
 	pd_disable_timer(pd_port, PD_TIMER_PE_IDLE_TOUT);
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/********* workaround MO.230913213000256759: sc6607 workaround for pd abnormal start*********/
+	pd_disable_timer(pd_port, PD_TIMER_INT_INVAILD);
+/********* workaround MO.230913213000256759: sc6607 workaround for pd abnormal end*********/
+#endif
 	pd_notify_pe_idle(pd_port);
 }
 

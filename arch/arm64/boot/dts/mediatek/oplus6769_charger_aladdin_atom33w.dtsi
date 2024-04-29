@@ -305,7 +305,7 @@
 		sc,tsbat-jeita-dis = <1>;
 		sc,vpmid-ovp-otg-dis = <0>;
 		sc,vbat-ovp-buck-dis = <0>;
-		sc,ibat-ocp = <1>;    /* 0:10A , 1:12A , 2:14A , 3:16A */
+		sc,ibat-ocp = <1>;    /* 0:12A , 1:16A */
 		sc,charge-detect-enable;
 		sc,disable-qc;
 		/*
@@ -650,6 +650,7 @@
 &lk_charger{
 	for_rbat_pull_up_r = <12000>;
 	support_sdp_screenoff;
+	sdp_screenon_voltage = <3250>;
 	bat_temp_01c_precision;
 	support_tuv_authentication;
 	for_mtk_battery_temp_support;

@@ -327,7 +327,7 @@ static struct SENSOR_WINSIZE_INFO_STRUCT imgsensor_winsize_info[] = {
     {6560, 4928, 0, 608, 6560, 3712, 3280, 1856,  8,   0, 3264, 1856,  0,  0, 3264, 1856}, /* normal video reg_C3*/
     {6560, 4928, 0, 608, 6560, 3712, 3280, 1856,  8,   0, 3264, 1856,  0,  0, 3264, 1856}, /* hs_video  reg_G2*/
     {6560, 4928, 0, 608, 6560, 3712, 3280, 1856,  8,   0, 3264, 1856,  0,  0, 3264, 1856}, /* slim video reg_G2*/
-    {6560, 4928, 0,  16, 6560, 4896, 6528, 4896,  1632,   1224, 3264, 2448,  0,  0, 3264, 2448}, /* custom5 reg_N3 izoom*/
+    {6560, 4928, 0,  16, 6560, 4896, 6528, 4896,  1632,   1224, 3264, 2448,  0,  0, 3264, 2448}, /* custom1 reg_N3 izoom*/
     {6560, 4928, 0,   0, 6560, 4928, 1640, 1232,  4,   4, 1632, 1224,  0,  0, 1632, 1224}, /* custom2  reg_H1*/
     {6560, 4928, 0,  16, 6560, 4896, 6560, 4896, 16,   0, 6528, 4896,  0,  0, 6528, 4896}, /* custom3  reg_A5*/
     {6560, 4928, 0, 608, 6560, 3712, 3280, 1856,  8,   0, 3264, 1856,  0,  0, 3264, 1856}, /* custom4  reg_I3*/
@@ -356,7 +356,7 @@ static struct SENSOR_VC_INFO_STRUCT SENSOR_VC_INFO[4] = {
     {
         0x03, 0x0a, 0x00, 0x08, 0x40, 0x00,
         0x00, 0x2b, 0x0cc0, 0x0990, 0x00, 0x00, 0x0000, 0x0000,
-        0x01, 0x2B, 0x0328, 0x04c0, 0x03, 0x00, 0x0000, 0x0000
+        0x01, 0x2B, 0x0190, 0x0260, 0x03, 0x00, 0x0000, 0x0000
     },
 };
 static struct SET_PD_BLOCK_INFO_T imgsensor_pd_info = {
@@ -382,6 +382,33 @@ static struct SET_PD_BLOCK_INFO_T imgsensor_pd_info = {
                     {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0},
                     {8, 304}, {0, 0},{0, 0}, {0, 0}, {824, 620},
                     {8, 8},},
+};
+
+static struct SET_PD_BLOCK_INFO_T imgsensor_pd_info_full = {
+    .i4OffsetX = 32,
+    .i4OffsetY = 32,
+    .i4PitchX  = 32,
+    .i4PitchY  = 32,
+    .i4PairNum  = 16,
+    .i4SubBlkW  = 16,
+    .i4SubBlkH  = 4,
+
+    .i4PosL = {{37,34},{53,34},{33,38},{49,38},
+                {41,42},{57,42},{45,46},{61,46},
+                {37,50},{53,50},{33,54},{49,54},
+                {41,58},{57,58},{45,62},{61,62}, },
+
+    .i4PosR = {{38,34},{54,34},{34,38},{50,38},
+                {42,42},{58,42},{46,46},{62,46},
+                {38,50},{54,50},{34,54},{50,54},
+                {42,58},{58,58},{46,62},{62,62}, },
+    .i4BlockNumX = 202,
+    .i4BlockNumY = 152,
+    .iMirrorFlip = 0,
+    .i4Crop = { {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0},
+                {1648, 1240}, {0, 0}, {0, 0}, {0, 0}, {0, 0},
+                {0, 0}, {0, 0},{0, 0}, {0, 0}, {0, 0},
+                {0, 0}, {1648, 1240}},
 };
 static struct SEAMLESS_SYS_DELAY seamless_sys_delays[] = {
     { MSDK_SCENARIO_ID_VIDEO_PREVIEW, MSDK_SCENARIO_ID_CUSTOM1, 1 },
@@ -6271,6 +6298,12 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
                 case MSDK_SCENARIO_ID_CUSTOM5:
                     PDAFinfo->i4BlockNumX = 202;
                     PDAFinfo->i4BlockNumY = 152;
+                break;
+                case MSDK_SCENARIO_ID_CUSTOM1:
+                    memcpy((void *)PDAFinfo, (void *)&imgsensor_pd_info_full,
+                    sizeof(struct SET_PD_BLOCK_INFO_T));//5x pre need izoom
+                    PDAFinfo->i4BlockNumX = 100;
+                    PDAFinfo->i4BlockNumY = 76;
                 break;
                 case MSDK_SCENARIO_ID_VIDEO_PREVIEW:
                     PDAFinfo->i4BlockNumX = 202;

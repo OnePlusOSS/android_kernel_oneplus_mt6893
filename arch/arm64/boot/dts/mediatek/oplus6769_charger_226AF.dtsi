@@ -320,11 +320,16 @@
 		track,wired_max_power = <33000>;
 		track,wired_fast_chg_scheme = <4>;
 	};
+	oplus_battery_log: oplus,battery_log {
+		compatible = "oplus,battery_log";
+		oplus,battery_log_support;
+	};
 };
 
 /* Modify lk charge config */
 &lk_charger{
 	for_rbat_pull_up_r = <12000>;
+	charger_ic_i2c_channel = <7>;
 	support_sdp_screenoff;
 	bat_temp_01c_precision;
 	support_tuv_authentication;

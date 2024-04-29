@@ -2194,11 +2194,11 @@ static void msdc_ops_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 		}
 
 		if (mmc->host_function == MSDC_SD) {
-			if (host->mclk == 100000) {
+			if (host->mclk == 100000 || mmc->f_init == 100000) {
 				host->block_bad_card = 1;
-				pr_notice("[%s]: msdc power off at clk %dhz set block_bad_card = %d\n",
+				pr_notice("[%s]: msdc power off at clk %dhz set block_bad_card = %d, f_init %dhz, f_min %dhz\n",
 					__func__, host->mclk,
-					host->block_bad_card);
+					host->block_bad_card, mmc->f_init, mmc->f_min);
 			}
 		}
 

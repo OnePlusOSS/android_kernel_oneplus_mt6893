@@ -28,6 +28,7 @@
 
 #define F2FS_BYTES_TO_BLK(bytes)	((bytes) >> F2FS_BLKSIZE_BITS)
 #define F2FS_BLK_TO_BYTES(blk)		((blk) << F2FS_BLKSIZE_BITS)
+#define F2FS_BLK_END_BYTES(blk)		(F2FS_BLK_TO_BYTES(blk + 1) - 1)
 
 /* 0, 1(node nid), 2(meta nid) are reserved node id */
 #define F2FS_RESERVED_NODE_NUM		3
@@ -278,7 +279,10 @@ struct f2fs_inode {
 			__u8 i_log_cluster_size;	/* log of cluster size */
 			__le16 i_compress_flag;		/* compress flag */
 							/* 0 bit: chksum flag
-							 * [10,15] bits: compress level
+							 * [1,2] bits: compress layout
+							 * 3 bit: readpage updates atime
+							 * [4,7] bits: reserved
+							 * [8,15] bits: compress level
 							 */
 			__le32 i_inner_ino;     /* for layered inode */
 			__le32 i_dedup_flags;   /* dedup file attributes */

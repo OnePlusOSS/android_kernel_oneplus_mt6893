@@ -1798,7 +1798,11 @@ composite_setup(struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
 				}
 			} else {
 				if (gadget->lpm_capable)
+#ifdef OPLUS_FEATURE_CHG_BASIC
+					cdev->desc.bcdUSB = cpu_to_le16(0x0200);
+#else
 					cdev->desc.bcdUSB = cpu_to_le16(0x0201);
+#endif
 				else
 					cdev->desc.bcdUSB = cpu_to_le16(0x0200);
 			}

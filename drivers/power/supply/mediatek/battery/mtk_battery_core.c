@@ -76,13 +76,15 @@
 #include <soc/oplus/system/oplus_project.h>
 
 #ifdef OPLUS_FEATURE_CHG_BASIC
-
+#include <linux/power_supply.h>
 #endif /*OPLUS_FEATURE_CHG_BASIC*/
 
 #ifdef OPLUS_FEATURE_CHG_BASIC
 /* add for fg */
 #define SUBCMD_PARAL_VOLT  795
 #define SUBCMD_VOLT_CONV   2000
+
+#define PMIC_RGS_CHRDET_ONLINE 0x1
 
 #ifdef CONFIG_OPLUS_CHARGER_MTK6893
 /* Add for charging logo */
@@ -3439,7 +3441,14 @@ void bmd_ctrl_cmd_from_user(void *nl_data, struct fgd_nl_msg_t *ret_msg)
 {
 	struct fgd_nl_msg_t *msg;
 	static int ptim_vbat, ptim_i;
-
+#if defined(CONFIG_MACH_MT6877) || defined(CONFIG_MACH_MT6885) || defined(CONFIG_MACH_MT6853) || \
+	defined(CONFIG_MACH_MT6893) || defined(CONFIG_MACH_MT6873) || \
+	defined(CONFIG_MACH_MT6771) || defined(CONFIG_MACH_MT6785)
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	struct power_supply *battery_psy = NULL;
+	union power_supply_propval prop;
+#endif
+#endif
 	msg = nl_data;
 	ret_msg->fgd_cmd = msg->fgd_cmd;
 
@@ -3549,11 +3558,19 @@ void bmd_ctrl_cmd_from_user(void *nl_data, struct fgd_nl_msg_t *ret_msg)
 			else
 				is_charger_exist = false;
 #else
-			if (upmu_get_rgs_chrdet() == 0 ||
-				mt_usb_is_device() == 0)
-				is_charger_exist = false;
-			else
-				is_charger_exist = true;
+			battery_psy = power_supply_get_by_name("battery");
+			if (!battery_psy) {
+				printk("%s Couldn't get power supply battery_psy\n", __func__);
+			} else {
+				power_supply_get_property(battery_psy, POWER_SUPPLY_PROP_STATUS, &prop);
+				if (prop.intval == POWER_SUPPLY_STATUS_CHARGING)
+					is_charger_exist = true;
+				else if (prop.intval == POWER_SUPPLY_STATUS_FULL &&
+				         upmu_get_rgs_chrdet() == PMIC_RGS_CHRDET_ONLINE)
+					is_charger_exist = true;
+				else
+					is_charger_exist = false;
+			}
 #endif
 #else
 			if (upmu_get_rgs_chrdet() == 0 ||

@@ -17,6 +17,7 @@
 #include <linux/sched/signal.h>
 #include <linux/cpufreq.h>
 #include <linux/healthinfo/fg.h>
+#include <linux/delay.h>
 #include <linux/sched/rt.h>
 
 #include "ux_page_pool.h"
@@ -179,7 +180,10 @@ static int ux_page_pool_fillthread(void *p)
 					pool->gfp_mask);
 #endif
 				while (pool->count[j] < pool->high[j])
-					page_pool_fill(pool, j);
+					if (page_pool_fill(pool, j) < 0) {
+						/* sleep for 20ms if alloc fail */
+						msleep(20);
+                                        }
 #ifdef UXPAGEPOOL_DEBUG
 				pr_info("fill end   <<<<<order:%d migratetype:%d low: %d high: %d \
 					count:%d use %dms\n",
@@ -454,7 +458,7 @@ static ssize_t ux_page_pool_read(struct file *file,
 	if (len > *off)
 		len -= *off;
 	else
-		len = 0;
+		return 0;
 
 	if (copy_to_user(buffer, kbuf + *off, (len < count ? len : count)))
 		return -EFAULT;

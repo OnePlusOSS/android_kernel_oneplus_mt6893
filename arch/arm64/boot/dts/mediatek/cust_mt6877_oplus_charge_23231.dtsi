@@ -97,11 +97,13 @@
 
 &lk_charger{
 	support_3_6_standard;
+	for_mtk_battery_temp_support;
 	sub_board_temp_support;
 	sub_board_temp_ts_adc_support;
 	sub_board_pull_up_r = <6800>;
 	support_tuv_authentication;
 	support_sdp_screenoff;
+	sdp_screenon_voltage = <3250>;
 	support_battery_authentication;
 	data-gpio = <140>;
 	cpu-id = <7>;
@@ -152,6 +154,7 @@
 	hot_bat_decidegc = <53>;
 };
 
+#include "oplus_optiga_batt_def.h"
 &odm {
 	optiga {
 		compatible = "oplus-optiga";
@@ -162,6 +165,29 @@
 		cpu-id = <7>;
 		key-id = <1>;
 		support_optiga_in_lk;
+		barcode_read_support;
+		/* vendor_index: 1st vendor or 2nd vendor.
+		 * module_vendor: battery module vendor.
+		 * core_vendor: battery core vendor.
+		 * core_limited_vol: such as 4.48v battery core.
+		 */
+		oplus,optiga_batt_info = <FIRST_VENDOR  NVT       ATL      BAT_CORE_LIMITED_VOL_4480
+					  FIRST_VENDOR  ATL_INDIA ATL      BAT_CORE_LIMITED_VOL_4480
+					  FIRST_VENDOR  NVT       ATL      BAT_CORE_LIMITED_VOL_4480
+					  FIRST_VENDOR  ATL_INDIA ATL      BAT_CORE_LIMITED_VOL_4480
+					  SECOND_VENDOR GUANYU_M  GUANYU_C BAT_CORE_LIMITED_VOL_4480
+					  FIRST_VENDOR  NVT       ATL      BAT_CORE_LIMITED_VOL_4480>;
+
+		/* every barcode according to a line (vendor_index module_vendor core_vendor core_limited_vol).
+		 * at most 6 barcode defined in battery driver oplus_optiga.h. (#define MAX_BARCODE_NUM 6).
+		 * 611303000055 1st vendor. nvt battery barcode for dvt and later hardware version.
+		 * 611303000056 1st vendor. atl india battery barcode for dvt and later hardware version.
+		 * 611303000003 1st vendor. nvt battery barcode for evt and before hardware version.
+		 * 611303000004 1st vendor. atl india battery barcode for evt and before hardware version.
+		 * 611303000043 2nd vendor. guanyu battery barcode for all hardware version.
+		 * 612903000002 fake battery.
+		 */
+		oplus,batt_barcode = "611303000055", "611303000056", "611303000003", "611303000004", "611303000043", "612903000002";
 	};
 };
 
@@ -415,6 +441,7 @@
 	//for PD9V or QC9V
 	qcom,vbatt_pdqc_to_5v_thr = <4500>;
 	qcom,vbatt_pdqc_to_9v_thr = <4500>;
+	qcom,tbatt_pdqc_to_5v_thr = <420>;
 
 	qcom,support_3p6_standard;
 	//GPIO config:
@@ -422,6 +449,10 @@
 	qcom,ccdetect-gpio = <&pio 6 0x00>;
 
 	qcom,pmic_chgfunc = <&pio 142 0x00>;
+
+	oplus,subboard_ntc_abnormal_current = <4400>;
+	oplus,subboard_ntc_abnormal_high_temp = <1000>;
+	oplus,subboard_abnormal_method_support;
 };
 
 &pio {
@@ -482,6 +513,7 @@
 &bat_gm30 {
 	FUELGAGUE_APPLY = <(1)>;
 	ENABLE_IS_FORCE_FULL = <1>;
+	EXTERNAL_AUTHENTICATE = <(1)>;
 	FOR_MTK_60W_SUPPORT = <(1)>;
 	IS_4450MV_BATTERY_SUPPORT = <1>;
 	IS_SUBBOARD_TEMP_SUPPORT = <(0)>;
@@ -490,11 +522,12 @@
 	CAR_TUNE_VALUE = <(99)>;
 
 	KEEP_100_PERCENT = <(3)>;
-	g_FG_PSEUDO100_T0 = <(92)>;
-	g_FG_PSEUDO100_T1 = <(92)>;
-	g_FG_PSEUDO100_T2 = <(94)>;
-	g_FG_PSEUDO100_T3 = <(92)>;
-	g_FG_PSEUDO100_T4 = <(76)>;
+	DIM2_TABLE_DISTINGUISH = <(1)>;
+	ACTIVE_TABLE = <(5)>;
+	MULTI_BATTERY = <(1)>;
+
+	/* support optiga ic read batt barcode */
+	AUTHENTICATE_IC_READ_BATT_BARCODE_SUPPORT = <(1)>;
 
 	#include "mediatek/bat_setting/mt6877_battery_table_23231.dtsi"
 	#include "mediatek/bat_setting/mt6877_battery_prop_dim2_ext_23231.dtsi"
@@ -582,9 +615,9 @@
 		qcom,voocphy_vooc_cp_max_ibus = <3500>;
 		qcom,voocphy_cp_max_ibus = <3500>;
 
-		qcom,voocphy_freq_mincore = <1053000>;
-		qcom,voocphy_freq_midcore = <1540000>;
-		qcom,voocphy_freq_maxcore = <1540000>;
+		qcom,voocphy_freq_mincore = <1800000>;
+		qcom,voocphy_freq_midcore = <1800000>;
+		qcom,voocphy_freq_maxcore = <1800000>;
 		qcom,voocphy_current_change_timeout = <100>;
 
 		svooc_batt_sys_curve = <0 1 0 1 0 0 0	// 4000mA
@@ -855,7 +888,7 @@
 			eye-rev6 = <3>;
 			u2_discth = <0xc>;
 			host-eye-vrt = <6>;
-			host-eye-term = <6>;
+			host-eye-term = <5>;
 			host-eye-rev6 = <3>;
 			host_u2_discth = <0xc>;
 		};
@@ -874,6 +907,10 @@
 		compatible = "oplus,battery_log";
 		oplus,battery_log_support;
 	};
+};
+
+&u2port0 {
+	mediatek,rx-sqth = <0x3>;
 };
 
 &rt5133 {

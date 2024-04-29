@@ -79,6 +79,7 @@ extern int fb_notifier_call_chain(unsigned long val, void *v);
 extern bool oplus_fp_notify_up_delay;
 extern bool oplus_fp_notify_down_delay;
 extern bool oplus_doze_fpd_nodelay;
+extern void oplus_kill_surfaceflinger(void);
 //extern int power_mode;
 //#endif
 #ifndef CONFIG_OPLUS_OFP_V2
@@ -3369,6 +3370,9 @@ static void mtk_crtc_cmdq_timeout_cb(struct cmdq_cb_data data)
 	atomic_set(&mtk_crtc->cmdq_trig, 1);
 	/* CMDQ driver would not trigger aee when timeout. */
 	DDPAEE("%s cmdq timeout, crtc id:%d\n", __func__, drm_crtc_index(crtc));
+	if ((get_eng_version() == AGING)) {
+		oplus_kill_surfaceflinger();
+	}
 }
 
 void mtk_crtc_pkt_create(struct cmdq_pkt **cmdq_handle, struct drm_crtc *crtc,

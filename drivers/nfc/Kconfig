@@ -70,4 +70,5 @@ source "drivers/nfc/p73-spi-nq330/Kconfig"
 source "drivers/nfc/oplus_nfc/Kconfig"
 source "drivers/nfc/st21nfc-i2c/Kconfig"
 source "drivers/nfc/st54-spi/Kconfig"
+source "drivers/nfc/thn31/Kconfig"
 endmenu

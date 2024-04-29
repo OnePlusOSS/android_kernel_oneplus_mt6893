@@ -740,6 +740,13 @@
 		status = "okay";
 		new-arch-supported = <1>;
 	};
+	lay_detect: lay_detect{
+		status = "okay";
+		max_angel = <90>;
+		min_angel = <30>;
+		lay_in_time = <10>;
+		lay_out_time = <3>;
+	};
 /* sensor end */
 
 	oplus_boardid:oplus_boardid {

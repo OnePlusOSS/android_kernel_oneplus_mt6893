@@ -2431,8 +2431,11 @@ int mmc_set_uhs_voltage(struct mmc_host *host, u32 ocr)
 	cmd.flags = MMC_RSP_R1 | MMC_CMD_AC;
 
 	err = mmc_wait_for_cmd(host, &cmd, 0);
-	if (err)
-		goto power_cycle;
+	if (err) {
+            pr_warn("%s: set voltage error:%d, cmd.resp[0]:%u\n",
+                    mmc_hostname(host), err, cmd.resp[0]);
+            goto power_cycle;
+        }
 
 	if (!mmc_host_is_spi(host) && (cmd.resp[0] & R1_ERROR))
 		return -EIO;

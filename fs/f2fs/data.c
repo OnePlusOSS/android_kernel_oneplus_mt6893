@@ -20,10 +20,6 @@
 #include <linux/uio.h>
 #include <linux/cleancache.h>
 #include <linux/sched/signal.h>
-#include <uapi/linux/sched/types.h>
-#ifdef CONFIG_F2FS_FS_COMPRESSION_FIXED_OUTPUT
-#include <linux/cpuhotplug.h>
-#endif
 
 #include "f2fs.h"
 #include "node.h"
@@ -38,10 +34,6 @@ static struct kmem_cache *bio_post_read_ctx_cache;
 static struct kmem_cache *bio_entry_slab;
 static mempool_t *bio_post_read_ctx_pool;
 static struct bio_set f2fs_bioset;
-
-#ifdef CONFIG_F2FS_FS_COMPRESSION_FIXED_OUTPUT
-static struct kthread_worker __rcu **post_read_pcpu_workers;
-#endif
 
 #define	F2FS_BIO_POOL_SIZE	NR_CURSEG_TYPE
 
@@ -151,14 +143,7 @@ enum bio_post_read_step {
 struct bio_post_read_ctx {
 	struct bio *bio;
 	struct f2fs_sb_info *sbi;
-#ifdef CONFIG_F2FS_FS_COMPRESSION_FIXED_OUTPUT
-	union {
-		struct work_struct work;
-		struct kthread_work kwork;
-	};
-#else
 	struct work_struct work;
-#endif
 	unsigned int enabled_steps;
 #ifdef CONFIG_F2FS_FS_DEDUP
 	struct inode *inode;
@@ -333,9 +318,10 @@ static int f2fs_fscrypt_decrypt_pagecache_blocks(struct page *page, unsigned int
 		goto out;
 	}
 
-	for (i = offs; i < offs + len; i += blocksize, lblk_num++) {
+	for (i = offs; i < offs + len; lblk_num++) {
 		err = fscrypt_encrypt_block_inplace(inode, page,
 				blocksize, i, lblk_num, GFP_NOFS);
+		i += blocksize;
 		if (err)
 			goto out;
 	}
@@ -382,13 +368,6 @@ static void f2fs_post_read_work(struct work_struct *work)
 	f2fs_verify_and_finish_bio(ctx->bio);
 }
 
-#ifdef CONFIG_F2FS_FS_COMPRESSION_FIXED_OUTPUT
-static void f2fs_post_read_kwork(struct kthread_work *kwork)
-{
-	f2fs_post_read_work((struct work_struct *)kwork);
-}
-#endif
-
 static void f2fs_read_end_io(struct bio *bio)
 {
 	struct page *first_page = bio->bi_io_vec[0].bv_page;
@@ -414,23 +393,8 @@ static void f2fs_read_end_io(struct bio *bio)
 
 	if (ctx && (ctx->enabled_steps &
 			(STEP_DECRYPT | STEP_DECOMPRESS | STEP_DECOMPRESS_FIXED_OUTPUT))) {
-#ifdef CONFIG_F2FS_FS_COMPRESSION_FIXED_OUTPUT
-		struct kthread_worker *worker;
-
-		rcu_read_lock();
-		worker = rcu_dereference(post_read_pcpu_workers[raw_smp_processor_id()]);
-		if (!worker) {
-			INIT_WORK(&ctx->work, f2fs_post_read_work);
-			queue_work(ctx->sbi->post_read_wq, &ctx->work);
-		} else {
-			kthread_init_work(&ctx->kwork, f2fs_post_read_kwork);
-			kthread_queue_work(worker, &ctx->kwork);
-		}
-		rcu_read_unlock();
-#else
 		INIT_WORK(&ctx->work, f2fs_post_read_work);
 		queue_work(ctx->sbi->post_read_wq, &ctx->work);
-#endif
 	} else {
 		f2fs_verify_and_finish_bio(bio);
 	}
@@ -1157,15 +1121,6 @@ static void bio_set_post_read_account(struct inode *inode, struct bio *bio)
 {
 	struct bio_post_read_ctx *ctx = bio->bi_private;
 
-	if (!ctx) {
-		/* Due to the mempool, this never fails. */
-		ctx = mempool_alloc(bio_post_read_ctx_pool, GFP_NOFS);
-		memset(ctx, 0, sizeof(*ctx));
-		ctx->bio = bio;
-		ctx->sbi = F2FS_I_SB(inode);
-		bio->bi_private = ctx;
-	}
-
 	ctx->enabled_steps |= STEP_READ_ACCOUNT;
 	ctx->inode = inode;
 }
@@ -1204,7 +1159,12 @@ static struct bio *f2fs_grab_read_bio(struct inode *inode, block_t blkaddr,
 	 * responsible for enabling STEP_DECOMPRESS if it's actually needed.
 	 */
 
+#ifdef CONFIG_F2FS_FS_DEDUP
+	if (post_read_steps || f2fs_compressed_file(inode) ||
+			f2fs_inode_support_dedup(sbi, inode)) {
+#else
 	if (post_read_steps || f2fs_compressed_file(inode)) {
+#endif
 		/* Due to the mempool, this never fails. */
 		ctx = mempool_alloc(bio_post_read_ctx_pool, GFP_NOFS);
 		ctx->bio = bio;
@@ -1546,11 +1506,8 @@ alloc:
 	old_blkaddr = dn->data_blkaddr;
 	f2fs_allocate_data_block(sbi, NULL, old_blkaddr, &dn->data_blkaddr,
 					&sum, seg_type, NULL, false);
-	if (GET_SEGNO(sbi, old_blkaddr) != NULL_SEGNO) {
-		invalidate_mapping_pages(META_MAPPING(sbi),
-					old_blkaddr, old_blkaddr);
-		f2fs_invalidate_compress_page(sbi, old_blkaddr);
-	}
+	if (GET_SEGNO(sbi, old_blkaddr) != NULL_SEGNO)
+		f2fs_invalidate_internal_cache(sbi, old_blkaddr);
 	f2fs_update_data_blkaddr(dn, dn->data_blkaddr);
 
 	/*
@@ -3237,6 +3194,9 @@ retry:
 	while (!done && !retry && (index <= end)) {
 		nr_pages = find_get_pages_range_tag(mapping, &index, end,
 				tag, max_pages, pages);
+		/* fix coverity error: Dereferencing a pointer that might be NULL pages */
+		if (!pages)
+			break;
 		if (nr_pages == 0)
 			break;
 
@@ -3247,12 +3207,15 @@ readd:
 			need_readd = false;
 #ifdef CONFIG_F2FS_FS_COMPRESSION
 			if (f2fs_compressed_file(inode)) {
+				void *fsdata = NULL;
+				struct page *pagep;
+				int ret2;
+
 				ret = f2fs_init_compress_ctx(&cc);
 				if (ret) {
 					done = 1;
 					break;
 				}
-
 				if (!f2fs_cluster_can_merge_page(&cc,
 								page->index)) {
 					ret = f2fs_write_multi_pages(&cc,
@@ -3261,31 +3224,26 @@ readd:
 						need_readd = true;
 					goto result;
 				}
-
 				if (unlikely(f2fs_cp_error(sbi)))
 					goto lock_page;
 
-				if (f2fs_cluster_is_empty(&cc)) {
-					void *fsdata = NULL;
-					struct page *pagep;
-					int ret2;
+				if (!f2fs_cluster_is_empty(&cc))
+					goto lock_page;
 
-					ret2 = f2fs_prepare_compress_overwrite(
+				ret2 = f2fs_prepare_compress_overwrite(
 							inode, &pagep,
 							page->index, &fsdata);
-					if (ret2 < 0) {
-						ret = ret2;
-						done = 1;
-						break;
-					} else if (ret2 &&
-						!f2fs_compress_write_end(inode,
-								fsdata, page->index,
-								1)) {
-						retry = 1;
-						break;
-					}
-				} else {
-					goto lock_page;
+				if (ret2 < 0) {
+					ret = ret2;
+					done = 1;
+					break;
+				} else if (ret2 &&
+					(!f2fs_compress_write_end(inode,
+						fsdata, page->index, 1) ||
+					 !f2fs_all_cluster_page_loaded(&cc,
+						pages, i, nr_pages))) {
+					retry = 1;
+					break;
 				}
 			}
 #endif
@@ -4169,6 +4127,8 @@ int f2fs_migrate_page(struct address_space *mapping,
 		get_page(newpage);
 	}
 
+	/* guarantee to start from no stale private field */
+	set_page_private(newpage, 0);
 	if (PagePrivate(page)) {
 		set_page_private(newpage, page_private(page));
 		SetPagePrivate(newpage);
@@ -4366,131 +4326,6 @@ void f2fs_clear_radix_tree_dirty_tag(struct page *page)
 	xa_unlock_irqrestore(&mapping->i_pages, flags);
 }
 
-#ifdef CONFIG_F2FS_FS_COMPRESSION_FIXED_OUTPUT
-static struct kthread_worker *f2fs_init_percpu_worker(int cpu)
-{
-	const struct sched_param sparam = {
-		.sched_priority = 1,
-	};
-	struct kthread_worker *worker =
-		kthread_create_worker_on_cpu(cpu, 0, "f2fs_worker/%u", cpu);
-
-	if (IS_ERR(worker))
-		return worker;
-
-	sched_setscheduler(worker->task, SCHED_FIFO, &sparam);
-	return worker;
-}
-
-#ifdef CONFIG_HOTPLUG_CPU
-static enum cpuhp_state cpuhp_state;
-static DEFINE_SPINLOCK(post_read_pcpu_worker_lock);
-
-static int f2fs_cpu_online(unsigned int cpu)
-{
-	struct kthread_worker *worker, *old;
-
-	worker = f2fs_init_percpu_worker(cpu);
-	if (IS_ERR(worker))
-		return PTR_ERR(worker);
-
-	spin_lock(&post_read_pcpu_worker_lock);
-	old = rcu_dereference_protected(post_read_pcpu_workers[cpu],
-			lockdep_is_held(&post_read_pcpu_worker_lock));
-	if (!old)
-		rcu_assign_pointer(post_read_pcpu_workers[cpu], worker);
-	spin_unlock(&post_read_pcpu_worker_lock);
-	if (old)
-		kthread_destroy_worker(worker);
-	return 0;
-}
-
-static int f2fs_cpu_offline(unsigned int cpu)
-{
-	struct kthread_worker *worker;
-
-	spin_lock(&post_read_pcpu_worker_lock);
-	worker = rcu_dereference_protected(post_read_pcpu_workers[cpu],
-			lockdep_is_held(&post_read_pcpu_worker_lock));
-	rcu_assign_pointer(post_read_pcpu_workers[cpu], NULL);
-	spin_unlock(&post_read_pcpu_worker_lock);
-
-	synchronize_rcu();
-	if (worker)
-		kthread_destroy_worker(worker);
-	return 0;
-}
-
-static int f2fs_cpu_hotplug_init(void)
-{
-	int state;
-
-	state = cpuhp_setup_state_nocalls(CPUHP_AP_ONLINE_DYN,
-			"fs/f2fs:online", f2fs_cpu_online, f2fs_cpu_offline);
-	if (state < 0)
-		return state;
-
-	cpuhp_state = state;
-	return 0;
-}
-
-static void f2fs_cpu_hotplug_destroy(void)
-{
-	if (cpuhp_state)
-		cpuhp_remove_state_nocalls(cpuhp_state);
-}
-#else
-static inline int f2fs_cpu_hotplug_init(void) { return 0; }
-static inline void f2fs_cpu_hotplug_destroy(void) {}
-#endif
-
-static void f2fs_destroy_percpu_workers(void)
-{
-	struct kthread_worker *worker;
-	unsigned int cpu;
-
-	if (!post_read_pcpu_workers)
-		return;
-
-	f2fs_cpu_hotplug_destroy();
-
-	for_each_possible_cpu(cpu) {
-		worker = rcu_dereference_protected(post_read_pcpu_workers[cpu], 1);
-		rcu_assign_pointer(post_read_pcpu_workers[cpu], NULL);
-		if (worker)
-			kthread_destroy_worker(worker);
-	}
-	kfree(post_read_pcpu_workers);
-	post_read_pcpu_workers = NULL;
-}
-
-static void __init f2fs_init_percpu_workers(void)
-{
-	struct kthread_worker *worker;
-	unsigned int cpu;
-	int ret;
-
-	post_read_pcpu_workers = kcalloc(num_possible_cpus(),
-			sizeof(struct kthread_worker *), GFP_ATOMIC); // FIXME: need atomic?
-	if (!post_read_pcpu_workers) {
-		pr_warn("F2FS: failed to allocate pcpu workers\n");
-		return;
-	}
-
-	for_each_online_cpu(cpu) {
-		worker = f2fs_init_percpu_worker(cpu);
-		if (!IS_ERR(worker))
-			rcu_assign_pointer(post_read_pcpu_workers[cpu], worker);
-	}
-
-	ret = f2fs_cpu_hotplug_init();
-	if (ret < 0) {
-		pr_warn("F2FS: failed to init cpu hotplug handler\n");
-		f2fs_destroy_percpu_workers();
-	}
-}
-#endif
-
 int __init f2fs_init_post_read_processing(void)
 {
 	bio_post_read_ctx_cache =
@@ -4503,11 +4338,6 @@ int __init f2fs_init_post_read_processing(void)
 					 bio_post_read_ctx_cache);
 	if (!bio_post_read_ctx_pool)
 		goto fail_free_cache;
-
-#ifdef CONFIG_F2FS_FS_COMPRESSION_FIXED_OUTPUT
-	f2fs_init_percpu_workers();
-#endif
-
 	return 0;
 
 fail_free_cache:
@@ -4518,9 +4348,6 @@ fail:
 
 void f2fs_destroy_post_read_processing(void)
 {
-#ifdef CONFIG_F2FS_FS_COMPRESSION_FIXED_OUTPUT
-	f2fs_destroy_percpu_workers();
-#endif
 	mempool_destroy(bio_post_read_ctx_pool);
 	kmem_cache_destroy(bio_post_read_ctx_cache);
 }

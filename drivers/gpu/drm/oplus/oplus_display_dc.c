@@ -85,8 +85,10 @@ int oplus_display_panel_set_dimlayer_enable(void *buf)
 		last_oplus_dc_flag = (*dimlayer_enable);
 		if (0 == last_oplus_dc_flag)
 			oplus_dc_flag = 1;
-		if (1 == last_oplus_dc_flag)
-			oplus_dc_flag = 2;
+		if (mtk_crtc && (!mtk_crtc->panel_ext->params->oplus_dc_moss_flag)) {
+			if (1 == last_oplus_dc_flag)
+				oplus_dc_flag = 2;
+		}
 		printk(" set_dimlayer_enable oplus_dc_flag = %d \n ", oplus_dc_flag);
 	}
 #endif

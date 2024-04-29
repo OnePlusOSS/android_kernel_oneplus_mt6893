@@ -362,6 +362,7 @@ struct charger_manager {
 	struct iio_channel      *batcon_temp_chan;
 	struct iio_channel      *batid_temp_chan;
 	struct delayed_work	step_charging_work;
+	struct delayed_work	check_charger_out_work;
 	int step_status;
 	int step_status_pre;
 	int step_cnt;

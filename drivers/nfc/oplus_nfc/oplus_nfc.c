@@ -54,6 +54,9 @@ bool is_support_chip(chip_type chip)
 		case ST54H:
 			target_chipset = "ST54H";
 			break;
+		case THN31:
+			target_chipset = "THN31";
+			break;
 		default:
 			target_chipset = "UNKNOWN";
 			break;
@@ -106,6 +109,7 @@ static int oplus_nfc_probe(struct platform_device *pdev)
 	char prop_project[32];
 	char prop_project_operator[32];
 	const char *chipset_node;
+        const char *chipset_manifest;
 	struct proc_dir_entry *p_entry;
 	static struct proc_dir_entry *nfc_info = NULL;
 
@@ -161,6 +165,13 @@ static int oplus_nfc_probe(struct platform_device *pdev)
 		goto error_init;
 	}
 
+        if (of_property_read_string(dev->of_node, "manifest", &chipset_manifest)) {
+                pr_err("read manifest node fail");
+        } else {
+	        pr_err("%s, get chipset_node content = %s", __func__, chipset_manifest);
+                pr_err("read manifest node success");
+                proc_symlink("manifest", nfc_info , chipset_manifest);
+        }
 	return 0;
 
 error_init:

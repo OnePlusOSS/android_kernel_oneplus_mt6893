@@ -165,6 +165,12 @@ static const unsigned char mt6360_torch_level_22693[MT6360_LEVEL_TORCH] = {
 	0x14, 0x16, 0x18, 0x1A, 0x1C, 0x1E
 };
 
+/* 25mA~400mA 12.5mA/step */
+static const unsigned char mt6360_torch_level_fanli[MT6360_LEVEL_TORCH] = {
+	0x00, 0x02, 0x05, 0x06, 0x08, 0x0A, 0x0C, 0x0E, 0x10, 0x12,
+	0x14, 0x16, 0x18, 0x1A, 0x1C, 0x1E
+};
+
 static const unsigned char mt6360_strobe_level_19357[MT6360_LEVEL_FLASH] = {
 	0x08, 0x10, 0x18, 0x20, 0x28, 0x30, 0x3C, 0x54, 0x6C, 0x7C, 0x88, 0x90
 };
@@ -539,6 +545,9 @@ static int mt6360_set_level_ch1(int level)
 		} else if (is_project(22693) || is_project(22694) || is_project(22612) || is_project(0x226B1)) {
 		        flashlight_set_torch_brightness(
 			        flashlight_dev_ch1, mt6360_torch_level_22693[level]);
+		} else if (is_project(22087) || is_project(22331) || is_project(22333) || is_project(22334) || is_project(22869)) {
+		        flashlight_set_torch_brightness(
+			        flashlight_dev_ch1, mt6360_torch_level_fanli[level]);
 		} else {
 			flashlight_set_torch_brightness(
 				flashlight_dev_ch1, mt6360_torch_level[level]);
@@ -640,6 +649,9 @@ static int mt6360_set_level_ch2(int level)
 		} else if (is_project(22693) || is_project(22693) || is_project(22612)) {
 		        flashlight_set_torch_brightness(
 			        flashlight_dev_ch2, mt6360_torch_level_22693[level]);
+		} else if (is_project(22087) || is_project(22331) || is_project(22333) || is_project(22334) || is_project(22869)) {
+		        flashlight_set_torch_brightness(
+			        flashlight_dev_ch2, mt6360_torch_level_fanli[level]);
 		} else {
 			flashlight_set_torch_brightness(
 				flashlight_dev_ch2, mt6360_torch_level[level]);

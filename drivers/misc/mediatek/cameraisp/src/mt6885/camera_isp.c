@@ -12879,6 +12879,13 @@ static void ISP_BH_Switch_Workqueue(struct work_struct *pWork)
 	unsigned long long  sec = 0, usec = 0, m_sec = 0, m_usec = 0;
 	unsigned long long  timeout = 500;/*0.5ms*/
 
+	spin_lock(&(IspInfo.SpinLockClock));
+	if (G_u4EnableClockCount == 0) {
+		spin_unlock(&(IspInfo.SpinLockClock));
+		LOG_NOTICE("G_u4EnableClockCount is 0, early return since camera is powered off");
+		return;
+	}
+	spin_unlock(&(IspInfo.SpinLockClock));
 
 	LOG_NOTICE("+ seamless switch REQ CQcnt(%d)", g_RequestBufCqCnt[irq_module]);
 

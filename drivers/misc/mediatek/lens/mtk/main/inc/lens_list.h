@@ -39,6 +39,18 @@ extern int FP5513E4AF_S5KJN103_Release(struct inode *a_pstInode,
 extern int FP5513E4AF_S5KJN103_GetFileName(unsigned char *pFileName);
 
 
+#define FP5513AF_SetI2Cclient FP5513AF_SetI2Cclient_Main
+#define FP5513AF_Ioctl FP5513AF_Ioctl_Main
+#define FP5513AF_Release FP5513AF_Release_Main
+#define FP5513AF_GetFileName FP5513AF_GetFileName_Main
+extern int FP5513AF_SetI2Cclient(struct i2c_client *pstAF_I2Cclient,
+        spinlock_t *pAF_SpinLock, int *pAF_Opened);
+extern long FP5513AF_Ioctl(struct file *a_pstFile,
+        unsigned int a_u4Command, unsigned long a_u4Param);
+extern int FP5513AF_Release(struct inode *a_pstInode,
+        struct file *a_pstFile);
+extern int FP5513AF_GetFileName(unsigned char *pFileName);
+
 #define DW9718TAF_SetI2Cclient DW9718TAF_SetI2Cclient_Main
 #define DW9718TAF_Ioctl DW9718TAF_Ioctl_Main
 #define DW9718TAF_Release DW9718TAF_Release_Main
@@ -752,6 +764,18 @@ extern long JD5516WE4_Ioctl(struct file *a_pstFile, unsigned int a_u4Command,
 	unsigned long a_u4Param);
 extern int JD5516WE4_Release(struct inode *a_pstInode, struct file *a_pstFile);
 extern int JD5516WE4_GetFileName(unsigned char *pFileName);
+
+#define JD5516WE4AF_23689_IMX890_SetI2Cclient JD5516WE4AF_23689_IMX890_SetI2Cclient_Main
+#define JD5516WE4AF_23689_IMX890_Ioctl JD5516WE4AF_23689_IMX890_Ioctl_Main
+#define JD5516WE4AF_23689_IMX890_Release JD5516WE4AF_23689_IMX890_Release_Main
+#define JD5516WE4AF_23689_IMX890_GetFileName JD5516WE4AF_23689_IMX890_GetFileName_Main
+extern int JD5516WE4AF_23689_IMX890_SetI2Cclient(struct i2c_client *pstAF_I2Cclient,
+	spinlock_t *pAF_SpinLock, int *pAF_Opened);
+extern long JD5516WE4AF_23689_IMX890_Ioctl(struct file *a_pstFile, unsigned int a_u4Command,
+	unsigned long a_u4Param);
+extern int JD5516WE4AF_23689_IMX890_Release(struct inode *a_pstInode, struct file *a_pstFile);
+extern int JD5516WE4AF_23689_IMX890_GetFileName(unsigned char *pFileName);
+
 extern struct regulator *regulator_get_regVCAMAF(void);
 #define AW8601_CHANEL_OV64B_SetI2Cclient AW8601_CHANEL_OV64B_SetI2Cclient_Main
 #define AW8601_CHANEL_OV64B_Ioctl AW8601_CHANEL_OV64B_Ioctl_Main
@@ -819,4 +843,59 @@ extern long DW9827AF_23231_IMX882_Ioctl(struct file *a_pstFile, unsigned int a_u
 	unsigned long a_u4Param);
 extern int DW9827AF_23231_IMX882_Release(struct inode *a_pstInode, struct file *a_pstFile);
 extern int DW9827AF_23231_IMX882_GetFileName(unsigned char *pFileName);
+
+#define DW9827AF_23687_IMX882_SetI2Cclient DW9827AF_23687_IMX882_SetI2Cclient_Main
+#define DW9827AF_23687_IMX882_Ioctl DW9827AF_23687_IMX882_Ioctl_Main
+#define DW9827AF_23687_IMX882_Release DW9827AF_23687_IMX882_Release_Main
+#define DW9827AF_23687_IMX882_GetFileName DW9827AF_23687_IMX882_GetFileName_Main
+extern int DW9827AF_23687_IMX882_SetI2Cclient(struct i2c_client *pstAF_I2Cclient,
+	spinlock_t *pAF_SpinLock, int *pAF_Opened);
+extern long DW9827AF_23687_IMX882_Ioctl(struct file *a_pstFile, unsigned int a_u4Command,
+	unsigned long a_u4Param);
+extern int DW9827AF_23687_IMX882_Release(struct inode *a_pstInode, struct file *a_pstFile);
+extern int DW9827AF_23687_IMX882_GetFileName(unsigned char *pFileName);
+
+#define DW9827AF_23231_IMX882PD_SetI2Cclient DW9827AF_23231_IMX882PD_SetI2Cclient_Main
+#define DW9827AF_23231_IMX882PD_Ioctl DW9827AF_23231_IMX882PD_Ioctl_Main
+#define DW9827AF_23231_IMX882PD_Release DW9827AF_23231_IMX882PD_Release_Main
+#define DW9827AF_23231_IMX882PD_GetFileName DW9827AF_23231_IMX882PD_GetFileName_Main
+extern int DW9827AF_23231_IMX882PD_SetI2Cclient(struct i2c_client *pstAF_I2Cclient,
+	spinlock_t *pAF_SpinLock, int *pAF_Opened);
+extern long DW9827AF_23231_IMX882PD_Ioctl(struct file *a_pstFile, unsigned int a_u4Command,
+	unsigned long a_u4Param);
+extern int DW9827AF_23231_IMX882PD_Release(struct inode *a_pstInode, struct file *a_pstFile);
+extern int DW9827AF_23231_IMX882PD_GetFileName(unsigned char *pFileName);
+
+#define DW9800SAF_SetI2Cclient DW9800SAF_SetI2Cclient_Main
+#define DW9800SAF_Ioctl DW9800SAF_Ioctl_Main
+#define DW9800SAF_Release DW9800SAF_Release_Main
+#define DW9800SAF_GetFileName DW9800SAF_GetFileName_Main
+extern int DW9800SAF_SetI2Cclient(struct i2c_client *pstAF_I2Cclient,
+	spinlock_t *pAF_SpinLock, int *pAF_Opened);
+extern long DW9800SAF_Ioctl(struct file *a_pstFile, unsigned int a_u4Command,
+	unsigned long a_u4Param);
+extern int DW9800SAF_Release(struct inode *a_pstInode, struct file *a_pstFile);
+extern int DW9800SAF_GetFileName(unsigned char *pFileName);
 #endif
+
+#define DW9827AF_23687_IMX882PD_SetI2Cclient DW9827AF_23687_IMX882PD_SetI2Cclient_Main
+#define DW9827AF_23687_IMX882PD_Ioctl DW9827AF_23687_IMX882PD_Ioctl_Main
+#define DW9827AF_23687_IMX882PD_Release DW9827AF_23687_IMX882PD_Release_Main
+#define DW9827AF_23687_IMX882PD_GetFileName DW9827AF_23687_IMX882PD_GetFileName_Main
+extern int DW9827AF_23687_IMX882PD_SetI2Cclient(struct i2c_client *pstAF_I2Cclient,
+	spinlock_t *pAF_SpinLock, int *pAF_Opened);
+extern long DW9827AF_23687_IMX882PD_Ioctl(struct file *a_pstFile, unsigned int a_u4Command,
+	unsigned long a_u4Param);
+extern int DW9827AF_23687_IMX882PD_Release(struct inode *a_pstInode, struct file *a_pstFile);
+extern int DW9827AF_23687_IMX882PD_GetFileName(unsigned char *pFileName);
+
+#define DW9800SAFPD_SetI2Cclient DW9800SAFPD_SetI2Cclient_Main
+#define DW9800SAFPD_Ioctl DW9800SAFPD_Ioctl_Main
+#define DW9800SAFPD_Release DW9800SAFPD_Release_Main
+#define DW9800SAFPD_GetFileName DW9800SAFPD_GetFileName_Main
+extern int DW9800SAFPD_SetI2Cclient(struct i2c_client *pstAF_I2Cclient,
+	spinlock_t *pAF_SpinLock, int *pAF_Opened);
+extern long DW9800SAFPD_Ioctl(struct file *a_pstFile, unsigned int a_u4Command,
+	unsigned long a_u4Param);
+extern int DW9800SAFPD_Release(struct inode *a_pstInode, struct file *a_pstFile);
+extern int DW9800SAFPD_GetFileName(unsigned char *pFileName);

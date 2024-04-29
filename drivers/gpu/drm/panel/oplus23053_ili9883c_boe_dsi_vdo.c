@@ -78,7 +78,7 @@ struct lcm {
 
 	int error;
 
-    bool is_normal_mode;
+	bool is_normal_mode;
 };
 
 #define lcm_dcs_write_seq(ctx, seq...) \
@@ -262,7 +262,7 @@ static void lcm_panel_init(struct lcm *ctx)
 	lcm_dcs_write_seq_static(ctx, 0x94, 0xC9);
 	lcm_dcs_write_seq_static(ctx, 0x95, 0xE1);   //shuiguo
 	lcm_dcs_write_seq_static(ctx, 0xB4, 0xB5);
-	lcm_dcs_write_seq_static(ctx, 0xAC, 0xCF);
+	lcm_dcs_write_seq_static(ctx, 0xAC, 0xFC);
 	lcm_dcs_write_seq_static(ctx, 0xAD, 0xFC);
 	lcm_dcs_write_seq_static(ctx, 0xAF, 0x18);
 	lcm_dcs_write_seq_static(ctx, 0xFF, 0x98, 0x83, 0x00);

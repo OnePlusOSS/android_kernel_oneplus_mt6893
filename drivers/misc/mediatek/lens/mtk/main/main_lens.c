@@ -91,6 +91,8 @@ static struct stAF_DrvList g_stAF_DrvList[MAX_NUM_OF_LENS] = {
 	 FP5513E4AF_Release, FP5513E4AF_GetFileName, NULL},
 	{1, AFDRV_FP5513E4AF_S5KJN103, FP5513E4AF_S5KJN103_SetI2Cclient, FP5513E4AF_S5KJN103_Ioctl,
         FP5513E4AF_S5KJN103_Release, FP5513E4AF_S5KJN103_GetFileName, NULL},
+	{1, AFDRV_FP5513AF, FP5513AF_SetI2Cclient, FP5513AF_Ioctl,
+        FP5513AF_Release, FP5513AF_GetFileName, NULL},
 	{1, AFDRV_LC898217AF, LC898217AF_SetI2Cclient, LC898217AF_Ioctl,
 	 LC898217AF_Release, LC898217AF_GetFileName, NULL},
 	{1, AFDRV_DW9718AF, DW9718AF_SetI2Cclient, DW9718AF_Ioctl,
@@ -121,10 +123,18 @@ static struct stAF_DrvList g_stAF_DrvList[MAX_NUM_OF_LENS] = {
 	DW9800WAF_Release, DW9800WAF_GetFileName, NULL},
 	{1, AFDRV_DW9827AF, DW9827AF_SetI2Cclient, DW9827AF_Ioctl,
 	DW9827AF_Release, DW9827AF_GetFileName, NULL},
-	
 	{1, AFDRV_DW9827AF_23231_IMX882, DW9827AF_23231_IMX882_SetI2Cclient, DW9827AF_23231_IMX882_Ioctl,
 	DW9827AF_23231_IMX882_Release, DW9827AF_23231_IMX882_GetFileName, NULL},
-	
+	{1, AFDRV_DW9827AF_23687_IMX882, DW9827AF_23687_IMX882_SetI2Cclient, DW9827AF_23687_IMX882_Ioctl,
+	DW9827AF_23687_IMX882_Release, DW9827AF_23687_IMX882_GetFileName, NULL},
+	{1, AFDRV_DW9827AF_23231_IMX882PD, DW9827AF_23231_IMX882PD_SetI2Cclient, DW9827AF_23231_IMX882PD_Ioctl,
+	DW9827AF_23231_IMX882PD_Release, DW9827AF_23231_IMX882PD_GetFileName, NULL},
+	{1, AFDRV_DW9827AF_23687_IMX882PD, DW9827AF_23687_IMX882PD_SetI2Cclient, DW9827AF_23687_IMX882PD_Ioctl,
+	DW9827AF_23687_IMX882PD_Release, DW9827AF_23687_IMX882PD_GetFileName, NULL},
+	{1, AFDRV_DW9800SAF, DW9800SAF_SetI2Cclient, DW9800SAF_Ioctl,
+	DW9800SAF_Release, DW9800SAF_GetFileName, NULL},
+	{1, AFDRV_DW9800SAFPD, DW9800SAFPD_SetI2Cclient, DW9800SAFPD_Ioctl,
+	DW9800SAFPD_Release, DW9800SAFPD_GetFileName, NULL},
 	{1, AFDRV_AK7316AF, AK7316AF_SetI2Cclient, AK7316AF_Ioctl,
 	AK7316AF_Release, AK7316AF_GetFileName, NULL},
 	{1, AFDRV_GT9772AF, GT9772AF_SetI2Cclient, GT9772AF_Ioctl,
@@ -167,6 +177,8 @@ static struct stAF_DrvList g_stAF_DrvList[MAX_NUM_OF_LENS] = {
 	 JD5516WE4_Release, JD5516WE4_GetFileName, NULL},
 	 {1, AFDRV_AW8601, AW8601_CHANEL_OV64B_SetI2Cclient, AW8601_CHANEL_OV64B_Ioctl,
 	 AW8601_CHANEL_OV64B_Release, AW8601_CHANEL_OV64B_GetFileName, NULL},
+	{1, AFDRV_JD5516WE4AF_23689_IMX890, JD5516WE4AF_23689_IMX890_SetI2Cclient, JD5516WE4AF_23689_IMX890_Ioctl,
+	 JD5516WE4AF_23689_IMX890_Release, JD5516WE4AF_23689_IMX890_GetFileName, NULL},
 #else
 
 	{1, AFDRV_DW9718TAF, DW9718TAF_SetI2Cclient, DW9718TAF_Ioctl,
@@ -401,7 +413,7 @@ void AFRegulatorCtrl(int Stage)
             return;
     }
 
-	if(is_project(23053) || is_project(23054) || is_project(23253)) {
+	if(is_project(23053) || is_project(23054) || is_project(23253) || is_project(23055)) {
             //Other_AFRegulatorCtrl(Stage);
             return;
     }
@@ -419,7 +431,10 @@ void AFRegulatorCtrl(int Stage)
 		Other_AFRegulatorCtrl(Stage);
 		return;
 	}
-
+	if (is_project(23613) || is_project(23686) || is_project(23687)) {
+		Other_AFRegulatorCtrl(Stage);
+		return;
+	}
 	if (is_project(21711) || is_project(21712)) {
 		return;
 	}
@@ -491,7 +506,7 @@ void AFRegulatorCtrl(int Stage)
     if (is_project(0x2163B) || is_project(0x2163C) || is_project(21639) || is_project(0x2163D) || is_project(0x216CD) || is_project(0x216CE)
         || is_project(22603) || is_project(22604) || is_project(22609) || is_project(22631) || is_project(22632) || is_project(23602)
 	    || is_project(22083) || is_project(22291) || is_project(22292) || is_project(22084)
-	    || is_project(23053) || is_project(23054) || is_project(23253)) {
+	    || is_project(23053) || is_project(23054) || is_project(23253) || is_project(23055)) {
         return;
     }
     if(is_project(21690) || is_project(21691) || is_project(21692)) {
@@ -789,14 +804,15 @@ void Other_AFRegulatorCtrl(int Stage)
                             } else if (is_project(22693) || is_project(22694) || is_project(22612) || is_project(0x226B1)) {
                                 regVCAMAF = regulator_get(lens_device, "VFP");
                             } else if (is_project(22629) || is_project(22710) || is_project(22711)
-							    || is_project(22633) || is_project(22712) || is_project(22713)) {
+                                || is_project(23613) || is_project(23686) || is_project(23687)
+                                || is_project(22633) || is_project(22712) || is_project(22713)) {
                                 regVCAMAF = regulator_get(lens_device, "VFP");
                             } else if (is_project(22603) || is_project(22604) || is_project(22609)) {
                                 LOG_INF("project BLADE,\n");
                                 regVCAMAF = regulator_get(lens_device, "vtp");
                             } else if (is_project(22083) || is_project(22291) || is_project(22292) || is_project(22084)) {
                                 LOG_INF("project LIJING,\n");
-                            } else if (is_project(23053) || is_project(23054) || is_project(23253)) {
+                            } else if (is_project(23053) || is_project(23054) || is_project(23253) || is_project(23055)) {
                                 LOG_INF("project LIJINGA,\n");
                                 //regVCAMAF = regulator_get(lens_device, "vtp");
                             } else if (is_project(22087) || is_project(22088) || is_project(22331) || is_project(22332) || is_project(22333) || is_project(22334) || is_project(22869)) {

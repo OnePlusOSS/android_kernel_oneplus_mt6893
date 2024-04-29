@@ -218,3 +218,4 @@ obj-$(CONFIG_MTK_GATE_IC) += gate_ic/
 obj-$(CONFIG_MTK_FREQ_HOPPING) += freqhopping/
 obj-$(CONFIG_MTK_TASK_TURBO) += task_turbo/
 obj-$(CONFIG_CAMERA_LDO) += camera_ldo/
+obj-$(CONFIG_LDO_AW37004) += aw37004/

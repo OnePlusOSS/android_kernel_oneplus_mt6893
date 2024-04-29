@@ -9,7 +9,7 @@
  *   silead:
  */
 
-&mt_pmic_vmch_ldo_reg {
+&mt_pmic_vfp_ldo_reg {
     regulator-min-microvolt = <3300000>;
     regulator-max-microvolt = <3300000>;
 };
@@ -44,7 +44,7 @@ oplus_fp: fingerprint@0 {
     pinctrl-1 = <&gpio_uff_clk_6mA>, <&gpio_uff_mosi_6mA>, <&uff_gpio_miso_6mA>, <&uff_gpio_cs_6mA>;
     pinctrl-2 = <&gpio_uff_cs_func>;
 
-    dvdd-supply = <&mt_pmic_vmch_ldo_reg>;
+    dvdd-supply = <&mt_pmic_vfp_ldo_reg>;
     dvdd-config = <3300000 3300000 150000>;
     power-num = <1>;
     status = "okay";
@@ -84,14 +84,14 @@ oplus_fp: fingerprint@0 {
     gpio_uff_mosi_6mA: gpio_uff_mosi_6mA {
         pins_cmd_dat {
             pinmux = <PINMUX_GPIO101__FUNC_SPI5_MO>;
-            drive-strength = <2>;
+            drive-strength = <4>;
         };
     };
 
     uff_gpio_miso_6mA: uff_gpio_miso_6mA {
         pins_cmd_dat {
             pinmux = <PINMUX_GPIO100__FUNC_SPI5_MI>;
-            drive-strength = <3>;
+            drive-strength = <4>;
         };
     };
 

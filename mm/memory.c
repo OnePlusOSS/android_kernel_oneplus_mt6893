@@ -6172,8 +6172,8 @@ vm_fault_t __handle_speculative_fault(struct mm_struct *mm,
 	struct vm_fault vmf = {
 		.address = address,
 	};
-	pgd_t *pgd;
-	p4d_t *p4d;
+	pgd_t *pgd, pgdval;
+	p4d_t *p4d, p4dval;
 	pud_t pudval;
 	int seq, ret = VM_FAULT_RETRY;
 	struct vm_area_struct *vma;
@@ -6292,14 +6292,20 @@ vm_fault_t __handle_speculative_fault(struct mm_struct *mm,
 	 */
 	local_irq_disable();
 	pgd = pgd_offset(mm, address);
+	pgdval = READ_ONCE(*pgd);
 	if (spf_pgd_flunked(pgd))
 		goto out_walk;
 
 	p4d = p4d_offset(pgd, address);
+	if (pgd_val(READ_ONCE(*pgd)) != pgd_val(pgdval))
+		goto out_walk;
+	p4dval = READ_ONCE(*p4d);
 	if (spf_p4d_flunked(p4d))
 		goto out_walk;
 
 	vmf.pud = pud_offset(p4d, address);
+	if (p4d_val(READ_ONCE(*p4d)) != p4d_val(p4dval))
+		goto out_walk;
 	pudval = READ_ONCE(*vmf.pud);
 	if (pud_none(pudval) || unlikely(pud_bad(pudval)))
 		goto out_walk;
@@ -6309,6 +6315,8 @@ vm_fault_t __handle_speculative_fault(struct mm_struct *mm,
 		goto out_walk;
 
 	vmf.pmd = pmd_offset(vmf.pud, address);
+	if (pud_val(READ_ONCE(*vmf.pud)) != pud_val(pudval))
+		goto out_walk;
 	vmf.orig_pmd = READ_ONCE(*vmf.pmd);
 	/*
 	 * pmd_none could mean that a hugepage collapse is in progress
@@ -6336,6 +6344,11 @@ vm_fault_t __handle_speculative_fault(struct mm_struct *mm,
 	 */
 
 	vmf.pte = pte_offset_map(vmf.pmd, address);
+	if (pmd_val(READ_ONCE(*vmf.pmd)) != pmd_val(vmf.orig_pmd)) {
+		pte_unmap(vmf.pte);
+		vmf.pte = NULL;
+		goto out_walk;
+	}
 	vmf.orig_pte = READ_ONCE(*vmf.pte);
 	barrier(); /* See comment in handle_pte_fault() */
 	if (pte_none(vmf.orig_pte)) {

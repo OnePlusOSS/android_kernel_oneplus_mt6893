@@ -125,7 +125,6 @@ static bool cont_pte_hugepage_enable = true;
 bool cma_chunk_refill_ready;
 
 static const char *prjs[] = {
-	"22277", "23031",
 	"22803", "22881", "21001", "21201", "22091",
 	"22227", "22101", "22235", "22236", NULL,
 };

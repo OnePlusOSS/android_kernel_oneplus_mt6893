@@ -991,6 +991,30 @@
 #define GC02M1_SENSOR_ID22693                         (0x02e0 + 0xd)//0x02ed
 #define SENSOR_DRVNAME_GC02M1_MIPI_RAW22693           "gc02m1_mipi_raw22693"
 
+/*Cam.Drv add for tacoo 20230922*/
+#define IMX882_SENSOR_ID23687                       0x8202
+#define SENSOR_DRVNAME_IMX882_MIPI_RAW23687         "imx882_mipi_raw23687"
+#define IMX890_SENSOR_ID23689                       0x0890
+#define SENSOR_DRVNAME_IMX890_MIPI_RAW23689         "imx890_mipi_raw23689"
+#define HI1634Q_SENSOR_ID23687                      0x1634
+#define SENSOR_DRVNAME_HI1634Q_MIPI_RAW23687       "hi1634q_mipi_raw23687"
+#define HI846W_SENSOR_ID23687                       0x0856
+#define SENSOR_DRVNAME_HI846W_MIPI_RAW23687         "hi846w_mipi_raw23687"
+#define GC02M1_SENSOR_ID23687                       (0x02e0 + 0xf)//0x02ef
+#define SENSOR_DRVNAME_GC02M1_MIPI_RAW23687         "gc02m1_mipi_raw23687"
+#define IMX882PD_SENSOR_ID23687                     (0x8202 + 0x1) // 0x8203
+#define SENSOR_DRVNAME_IMX882PD_MIPI_RAW23687       "imx882pd_mipi_raw23687"
+/*Cam.Drv add for tacoo 20230922*/
+
+/*Cam.Drv add for tacoo-b 20231129*/
+#define S5KJN1_SENSOR_ID23707                         0x38E9 /*0x0x38E1 + 8*/
+#define SENSOR_DRVNAME_S5KJN1_MIPI_RAW23707           "s5kjn1_mipi_raw23707"
+#define GC02M1_SENSOR_ID23707                         (0x02e0 + 0x13)//0x02f3
+#define SENSOR_DRVNAME_GC02M1_MIPI_RAW23707           "gc02m1_mipi_raw23707"
+#define HI1634Q_SENSOR_ID23707                        0x1635
+#define SENSOR_DRVNAME_HI1634Q_MIPI_RAW23707          "hi1634q_mipi_raw23707"
+/*Cam.Drv add for tacoo-b 20231129*/
+
 /*Cam.Drv add for chengdu 20221213*/
 #define S5KHP3SP_SENSOR_ID22629                       (0x1b73)
 #define SENSOR_DRVNAME_S5KHP3SP_MIPI_RAW22629         "s5khp3sp_mipi_raw22629"
@@ -1457,6 +1481,8 @@
 #define SENSOR_DRVNAME_IMX709_MIPI_RAW23231          "imx709_mipi_raw23231"
 #define IMX882_SENSOR_ID23231                        (0x0882 + SENSOR_ID_OFFSET_23231)
 #define SENSOR_DRVNAME_IMX882_MIPI_RAW23231          "imx882_mipi_raw23231"
+#define IMX882PD_SENSOR_ID23231                      (0x0882 + 0x23)
+#define SENSOR_DRVNAME_IMX882PD_MIPI_RAW23231        "imx882pd_mipi_raw23231"
 
 
 /******************************************************************************

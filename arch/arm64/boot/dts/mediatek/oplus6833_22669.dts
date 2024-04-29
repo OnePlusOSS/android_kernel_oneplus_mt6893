@@ -167,7 +167,7 @@
 
 		/*tp-pinctrl*/
 		pinctrl-names = "default", "pin_set_low", "pin_set_high";
-		pinctrl-0 = <&ctp_ts_int_poweron &ctp_ts_reset_poweron &ctp_novatek_spi_mode>;
+		pinctrl-0 = <&ctp_ts_int_poweron &ctp_ts_reset_poweron &ctp_novatek_spi_mode &ctp_novatek_clk_spi_mode>;
 		pinctrl-1 = <&ctp_ts_int_poweroff &ctp_ts_reset_poweroff &ctp_ts_cs_poweroff &ctp_ts_clk_poweroff>;
 		pinctrl-2 = <&ctp_ts_int_poweron &ctp_ts_reset_poweron &ctp_ts_cs_poweron &ctp_ts_clk_poweron>;
 
@@ -199,11 +199,17 @@
 		pins_cmd_dat {
 			pinmux = <PINMUX_GPIO12__FUNC_SPI4_MI>,
 				<PINMUX_GPIO13__FUNC_SPI4_MO>,
-				<PINMUX_GPIO97__FUNC_SPI4_CLK>,
 				<PINMUX_GPIO98__FUNC_SPI4_CSB>;
 			drive-strength = <4>;
 		};
 	};
+	ctp_novatek_clk_spi_mode:ctp_novatek_clk_spi_mode{
+                pins_cmd_dat {
+                        pinmux = <PINMUX_GPIO97__FUNC_SPI4_CLK>;
+			mediatek,drive-strength-adv = <0>;/*EH[2:0]*/
+                        drive-strength = <4>;
+                };
+        };
 	ctp_ts_cs_poweroff: ctp_ts_cs_poweroff {
 		pins_cmd_dat {
 			pinmux = <PINMUX_GPIO98__FUNC_GPIO98>;

@@ -886,4 +886,8 @@
 	feedback_fb: feedback_fb {
 		compatible = "oplus,haptic-feedback";
 	};
+	oplus_battery_log: oplus,battery_log {
+		compatible = "oplus,battery_log";
+		oplus,battery_log_support;
+	};
 };

@@ -238,6 +238,7 @@ source "drivers/nfc/nq330-i2c/Kconfig"
 source "drivers/nfc/p73-spi-nq330/Kconfig"
 source "drivers/nfc/sn_nci/nfc/Kconfig"
 source "drivers/nfc/sn_nci/ese/Kconfig"
+source "drivers/nfc/thn31/Kconfig"
 #endif /* OPLUS_FEATURE_NFC_BRINGUP */
 
 endmenu

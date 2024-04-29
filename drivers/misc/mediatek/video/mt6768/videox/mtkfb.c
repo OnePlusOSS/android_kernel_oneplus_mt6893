@@ -192,6 +192,7 @@ char ext_mtkfb_lcm_name[256] = { 0 };
 extern unsigned int oplus_display_normal_max_brightness;
 extern bool oplus_display_twelvebits_support;
 bool oplus_display_mt6382_support;
+bool oplus_display_no_support_mtk_round_corner;
 bool oplus_display_mt6382_esd_check;
 #ifdef CONFIG_MTK_MT6382_BDG
 bool oplus_display_async_bl_support;
@@ -2626,6 +2627,12 @@ static int mtkfb_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "read bool oplus_display_mt6382_support failed.");
 	else
 		DISPMSG("%s:oplus_display_mt6382_support=%u\n", __func__, oplus_display_mt6382_support);
+
+	oplus_display_no_support_mtk_round_corner = of_property_read_bool(pdev->dev.of_node, "oplus_display_no_support_mtk_round_corner");
+	if (!oplus_display_no_support_mtk_round_corner)
+		dev_err(&pdev->dev, "read bool oplus_display_no_support_mtk_round_corner failed.");
+	else
+		DISPMSG("%s:oplus_display_no_support_mtk_round_corner=%u\n", __func__, oplus_display_no_support_mtk_round_corner);
 
 	oplus_display_mt6382_esd_check = of_property_read_bool(pdev->dev.of_node, "oplus_display_mt6382_esd_check");
 	if (!oplus_display_mt6382_esd_check)

@@ -23,6 +23,13 @@
  * Base kernel context APIs
  */
 
+#include <linux/version.h>
+#if KERNEL_VERSION(4, 11, 0) <= LINUX_VERSION_CODE
+#include <linux/sched/task.h>
+#else
+#include <linux/sched.h>
+#endif
+
 #include <mali_kbase.h>
 #include <gpu/mali_kbase_gpu_regmap.h>
 #include <mali_kbase_mem_linux.h>
@@ -129,12 +136,57 @@ int kbase_context_common_init(struct kbase_context *kctx)
 	/* creating a context is considered a disjoint event */
 	kbase_disjoint_event(kctx->kbdev);
 
-	spin_lock_init(&kctx->mm_update_lock);
 	kctx->process_mm = NULL;
 	atomic_set(&kctx->nonmapped_pages, 0);
 	atomic_set(&kctx->permanent_mapped_pages, 0);
 	kctx->tgid = current->tgid;
 	kctx->pid = current->pid;
+	kctx->task = NULL;
+
+	/* Check if this is a Userspace created context */
+	if (likely(kctx->filp)) {
+		struct pid *pid_struct;
+
+		rcu_read_lock();
+		pid_struct = find_get_pid(kctx->tgid);
+		if (likely(pid_struct)) {
+			struct task_struct *task = pid_task(pid_struct, PIDTYPE_PID);
+
+			if (likely(task)) {
+				/* Take a reference on the task to avoid slow lookup
+				 * later on from the page allocation loop.
+				 */
+				get_task_struct(task);
+				kctx->task = task;
+			} else {
+				dev_err(kctx->kbdev->dev,
+					"Failed to get task pointer for %s/%d",
+					current->comm, current->pid);
+				err = -ESRCH;
+			}
+
+			put_pid(pid_struct);
+		} else {
+			dev_err(kctx->kbdev->dev,
+				"Failed to get pid pointer for %s/%d",
+				current->comm, current->pid);
+			err = -ESRCH;
+		}
+		rcu_read_unlock();
+
+		if (unlikely(err))
+			return err;
+	}
+
+	/* Check if this is a Userspace created context */
+	if (likely(kctx->filp)) {
+		/* This merely takes a reference on the mm_struct and not on the
+		 * address space and so won't block the freeing of address space
+		 * on process exit.
+		 */
+		mmgrab(current->mm);
+		kctx->process_mm = current->mm;
+	}
 
 	atomic_set(&kctx->used_pages, 0);
 
@@ -167,11 +219,19 @@ int kbase_context_common_init(struct kbase_context *kctx)
 	mutex_lock(&kctx->kbdev->kctx_list_lock);
 
 	err = kbase_insert_kctx_to_process(kctx);
-	if (err)
-		dev_err(kctx->kbdev->dev,
-		"(err:%d) failed to insert kctx to kbase_process\n", err);
+	if (err) {
+		dev_err(kctx->kbdev->dev, "(err:%d) failed to insert kctx to kbase_process", err);
+		if (likely(kctx->filp))
+			mmdrop(kctx->process_mm);
+	}
 
 	mutex_unlock(&kctx->kbdev->kctx_list_lock);
+	if (err) {
+		dev_err(kctx->kbdev->dev,
+			"(err:%d) failed to insert kctx to kbase_process", err);
+		if (likely(kctx->filp))
+			put_task_struct(kctx->task);
+	}
 
 	return err;
 }
@@ -254,6 +314,11 @@ void kbase_context_common_term(struct kbase_context *kctx)
 	mutex_lock(&kctx->kbdev->kctx_list_lock);
 	kbase_remove_kctx_from_process(kctx);
 	mutex_unlock(&kctx->kbdev->kctx_list_lock);
+
+	if (likely(kctx->filp)) {
+		mmdrop(kctx->process_mm);
+		put_task_struct(kctx->task);
+	}
 
 	KBASE_KTRACE_ADD(kctx->kbdev, CORE_CTX_DESTROY, kctx, 0u);
 }

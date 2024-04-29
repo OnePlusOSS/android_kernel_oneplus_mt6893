@@ -811,6 +811,10 @@
 		track,wired_max_power = <67000>;
 		track,wired_fast_chg_scheme = <1>;
 	};
+	oplus_battery_log: oplus,battery_log {
+		compatible = "oplus,battery_log";
+		oplus,battery_log_support;
+	};
 };
 
 

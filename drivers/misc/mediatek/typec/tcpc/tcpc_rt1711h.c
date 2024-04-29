@@ -1238,10 +1238,33 @@ static int rt1711_set_low_power_mode(
 #ifdef CONFIG_TCPC_WATCHDOG_EN
 int rt1711h_set_watchdog(struct tcpc_device *tcpc, bool en)
 {
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/********* workaround MO.230913213000256759: sc6607 workaround for pd abnormal start*********/
+	struct rt1711_chip *chip = tcpc_get_dev_data(tcpc);
+	uint8_t data = 0;
+	if (chip->chip_pid == SC6601_PID) {
+		data = rt1711_i2c_read8(tcpc, TCPC_V10_REG_TCPC_CTRL);
+		if (data < 0)
+			return data;
+		if (en)
+			data = data | TCPC_V10_REG_TCPC_CTRL_EN_WDT;
+		else
+			data = data & (~TCPC_V10_REG_TCPC_CTRL_EN_WDT);
+		pr_info("%s %x = %x\n", __func__, TCPC_V10_REG_TCPC_CTRL, data);
+		return rt1711_i2c_write8(tcpc, TCPC_V10_REG_TCPC_CTRL, data);
+	} else {
+		data = RT1711H_REG_WATCHDOG_CTRL_SET(en, 7);
+		return rt1711_i2c_write8(tcpc,
+			RT1711H_REG_WATCHDOG_CTRL, data);
+	}
+/********* workaround MO.230913213000256759: sc6607 workaround for pd abnormal end *********/
+#else
 	uint8_t data = RT1711H_REG_WATCHDOG_CTRL_SET(en, 7);
 
 	return rt1711_i2c_write8(tcpc,
 		RT1711H_REG_WATCHDOG_CTRL, data);
+#endif
+
 }
 #endif	/* CONFIG_TCPC_WATCHDOG_EN */
 
@@ -1699,7 +1722,6 @@ static inline int rt1711h_check_revision(struct i2c_client *client)
 	ret = rt1711_write_device(client, RT1711H_REG_SWRESET, 1, &data);
 	if (ret < 0)
 		return ret;
-
 	usleep_range(1000, 2000);
 
 	ret = rt1711_read_device(client, TCPC_V10_REG_DID, 2, &did);

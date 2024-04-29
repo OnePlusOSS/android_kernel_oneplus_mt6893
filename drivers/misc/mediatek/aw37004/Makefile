@@ -1,0 +1,1 @@
+obj-$(CONFIG_LDO_AW37004)	+= aw37004.o

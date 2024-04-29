@@ -80,14 +80,15 @@ static struct inode *f2fs_new_inode(struct inode *dir, umode_t mode)
 
 	if (f2fs_sb_has_extra_attr(sbi)) {
 		set_inode_flag(inode, FI_EXTRA_ATTR);
-		F2FS_I(inode)->i_extra_isize = F2FS_TOTAL_EXTRA_ATTR_SIZE;
+		if (sbi->oplus_feats & OPLUS_FEAT_DEDUP)
+			F2FS_I(inode)->i_extra_isize = F2FS_TOTAL_EXTRA_ATTR_SIZE;
+		else
+			F2FS_I(inode)->i_extra_isize = F2FS_LEGACY_EXTRA_ATTR_SIZE;
 	}
 
 	if (test_opt(sbi, INLINE_XATTR))
 		set_inode_flag(inode, FI_INLINE_XATTR);
 
-	if (test_opt(sbi, INLINE_DATA) && f2fs_may_inline_data(inode))
-		set_inode_flag(inode, FI_INLINE_DATA);
 	if (f2fs_may_inline_dentry(inode))
 		set_inode_flag(inode, FI_INLINE_DENTRY);
 
@@ -104,10 +105,6 @@ static struct inode *f2fs_new_inode(struct inode *dir, umode_t mode)
 
 	f2fs_init_extent_tree(inode, NULL);
 
-	stat_inc_inline_xattr(inode);
-	stat_inc_inline_inode(inode);
-	stat_inc_inline_dir(inode);
-
 	F2FS_I(inode)->i_flags =
 		f2fs_mask_flags(mode, F2FS_I(dir)->i_flags & F2FS_FL_INHERITED);
 
@@ -123,6 +120,14 @@ static struct inode *f2fs_new_inode(struct inode *dir, umode_t mode)
 					f2fs_may_compress(inode))
 			set_compress_context(inode);
 	}
+
+	/* Should enable inline_data after compression set */
+	if (test_opt(sbi, INLINE_DATA) && f2fs_may_inline_data(inode))
+		set_inode_flag(inode, FI_INLINE_DATA);
+
+	stat_inc_inline_xattr(inode);
+	stat_inc_inline_inode(inode);
+	stat_inc_inline_dir(inode);
 
 	f2fs_set_inode_flags(inode);
 
@@ -316,6 +321,9 @@ static void set_compress_inode(struct f2fs_sb_info *sbi, struct inode *inode,
 
 		up_read(&sbi->sb_lock);
 
+		/* Do not use inline_data with compression */
+		stat_dec_inline_inode(inode);
+		clear_inode_flag(inode, FI_INLINE_DATA);
 		set_compress_context(inode);
 		return;
 	}
@@ -627,16 +635,6 @@ static int f2fs_unlink(struct inode *dir, struct dentry *dentry)
 		d_invalidate(dentry);
 #endif
 	f2fs_unlock_op(sbi);
-
-#ifdef CONFIG_F2FS_FS_COMPRESSION_FIXED_OUTPUT
-	if (f2fs_compressed_file(inode) &&
-	    delayed_work_pending(&F2FS_I(inode)->release_dwork)) {
-		bool pending;
-		pending = cancel_delayed_work_sync(&F2FS_I(inode)->release_dwork);
-		if (pending)
-			iput(inode);
-	}
-#endif
 
 	if (IS_DIRSYNC(dir))
 		f2fs_sync_fs(sbi->sb, 1);

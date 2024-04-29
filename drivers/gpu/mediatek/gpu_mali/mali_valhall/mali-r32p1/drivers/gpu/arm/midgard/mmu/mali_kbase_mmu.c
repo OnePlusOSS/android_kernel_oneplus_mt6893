@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
 /*
  *
- * (C) COPYRIGHT 2010-2021 ARM Limited. All rights reserved.
+ * (C) COPYRIGHT 2010-2023 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
@@ -997,14 +997,14 @@ page_fault_retry:
 						>> lp_mem_pool->order;
 
 				ret = kbase_mem_pool_grow(lp_mem_pool,
-					pages_to_grow);
+					pages_to_grow, kctx->task);
 			} else {
 #endif
 				struct kbase_mem_pool *const mem_pool =
 					&kctx->mem_pools.small[group_id];
 
 				ret = kbase_mem_pool_grow(mem_pool,
-					pages_to_grow);
+					pages_to_grow, kctx->task);
 #ifdef CONFIG_MALI_2MB_ALLOC
 			}
 #endif
@@ -1376,7 +1376,7 @@ int kbase_mmu_insert_single_page(struct kbase_context *kctx, u64 vpfn,
 				&kbdev->mem_pools.small[
 #endif
 					kctx->mmu.group_id],
-				MIDGARD_MMU_BOTTOMLEVEL);
+				MIDGARD_MMU_BOTTOMLEVEL, kctx->task);
 			mutex_lock(&kctx->mmu.mmu_lock);
 		} while (!err);
 		if (err) {
@@ -1529,7 +1529,7 @@ int kbase_mmu_insert_pages_no_flush(struct kbase_device *kbdev,
 #else
 				&kbdev->mem_pools.small[mmut->group_id],
 #endif
-				cur_level);
+				cur_level, NULL);
 			mutex_lock(&mmut->mmu_lock);
 		} while (!err);
 
@@ -1642,6 +1642,7 @@ int kbase_mmu_insert_pages(struct kbase_device *kbdev,
 
 KBASE_EXPORT_TEST_API(kbase_mmu_insert_pages);
 
+#if !MALI_USE_CSF
 /**
  * kbase_mmu_flush_invalidate_noretain() - Flush and invalidate the GPU caches
  * without retaining the kbase context.
@@ -1682,6 +1683,7 @@ static void kbase_mmu_flush_invalidate_noretain(struct kbase_context *kctx,
 			kbase_reset_gpu_locked(kbdev);
 	}
 }
+#endif /* !MALI_USE_CSF */
 
 /* Perform a flush/invalidate on a particular address space
  */
@@ -1805,6 +1807,65 @@ void kbase_mmu_disable_as(struct kbase_device *kbdev, int as_nr)
 }
 
 void kbase_mmu_disable(struct kbase_context *kctx)
+#if MALI_USE_CSF
+{
+	/* Calls to this function are inherently asynchronous, with respect to
+	 * MMU operations.
+	 */
+	struct kbase_device *kbdev = kctx->kbdev;
+	int lock_err;
+
+	/* ASSERT that the context has a valid as_nr, which is only the case
+	 * when it's scheduled in.
+	 *
+	 * as_nr won't change because the caller has the hwaccess_lock
+	 */
+	KBASE_DEBUG_ASSERT(kctx->as_nr != KBASEP_AS_NR_INVALID);
+
+	lockdep_assert_held(&kctx->kbdev->hwaccess_lock);
+	lockdep_assert_held(&kctx->kbdev->mmu_hw_mutex);
+
+	/* lock MMU to prevent existing jobs on GPU from executing while the AS is
+	 * not yet disabled. (Flag true: LOCKING)
+	 */
+	lock_err = kbase_mmu_hw_do_lock_op(kbdev, &kbdev->as[kctx->as_nr], 0,
+					   U32_MAX, true);
+	if (lock_err)
+		dev_err(kbdev->dev, "Failed to lock AS %d for ctx %d_%d",
+			kctx->as_nr, kctx->tgid, kctx->id);
+
+	/* Issue the flush command only when L2 cache is in stable power on state.
+	 * Any other state for L2 cache implies that shader cores are powered off,
+	 * which in turn implies there is no execution happening on the GPU.
+	 */
+	if (kbdev->pm.backend.l2_state == KBASE_L2_ON) {
+		int flush_err = kbase_gpu_cache_flush_and_busy_wait(
+			kbdev, GPU_COMMAND_CACHE_CLN_INV_L2_LSC);
+		if (flush_err)
+			dev_err(kbdev->dev,
+				"Failed to flush GPU cache when disabling AS %d for ctx %d_%d",
+				kctx->as_nr, kctx->tgid, kctx->id);
+	}
+	kbdev->mmu_mode->disable_as(kbdev, kctx->as_nr);
+
+	if (!lock_err) {
+		/* unlock the MMU to allow it to resume. (False: UNLOCKING) */
+		lock_err = kbase_mmu_hw_do_lock_op(
+			kbdev, &kbdev->as[kctx->as_nr], 0, U32_MAX, false);
+		if (lock_err)
+			dev_err(kbdev->dev,
+				"Failed to unlock AS %d for ctx %d_%d",
+				kctx->as_nr, kctx->tgid, kctx->id);
+	}
+
+	/* kbase_gpu_cache_flush_and_busy_wait() will reset the GPU on timeout. Only
+	 * reset the GPU if locking or unlocking fails.
+	 */
+	if (lock_err)
+		if (kbase_prepare_to_reset_gpu_locked(kbdev, RESET_FLAGS_NONE))
+			kbase_reset_gpu_locked(kbdev);
+}
+#else /* MALI_USE_CSF */
 {
 	/* ASSERT that the context has a valid as_nr, which is only the case
 	 * when it's scheduled in.
@@ -1826,7 +1887,7 @@ void kbase_mmu_disable(struct kbase_context *kctx)
 	kbase_mmu_flush_invalidate_noretain(kctx, 0, ~0, true);
 
 	kctx->kbdev->mmu_mode->disable_as(kctx->kbdev, kctx->as_nr);
-#if !MALI_USE_CSF
+
 	/*
 	 * JM GPUs has some L1 read only caches that need to be invalidated
 	 * with START_FLUSH configuration. Purge the MMU disabled kctx from
@@ -1834,8 +1895,8 @@ void kbase_mmu_disable(struct kbase_context *kctx)
 	 * a new katom is executed on the affected slots.
 	 */
 	kbase_backend_slot_kctx_purge_locked(kctx->kbdev, kctx);
-#endif
 }
+#endif /* MALI_USE_CSF */
 KBASE_EXPORT_TEST_API(kbase_mmu_disable);
 
 static void kbase_mmu_update_and_free_parent_pgds(struct kbase_device *kbdev,
@@ -2107,7 +2168,7 @@ static int kbase_mmu_update_pages_no_flush(struct kbase_context *kctx, u64 vpfn,
 				&kbdev->mem_pools.small[
 #endif
 					kctx->mmu.group_id],
-				MIDGARD_MMU_BOTTOMLEVEL);
+				MIDGARD_MMU_BOTTOMLEVEL, kctx ? kctx->task : NULL);
 			mutex_lock(&kctx->mmu.mmu_lock);
 		} while (!err);
 		if (err) {
@@ -2244,7 +2305,7 @@ int kbase_mmu_init(struct kbase_device *const kbdev,
 #else
 			&kbdev->mem_pools.small[mmut->group_id],
 #endif
-			MIDGARD_MMU_BOTTOMLEVEL);
+			MIDGARD_MMU_BOTTOMLEVEL, mmut->kctx ? mmut->kctx->task : NULL);
 		if (err) {
 			kbase_mmu_term(kbdev, mmut);
 			return -ENOMEM;

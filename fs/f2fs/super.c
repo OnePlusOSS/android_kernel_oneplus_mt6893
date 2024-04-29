@@ -1099,9 +1099,10 @@ static int parse_options(struct super_block *sb, char *options, bool is_remount)
 				break;
 			}
 			name = match_strdup(&args[0]);
-			if (!strcmp(name, "fixed-input")) {
+			/* fix coverity error: Dereference null return value name*/
+			if (name && !strcmp(name, "fixed-input")) {
 				F2FS_OPTION(sbi).compress_layout = COMPRESS_FIXED_INPUT;
-			} else if (!strcmp(name, "fixed-output")) {
+			} else if (name && !strcmp(name, "fixed-output")) {
 				if (F2FS_OPTION(sbi).compress_algorithm != COMPRESS_LZ4 ||
 				    F2FS_OPTION(sbi).compress_level != 0) {
 					f2fs_err(sbi, "fixed-output compress layout can only work on lz4");
@@ -1463,10 +1464,6 @@ static void f2fs_put_super(struct super_block *sb)
 	f2fs_destroy_node_manager(sbi);
 	f2fs_destroy_segment_manager(sbi);
 
-#ifdef CONFIG_F2FS_FS_COMPRESSION_FIXED_OUTPUT
-	if (sbi->delay_release_wq)
-		destroy_workqueue(sbi->delay_release_wq);
-#endif
 	f2fs_destroy_post_read_wq(sbi);
 
 	kvfree(sbi->ckpt);
@@ -1860,11 +1857,25 @@ static int f2fs_show_options(struct seq_file *seq, struct dentry *root)
 	return 0;
 }
 
+static bool is_data_partition(struct f2fs_sb_info *sbi)
+{
+	uint64_t min_data_partition_blocks = 0x800000; // 32GB
+
+	if (le64_to_cpu(sbi->raw_super->block_count) > min_data_partition_blocks)
+		return true;
+	return false;
+}
+
 static void default_options(struct f2fs_sb_info *sbi)
 {
 #ifdef CONFIG_F2FS_FS_COMPRESSION_FIXED_OUTPUT
 	int i = 0;
 #endif
+
+	if (is_data_partition(sbi)) {
+		sbi->oplus_feats = OPLUS_FEAT_COMPR;
+		sbi->oplus_feats |= OPLUS_FEAT_DEDUP;
+	}
 
 	/* init some FS parameters */
 	F2FS_OPTION(sbi).active_logs = NR_CURSEG_TYPE;
@@ -1883,15 +1894,13 @@ static void default_options(struct f2fs_sb_info *sbi)
 #ifdef CONFIG_F2FS_FS_COMPRESSION
 #ifdef CONFIG_F2FS_FS_COMPRESSION_FIXED_OUTPUT
 	F2FS_OPTION(sbi).compress_mode = COMPR_MODE_USER;
-	F2FS_OPTION(sbi).compress_layout = COMPRESS_FIXED_OUTPUT; // FIXME: for debug, the default is COMPR_FIXED_INPUT
-								  // need consider how to pass VTS if fixed-output is
-								  // the default value
+	F2FS_OPTION(sbi).compress_layout = COMPRESS_FIXED_OUTPUT;
 	strcpy(F2FS_OPTION(sbi).extensions[i++], "odex");
 	strcpy(F2FS_OPTION(sbi).extensions[i++], "vdex");
-	strcpy(F2FS_OPTION(sbi).extensions[i++], "so");
-	strcpy(F2FS_OPTION(sbi).extensions[i++], "dex");
-	strcpy(F2FS_OPTION(sbi).extensions[i++], "wxapkg");
-	strcpy(F2FS_OPTION(sbi).extensions[i++], "js");
+	//strcpy(F2FS_OPTION(sbi).extensions[i++], "so");
+	//strcpy(F2FS_OPTION(sbi).extensions[i++], "dex");
+	//strcpy(F2FS_OPTION(sbi).extensions[i++], "wxapkg");
+	//strcpy(F2FS_OPTION(sbi).extensions[i++], "js");
 #else
 	F2FS_OPTION(sbi).compress_mode = COMPR_MODE_FS;
 #endif
@@ -3763,7 +3772,7 @@ try_onemore:
 #endif
 
 #ifdef CONFIG_F2FS_APPBOOST
-	sbi->appboost = 1;
+	sbi->appboost = 0;
 #define APPBOOST_MAX_BLOCKS 51200
 	sbi->appboost_max_blocks = APPBOOST_MAX_BLOCKS;
 #endif
@@ -3850,16 +3859,6 @@ try_onemore:
 	err = f2fs_init_page_array_cache(sbi);
 	if (err)
 		goto free_xattr_cache;
-
-#ifdef CONFIG_F2FS_FS_COMPRESSION_FIXED_OUTPUT
-	sbi->delay_release_wq = alloc_workqueue("f2fs_delay_release_wq",
-						WQ_UNBOUND | WQ_HIGHPRI,
-						num_online_cpus());
-	if (!sbi->delay_release_wq) {
-		err = -ENOMEM;
-		goto free_xattr_cache;
-	}
-#endif
 
 	/* get an inode for meta space */
 	sbi->meta_inode = f2fs_iget(sb, F2FS_META_INO(sbi));
@@ -4189,12 +4188,6 @@ static void kill_f2fs_super(struct super_block *sb)
 		f2fs_stop_discard_thread(sbi);
 
 #ifdef CONFIG_F2FS_FS_COMPRESSION
-#ifdef CONFIG_F2FS_FS_COMPRESSION_FIXED_OUTPUT
-		if (sbi->delay_release_wq) {
-			destroy_workqueue(sbi->delay_release_wq);
-			sbi->delay_release_wq = NULL;
-		}
-#endif
 		/*
 		 * latter evict_inode() can bypass checking and invalidating
 		 * compress inode cache.

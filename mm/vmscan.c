@@ -8134,7 +8134,7 @@ static ssize_t swappiness_para_read(struct file *file,
 	if (len > *off)
 		len -= *off;
 	else
-		len = 0;
+		return 0;
 
 	if (copy_to_user(buffer, kbuf + *off, (len < count ? len : count)))
 		return -EFAULT;
@@ -8152,7 +8152,7 @@ int create_swappiness_para_proc(void)
 {
 	struct proc_dir_entry * para_entry =
 		proc_create("oplus_healthinfo/swappiness_para",
-				S_IRUSR|S_IWUSR, NULL, &proc_swappiness_para_ops);
+				0666, NULL, &proc_swappiness_para_ops);
 
 	if (para_entry) {
 		printk("Register swappiness_para interface passed.\n");

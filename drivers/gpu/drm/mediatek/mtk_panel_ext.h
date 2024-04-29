@@ -237,6 +237,7 @@ struct mtk_panel_params {
 	unsigned int vfp_low_power;
 	struct dynamic_mipi_params dyn;
 	struct dynamic_fps_params dyn_fps;
+	bool skip_unnecessary_switch;
 	unsigned int cust_esd_check;
 	unsigned int esd_check_enable;
 	unsigned int esd_check_more;
@@ -363,9 +364,11 @@ struct mtk_panel_params {
 	bool oplus_bypass_color_flag;
 	bool oplus_silky_bl_backup;
 	bool oplus_dc_exit_flag;
+	bool oplus_dc_moss_flag;
 	unsigned int panel_bpp;
 	/* Add for switch of lp mode, 2023/6/20*/
 	bool hstx_cklp_en;
+	unsigned int change_fps_by_vfp_send_cmd;
 };
 
 struct mtk_panel_ext {

@@ -691,6 +691,11 @@ static inline bool pe_transit_startup_state(
 		return false;
 
 	pd_dpm_notify_pe_startup(pd_port);
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/********* workaround MO.230913213000256759: sc6607 workaround for pd abnormal start*********/
+	pd_enable_timer(pd_port, PD_TIMER_INT_INVAILD);
+/********* workaround MO.230913213000256759: sc6607 workaround for pd abnormal end*********/
+#endif
 	PE_TRANSIT_STATE(pd_port, startup_state);
 
 	return true;

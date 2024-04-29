@@ -159,6 +159,15 @@ struct _PMR_
 
 	ATOMIC_T iRefCount;
 
+	/* CPU mapping count - this is the number of times the PMR has been
+	 * mapped to the CPU. It is used to determine when it is safe to permit
+	 * modification of a sparse allocation's layout.
+	 * Note that the process of mapping also increments iRefCount
+	 * independently (as that is used to determine when a PMR may safely
+	 * be destroyed).
+	 */
+	ATOMIC_T iCpuMapCount;
+
 	/* Lock count - this is the number of times PMRLockSysPhysAddresses()
 	 * has been called, less the number of PMRUnlockSysPhysAddresses()
 	 * calls. This is arguably here for debug reasons only, as the refcount
@@ -402,6 +411,7 @@ _PMRCreate(PMR_SIZE_T uiLogicalSize,
 
 	/* Setup the PMR */
 	OSAtomicWrite(&psPMR->iRefCount, 0);
+	OSAtomicWrite(&psPMR->iCpuMapCount, 0);
 
 	/* If allocation is not made on demand, it will be backed now and
 	 * backing will not be removed until the PMR is destroyed, therefore
@@ -1258,7 +1268,7 @@ PMRUnmapMemoryObject(PMR *psPMR,
 	Log2PageSize else argument is redundant (set to zero).
  */
 
-static void
+static PVRSRV_ERROR
 _PMRLogicalOffsetToPhysicalOffset(const PMR *psPMR,
                                   IMG_UINT32 ui32Log2PageSize,
                                   IMG_UINT32 ui32NumOfPages,
@@ -1306,6 +1316,14 @@ _PMRLogicalOffsetToPhysicalOffset(const PMR *psPMR,
 					TRUNCATE_64BITS_TO_32BITS(psMappingTable->uiChunkSize),
 					&ui32Remain);
 
+			/* In some cases ui32NumOfPages can come from the user space which
+			 * means that the uiOffset could go out-of-bounds when the number
+			 * of pages is invalid. */
+			if (ui64ChunkIndex >= psMappingTable->ui32NumVirtChunks)
+			{
+				return PVRSRV_ERROR_BAD_MAPPING;
+			}
+
 			if (psMappingTable->aui32Translation[ui64ChunkIndex] == TRANSLATION_INVALID)
 			{
 				bValid[idx] = IMG_FALSE;
@@ -1327,18 +1345,17 @@ _PMRLogicalOffsetToPhysicalOffset(const PMR *psPMR,
 					*pui32BytesRemain = TRUNCATE_64BITS_TO_32BITS(psMappingTable->uiChunkSize - ui32Remain);
 				}
 
-				puiPhysicalOffset[idx] = (psMappingTable->aui32Translation[ui64ChunkIndex] * psMappingTable->uiChunkSize) +	 ui32Remain;
-
 				/* initial offset may not be page aligned, round down */
 				uiOffset &= ~(uiPageSize-1);
 			}
-			else
-			{
-				puiPhysicalOffset[idx] = psMappingTable->aui32Translation[ui64ChunkIndex] * psMappingTable->uiChunkSize + ui32Remain;
-			}
+
+			puiPhysicalOffset[idx] = psMappingTable->aui32Translation[ui64ChunkIndex] * psMappingTable->uiChunkSize + ui32Remain;
+
 			uiOffset += uiPageSize;
 		}
 	}
+
+	return PVRSRV_OK;
 }
 
 static PVRSRV_ERROR
@@ -1437,13 +1454,15 @@ PMR_ReadBytes(PMR *psPMR,
 		size_t uiRead;
 		IMG_BOOL bValid;
 
-		_PMRLogicalOffsetToPhysicalOffset(psPMR,
-		                                  0,
-		                                  1,
-		                                  uiLogicalOffset,
-		                                  &uiPhysicalOffset,
-		                                  &ui32Remain,
-		                                  &bValid);
+		eError = _PMRLogicalOffsetToPhysicalOffset(psPMR,
+		                                           0,
+		                                           1,
+		                                           uiLogicalOffset,
+		                                           &uiPhysicalOffset,
+		                                           &ui32Remain,
+		                                           &bValid);
+		PVR_LOG_RETURN_IF_ERROR(eError, "_PMRLogicalOffsetToPhysicalOffset");
+
 		/* Copy till either then end of the chunk or end
 		 * of the buffer
 		 */
@@ -1588,13 +1607,15 @@ PMR_WriteBytes(PMR *psPMR,
 		size_t uiWrite;
 		IMG_BOOL bValid;
 
-		_PMRLogicalOffsetToPhysicalOffset(psPMR,
-		                                  0,
-		                                  1,
-		                                  uiLogicalOffset,
-		                                  &uiPhysicalOffset,
-		                                  &ui32Remain,
-		                                  &bValid);
+		eError = _PMRLogicalOffsetToPhysicalOffset(psPMR,
+		                                           0,
+		                                           1,
+		                                           uiLogicalOffset,
+		                                           &uiPhysicalOffset,
+		                                           &ui32Remain,
+		                                           &bValid);
+		PVR_LOG_RETURN_IF_ERROR(eError, "_PMRLogicalOffsetToPhysicalOffset");
+
 
 		/* Copy till either then end of the chunk or end of the buffer
 		 */
@@ -1634,8 +1655,13 @@ PMR_WriteBytes(PMR *psPMR,
 }
 
 PVRSRV_ERROR
-PMRMMapPMR(PMR *psPMR, PMR_MMAP_DATA pOSMMapData)
+PMRMMapPMR(PMR *psPMR, PMR_MMAP_DATA pOSMMapData, PVRSRV_MEMALLOCFLAGS_T uiFlags)
 {
+	/* if writeable mapping is requested on non-writeable PMR then fail */
+	PVR_RETURN_IF_FALSE(PVRSRV_CHECK_CPU_WRITEABLE(psPMR->uiFlags) ||
+	                    !PVRSRV_CHECK_CPU_WRITEABLE(uiFlags),
+	                    PVRSRV_ERROR_PMR_NOT_PERMITTED);
+
 	if (psPMR->psFuncTab->pfnMMap)
 	{
 		return psPMR->psFuncTab->pfnMMap(psPMR->pvFlavourData, psPMR, pOSMMapData);
@@ -1658,6 +1684,20 @@ PMRUnrefPMR(PMR *psPMR)
 	return PVRSRV_OK;
 }
 
+void
+PMRRefPMR2(PMR *psPMR)
+{
+	PVR_ASSERT(psPMR != NULL);
+	_Ref(psPMR);
+}
+
+void
+PMRUnrefPMR2(PMR *psPMR)
+{
+	PVR_ASSERT(psPMR != NULL);
+	_UnrefAndMaybeDestroy(psPMR);
+}
+
 PVRSRV_ERROR
 PMRUnrefUnlockPMR(PMR *psPMR)
 {
@@ -1666,6 +1706,51 @@ PMRUnrefUnlockPMR(PMR *psPMR)
 	PMRUnrefPMR(psPMR);
 
 	return PVRSRV_OK;
+}
+
+#define PMR_CPUMAPCOUNT_MIN 0
+#define PMR_CPUMAPCOUNT_MAX IMG_INT32_MAX
+void
+PMRCpuMapCountIncr(PMR *psPMR)
+{
+	IMG_BOOL bSuccess;
+
+	bSuccess = OSAtomicAddUnless(&psPMR->iCpuMapCount, 1,
+	                             PMR_CPUMAPCOUNT_MAX);
+	if (!bSuccess)
+	{
+		PVR_DPF((PVR_DBG_ERROR, "%s: iCpuMapCount for PMR: @0x%p (%s) has overflowed.",
+		                        __func__,
+		                        psPMR,
+		                        psPMR->szAnnotation));
+		OSWarnOn(1);
+	}
+}
+
+void
+PMRCpuMapCountDecr(PMR *psPMR)
+{
+	IMG_BOOL bSuccess;
+
+	bSuccess = OSAtomicSubtractUnless(&psPMR->iCpuMapCount, 1,
+	                                  PMR_CPUMAPCOUNT_MIN);
+	if (!bSuccess)
+	{
+		PVR_DPF((PVR_DBG_ERROR, "%s: iCpuMapCount (now %d) for PMR: @0x%p (%s) has underflowed.",
+		                        __func__,
+		                        (IMG_INT32) OSAtomicRead(&psPMR->iCpuMapCount),
+		                        psPMR,
+		                        psPMR->szAnnotation));
+		OSWarnOn(1);
+	}
+}
+
+static IMG_BOOL
+_PMR_IsMapped(PMR *psPMR)
+{
+	PVR_ASSERT(psPMR != NULL);
+
+	return (OSAtomicRead(&psPMR->iCpuMapCount) > 0);
 }
 
 PVRSRV_DEVICE_NODE *
@@ -1766,13 +1851,15 @@ PMR_IsOffsetValid(const PMR *psPMR,
 		PVR_GOTO_IF_NOMEM(pui32BytesRemain, eError, e0);
 	}
 
-	_PMRLogicalOffsetToPhysicalOffset(psPMR,
-	                                  ui32Log2PageSize,
-	                                  ui32NumOfPages,
-	                                  uiLogicalOffset,
-	                                  puiPhysicalOffset,
-	                                  pui32BytesRemain,
-	                                  pbValid);
+	eError = _PMRLogicalOffsetToPhysicalOffset(psPMR,
+	                                           ui32Log2PageSize,
+	                                           ui32NumOfPages,
+	                                           uiLogicalOffset,
+	                                           puiPhysicalOffset,
+	                                           pui32BytesRemain,
+	                                           pbValid);
+	PVR_LOG_IF_ERROR(eError, "_PMRLogicalOffsetToPhysicalOffset");
+
 
 e0:
 	if (puiPhysicalOffset != auiPhysicalOffset && puiPhysicalOffset != NULL)
@@ -1858,13 +1945,14 @@ PMR_DevPhysAddr(const PMR *psPMR,
 		PVR_RETURN_IF_NOMEM(puiPhysicalOffset);
 	}
 
-	_PMRLogicalOffsetToPhysicalOffset(psPMR,
+	eError = _PMRLogicalOffsetToPhysicalOffset(psPMR,
 	                                  ui32Log2PageSize,
 	                                  ui32NumOfPages,
 	                                  uiLogicalOffset,
 	                                  puiPhysicalOffset,
 	                                  &ui32Remain,
 	                                  pbValid);
+	PVR_LOG_GOTO_IF_ERROR(eError, "_PMRLogicalOffsetToPhysicalOffset", FreeOffsetArray);
 	if (*pbValid || _PMRIsSparse(psPMR))
 	{
 		/* Sparse PMR may not always have the first page valid */
@@ -1959,6 +2047,15 @@ PVRSRV_ERROR PMR_ChangeSparseMem(PMR *psPMR,
                                  IMG_UINT32 uiSparseFlags)
 {
 	PVRSRV_ERROR eError;
+
+	if (_PMR_IsMapped(psPMR))
+	{
+		PVR_DPF((PVR_DBG_ERROR,
+				"%s: This PMR layout cannot be changed - _PMR_IsMapped()=%c",
+				__func__,
+				_PMR_IsMapped(psPMR) ? 'Y' : 'n'));
+		return PVRSRV_ERROR_PMR_NOT_PERMITTED;
+	}
 
 	if (NULL == psPMR->psFuncTab->pfnChangeSparseMem)
 	{
@@ -2130,16 +2227,18 @@ PMR_PDumpSymbolicAddr(const PMR *psPMR,
 	IMG_DEVMEM_OFFSET_T uiPhysicalOffset;
 	IMG_UINT32 ui32Remain;
 	IMG_BOOL bValid;
+	PVRSRV_ERROR eError;
 
 	PVR_ASSERT(uiLogicalOffset < psPMR->uiLogicalSize);
 
-	_PMRLogicalOffsetToPhysicalOffset(psPMR,
-	                                  0,
-	                                  1,
-	                                  uiLogicalOffset,
-	                                  &uiPhysicalOffset,
-	                                  &ui32Remain,
-	                                  &bValid);
+	eError = _PMRLogicalOffsetToPhysicalOffset(psPMR,
+	                                           0,
+	                                           1,
+	                                           uiLogicalOffset,
+	                                           &uiPhysicalOffset,
+	                                           &ui32Remain,
+	                                           &bValid);
+	PVR_LOG_RETURN_IF_ERROR(eError, "_PMRLogicalOffsetToPhysicalOffset");
 
 	if (!bValid)
 	{

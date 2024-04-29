@@ -15,6 +15,11 @@
 #include "mediatek/nfc/mt6833_alice_pn557.dtsi"
 //#endif OPLUS_FEATURE_NFC_BRINGUP
 
+//Enabling boost_pool node at proc path
+&ion {
+	support_smart_pool = "true";
+};
+
 /* chosen */
 &chosen {
 	atag,videolfb-fb_base_l = <0x7e605000>;
@@ -953,6 +958,16 @@
 		hw-gyro-supported = <0>;
 	};
 /* sensor end */
+	pmic_history_count:pmic_history_count {
+	};
+	pmic_history0:pmic_history0 {
+	};
+	pmic_history1:pmic_history1 {
+	};
+	pmic_history2:pmic_history2 {
+	};
+	pmic_history3:pmic_history3 {
+	};
 };
 
 /* GPS GPIO standardization start */

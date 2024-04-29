@@ -4,6 +4,7 @@
  */
 
 #include <linux/delay.h>
+#include <linux/mutex.h>
 #include <linux/string.h>
 
 #include "kd_camera_typedef.h"
@@ -20,6 +21,8 @@
 #include "imgsensor_hwcfg_custom.h"
 #endif
 
+static DEFINE_MUTEX(gRegisterLocker);
+struct IMGSENSOR_HW_POWER_SEQ *oplus_sensor_power_on_sequence = NULL;
 /*the index is consistent with enum IMGSENSOR_HW_PIN*/
 char * const imgsensor_hw_pin_names[] = {
 	"none",
@@ -323,13 +326,19 @@ enum IMGSENSOR_RETURN imgsensor_hw_power(
 			str_index);
 	}
 	ppwr_seq = Oplusimgsensor_matchhwcfg_power(IMGSENSOR_POWER_MATCHSENSOR_HWCFG_INDEX);
+	if (oplus_sensor_power_on_sequence != NULL && pwr_status == IMGSENSOR_HW_POWER_STATUS_ON) {
+		ppwr_seq = oplus_sensor_power_on_sequence;
+		pr_info("ppwr_seq = oplus_sensor_power_on_sequence");
+	}
 	if (ppwr_seq != NULL) {
+		mutex_lock(&gRegisterLocker);
 		imgsensor_hw_power_sequence(
 			phw,
 			sensor_idx,
 			pwr_status,
 			ppwr_seq,
 			curr_sensor_name);
+		mutex_unlock(&gRegisterLocker);
 	}
 	#else
 	imgsensor_hw_power_sequence(

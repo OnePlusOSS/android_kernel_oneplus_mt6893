@@ -28,6 +28,7 @@ static void __exit gz_exit(void);
 
 static int gz_dev_open(struct inode *inode, struct file *filp);
 static int gz_dev_release(struct inode *inode, struct file *filp);
+int trusty_nop_set_switch_pri(uint32_t policy);
 
 static long gz_ioctl(struct file *filep, unsigned int cmd, unsigned long arg);
 #if IS_ENABLED(CONFIG_COMPAT)

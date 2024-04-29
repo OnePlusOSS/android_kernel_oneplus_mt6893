@@ -324,7 +324,6 @@
 	qcom,vbatt_num = <1>;
 	qcom,new_ui_warning_support;
 	qcom,voocphy_support = <2>;
-	voocphy_support_display_vooc;
 	qcom,chargerid_support;
 	qcom,ffc_support;
 	qcom,smart_charging_screenoff;
@@ -490,6 +489,7 @@
 		pinctrl-3 = <&charging_inter_sleep>;
 
 		qcom,charging_switch1-gpio = <&pio 132 0x00>;
+		qcom,copycat_vooc_support;
 
 		qcom,voocphy_current_default = <30>;
 
@@ -990,6 +990,10 @@
 		track,voocphy_type = <2>;
 		track,wired_max_power = <33000>;
 		track,wired_fast_chg_scheme = <4>;
+	};
+        oplus_battery_log: oplus,battery_log {
+		compatible = "oplus,battery_log";
+		oplus,battery_log_support;
 	};
 };
 //#endif /*OPLUS_FEATURE_CHG_BASIC*/

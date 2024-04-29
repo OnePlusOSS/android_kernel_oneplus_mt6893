@@ -840,6 +840,7 @@
 	oplus_display_cabc_cmdq_support;
 	oplus_display_panelnum_support;
 	oplus_display_mt6382_support;
+	oplus_display_no_support_mtk_round_corner;
 	oplus_display_mt6382_esd_check;
 	oplus_display_async_bl_support;
 	oplus_display_normal_max_brightness = <2047>;

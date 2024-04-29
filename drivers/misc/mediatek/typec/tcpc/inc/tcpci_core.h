@@ -348,7 +348,12 @@ struct tcpc_device {
 	struct srcu_notifier_head evt_nh[TCP_NOTIFY_IDX_NR];
 	struct tcpc_managed_res *mr_head;
 	struct mutex mr_lock;
-
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/********* workaround MO.230913213000256759: sc6607 workaround for pd abnormal start*********/
+	int recv_msg_cnt;
+	int int_invaild_cnt;
+/********* workaround MO.230913213000256759: sc6607 workaround for pd abnormal end*********/
+#endif
 	/* For TCPC TypeC */
 	uint8_t typec_state;
 	uint8_t typec_role;

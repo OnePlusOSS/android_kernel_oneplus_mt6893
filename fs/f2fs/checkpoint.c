@@ -1543,8 +1543,8 @@ static int do_checkpoint(struct f2fs_sb_info *sbi, struct cp_control *cpc)
 	 * used for migration of encrypted or verity inode's blocks.
 	 */
 	if (f2fs_sb_has_encrypt(sbi) || f2fs_sb_has_verity(sbi))
-		invalidate_mapping_pages(META_MAPPING(sbi),
-				MAIN_BLKADDR(sbi), MAX_BLKADDR(sbi) - 1);
+		f2fs_truncate_meta_inode_pages(sbi, MAIN_BLKADDR(sbi),
+					MAX_BLKADDR(sbi) - MAIN_BLKADDR(sbi));
 
 	f2fs_release_ino_entry(sbi, false);
 

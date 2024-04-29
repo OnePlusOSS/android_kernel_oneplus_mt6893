@@ -57,6 +57,7 @@
 	};
 	chg {
 		support_hvdcp;
+		cdp_first_ignore;
 	};
 };
 
@@ -107,6 +108,7 @@
 		qcom,slave_cp_enable_thr = <1900>;		//2000-100mA
 		qcom,slave_cp_disable_thr_high = <1600>;	//1500+100mA
 		qcom,voocphy_current_default = <60>;
+		qcom,copycat_vooc_support;
 
 		qcom,svooc_cool_down_current_limit = <120 20 20 20 30 40 50 60 70 80 90 100>;
 		qcom,vooc_cool_down_current_limit = <60 20 20 20 30 40 50 60>;

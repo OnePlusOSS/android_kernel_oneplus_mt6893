@@ -642,4 +642,7 @@
 		oplus,battery_log_support;
 	};
 };
+&u2port0 {
+	mediatek,rx-sqth = <0x2>;
+};
 //#endif /*OPLUS_FEATURE_CHG_BASIC*/

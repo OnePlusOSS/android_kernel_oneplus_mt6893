@@ -115,7 +115,7 @@ struct f2fs_fault_info {
 };
 
 extern const char *f2fs_fault_name[FAULT_MAX];
-#define IS_FAULT_SET(fi, type) ((fi)->inject_type & (1 << (type)))
+#define IS_FAULT_SET(fi, type) ((fi)->inject_type & (1ULL << (type)))
 #endif
 
 /*
@@ -163,6 +163,9 @@ typedef u32 block_t;	/*
 typedef u32 nid_t;
 
 #define COMPRESS_EXT_NUM		16
+
+#define OPLUS_FEAT_COMPR	0x1
+#define OPLUS_FEAT_DEDUP	0x2
 
 struct f2fs_mount_info {
 	unsigned int opt;
@@ -952,6 +955,9 @@ enum {
 	FI_DOING_DEDUP,
 	FI_META_UN_MODIFY,
 	FI_DATA_UN_MODIFY,
+#ifdef CONFIG_F2FS_APPBOOST
+	FI_MERGED_FILE,
+#endif
 #endif
 	FI_MAX,			/* max flag, never be used */
 };
@@ -1011,10 +1017,6 @@ struct f2fs_inode_info {
 	unsigned char i_compress_level;		/* compress level (lz4hc,zstd) */
 	unsigned short i_compress_flag;		/* compress flag */
 	unsigned int i_cluster_size;		/* cluster size */
-
-#ifdef CONFIG_F2FS_FS_COMPRESSION_FIXED_OUTPUT
-	struct delayed_work release_dwork;
-#endif
 
 #ifdef CONFIG_F2FS_FS_DEDUP
 	struct inode *inner_inode;
@@ -1563,7 +1565,8 @@ enum {
 #define PAGE_PRIVATE_GET_FUNC(name, flagname) \
 static inline bool page_private_##name(struct page *page) \
 { \
-	return test_bit(PAGE_PRIVATE_NOT_POINTER, &page_private(page)) && \
+	return PagePrivate(page) && \
+		test_bit(PAGE_PRIVATE_NOT_POINTER, &page_private(page)) && \
 		test_bit(PAGE_PRIVATE_##flagname, &page_private(page)); \
 }
 
@@ -1573,6 +1576,7 @@ static inline void set_page_private_##name(struct page *page) \
 	if (!PagePrivate(page)) { \
 		get_page(page); \
 		SetPagePrivate(page); \
+		set_page_private(page, 0); \
 	} \
 	set_bit(PAGE_PRIVATE_NOT_POINTER, &page_private(page)); \
 	set_bit(PAGE_PRIVATE_##flagname, &page_private(page)); \
@@ -1624,6 +1628,7 @@ static inline void set_page_private_data(struct page *page, unsigned long data)
 	if (!PagePrivate(page)) {
 		get_page(page);
 		SetPagePrivate(page);
+		set_page_private(page, 0);
 	}
 	set_bit(PAGE_PRIVATE_NOT_POINTER, &page_private(page));
 	page_private(page) |= data << PAGE_PRIVATE_MAX;
@@ -1659,7 +1664,7 @@ enum compress_algorithm_type {
 enum compress_flag {
 	COMPRESS_CHKSUM,
 	COMPRESS_LAYOUT,
-	COMPRESS_ATIME,
+	COMPRESS_ATIME = 3,
 	COMPRESS_RESERVED = 4,
 	COMPRESS_LEVEL = 8,
 	COMPRESS_MAX_FLAG,
@@ -1806,7 +1811,7 @@ static void inline deserialize_decompress_index(decompress_index_t val,
 	di->ofs = (val & (0xfff << DI_OFS_OFFS)) >> DI_OFS_OFFS;
 }
 
-#define MAX_BLKS_PER_CLUSTER		(1 << 8) // MAX_COMPRESS_LOG_SIZE
+#define MAX_BLKS_PER_CLUSTER		(1 << 3) // MAX_COMPRESS_LOG_SIZE
 
 #define CLEAR_IFLAG_IF_SET(inode, flag)                                        \
 	if (F2FS_I(inode)->i_flags & flag) {                                   \
@@ -1854,11 +1859,11 @@ struct decompress_io_ctx {
 	pgoff_t cluster_idx;		/* cluster index number */
 	unsigned int cluster_size;	/* page count in cluster */
 	unsigned int log_cluster_size;	/* log of cluster size */
-	struct page **rpages;		/* pages store raw data in cluster */
+	struct page *rpages[MAX_BLKS_PER_CLUSTER];		/* pages store raw data in cluster */
 	unsigned int nr_rpages;		/* total page number in rpages */
-	struct page **cpages;		/* pages store compressed data in cluster */
+	struct page *cpages[MAX_BLKS_PER_CLUSTER];		/* pages store compressed data in cluster */
 	unsigned int nr_cpages;		/* total page number in cpages */
-	struct page **tpages;		/* temp pages to pad holes in cluster */
+	struct page *tpages[MAX_BLKS_PER_CLUSTER];		/* temp pages to pad holes in cluster */
 	void *rbuf;			/* virtual mapped address on rpages */
 	struct compress_data *cbuf;	/* virtual mapped address on cpages */
 	size_t rlen;			/* valid data length in rbuf */
@@ -2126,9 +2131,8 @@ struct f2fs_sb_info {
 	atomic_t compress_page_hit;		/* cache hit count */
 #endif
 
-#ifdef CONFIG_F2FS_FS_COMPRESSION_FIXED_OUTPUT
-	struct workqueue_struct *delay_release_wq;
-#endif
+	unsigned int oplus_feats;
+
 #ifdef CONFIG_F2FS_APPBOOST
 	int appboost;
 	unsigned int appboost_max_blocks;
@@ -3153,6 +3157,10 @@ static inline void f2fs_change_bit(unsigned int nr, char *addr)
 
 #define F2FS_META_UN_MODIFY_FL		0x00000100
 #define F2FS_DATA_UN_MODIFY_FL		0x00000200
+
+#ifdef CONFIG_F2FS_APPBOOST
+#define F2FS_MERGED_FILE_FL		0x00000400
+#endif
 #endif
 
 /* Flags that should be inherited by new inodes from their parent. */
@@ -3199,6 +3207,9 @@ static inline void __mark_inode_dirty_flag(struct inode *inode,
 	case FI_DOING_DEDUP:
 	case FI_META_UN_MODIFY:
 	case FI_DATA_UN_MODIFY:
+#ifdef CONFIG_F2FS_APPBOOST
+	case FI_MERGED_FILE:
+#endif
 #endif
 		f2fs_mark_inode_dirty_sync(inode, true);
 	}
@@ -3546,6 +3557,10 @@ static inline void get_dedup_flags_info(struct inode *inode, struct f2fs_inode *
 		set_bit(FI_META_UN_MODIFY, fi->flags);
 	if (i_dedup_flags & F2FS_DATA_UN_MODIFY_FL)
 		set_bit(FI_DATA_UN_MODIFY, fi->flags);
+#ifdef CONFIG_F2FS_APPBOOST
+	if (i_dedup_flags & F2FS_MERGED_FILE_FL)
+		set_bit(FI_MERGED_FILE, fi->flags);
+#endif
 }
 
 static inline void set_raw_dedup_flags(struct inode *inode, struct f2fs_inode *ri)
@@ -3566,6 +3581,10 @@ static inline void set_raw_dedup_flags(struct inode *inode, struct f2fs_inode *r
 		i_dedup_flags |= F2FS_META_UN_MODIFY_FL;
 	if (is_inode_flag_set(inode, FI_DATA_UN_MODIFY))
 		i_dedup_flags |= F2FS_DATA_UN_MODIFY_FL;
+#ifdef CONFIG_F2FS_APPBOOST
+	if (is_inode_flag_set(inode, FI_MERGED_FILE))
+		i_dedup_flags |= F2FS_MERGED_FILE_FL;
+#endif
 
 	ri->i_dedup_flags = cpu_to_le32(i_dedup_flags);
 }
@@ -3800,7 +3819,11 @@ static inline int get_inline_xattr_addrs(struct inode *inode)
 
 #define F2FS_TOTAL_EXTRA_ATTR_SIZE			\
 	(offsetof(struct f2fs_inode, i_extra_end) -	\
-	offsetof(struct f2fs_inode, i_extra_isize))	\
+	offsetof(struct f2fs_inode, i_extra_isize))
+#define F2FS_LEGACY_EXTRA_ATTR_SIZE			\
+	(offsetof(struct f2fs_inode, i_compress_flag) -	\
+	offsetof(struct f2fs_inode, i_extra_isize) +	\
+	sizeof(__le16))
 
 #define F2FS_OLD_ATTRIBUTE_SIZE	(offsetof(struct f2fs_inode, i_addr))
 #define F2FS_FITS_IN_INODE(f2fs_inode, extra_isize, field)		\
@@ -3901,7 +3924,6 @@ int f2fs_pin_file_control(struct inode *inode, bool inc);
 #ifdef CONFIG_F2FS_FS_COMPRESSION_FIXED_OUTPUT
 int f2fs_reserve_compress_blocks(struct inode *inode, unsigned int *ret_rsvd_blks);
 int f2fs_decompress_inode(struct inode *inode);
-void f2fs_delay_release_compress_blocks(struct inode *inode);
 #endif
 
 #ifdef CONFIG_F2FS_FS_DEDUP
@@ -4588,6 +4610,8 @@ void f2fs_destroy_extent_cache(void);
 /*
  * sysfs.c
  */
+#define MIN_RA_MUL	2
+
 int __init f2fs_init_sysfs(void);
 void f2fs_exit_sysfs(void);
 int f2fs_register_sysfs(struct f2fs_sb_info *sbi);
@@ -4643,6 +4667,8 @@ void f2fs_end_read_compressed_page(struct page *page, bool failed,
 							block_t blkaddr);
 bool f2fs_cluster_is_empty(struct compress_ctx *cc);
 bool f2fs_cluster_can_merge_page(struct compress_ctx *cc, pgoff_t index);
+bool f2fs_all_cluster_page_loaded(struct compress_ctx *cc, struct page **pages,
+				int index, int nr_pages);
 void f2fs_compress_ctx_add_page(struct compress_ctx *cc, struct page *page);
 int f2fs_write_multi_pages(struct compress_ctx *cc,
 						int *submitted,
@@ -4727,9 +4753,16 @@ static inline void f2fs_invalidate_compress_pages(struct f2fs_sb_info *sbi,
 #define inc_compr_inode_stat(inode)		do { } while (0)
 #endif
 
-static inline void set_compress_context(struct inode *inode)
+extern bool may_compress;
+extern bool may_set_compr_fl;
+
+static inline int set_compress_context(struct inode *inode)
 {
+#ifdef CONFIG_F2FS_FS_COMPRESSION
 	struct f2fs_sb_info *sbi = F2FS_I_SB(inode);
+
+	if (!may_compress)
+		return -EOPNOTSUPP;
 
 	F2FS_I(inode)->i_compress_algorithm =
 			F2FS_OPTION(sbi).compress_algorithm;
@@ -4755,6 +4788,10 @@ static inline void set_compress_context(struct inode *inode)
 	stat_inc_compr_inode(inode);
 	inc_compr_inode_stat(inode);
 	f2fs_mark_inode_dirty_sync(inode, true);
+	return 0;
+#else
+	return -EOPNOTSUPP;
+#endif
 }
 
 static inline u64 f2fs_disable_compressed_file(struct inode *inode)
@@ -4795,9 +4832,21 @@ F2FS_FEATURE_FUNCS(lost_found, LOST_FOUND);
 F2FS_FEATURE_FUNCS(verity, VERITY);
 F2FS_FEATURE_FUNCS(sb_chksum, SB_CHKSUM);
 F2FS_FEATURE_FUNCS(casefold, CASEFOLD);
+#ifndef CONFIG_F2FS_FS_COMPRESSION_FIXED_OUTPUT
 F2FS_FEATURE_FUNCS(compression, COMPRESSION);
+#else
+static inline bool f2fs_sb_has_compression(struct f2fs_sb_info *sbi)
+{
+	return F2FS_HAS_FEATURE(sbi, F2FS_FEATURE_COMPRESSION) &&
+		(sbi->oplus_feats & OPLUS_FEAT_COMPR);
+}
+#endif
 #ifdef CONFIG_F2FS_FS_DEDUP
-F2FS_FEATURE_FUNCS(dedup, DEDUP);
+static inline bool f2fs_sb_has_dedup(struct f2fs_sb_info *sbi)
+{
+	return F2FS_HAS_FEATURE(sbi, F2FS_FEATURE_DEDUP) &&
+		(sbi->oplus_feats & OPLUS_FEAT_DEDUP);
+}
 #endif
 
 #ifdef CONFIG_BLK_DEV_ZONED
@@ -4980,6 +5029,22 @@ static inline bool is_journalled_quota(struct f2fs_sb_info *sbi)
 		return true;
 #endif
 	return false;
+}
+
+static inline void f2fs_truncate_meta_inode_pages(struct f2fs_sb_info *sbi,
+					block_t blkaddr, unsigned int cnt)
+{
+	f2fs_submit_merged_write_cond(sbi, sbi->meta_inode, NULL, 0, DATA);
+	truncate_inode_pages_range(META_MAPPING(sbi),
+			F2FS_BLK_TO_BYTES((loff_t)blkaddr),
+			F2FS_BLK_END_BYTES((loff_t)(blkaddr + cnt - 1)));
+}
+
+static inline void f2fs_invalidate_internal_cache(struct f2fs_sb_info *sbi,
+								block_t blkaddr)
+{
+	f2fs_truncate_meta_inode_pages(sbi, blkaddr, 1);
+	f2fs_invalidate_compress_page(sbi, blkaddr);
 }
 
 #define EFSBADCRC	EBADMSG		/* Bad CRC detected */

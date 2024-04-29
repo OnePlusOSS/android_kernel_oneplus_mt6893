@@ -31,7 +31,9 @@ static struct layering_rule_ops *l_rule_ops;
 static int ext_id_tuning(struct disp_layer_info *disp_info, int disp_idx);
 static unsigned int adaptive_dc_request;
 static unsigned int roll_gpu_for_idle;
-
+#ifdef CONFIG_MACH_MT6768
+extern bool oplus_display_no_support_mtk_round_corner;
+#endif
 static struct {
 	enum LYE_HELPER_OPT opt;
 	unsigned int val;
@@ -1264,7 +1266,10 @@ static int _calc_hrt_num(struct disp_layer_info *disp_info, int disp,
 		sum_overlap_w += HRT_AEE_WEIGHT;
 
 #ifdef CONFIG_MTK_ROUND_CORNER_SUPPORT
-	sum_overlap_w += HRT_ROUND_CORNER_WEIGHT;
+#ifdef CONFIG_MACH_MT6768
+	if(!oplus_display_no_support_mtk_round_corner)
+#endif
+		sum_overlap_w += HRT_ROUND_CORNER_WEIGHT;
 #endif
 
 /**
@@ -1282,6 +1287,9 @@ static int _calc_hrt_num(struct disp_layer_info *disp_info, int disp,
 		if (has_dal_layer)
 			sum_overlap_w += HRT_AEE_WEIGHT;
 #ifdef CONFIG_MTK_ROUND_CORNER_SUPPORT
+#ifdef CONFIG_MACH_MT6768
+	if(!oplus_display_no_support_mtk_round_corner)
+#endif
 		sum_overlap_w += HRT_ROUND_CORNER_WEIGHT;
 #endif
 	}

@@ -1202,6 +1202,9 @@
 &extcon_usb {
 	vbus-current = <1300000>;
 };
+&adsp_core0 {
+	system = <0 0x56000000 0 0xC00000>;
+};
 
 //#endif  /*OPLUS_VENDOR_SWTP*/
 #include <oplus6877_22612/cust.dtsi>

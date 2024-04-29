@@ -505,8 +505,8 @@
 	CAR_TUNE_VALUE = <(99)>;
 
 	KEEP_100_PERCENT = <(3)>;
-	g_FG_PSEUDO100_T0 = <(90)>;
-	g_FG_PSEUDO100_T1 = <(88)>;
+	g_FG_PSEUDO100_T0 = <(95)>;
+	g_FG_PSEUDO100_T1 = <(95)>;
 	g_FG_PSEUDO100_T2 = <(94)>;
 	g_FG_PSEUDO100_T3 = <(92)>;
 	g_FG_PSEUDO100_T4 = <(76)>;
@@ -898,6 +898,10 @@
 		track,voocphy_type = <3>;
 		track,wired_max_power = <67000>;
 		track,wired_fast_chg_scheme = <1>;
+	};
+	oplus_battery_log: oplus,battery_log {
+		compatible = "oplus,battery_log";
+		oplus,battery_log_support;
 	};
 };
 

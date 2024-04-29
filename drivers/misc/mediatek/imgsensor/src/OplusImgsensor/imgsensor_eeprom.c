@@ -1521,7 +1521,9 @@ void Eeprom_CamSNDataRead(enum IMGSENSOR_SENSOR_IDX sensor_idx, kal_uint16 slave
         pCamDeviceObj = &gImgEepromInfo_21881;
     }
 #endif
-    if (is_project(22610) || is_project(23231)){
+    if (is_project(22610) || is_project(23231)
+        || is_project(23613) || is_project(23686) || is_project(23687) || is_project(23689)
+        || is_project(23707) || is_project(23709)){
         /*Read camera SN-23bytes*/
         snLength = OPLUS_CAMERASN_LENS_23;
     }
@@ -1549,7 +1551,9 @@ void Eeprom_CamAFCodeDataRead(enum IMGSENSOR_SENSOR_IDX sensor_idx, kal_uint16 s
         pCamDeviceObj = &gImgEepromInfo_21881;
     }
 #endif
-    if (is_project(22610) || is_project(23231)){
+    if (is_project(22610) || is_project(23231)
+        || is_project(23613) || is_project(23686) || is_project(23687) || is_project(23689)
+        || is_project(23707) || is_project(23709)){
         /*Read camera SN-23bytes*/
         snLength = OPLUS_CAMERASN_LENS_23;
     }

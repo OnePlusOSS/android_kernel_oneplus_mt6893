@@ -84,6 +84,9 @@ int for_mtk_60w_support = 0;
 int use_mt6768 = 0;
 int is_get_tbat_support = 0;
 int bat_temp_01c_precision = 0;
+int batt_barcode_read_support = 0;
+int reprobe_cnt = 0;
+#define MAX_REPROBE_CNT 20
 
 struct iio_channel	*batt_id = NULL;
 struct iio_channel	*flash_ntc_id = NULL;
@@ -139,6 +142,23 @@ extern int mt6360_get_batid_volt(int *volt);
 #include <soc/oplus/system/oplus_project.h>
 #include <linux/gpio.h>
 #include "../../../oplus/oplus_gauge.h"
+#include "../../../oplus/gauge_ic/oplus_optiga/oplus_optiga.h"
+
+bool __attribute__((weak)) oplus_optiga_get_init_done(void)
+{
+	return true;
+}
+
+int __attribute__((weak)) oplus_get_batt_id_use_barcode(void)
+{
+	return 0;
+}
+
+struct oplus_optiga_chip * __attribute__((weak)) oplus_get_optiga_info (void)
+{
+	return NULL;
+}
+
 extern bool is_fuelgauge_apply(void);
 bool is_fuelgauge_apply(void)
 {
@@ -5209,6 +5229,12 @@ enum {
 	BAT_TYPE__LIW_4450mV,
 	BAT_TYPE__ATL_4450mV,	/*550mV~790mV*/
 	BAT_TYPE__SDI_4450mV,   /*1040mV~1325mV*/
+	/* use batt barcode
+	 * BAT_TYPE__core_limitedvol_module
+	 */
+	BAT_TYPE__ATL_4480mV_NVT,
+	BAT_TYPE__ATL_4480mV_ATLINDIA,
+	BAT_TYPE__GUANYU_4480mV_GUANYU,
 #endif
 
 };
@@ -5230,7 +5256,11 @@ enum {
 
 int battery_type_check(void)
 {
-
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	int index = 0;
+	int barcode_index = 0;
+	struct oplus_optiga_chip *chip = NULL;
+#endif
 	int value = 0;
 	int ret = 0;
 	int ret_value = 0;
@@ -5251,6 +5281,56 @@ int battery_type_check(void)
 								{185,350},
 								{790,1100},
 								{300,520}};
+
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	/* distinguish_batt_with_barcode */
+	if (batt_barcode_read_support) {
+		chip = oplus_get_optiga_info();
+		if (!chip) {
+			printk(KERN_ERR "optiga info null, return!!!\n");
+			return battery_type;
+		}
+
+		index = oplus_get_batt_id_use_barcode();
+		if (index == FIRST_VENDOR) {
+			gm.battery_id = BATT_ID_0;
+		} else if (index == SECOND_VENDOR) {
+			gm.battery_id = BATT_ID_1;
+		} else {
+			gm.battery_id = BATT_ID_0;
+		}
+
+		if (index == UNKNOWN_VENDOR) {
+			battery_type = BAT_TYPE__UNKNOWN;
+			return battery_type;
+		}
+
+		barcode_index = chip->right_barcode_index;
+		if (barcode_index < 0 || barcode_index >= MAX_BARCODE_NUM) {
+			printk(KERN_ERR "barcode index out of count! return !!\n");
+			battery_type = BAT_TYPE__UNKNOWN;
+			return battery_type;
+		}
+
+		if (chip->batt_data[barcode_index].vendor_data.core_vendor == ATL &&
+		    chip->batt_data[barcode_index].vendor_data.module_vendor == NVT &&
+		    chip->batt_data[barcode_index].vendor_data.core_limited_vol == BAT_CORE_LIMITED_VOL_4480) {
+			battery_type = BAT_TYPE__ATL_4480mV_NVT;
+		} else if (chip->batt_data[barcode_index].vendor_data.core_vendor == ATL &&
+		           chip->batt_data[barcode_index].vendor_data.module_vendor == ATL_INDIA &&
+		           chip->batt_data[barcode_index].vendor_data.core_limited_vol == BAT_CORE_LIMITED_VOL_4480) {
+			battery_type = BAT_TYPE__ATL_4480mV_ATLINDIA;
+		} else if (chip->batt_data[barcode_index].vendor_data.core_vendor == GUANYU_C &&
+		           chip->batt_data[barcode_index].vendor_data.module_vendor == GUANYU_M &&
+		           chip->batt_data[barcode_index].vendor_data.core_limited_vol == BAT_CORE_LIMITED_VOL_4480) {
+			battery_type = BAT_TYPE__GUANYU_4480mV_GUANYU;
+		} else {
+			battery_type = BAT_TYPE__UNKNOWN;
+		}
+
+		return battery_type;
+	}
+#endif
 
 	#ifdef CONFIG_MTK_AUXADC
 	int channel = BAT_ID;
@@ -5407,7 +5487,7 @@ int battery_type_check(void)
 				battery_type = BAT_TYPE__ATL_4450mV;
 				gm.battery_id = BATT_ID_1;
 			}
-		} else if (get_project() == 23053 || get_project() == 23054) {
+		} else if (get_project() == 23053 || get_project() == 23054 || get_project() == 23055) {
 			if (value >= batt_id_vol[12][0] && value < batt_id_vol[12][1]) {
 				battery_type = BAT_TYPE__LIW_4450mV;
 				gm.battery_id = BATT_ID_0;
@@ -5670,6 +5750,19 @@ static void register_battery_devinfo(void)
 			version = "4.45v";
 			manufacture = "SDI";
 			break;
+		/* distingush using battery barcode */
+		case BAT_TYPE__ATL_4480mV_NVT:
+			version = "4.48v";
+			manufacture = "ATL";
+			break;
+		case BAT_TYPE__ATL_4480mV_ATLINDIA:
+			version = "4.48v";
+			manufacture = "ATL PACKAGE IN INDIA";
+			break;
+		case BAT_TYPE__GUANYU_4480mV_GUANYU:
+			version = "4.48v";
+			manufacture = "GUANYU";
+			break;
 #endif
 		default:
 			version = "unknown";
@@ -5766,6 +5859,29 @@ static int __init battery_probe(struct platform_device *dev)
 	fg_read_dts_val(dev->dev.of_node, "ODM_SELECT_BAT_NTC_SUPPORT", &(odm_select_bat_ntc_support), 1);
 	printk("%s, odm_select_bat_ntc_support:%d\n", __func__, odm_select_bat_ntc_support);
 #endif
+
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	fg_read_dts_val(dev->dev.of_node, "AUTHENTICATE_IC_READ_BATT_BARCODE_SUPPORT",
+	                &(batt_barcode_read_support), 1);
+	printk("%s, batt_barcode_read_support:%d\n", __func__, batt_barcode_read_support);
+
+	/* distinguish_batt_with_barcode
+	 * if oplus_optiga driver is not ready, return -EPROBE_DEFER.
+	 */
+	if (batt_barcode_read_support) {
+		if ((false == oplus_optiga_get_init_done()) &&
+		    (reprobe_cnt <= MAX_REPROBE_CNT)) {
+			reprobe_cnt++;
+			printk(KERN_ERR "optiga get_batt_id is not ready. reprobe cnt:%d\n",
+			       reprobe_cnt);
+			return -EPROBE_DEFER;
+		} else {
+			printk(KERN_ERR "optiga get_batt_id is ready OR out of count.\n");
+		}
+	}
+#endif /* OPLUS_FEATURE_CHG_BASIC */
+
+
 #ifdef OPLUS_FEATURE_CHG_BASIC
 	if(is_fuelgauge_apply() == true) {
 		chip = (struct oplus_gauge_chip*) kzalloc(sizeof(struct oplus_gauge_chip),

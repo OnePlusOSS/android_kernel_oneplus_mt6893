@@ -379,6 +379,8 @@ static int oplus_ofp_hbm_wait_handle(struct drm_crtc *crtc, struct cmdq_pkt *cmd
 
 					/* send hbm on cmd in next frame */
 					te_count = 1;
+					if (p_oplus_ofp_params->timing_switching)
+						te_count = 2;
 					delay_us = (us_per_frame >> 1) + 500;
 				} else {
 					te_count = 1;

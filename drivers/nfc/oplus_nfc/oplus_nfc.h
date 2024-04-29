@@ -17,7 +17,8 @@ typedef enum{
     SN100T,
     SN100F,
     ST21H,
-    ST54H
+    ST54H,
+	THN31
 } chip_type;
 
 bool is_support_chip(chip_type chip);

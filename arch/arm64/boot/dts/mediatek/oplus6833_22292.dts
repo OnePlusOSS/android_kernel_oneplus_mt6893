@@ -20,6 +20,10 @@
 #include <dt-bindings/pinctrl/mt6833-pinfunc.h>
 #endif
 
+//Enabling boost_pool node at proc path
+&ion {
+	support_smart_pool = "true";
+};
 
 /* chosen */
 &chosen {
@@ -542,7 +546,7 @@
 			};
 		};
 	};
-	panel35@0 {
+	panel36@0 {
 		compatible = "oplus22291,boe,ili9883c,dphy,vdo";
 		reg = <2>;
 		reset-gpios = <&pio 86 0>;
@@ -551,7 +555,7 @@
 				<&pio 138 0>;
 		pinctrl-names = "default";
 		port {
-			panel_in35: endpoint {
+			panel_in36: endpoint {
 				remote-endpoint = <&dsi_out>;
 			};
 		};

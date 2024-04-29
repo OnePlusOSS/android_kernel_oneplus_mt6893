@@ -345,6 +345,13 @@ int tcpci_set_watchdog(struct tcpc_device *tcpc, bool en)
 {
 	int rv = 0;
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/********* workaround MO.230913213000256759: sc6607 workaround for pd abnormal start*********/
+	if (tcpc->ops->set_watchdog)
+		rv = tcpc->ops->set_watchdog(tcpc, en);
+	return rv;
+/********* workaround MO.230913213000256759: sc6607 workaround for pd abnormal end*********/
+#endif
 	if (tcpc->tcpc_flags & TCPC_FLAGS_WATCHDOG_EN)
 		if (tcpc->ops->set_watchdog)
 			rv = tcpc->ops->set_watchdog(tcpc, en);

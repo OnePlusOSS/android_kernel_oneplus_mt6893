@@ -1,0 +1,41 @@
+/**********************************************************************************
+* Copyright (c)  2008-2020  Guangdong oplus Mobile Comm Corp., Ltd
+*
+***********************************************************************************/
+&odm {
+        nfc_chipset:nfc_chipset {
+                compatible = "oplus-nfc-chipset";
+                chipset-23613 = "THN31";
+                manifest = "/odm/etc/vintf/manifest_nfc_thn31.xml";
+        };
+};
+
+
+&i2c8 {
+       status = "okay";
+       clock-frequency = <400000>;
+
+       tms_thn31@29 {
+               compatible = "tms,nfc";
+               reg = <0x29>;
+               tms,irq-gpio = <&pio 11 0x0>;
+               tms,ven-gpio = <&pio 190 0x0>;
+               tms,download-gpio = <&pio 8 0x0>;
+               //pn544-clkreq = <&pio 11 0x0>;
+               interrupt-parent = <&pio>;
+       };
+};
+
+
+&spi1 {
+       status = "okay";
+       #address-cells = <1>;
+       #size-cells = <0>;
+       spidev1: ese@1 {
+       compatible = "tms,ese";
+       reg = <0>;
+       spi-max-frequency = <8000000>;
+       tms,device-name    = "tms_ese";
+       tms,device-count   = <1>;
+       };
+};

@@ -307,6 +307,11 @@ DECL_TCPC_TIMEOUT(PD_TIMER_SNK_FLOW_DELAY,
 #endif	/* CONFIG_USB_PD_REV30 */
 
 DECL_TCPC_TIMEOUT(PD_TIMER_PE_IDLE_TOUT, 10),
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/********* workaround MO.230913213000256759: sc6607 workaround for pd abnormal start*********/
+DECL_TCPC_TIMEOUT(TYPEC_TIMER_INT_INVAILD, 150),
+/********* workaround MO.230913213000256759: sc6607 workaround for pd abnormal end*********/
+#endif /*workaround*/
 #endif /* CONFIG_USB_POWER_DELIVERY */
 
 /* TYPEC_RT_TIMER (out of spec) */
@@ -423,7 +428,15 @@ static inline void on_pe_timer_timeout(
 			pd_put_sent_hard_reset_event(tcpc);
 		}
 		break;
-
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/********* workaround MO.230913213000256759: sc6607 workaround for pd abnormal start*********/
+	case PD_TIMER_INT_INVAILD:
+		TCPC_INFO("check int invaild\n");
+		tcpc->recv_msg_cnt = 0;
+		tcpc_restart_timer(tcpc, PD_TIMER_INT_INVAILD);
+		break;
+/********* workaround MO.230913213000256759: sc6607 workaround for pd abnormal end*********/
+#endif
 	default:
 		pd_put_event(tcpc, &pd_event, false);
 		break;
@@ -457,7 +470,20 @@ static enum hrtimer_restart tcpc_timer_discover_id(struct hrtimer *timer)
 	TCPC_TIMER_TRIGGER();
 	return HRTIMER_NORESTART;
 }
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/********* workaround MO.230913213000256759: sc6607 workaround for pd abnormal start*********/
+static enum hrtimer_restart
+	tcpc_timer_int_invaild(struct hrtimer *timer)
+{
+	int index = PD_TIMER_INT_INVAILD;
+	struct tcpc_device *tcpc =
+		container_of(timer, struct tcpc_device, tcpc_timer[index]);
 
+	TCPC_TIMER_TRIGGER();
+	return HRTIMER_NORESTART;
+}
+/********* workaround MO.230913213000256759: sc6607 workaround for pd abnormal end*********/
+#endif
 static enum hrtimer_restart
 	tcpc_timer_hard_reset_complete(struct hrtimer *timer)
 {
@@ -1134,6 +1160,11 @@ static tcpc_hrtimer_call tcpc_timer_call[PD_TIMER_NR] = {
 #endif	/* CONFIG_USB_PD_REV30 */
 
 	tcpc_timer_pe_idle_tout,
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/********* workaround: sc6607 workaround for pd abnormal start*********/
+	tcpc_timer_int_invaild,
+/********* workaround: sc6607 workaround for pd abnormal end*********/
+#endif
 #endif /* CONFIG_USB_POWER_DELIVERY */
 
 /* TYPEC_RT_TIMER (out of spec )*/
@@ -1279,7 +1310,13 @@ void tcpc_disable_timer(struct tcpc_device *tcpc, uint32_t timer_id)
 void tcpc_reset_pe_timer(struct tcpc_device *tcpc)
 {
 	mutex_lock(&tcpc->timer_lock);
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/********* workaround: sc6607 workaround for pd abnormal start*********/
+	tcpc_reset_timer_range(tcpc, 0, PD_TIMER_INT_INVAILD);
+/********* workaround: sc6607 workaround for pd abnormal end*********/
+#else
 	tcpc_reset_timer_range(tcpc, 0, PD_PE_TIMER_END_ID);
+#endif
 	mutex_unlock(&tcpc->timer_lock);
 }
 #endif /* CONFIG_USB_POWER_DELIVERY */

@@ -17,7 +17,7 @@
 #include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/pinctrl/mt6877-pinfunc.h>
-#include "mediatek/nfc/mt6877_chengdu_nfc.dtsi"
+#include "mediatek/nfc/mt6877_tacoo_pn560.dtsi"
 
 /* #ifdef CONFIG_UFF_FINGERPRINT */
 #include "mediatek/oplus_uff_23613_23686_23687.dtsi"
@@ -87,20 +87,13 @@
 	#address-cells = <1>;
 	#size-cells = <0>;
 
-	pinctrl-names = "default",  "ft3681_int_active",
-		"ft3681_reset_active", "ft3681_int_suspend",
-		"ft3681_reset_suspend", "ft3681_spi_mode";
-	pinctrl-0 = <&ctp_ft3681_clk_spi_mode>, <&ctp_ft3681_mi_mo_cs_spi_mode>;
-	pinctrl-1 = <&ctp_ft3681_int_active>;
-	pinctrl-2 = <&ctp_ft3681_reset_active>;
-	pinctrl-3 = <&ctp_ft3681_int_suspend>;
-	pinctrl-4 = <&ctp_ft3681_reset_suspend>;
-	pinctrl-5 = <&ctp_ft3681_spi_mode>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&ctp_ft3658u_clk_cs_spi_mode>, <&ctp_ft3658u_mi_mo_spi_mode>;
 
 	focaltech@0{
-		compatible = "focaltech-FT3681";
+		compatible = "focaltech-FT3658U";
 		reg = <0x0>;
-		chip-name = "FT3681";
+		chip-name = "FT3658U";
 		status = "okay";
 		spi-max-frequency = <6000000>;
 		/* Interrupt && Irq-gpio */
@@ -111,8 +104,7 @@
 
 		vdd_2v8-supply  = <&mt_pmic_vtp_ldo_reg>;
 		vdd_2v8_volt = <3000000>;
-		vcc_1v8-supply  = <&mt_pmic_vfp_ldo_reg>;
-		vcc_1v8_volt = <1800000>;
+
 
 
 		/* Other HW Resource */
@@ -121,10 +113,10 @@
 		reset-gpio = <&pio 15 0x1>;
 
 		touchpanel,max-num-support = <10>;
-		touchpanel,tx-rx-num = <16 36>;
+		touchpanel,tx-rx-num = <16 34>;
 		earsense,tx-rx-num = <17 18>;
-		touchpanel,panel-coords = <17280 38592>;
-		touchpanel,display-coords = <1080 2412>;
+		touchpanel,panel-coords = <8640 19200>;
+		touchpanel,display-coords = <1080 2400>;
 		touchpanel,touchmajor-limit = <128 216>;
 		touchpanel,elimination-range = <20 200 200>;
 		//touchpanel,int-mode = <1>; /*0: interrupt and disable, 1:interrupt and not disable*/
@@ -137,22 +129,22 @@
 
 		vid_len = <2>;
 		//firmware_name = "0xAB30500";
-		tp_type = <7>; /* panel-TIANMA*/
-		platform_support_project = <23613 23686 23687>;
-		platform_support_project_dir = <23687 23687 23687>;
-		platform_support_project_commandline = "default_commandline","default_commandline","default_commandline";
+		tp_type = <8>; /* panel-SAMSUNG*/
+		platform_support_project = <23613 23686 23687 23689 23707 23709>;
+		platform_support_project_dir = <23687 23687 23687 23687 23687 23687>;
+		platform_support_project_commandline = "default_commandline","default_commandline","default_commandline","default_commandline","default_commandline","default_commandline";
 
 		prevention,curved_screen_V2;
 		prevention,grip_disable_level = <6>;
 		prevention,updelay_time_ms = <30>;
 		prevention,makeup_cnt_weight = <4 1 2 2 2>;
-		prevention,large_corner_range = <1920 4800>;
-		prevention,large_corner_judge_condition = <500 300 1600 6 6>;
+		prevention,large_corner_range = <960 2360>;
+		prevention,large_corner_judge_condition = <500 300 900 6 6>;
 		prevention,trx_reject_condition = <8 7 7>;
 		prevention,trx_strict_reject_condition = <7 6 6>;
 		prevention,large_judge_time_ms = <500 50 30>;
 		prevention,large_exit_condition = <15 12 2>;
-		prevention,single_channel_width = <512 512>;
+		prevention,single_channel_width = <240 240>;
 		prevention,normal_tap_condition = <10 300>;
 		prevention,long_edge_condition = <230 100 180 80>;
 		prevention,long_strict_edge_condition = <170 80>;
@@ -160,21 +152,36 @@
 		prevention,short_edge_condition = <230 100 180 80>;
 		prevention,short_strict_edge_condition = <160 60>;
 		prevention,large_strict_exit_condition = <5 5>;
-		prevention,top_corner_config = <800 2400 760>;
-		prevention,edge_swipe_config = <480 1600>;
+		prevention,top_corner_config = <420 1194 360>;
+		prevention,edge_swipe_config = <240 896>;
 
 		prevention,curved_screen_V4;
-		prevention,long_fingerhold_condition2 = <1120 3200 0 0>;
-		prevention,top_corner_config2 =<3 80 420 2400 0>;
-		prevention,hor_long_top_corner_config =<480 3200 0 0>;
-		prevention,top_middle_config =<17280 1600 1600 0>;
+		prevention,long_eliminate_point_type = <2 8640 6400 210 19200 300 1>;
+		prevention,long_fingerhold_condition2 = <555 1194 0 0>;
+		prevention,top_corner_config2 =<3 80 630 895 0>;
+		prevention,hor_long_top_corner_config =<228 1573 0 0>;
+		prevention,top_middle_config =<8640 790 790 0>;
+		prevention,corner_eliminate_point_type =<0 960 1573 1>;
+		prevention,finger_hold_differ_size = <1 0 240 240>;
+		prevention,finger_hold_max_rx_exit_distance = <5 240 1600>;
+		prevention,max_rx_exit_distance = <1 5 150 240 1600>;
+		prevention,dynamic_finger_hold_exit_distance = <1 240 1600 280>;
+		prevention,edge_sliding_matched_support = <1 220 3 0>;
 
+		//grip v4.2 reclining mode
+		prevention,reclining_mode_support = <1>;
+		prevention,long_eliminate_point_type_recli = <2 8640 6400 210 19200 300 1>;
+		prevention,finger_hold_differ_size_recli = <1 0 240 240>;
+		prevention,finger_hold_max_rx_exit_distance_recli = <5 240 1600>;
+		prevention,max_rx_exit_distance_recli = <1 5 150 240 1600>;
+		prevention,dynamic_finger_hold_exit_distance_recli = <1 240 1600 280>;
+		prevention,edge_sliding_matched_support_recli = <1 220 3 0>;
 		/* SW Support Feature Control */
 		//esd_handle_support;
 		//register-is-16bit;
 		//wireless_charger_support;
 		headset_pump_support;
-		//fw_edge_limit_support;
+		fw_edge_limit_support;
 
 		health_monitor_v2_support;
 		black_gesture_support;
@@ -198,6 +205,7 @@
 		black_gesture_indep_support;
 		thermal_detect_support;
 		exception_upload_support;
+		palm_to_sleep_support;
 
 		/*
 		 *Virtual Key Config:
@@ -215,7 +223,7 @@
 		touchpanel,button-type = <4>;
 		touchpanel.button-TRx = <0 0>;
 
-		FT3681 {
+		FT3658U {
 			switch_report_rate;
 			report_rate_default = <60>;
 			report_rate_game_value = <0x02>;
@@ -224,47 +232,22 @@
 };
 
 &pio {
-	ctp_ft3681_clk_spi_mode: ctp_ft3681_clk_spi_mode{
+	ctp_ft3658u_clk_cs_spi_mode: ctp_ft3658u_clk_cs_spi_mode{
 		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO64__FUNC_SPI4_CLK>;
+			pinmux = <PINMUX_GPIO64__FUNC_SPI4_CLK>,
+				<PINMUX_GPIO65__FUNC_SPI4_CSB>;
 			mediatek,drive-strength-adv = <0>;/*EH[2:0]*/
 			drive-strength = <2>;
 		};
 	};
-	ctp_ft3681_mi_mo_cs_spi_mode: ctp_ft3681_mi_mo_cs_spi_mode {
+	ctp_ft3658u_mi_mo_spi_mode: ctp_ft3658u_mi_mo_spi_mode {
 		pins_cmd_dat {
 			pinmux = <PINMUX_GPIO12__FUNC_SPI4_MI>,
-				<PINMUX_GPIO13__FUNC_SPI4_MO>,
-				<PINMUX_GPIO65__FUNC_SPI4_CSB>;
+				<PINMUX_GPIO13__FUNC_SPI4_MO>;
 			drive-strength = <2>;
 		};
 	};
-	ctp_ft3681_int_active: int_active {
-		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO14__FUNC_GPIO14>;
-			input-enable;
-		};
-	};
-	ctp_ft3681_reset_active: reset_active {
-		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO15__FUNC_GPIO15>;
-			output-high;
-		};
-	};
-	ctp_ft3681_int_suspend: int_suspend {
-		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO14__FUNC_GPIO14>;
-			output-low;
-		};
-	};
-	ctp_ft3681_reset_suspend: reset_suspend {
-		pins_cmd_dat {
-			pinmux = <PINMUX_GPIO15__FUNC_GPIO15>;
-			output-low;
-		};
-	};
-	ctp_ft3681_spi_mode: spimode_default {
-	};
+
 };
 /*touch end*/
 
@@ -364,6 +347,47 @@
 	pinctrl-1 = <&mtkfb_pins_lcm_rst_out0_gpio>;
 	pinctrl-2 = <&mtkfb_pins_lcm_dsi_te>;
 	status = "okay";
+
+	helper-value = <0>, /*MTK_DRM_OPT_STAGE*/
+		<1>, /*MTK_DRM_OPT_USE_CMDQ*/
+		<1>, /*MTK_DRM_OPT_USE_M4U*/
+		<0>, /*MTK_DRM_OPT_SODI_SUPPORT*/
+		<1>, /*MTK_DRM_OPT_IDLE_MGR*/
+		<0>, /*MTK_DRM_OPT_IDLEMGR_SWTCH_DECOUPLE*/
+		<0>, /*MTK_DRM_OPT_IDLEMGR_BY_REPAINT*/
+		<0>, /*MTK_DRM_OPT_IDLEMGR_ENTER_ULPS*/
+		<0>, /*MTK_DRM_OPT_IDLEMGR_KEEP_LP11*/
+		<0>, /*MTK_DRM_OPT_DYNAMIC_RDMA_GOLDEN_SETTING*/
+		<1>, /*MTK_DRM_OPT_IDLEMGR_DISABLE_ROUTINE_IRQ*/
+		<0>, /*MTK_DRM_OPT_MET_LOG*/
+		<1>, /*MTK_DRM_OPT_USE_PQ*/
+		<1>, /*MTK_DRM_OPT_ESD_CHECK_RECOVERY*/
+		<1>, /*MTK_DRM_OPT_ESD_CHECK_SWITCH*/
+		<1>, /*MTK_DRM_OPT_PRESENT_FENCE*/
+		<1>, /*MTK_DRM_OPT_RDMA_UNDERFLOW_AEE*/
+		<1>, /*MTK_DRM_OPT_DSI_UNDERRUN_AEE*/
+		<1>, /*MTK_DRM_OPT_HRT*/
+		<1>, /*MTK_DRM_OPT_HRT_MODE*/
+		<0>, /*MTK_DRM_OPT_DELAYED_TRIGGER*/
+		<1>, /*MTK_DRM_OPT_OVL_EXT_LAYER*/
+		<0>, /*MTK_DRM_OPT_AOD*/
+		<1>, /*MTK_DRM_OPT_RPO*/
+		<0>, /*MTK_DRM_OPT_DUAL_PIPE*/
+		<0>, /*MTK_DRM_OPT_DC_BY_HRT*/
+		<0>, /*MTK_DRM_OPT_OVL_WCG*/
+		<0>, /*MTK_DRM_OPT_OVL_SBCH*/
+		<1>, /*MTK_DRM_OPT_COMMIT_NO_WAIT_VBLANK*/
+		<0>, /*MTK_DRM_OPT_MET*/
+		<0>, /*MTK_DRM_OPT_REG_PARSER_RAW_DUMP*/
+		<0>, /*MTK_DRM_OPT_VP_PQ*/
+		<0>, /*MTK_DRM_OPT_GAME_PQ*/
+		<0>, /*MTK_DRM_OPT_MMPATH*/
+		<1>, /*MTK_DRM_OPT_HBM*/
+		<0>, /*MTK_DRM_OPT_VDS_PATH_SWITCH*/
+		<0>, /*MTK_DRM_OPT_LAYER_REC*/
+		<0>, /*MTK_DRM_OPT_CLEAR_LAYER*/
+		<1>, /*MTK_DRM_OPT_LFR*/
+		<1>; /*MTK_DRM_OPT_DYN_MIPI_CHANGE*/
 };
 
 &dsi0 {
@@ -409,10 +433,11 @@
 		default-state = "on";
 	};
 };
+
 &mt6359regulator {
 	mt_pmic_vio28_ldo_reg: ldo_vio28 {
 		regulator-name = "vio28";
-		regulator-min-microvolt = <2800000>;
+		regulator-min-microvolt = <3300000>;
 		regulator-max-microvolt = <3300000>;
 		regulator-enable-ramp-delay = <1920>;
 		};
@@ -465,6 +490,12 @@
 	    compatible = "oplus, sim_detect";
 	    Hw,sim_det = <&pio 176 0x00>;
     };
+    vibrator0:vibrator@0 {
+	    compatible = "mediatek,vibrator";
+	    vib_timer = <35>;
+	    vib_limit = <9>;
+	    vib_vol= <9>;
+    };
 /* sensor start */
 	/*
 	enum {
@@ -487,6 +518,7 @@
 	gsensor_1: gsensor_1 {
 		status = "okay";
 		sensor_name = <7>;//ICM4X6XX
+		device_name = "icm4x6xx";
 		i2c_num = <2>;
 		i2c_addr = <0>;
 		direction = <2>;
@@ -494,6 +526,9 @@
 		step_count_7_en = <1>;
 		config_miso = <1>;
 		correct_y_bias = <1>;
+		gyro_cali_version= <2>;
+		gyro_cali_range = <350>; //0.35 rad/s
+		acc_cali_range= <300 300 300>; //250mg
 	};
 	gsensor_2: gsensor_2 {
 		status = "okay";
@@ -501,9 +536,10 @@
 		device_name = "bmi3xy";
 		i2c_num = <2>;
 		i2c_addr = <0>;
-		direction = <7>;
+		direction = <1>;
 		eint_num = <1>;
 		gyro_cali_version= <2>;
+		gyro_cali_range = <350>; //0.35 rad/s
 		acc_cali_range= <300 300 300>; //250mg
 	};
 	/*
@@ -521,15 +557,23 @@
 		i2c_addr = <48>;
 		direction = <3>;
 		eint_num = <0>;
-		para_num = <2>;
+		para_num = <4>;
 		libname = "mmc";
 		mag_para_1 {
-			match_projects = <22629 22711>;
-			soft-mag-parameter = <9987 0 336 0 362 1 108 1 8583 0 178 0 264 1 94 0 10321 0>;
+			match_projects = <23613>;
+			soft-mag-parameter = <9969 0 755 0 36 0 157 1 8220 0 124 0 449 0 24 0 10391 0>;
 		};
 		mag_para_2 {
-			match_projects = <22710>;
-			soft-mag-parameter = <9994 0 247 0 243 1 238 0 9424 0 42 0 17 0 139 1 10302 0>;
+			match_projects = <23686>;
+			soft-mag-parameter = <9995 0 224 0 119 1 686 1 8070 0 198 0 175 0 387 0 10181 0>;
+		};
+		mag_para_3 {
+			match_projects = <23687>;
+			soft-mag-parameter = <9959 0 875 0 186 0 269 1 8184 0 257 0 89 0 120 0 10452 0>;
+		};
+		mag_para_4 {
+			match_projects = <23689>;
+			soft-mag-parameter = <9997 0 12 1 228 0 806 0 9125 0 82 0 196 1 333 0 10375 0>;
 		};
 	};
 	/*
@@ -639,12 +683,16 @@
 		raw2offset_radio = <1000>;
 		offset_max = <60000>;
 		offset_range_min = <0>;
-		offset_range_max = <65535>;
+		offset_range_max = <65534>;
 		force_cali_limit = <2000>;
 		cali_jitter_limit = <30>;
 		cal_offset_margin = <3000>;
-		sensor-reg = <0x03 0x28>;
 		is_use_force_cali = <1>;
+		parameter-number = <8>;
+		sensor-reg = <0x01 0x44
+				0x03 0x28
+				0x05 0x3F
+				0xDB 0x00>; //override special reg
 	};
 	light_2: light_2 {
 		status = "okay";
@@ -655,9 +703,10 @@
 		eint_num = <2>;
 		als_buffer_length =<8>;
 		als_ratio = <110>;
+		als_coef_ratio = <88>;
 		als_type = <2>;//<1-normal;2-under screen;3-normal needed compensation>
 		device_name = "stk33c01";
-		use_als_c2 = <1>;
+
 	};
 	/*
 	enum {
@@ -686,15 +735,13 @@
 	};
 	rear_cct_2: rear_cct_2 {
 		status = "okay";
-		sensor_name = <2>;//TCS3408
+		sensor_name = <3>;//SIP1221LR1N
 		i2c_num = <1>;
-		i2c_addr = <0x39>;
+		i2c_addr = <0x59>;
 		direction = <0>;
 		eint_num = <10>;
-		available_sensor = <7>; // bit 0: rear als, bit 1: rear cct, bit 2: rear flicker
-		gold_rear_cct_3k = <5140 2597 1342 8413 3080 2101>; // 3000k gold parameter
-		gold_rear_cct_6k = <3465 2885 2046 7898 2864 3986>;  // 3000k gold parameter
-		device_name = "tcs3408";
+		available_sensor = <4>; // bit 0: rear als, bit 1: rear cct, bit 2: rear flicker
+		device_name = "sip1221lr1n";
 	};
 	pick_up: pick_up {
 		status = "okay";
@@ -711,6 +758,13 @@
 	cali_arch: cali_arch {
 		status = "okay";
 		new-arch-supported = <1>;
+	};
+	lay_detect: lay_detect{
+		status = "okay";
+		max_angel = <90>;
+		min_angel = <30>;
+		lay_in_time = <10>;
+		lay_out_time = <3>;
 	};
 /* sensor end */
 
@@ -729,8 +783,8 @@
 		main-sub {
 			use_tristate_gpio;
             compatible = "hw-match, main-sub";
-			aboard-gpio0 = <&pio 111 0x00>;
-			aboard-patterns = <0 0 0>;
+			aboard-gpio0 = <&pio 103 0x00>;
+			aboard-patterns = <2 1 0>;
 			/*main board*/
 			match-projects = <23613 23686 23687>;
         };
@@ -827,7 +881,7 @@
 
         aboard_pin_gpio0_sleep:sleep@id0 {
                 pins_cmd_dat {
-                        pinmux = <PINMUX_GPIO111__FUNC_GPIO111>;
+                        pinmux = <PINMUX_GPIO103__FUNC_GPIO103>;
                         slew-rate = <0>;
                         bias-pull-down;
                         input-enable;
@@ -836,7 +890,7 @@
 
         aboard_pin_gpio0_active:active@id0 {
                 pins_cmd_dat {
-                        pinmux = <PINMUX_GPIO111__FUNC_GPIO111>;
+                        pinmux = <PINMUX_GPIO103__FUNC_GPIO103>;
                         slew-rate = <0>;
                         bias-pull-up;
                         input-enable;
@@ -845,7 +899,7 @@
 
         aboard_pin_gpio0_idle:idle@id0 {
                 pins_cmd_dat {
-                        pinmux = <PINMUX_GPIO111__FUNC_GPIO111>;
+                        pinmux = <PINMUX_GPIO103__FUNC_GPIO103>;
                         slew-rate = <0>;
                         bias-disable;
                         input-enable;
@@ -859,7 +913,7 @@
 
 	/* AWINIC AW8697 Haptic */
 	aw8697_haptic@5A {
-		status = "okay";
+		status = "disable";
 		compatible = "awinic,aw8697_haptic";
 		reg = <0x5A>;
 		reset-gpio = <&pio 26 0x00>;
@@ -952,10 +1006,19 @@
 	 * eint pwm_width, eint pwm_thresh
 	 * eint deb(debounce0, debounce1, debounce2, debounce3), inv_debounce
 	 */
+	//#ifdef OPLUS_ARCH_EXTENDS
+	/* Modify for bug 136344 */
 	headset-mode-setting = <0x500 0x500 1 0x1f0
-				0x800 0x800 0x20 0x44
-				0x4 0x1
-				0x5 0x3 0x3 0x5 0xe>;
+				0x1325 0x800 0x3D4 0x44
+				0x0 0x7
+				0x5 0x9 0x9 0xd 0xe>;
+	//#else /* OPLUS_ARCH_EXTENDS */
+	/*headset-mode-setting = <0x500 0x500 1 0x1f0
+	*                      0x800 0x800 0x20 0x44
+	*                      0x4 0x1
+	*                      0x5 0x3 0x3 0x5 0xe>;
+	*/
+	//#endif /* OPLUS_ARCH_EXTENDS */
 	accdet-plugout-debounce = <1>;
 	/*1:ACC mode, 2:low cost without in bias, 6:low cost with in bias*/
 	accdet-mic-mode = <2>;
@@ -968,8 +1031,47 @@
 	/*0--MD_MAX--VOICE_MAX--UP_MAX--DW_MAX*/
 	headset-four-key-threshold = <0 58 121 192 400>;
 
+//#ifdef OPLUS_ARCH_EXTENDS
+	/* moisture HW mode config start. Enable moisture detection or not
+	 * default use HW mode for moisture detection
+	 */
+	moisture_detect_enable = <1>;
+//#endif /* OPLUS_ARCH_EXTENDS */
 	/* select VTH to 2v and 500k, use internal resitance */
 	eint_use_ext_res = <0>;
+//#ifdef OPLUS_ARCH_EXTENDS
+	/* enable eint detection mode, if moisture detection enable
+	 * eint_detect_mode = moisture_detect_mode;otherwise, select
+	 * eint_detect_mode = 4 as DEFAULT
+	 */
+	eint_detect_mode = <5>;
+	/* enable moisture detection mode, if moisture detection enable
+	 * eint_detect_mode = moisture_detect_mode
+	 */
+	moisture_detect_mode = <5>;
+	/* select 0: 2.8V; 1: 2.4V; 2: 2V; 3: VTH=MVTH(VTH2) */
+	moisture_comp_vth = <2>;
+	/* vref2 voltage for different water impedance */
+//#ifdef OPLUS_ARCH_EXTENDS
+	moisture_comp_vref2 = <2>;
+//
+	/* vref2 voltage for different water impedance */
+//	moisture_comp_vref2 = <0>;
+//#endif
+	/* moisture HW mode config end */
+
+	/* moisture SW mode config start, use external resister or not.
+	 * DEFAULT NOT NEED
+	 */
+	moisture_use_ext_res = <0>;
+	/* moisture external resister ohm, SW mode by auxadc */
+	moisture-external-r = <2000000>;
+	/* moisture internal resister ohm, SW mode by auxadc */
+	moisture-internal-r = <47000>;
+	/* moisture of water resister ohm, SW mode by auxadc*/
+	moisture-water-r = <10000>;
+	/* moisture SW mode config end */
+//#endif /* OPLUS_ARCH_EXTENDS */
 	status = "okay";
 };
 
@@ -1124,6 +1226,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&fsa_hs_det>;
 		fsa4480,hs-det-gpio = <&pio 166 0>;
+		status = "disabled";
 	};
 };
 
@@ -1131,6 +1234,27 @@
 	status = "disabled";
 };
 
+&mt_pmic_vmch_ldo_reg {
+    regulator-min-microvolt = <2700000>;
+    regulator-max-microvolt = <3600000>;
+};
+
+&mmc1 {
+     cd-gpios = <&pio 10 0>;
+     status = "okay";
+     vmmc-supply = <&mt_pmic_vmch_ldo_reg>;
+ };
+
+&mmc1_pins_default {
+	pins_insert {
+		pinmux = <PINMUX_GPIO10__FUNC_GPIO10>;
+	};
+};
+
+&mt6360_ldo {
+    sdcard_det_en = <1>;
+    sdcard_hlact = <0>;
+};
 // 1 = ldo power, refer to oplus_fp_common.h
 
 //#ifdef OPLUS_VENDOR_SWTP
@@ -1164,7 +1288,7 @@
 //#include "mediatek/cust_mt6877_22710_charge.dtsi"
 #include "mediatek/cust_mt6877_23687_charge.dtsi"
 /*#include "mediatek/cust_mt6877_touch_1080x2300.dtsi"*/
-#include "mediatek/cust_mt6877_camera_22629.dtsi"
+#include "mediatek/cust_mt6877_camera_23687.dtsi"
 //#include "mediatek/nfc/mt6877_roma_st54h.dtsi"
 /*End of this file, DO NOT ADD ANYTHING HERE*/
 

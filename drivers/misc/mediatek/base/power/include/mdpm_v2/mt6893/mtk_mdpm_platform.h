@@ -5,7 +5,7 @@
 
 #ifndef _MTK_MDPM_PLATFORM_H_
 #define _MTK_MDPM_PLATFORM_H_
-
+#include <mtk_pmic.h>
 #ifdef DISABLE_DLPT_FEATURE
 #define MD_POWER_METER_ENABLE 0
 #else

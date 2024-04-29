@@ -43,8 +43,12 @@
 #define SENSOR_TYPE_BACK_TAP_DETECT                        (OPLUS_VIRTAUL_SENSOR_START + 13)
 //#endif //OPLUS_FEATURE_BACK_TAP_DETECT
 
+//#ifdef OPLUS_FEATURE_LAY_DETECT
+#define SENSOR_TYPE_LAY_DETECT                        (OPLUS_VIRTAUL_SENSOR_START + 14)
+//#endif //OPLUS_FEATURE_LAY_DETECT
+
 /* end sensor type */
-#define VIRTUAL_SENSOR_TYPE_MAX                         (SENSOR_TYPE_BACK_TAP_DETECT +1)
+#define VIRTUAL_SENSOR_TYPE_MAX                         (SENSOR_TYPE_LAY_DETECT +1)
 
 
 #define ID_OPLUS_BASE             (0)
@@ -72,8 +76,12 @@
 #define ID_BACK_TAP_DETECT      (ID_OPLUS_BASE + SENSOR_TYPE_BACK_TAP_DETECT - 1)
 //#endif //OPLUS_FEATURE_FILP_DETECT
 
+//#ifdef OPLUS_FEATURE_LAY_DETECT
+#define ID_LAY_DETECT      (ID_OPLUS_BASE + SENSOR_TYPE_LAY_DETECT - 1)
+//#endif //OPLUS_FEATURE_LAY_DETECT
+
 /* end sensor ID */
-#define ID_VIRTUAL_SENSOR_MAX    (ID_BACK_TAP_DETECT + 1)
+#define ID_VIRTUAL_SENSOR_MAX    (ID_LAY_DETECT + 1)
 typedef struct {
     uint32_t value;
     uint16_t report_count;
@@ -149,6 +157,13 @@ typedef struct {
 } back_tap_detect_event_t;
 //#endif //OPLUS_FEATURE_BACK_TAP_DETECT
 
+//#ifdef OPLUS_FEATURE_LAY_DETECT
+typedef struct {
+    uint16_t value;
+    uint16_t report_count;
+} lay_detect_event_t;
+//#endif //OPLUS_FEATURE_LAY_DETECT
+
 union oplus_data_unit_t {
     camera_protect_event_t camera_protect_data_t;
     free_fall_event_t free_fall_data_t;
@@ -170,6 +185,9 @@ union oplus_data_unit_t {
     //#ifdef OPLUS_FEATURE_BACK_TAP_DETECT
     back_tap_detect_event_t back_tap_detect_event;
     //#endif //OPLUS_FEATURE_BACK_TAP_DETECT
+    //#ifdef OPLUS_FEATURE_LAY_DETECT
+    lay_detect_event_t lay_detect_event;
+    //#endif //OPLUS_FEATURE_LAY_DETECT
 };
 
 #endif /*__OPLUSSENSOR_H*/

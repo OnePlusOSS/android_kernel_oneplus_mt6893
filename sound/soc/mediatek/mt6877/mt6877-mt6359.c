@@ -263,7 +263,7 @@ static const struct snd_soc_dapm_route mt6877_mt6359_routes[] = {
 };
 
 #ifdef CONFIG_OPLUS_FEATURE_MM_FEEDBACK
-#define HAL_FEEDBACK_MAX_BYTES         (256)
+#define HAL_FEEDBACK_MAX_BYTES         (512)
 extern int hal_feedback_config_get(struct snd_kcontrol *kcontrol,
 			unsigned int __user *bytes,
 			unsigned int size);

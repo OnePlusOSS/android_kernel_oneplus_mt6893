@@ -23,9 +23,12 @@
 #include "gpio/gpio.h"
 #include <soc/oplus/system/oplus_project.h>
 #include <soc/oplus/device_info.h>
-
 //#include <linux/of_gpio.h>
 #include <linux/gpio.h>
+
+#ifdef CONFIG_LDO_AW37004
+#include "../../../aw37004/aw37004.h"
+#endif
 
 #define  OPLUS_SUPPORT_CAMERA_NUMMAX        (6)
 #define  OPLUS_STEREO_LENGTH_QCOMHEADER     (128)
@@ -164,6 +167,7 @@ extern struct IMGSENSOR_SENSOR_LIST gimgsensor_sensor_list_21881[];
 
 extern struct CAMERA_DEVICE_INFO gImgEepromInfo_21881;
 #endif
+extern struct IMGSENSOR_HW_POWER_SEQ *oplus_sensor_power_on_sequence;
 extern struct IMGSENSOR_HW_POWER_SEQ *oplus_sensor_power_sequence;
 extern struct IMGSENSOR_HW_CFG *oplus_imgsensor_custom_config;
 extern struct IMGSENSOR_SENSOR_LIST *oplus_gimgsensor_sensor_list;
@@ -180,6 +184,11 @@ extern struct IMGSENSOR_HW_POWER_SEQ *oplus_platform_power_sequence;
 
 #ifdef SENSOR_PLATFORM_5G_B
 extern struct IMGSENSOR_HW_POWER_SEQ *oplus_platform_power_sequence;
+#endif
+
+#ifdef CONFIG_LDO_AW37004
+extern int aw37004_camera_power_up(int out_iotype);
+extern int aw37004_camera_power_down(int out_iotype);
 #endif
 
 extern int pmic_ldo_get_type(void);

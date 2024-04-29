@@ -1028,6 +1028,10 @@
     };
 };
 
+&adsp_core0 {
+    system = <0 0x56000000 0 0xC00000>;
+};
+
 #include "oplus6877_22277/cust.dtsi"
 #include "mediatek/nfc/mt6877_chanel_sn100.dtsi"
 #include "mediatek/cust_mt6877_oplus_charge_22277.dtsi"

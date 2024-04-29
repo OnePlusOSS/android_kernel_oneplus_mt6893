@@ -227,6 +227,14 @@ enum IMGSENSOR_RETURN Oplusimgsensor_ldoenable_power(
                 }
                 pmic_gpio_enable(pwr_status);
             }
+            if (is_project(23613) || is_project(23686) || is_project(23687) || is_project(23689)) {
+                if (sensor_idx == 0 || sensor_idx == 1 || sensor_idx == 2 || sensor_idx == 6) {
+                    printk("HW_PIN_PDN powerup\n");
+                    pdev->set(pdev->pinstance, sensor_idx, IMGSENSOR_HW_PIN_PDN, Vol_High);
+                    pmic_enable_cnt++;
+                    mdelay(10);
+                }
+            }
         } else {
             pr_debug("[%s] sensor_idx:%d pdev->set is ERROR\n", __func__, sensor_idx );
         }
@@ -234,6 +242,11 @@ enum IMGSENSOR_RETURN Oplusimgsensor_ldoenable_power(
         if (is_project(22633) || is_project(22712) || is_project(22713)) {
             printk("set GPIO158 to disable DVDD");
             if ((sensor_idx == 0 || sensor_idx == 1) && (pmic_enable_cnt-- == 1)) {
+                pdev->set(pdev->pinstance, sensor_idx, IMGSENSOR_HW_PIN_PDN, Vol_Low);
+            }
+        } else if (is_project(23613) || is_project(23686) || is_project(23687) || is_project(23689)) {
+            if ((sensor_idx == 0 || sensor_idx == 1 || sensor_idx == 2 || sensor_idx == 6) && (pmic_enable_cnt-- == 1)) {
+                printk("HW_PIN_PDN powerdown\n");
                 pdev->set(pdev->pinstance, sensor_idx, IMGSENSOR_HW_PIN_PDN, Vol_Low);
             }
         }
@@ -522,6 +535,43 @@ enum IMGSENSOR_RETURN Oplusimgsensor_ldo_powerset_22629(
             return IMGSENSOR_RETURN_ERROR;
         }
     }
+    return IMGSENSOR_RETURN_SUCCESS;
+}
+
+enum IMGSENSOR_RETURN Oplusimgsensor_ldo_powerset_23687(
+        enum   IMGSENSOR_SENSOR_IDX      sensor_idx,
+        enum   IMGSENSOR_HW_PIN          pin,
+        enum   IMGSENSOR_HW_POWER_STATUS pwr_status)
+{
+    #ifdef CONFIG_LDO_AW37004
+    if (pwr_status == IMGSENSOR_HW_POWER_STATUS_ON) {
+        pr_info("[%s] sensor_idx:%d pwr_status:%d pin:%d", __func__, sensor_idx, pwr_status, pin);
+        if (pin == IMGSENSOR_HW_PIN_DVDD && (sensor_idx == 0 || sensor_idx == 6)){
+            aw37004_camera_power_up(0);
+        }else if (pin == IMGSENSOR_HW_PIN_DVDD && sensor_idx == 1) {
+            aw37004_camera_power_up(1);
+        } else if (pin == IMGSENSOR_HW_PIN_AVDD && (sensor_idx == 0 || sensor_idx == 6)){
+            aw37004_camera_power_up(2);
+        } else if (pin == IMGSENSOR_HW_PIN_AVDD && (sensor_idx == 1)){
+            aw37004_camera_power_up(3);
+        } else {
+            return IMGSENSOR_RETURN_ERROR;
+        }
+    } else {
+        pr_info("[%s] sensor_idx:%d pwr_status:%d pin:%d", __func__, sensor_idx, pwr_status, pin);
+        if (pin == IMGSENSOR_HW_PIN_DVDD && (sensor_idx == 0 || sensor_idx == 6)){
+            aw37004_camera_power_down(0);
+        }else if (pin == IMGSENSOR_HW_PIN_DVDD && sensor_idx == 1) {
+            aw37004_camera_power_down(1);
+        } else if (pin == IMGSENSOR_HW_PIN_AVDD && (sensor_idx == 0 || sensor_idx == 6)){
+            aw37004_camera_power_down(2);
+        } else if (pin == IMGSENSOR_HW_PIN_AVDD && sensor_idx == 1){
+            aw37004_camera_power_down(3);
+        } else {
+            return IMGSENSOR_RETURN_ERROR;
+        }
+    }
+    #endif
     return IMGSENSOR_RETURN_SUCCESS;
 }
 
@@ -836,10 +886,12 @@ enum IMGSENSOR_RETURN Oplusimgsensor_ldo_powerset_23231(
         enum   IMGSENSOR_HW_PIN          pin,
         enum   IMGSENSOR_HW_POWER_STATUS pwr_status)
 {
-    static int pmic_avdd[4][2] = {{4, 2800}, {6, 2800}, {6, 2880}, {6, 2880}};
-    int avddIdx = sensor_idx > 2 ? 3 : sensor_idx;
+    static int pmic_avdd[5][2] = {{4, 2800}, {6, 2800}, {6, 2880}, {6, 2800}, {4, 2880}};
+    int avddIdx = sensor_idx > 3 ? (sensor_idx - 1) : sensor_idx;
     static int avdd_flag = 0;
-
+    if(avddIdx > 4){
+        avddIdx = 4;
+    }
     if (pwr_status == IMGSENSOR_HW_POWER_STATUS_ON) {
         pr_info("[%s] sensor_idx:%d pwr_status:%d pin:%d", __func__, sensor_idx, pwr_status, pin);
         pr_info("[%s] avddIdx:%d pmic_avdd:%d %d", __func__, avddIdx, pmic_avdd[avddIdx][0], pmic_avdd[avddIdx][1]);
@@ -849,13 +901,13 @@ enum IMGSENSOR_RETURN Oplusimgsensor_ldo_powerset_23231(
                 pr_info("[%s] power on avdd_flag:%d", __func__, avdd_flag);
             }
             pmic_ldo_set_voltage_mv(pmic_avdd[avddIdx][0], pmic_avdd[avddIdx][1]);
-        } else if (pin == IMGSENSOR_HW_PIN_DVDD && sensor_idx == 0){
+        } else if (pin == IMGSENSOR_HW_PIN_DVDD && (sensor_idx == 0 || sensor_idx == 6)){
             pmic_ldo_set_voltage_mv(1, 1100);
         } else if (pin == IMGSENSOR_HW_PIN_DVDD && sensor_idx == 1){
             pmic_ldo_set_voltage_mv(1, 1120);
         } else if (pin == IMGSENSOR_HW_PIN_DVDD && sensor_idx == 4){
             pmic_ldo_set_voltage_mv(2, 800);
-        } else if (pin == IMGSENSOR_HW_PIN_AFVDD && (sensor_idx == 0 || sensor_idx == 4)){
+        } else if (pin == IMGSENSOR_HW_PIN_AFVDD && (sensor_idx == 0 || sensor_idx == 6 || sensor_idx == 4)){
             pmic_ldo_set_voltage_mv(7, 2800);
         } else {
             return IMGSENSOR_RETURN_ERROR;
@@ -873,13 +925,13 @@ enum IMGSENSOR_RETURN Oplusimgsensor_ldo_powerset_23231(
             } else {
                 pmic_ldo_set_disable(pmic_avdd[avddIdx][0]);
             }
-        } else if (pin == IMGSENSOR_HW_PIN_DVDD && sensor_idx == 0){
+        } else if (pin == IMGSENSOR_HW_PIN_DVDD && (sensor_idx == 0 || sensor_idx == 6)){
             pmic_ldo_set_disable(1);
         } else if (pin == IMGSENSOR_HW_PIN_DVDD && sensor_idx == 1){
 			pmic_ldo_set_disable(1);
         } else if (pin == IMGSENSOR_HW_PIN_DVDD && sensor_idx == 4){
             pmic_ldo_set_disable(2);
-        } else if (pin == IMGSENSOR_HW_PIN_AFVDD && (sensor_idx == 0 || sensor_idx == 4)){
+        } else if (pin == IMGSENSOR_HW_PIN_AFVDD && (sensor_idx == 0 || sensor_idx == 6 || sensor_idx == 4)){
             pmic_ldo_set_disable(7);
         } else {
             return IMGSENSOR_RETURN_ERROR;
@@ -1317,6 +1369,9 @@ enum IMGSENSOR_RETURN Oplusimgsensor_ldo_powerset(
                     IMGSENSOR_SENSOR_IDX_MAIN2 : sensor_idx;
     pcb = get_PCB_Version();
 
+    if (is_project(23231)) {
+        return Oplusimgsensor_ldo_powerset_23231(sensor_idx,pin,pwr_status);
+    }
 #ifdef SENSOR_PLATFORM_NEXT_A
     if(is_project(21081)) {
         return Oplusimgsensor_ldo_powerset_21081(sensor_idx,pin,pwr_status);
@@ -1343,6 +1398,8 @@ enum IMGSENSOR_RETURN Oplusimgsensor_ldo_powerset(
         return Oplusimgsensor_ldo_powerset_22693(sensor_idx,pin,pwr_status);
     if (is_project(22629) || is_project(22710) || is_project(22711))
         return Oplusimgsensor_ldo_powerset_22629(sensor_idx,pin,pwr_status);
+    if (is_project(23613) || is_project(23686) || is_project(23687) || is_project(23689) || is_project(23707) || is_project(23709))
+        return Oplusimgsensor_ldo_powerset_23687(sensor_idx,pin,pwr_status);
     if (is_project(22633) || is_project(22712) || is_project(22713))
         return Oplusimgsensor_ldo_powerset_22633(sensor_idx,pin,pwr_status);
 
@@ -1400,10 +1457,6 @@ enum IMGSENSOR_RETURN Oplusimgsensor_ldo_powerset(
         return Oplusimgsensor_ldo_powerset_23031(sensor_idx,pin,pwr_status);
     }
 
-    if (is_project(23231)) {
-        return Oplusimgsensor_ldo_powerset_23231(sensor_idx,pin,pwr_status);
-    }
-
 #ifdef SENSOR_PLATFORM_5G_B
     if (is_project(20075) || is_project(20076))
         return IMGSENSOR_RETURN_ERROR;
@@ -1447,7 +1500,7 @@ enum IMGSENSOR_RETURN Oplusimgsensor_ldo_powerset(
         return IMGSENSOR_RETURN_ERROR;
     }
 
-    if (is_project(23053) || is_project(23054) || is_project(23253)) {
+    if (is_project(23053) || is_project(23054) || is_project(23253) || is_project(23055)) {
         return IMGSENSOR_RETURN_ERROR;
     }
 
@@ -1597,7 +1650,8 @@ void Oplusimgsensor_powerstate_notify(bool val)
           || is_project(22083) || is_project(22291) || is_project(22292) || is_project(22084) || is_project(22629)
           || is_project(22710) || is_project(22711) || is_project(22633) || is_project(22712) || is_project(22713)
           || is_project(22277) || is_project(23031) || is_project(23231)
-          || is_project(23053) || is_project(23054) || is_project(23253)) {
+          || is_project(23053) || is_project(23054) || is_project(23253) || is_project(23055)
+          || is_project(23613) || is_project(23686) || is_project(23687) || is_project(23689) || is_project(23707) || is_project(23709)) {
 
         static int notify_cnt = 0;
 

@@ -343,6 +343,7 @@
 &lk_charger{
 	for_rbat_pull_up_r = <12000>;
 	support_sdp_screenoff;
+	sdp_screenon_voltage = <3250>;
 	support_tuv_authentication;
 	for_mtk_battery_temp_support;
 	max_charger_voltage = <9900000>;

@@ -142,6 +142,8 @@
 
 &lk_charger{
 	support_tuv_authentication;
+	support_sdp_screenoff;
+	sdp_screenon_voltage = <3250>;
 	max_charger_voltage = <10000000>;
 
 	support_new_charger_stander;

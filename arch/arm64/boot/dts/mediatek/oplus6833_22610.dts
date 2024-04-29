@@ -748,6 +748,7 @@
 		gyro_cali_version= <2>;
 		acc_cali_range= <300 300 300>; //300mg
 		device_id = <0>; //0 sc7a20,1 sc7a20e
+		filter_param_h  = <8>;
 	};
 	gsensor_2: gsensor_2 {
 		status = "okay";

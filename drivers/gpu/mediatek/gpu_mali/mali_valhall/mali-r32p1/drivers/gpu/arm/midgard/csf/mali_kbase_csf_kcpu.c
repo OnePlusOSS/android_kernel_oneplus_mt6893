@@ -76,7 +76,14 @@ static int kbase_kcpu_map_import_prepare(
 		 * on the physical pages tracking object. When the last
 		 * reference to the tracking object is dropped the pages
 		 * would be unpinned if they weren't unpinned before.
+		 *
+		 * Region should be CPU cached: abort if it isn't.
 		 */
+		if (WARN_ON(!(reg->flags & KBASE_REG_CPU_CACHED))) {
+			ret = -EINVAL;
+			goto out;
+		}
+
 		ret = kbase_jd_user_buf_pin_pages(kctx, reg);
 		if (ret)
 			goto out;
@@ -345,6 +352,14 @@ static int kbase_kcpu_jit_allocate_prepare(
 	u32 i;
 
 	lockdep_assert_held(&kctx->csf.kcpu_queues.lock);
+
+	if (!kbase_mem_allow_alloc(kctx)) {
+		dev_dbg(kctx->kbdev->dev,
+			"Invalid attempt to allocate JIT memory by %s/%d for ctx %d_%d",
+			current->comm, current->pid, kctx->tgid, kctx->id);
+		ret = -EINVAL;
+		goto out;
+	}
 
 	if (!kbase_mem_allow_alloc(kctx)) {
 		dev_dbg(kctx->kbdev->dev,

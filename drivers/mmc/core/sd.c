@@ -908,6 +908,7 @@ try_again:
 			retries--;
 			goto try_again;
 		} else if (err) {
+                        pr_warn("%s: mmc set uhs vol failed, err %d\n", mmc_hostname(host), err);
 			return err;
 		}
 	}

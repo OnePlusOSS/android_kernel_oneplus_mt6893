@@ -66,6 +66,11 @@ enum {
 #endif	/* CONFIG_USB_PD_REV30 */
 
 	PD_TIMER_PE_IDLE_TOUT,
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/********* workaround MO.230913213000256759: sc6607 workaround for pd abnormal start*********/
+	PD_TIMER_INT_INVAILD,
+/********* workaround MO.230913213000256759: sc6607 workaround for pd abnormal end*********/
+#endif
 	PD_PE_TIMER_END_ID,
 #endif /* CONFIG_USB_POWER_DELIVERY */
 

@@ -26,3 +26,4 @@ obj-$(CONFIG_ST_NFC_CHIP_SUPPORT)  += st21nfc-i2c/
 obj-$(CONFIG_NFC_ST54_SPI)         += st54-spi/
 obj-$(CONFIG_NXP_NFC_I2C)         += sn_nci/nfc/
 obj-$(CONFIG_NXP_ESE_P73)         += sn_nci/ese/
+obj-$(CONFIG_TMS_NFC_DEVICE)    += thn31/

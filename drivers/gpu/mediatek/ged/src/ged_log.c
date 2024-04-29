@@ -26,6 +26,15 @@
 #include "ged_hashtable.h"
 #include "ged_sysfs.h"
 
+//Use tracing_is_on() to determine whether to print 5566 processes.
+#ifndef OPLUS_ARCH_EXTENDS
+#define OPLUS_ARCH_EXTENDS
+#endif
+//Use tracing_is_on() to determine whether to print 5566 processes.
+#ifdef OPLUS_ARCH_EXTENDS
+#include "../../../../../kernel/trace/trace.h"
+#endif
+
 enum {
 	/* 0x00 - 0xff reserved for internal buffer type */
 
@@ -1193,75 +1202,69 @@ void ged_log_dump(GED_LOG_BUF_HANDLE hLogBuf)
 	}
 }
 
-static unsigned long __read_mostly tracing_mark_write_addr;
-static inline void __mt_update_tracing_mark_write_addr(void)
+static noinline int tracing_mark_write(const char *buf)
 {
-/*
- * kallsyms_lookup_name can only be used by build-in module in
- * kernel-4.19, and it cause build error in gki flavor, so we check
- * CONFIG_MTK_GPU_SUPPORT=y
- */
-#ifdef CONFIG_MTK_GPU_SUPPORT
-	if (unlikely(tracing_mark_write_addr == 0)) {
-		tracing_mark_write_addr =
-			kallsyms_lookup_name("tracing_mark_write");
-	}
-#endif
+	trace_printk(buf);
+	return 0;
 }
+
 void ged_log_trace_begin(char *name)
 {
-	if (ged_log_trace_enable) {
-		__mt_update_tracing_mark_write_addr();
 #ifdef ENABLE_GED_SYSTRACE_UTIL
-		preempt_disable();
-		event_trace_printk(tracing_mark_write_addr,
-			"B|%d|%s\n", current->tgid, name);
-		preempt_enable();
-#endif
+	char buf[256];
+	int cx;
+
+	if (ged_log_trace_enable) {
+		cx = snprintf(buf, sizeof(buf),"B|%d|%s\n", current->tgid, name);
+		if (cx >= 0 && cx < sizeof(buf))
+			tracing_mark_write(buf);
 	}
+#endif
 }
 EXPORT_SYMBOL(ged_log_trace_begin);
 void ged_log_trace_end(void)
 {
-	if (ged_log_trace_enable) {
-		__mt_update_tracing_mark_write_addr();
 #ifdef ENABLE_GED_SYSTRACE_UTIL
-		preempt_disable();
-		event_trace_printk(tracing_mark_write_addr, "E\n");
-		preempt_enable();
-#endif
+	char buf[256];
+	int cx;
+
+	if (ged_log_trace_enable) {
+		cx = snprintf(buf, sizeof(buf), "E\n");
+		if(cx >= 0 && cx < sizeof(buf))
+			tracing_mark_write(buf);
 	}
+#endif
 }
 EXPORT_SYMBOL(ged_log_trace_end);
 void ged_log_trace_counter(char *name, int count)
 {
-	if (ged_log_trace_enable) {
-		__mt_update_tracing_mark_write_addr();
 #ifdef ENABLE_GED_SYSTRACE_UTIL
-		preempt_disable();
-		event_trace_printk(tracing_mark_write_addr,
-			"C|5566|%s|%d\n", name, count);
-		preempt_enable();
-#endif
+	char buf[256];
+	int cx;
+
+	if (ged_log_trace_enable) {
+		cx = snprintf(buf, sizeof(buf), "C|5566|%s|%d\n", name, count);
+		if(cx >= 0 && cx < sizeof(buf))
+			tracing_mark_write(buf);
 	}
+#endif
 }
 EXPORT_SYMBOL(ged_log_trace_counter);
 void ged_log_perf_trace_counter(char *name, long long count, int pid,
 	unsigned long frameID, u64 BQID)
 {
+	char buf[256];
+	int cx;
+//Use tracing_is_on() to determine whether to print 5566 processes.
+#ifdef OPLUS_ARCH_EXTENDS
+	if (tracing_is_on()) {
+#else
 	if (ged_log_perf_trace_enable) {
-		__mt_update_tracing_mark_write_addr();
-/*
- * event_trace_printk cause build error in gki flavor, so we also check
- * CONFIG_MTK_GPU_SUPPORT=y
- */
-#if (defined(CONFIG_EVENT_TRACING) && defined(CONFIG_MTK_GPU_SUPPORT))
-		preempt_disable();
-		event_trace_printk(tracing_mark_write_addr,
-			"C|%d|%s|%lld|%llu|%lu\n", pid,
-			name, count, (unsigned long long)BQID, frameID);
-		preempt_enable();
 #endif
+		cx = snprintf(buf, sizeof(buf), "C|%d|%s|%lld|%llu|%lu\n",
+               pid, name, count, (unsigned long long)BQID, frameID);
+		if(cx >= 0 && cx < sizeof(buf))
+			tracing_mark_write(buf);
 	}
 }
 EXPORT_SYMBOL(ged_log_perf_trace_counter);

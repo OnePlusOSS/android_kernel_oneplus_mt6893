@@ -54,6 +54,8 @@ unsigned int dsi0te_err = 1;
 extern void gpio_dump_regs_range(int start, int end);
 extern unsigned int get_project(void);
 
+extern int power_mode;
+
 /* add for ignore esd check this time because lcd hasn't been init completely */
 unsigned int oplus_lcm_display_on = 1;
 EXPORT_SYMBOL(oplus_lcm_display_on);
@@ -694,7 +696,7 @@ static int mtk_drm_esd_check_worker_kthread(void *data)
 		//#ifndef OPLUS_BUG_STABILITY
 		//if (ret < 0) {
 		//#else
-		if (ret < 0 || ffl_backlight_backup == 0 || ffl_backlight_backup == 1 || (ret == 0 && !atomic_read(&esd_ctx->check_wakeup))) {
+		if (ret < 0 || ffl_backlight_backup == 0 || ffl_backlight_backup == 1 || (ret == 0 && !atomic_read(&esd_ctx->check_wakeup)) || power_mode != 2) {
 		//#endif
 			DDPINFO("[ESD]check thread waked up accidently\n");
 			continue;

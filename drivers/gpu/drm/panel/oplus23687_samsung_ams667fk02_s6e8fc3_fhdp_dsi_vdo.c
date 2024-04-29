@@ -38,7 +38,7 @@
 #include "../mediatek/mtk_drm_graphics_base.h"
 #include "../oplus/oplus_display_onscreenfingerprint.h"
 
-// #include "../mediatek/mtk_corner_pattern/oplus22629_chengdu_data_hw_roundedpattern.h"
+#include "../mediatek/mtk_corner_pattern/oplus23687_data_hw_roundedpattern.h"
 
 #define REGFLAG_CMD             0xFFFA
 #define REGFLAG_DELAY           0xFFFC
@@ -51,8 +51,6 @@
 #define MAX_NORMAL_BRIGHTNESS   2047
 #define LCM_BRIGHTNESS_TYPE     2
 #define OPLUS_DC_BACKLIGHT_THRESHOLD 1200
-
-// #define SILKY_MAX_NORMAL_BRIGHTNESS   16383
 
 static unsigned int esd_brightness = 1023;
 static u32 flag_hbm = 0;
@@ -71,6 +69,9 @@ extern int exit_dc_flag;
 extern int oplus_dc_flag;
 extern unsigned long seed_mode;
 extern void lcdinfo_notify(unsigned long val, void *v);
+static int current_fps = 60;
+static unsigned int osc_mipi_hopping_status = 0;
+extern unsigned int oplus_enhance_mipi_strength;
 
 struct lcm {
 	struct device *dev;
@@ -81,6 +82,8 @@ struct lcm {
 	struct gpio_desc *vci_3v_enable_gpio;
 	bool prepared;
 	bool enabled;
+	bool hbm_en;
+	bool hbm_wait;
 	int error;
 };
 
@@ -144,66 +147,185 @@ static struct ba brightness_seed_alpha_lut_dc[] = {
 };
 
 static struct LCM_setting_table lcm_setbrightness_normal[] = {
-	{REGFLAG_CMD, 3, {0x51, 0x00, 0x00}},
+	{REGFLAG_CMD,2, {0x53, 0x28}},
+	{REGFLAG_CMD,3, {0x51, 0x00, 0x00}},
+};
+
+static struct LCM_setting_table lcm_setbrightness_hbm[] = {
+	{REGFLAG_CMD,3, {0x51, 0x00, 0x00}},
+	{REGFLAG_CMD,2, {0x53, 0xE8}},
+	{REGFLAG_END_OF_TABLE, 0x00, {}}
 };
 
 static struct LCM_setting_table lcm_finger_HBM_on_setting[] = {
-	{REGFLAG_CMD, 3, {0x51, 0x0f, 0xff}},
-	{REGFLAG_CMD, 3, {0x51, 0x0D, 0xBB}},
+	/*HBM ON*/
+	{REGFLAG_CMD,3, {0xF0, 0x5A, 0x5A}},
+	{REGFLAG_CMD,2, {0x53, 0xE8}},
+	{REGFLAG_CMD,3, {0x51, 0x0C, 0x00}},
+	{REGFLAG_CMD,3, {0xF0, 0xA5, 0xA5}},
 };
 
-static struct LCM_setting_table lcm_set_HBM_again[] = {
-	{REGFLAG_CMD, 3, {0x51, 0x0f, 0xff}},
+static struct LCM_setting_table lcm_normal_HBM_on_setting[] = {
+	{REGFLAG_CMD,2, {0x53, 0xE8}},
+	{REGFLAG_CMD,3, {0x51, 0x0F, 0xFF}},
 };
 
 static struct LCM_setting_table lcm_aod_to_normal[] = {
-	{REGFLAG_CMD, 4, {0xFF, 0x78, 0x38, 0x00}},
-	{REGFLAG_CMD, 1, {0x38}},
-	{REGFLAG_END_OF_TABLE, 0x00, {}}
+	// {REGFLAG_CMD, 4, {0xFF, 0x78, 0x38, 0x00}},
+	// {REGFLAG_CMD, 1, {0x38}},
+	// {REGFLAG_END_OF_TABLE, 0x00, {}}
 };
 
 static struct LCM_setting_table lcm_aod_high_mode[] = {
-	{REGFLAG_CMD, 4, {0xFF, 0x78, 0x38, 0x00}},
-	{REGFLAG_CMD, 1, {0x39}},
-	{REGFLAG_CMD, 4, {0xFF, 0x78, 0x38, 0x0C}},
-	{REGFLAG_CMD, 2, {0xBE, 0x01}},
-	{REGFLAG_CMD, 4, {0xFF, 0x78, 0x38, 0x00}},
+	{REGFLAG_CMD, 3, {0xF0, 0x5A, 0x5A}},
+	{REGFLAG_CMD, 2, {0x53, 0x28}},
+	{REGFLAG_CMD, 3, {0x51, 0x03, 0xFF}},
+	{REGFLAG_CMD, 3, {0xF0, 0xA5, 0xA5}},
 	{REGFLAG_END_OF_TABLE, 0x00, {}}
+	// {REGFLAG_CMD,2,{0x60,0X01 }},
+	// {REGFLAG_CMD,4,{0xB0,0x01, 0x17, 0xB2 }},
+	// {REGFLAG_CMD,2,{0xB2,0x00 }},
+	// {REGFLAG_CMD,4,{0xB0,0x00, 0x03, 0xF4 }},
+	// {REGFLAG_CMD,2,{0xF4,0x4A }},
+	// {REGFLAG_CMD,4,{0xB0,0x00, 0x1B, 0xF4 }},
+	// {REGFLAG_CMD,2,{0xF4,0x9A }},
+	// {REGFLAG_CMD,4,{0xB0,0x00, 0x1D, 0xF4 }},
+	// {REGFLAG_CMD,2,{0xF4,0x1F }},
+	// {REGFLAG_CMD,4,{0xB0,0x00, 0x11, 0xB2 }},
+	// {REGFLAG_CMD,2,{0xB2,0x16 }},
+	// {REGFLAG_CMD,2,{0xB7,0x02 }},
+	// {REGFLAG_CMD,4,{0xB0,0x00, 0x86, 0xB1 }},
+	// {REGFLAG_CMD,2,{0xB1,0x02 }},
+	// {REGFLAG_CMD,4,{0xB0,0x00, 0x88, 0xB1 }},
+	// {REGFLAG_CMD,2,{0xB1,0x27 }},
+	// {REGFLAG_CMD,4,{0xB0,0x00, 0x18, 0xB6 }},
+	// {REGFLAG_CMD,2,{0xB6,0x82 }},
+	// {REGFLAG_CMD,4,{0xB0,0x00, 0x2D, 0xB6 }},
+	// {REGFLAG_CMD,2,{0xB6,0x0E }},
+	// {REGFLAG_CMD,4,{0xB0,0x00, 0xBC, 0xB5 }},
+	// {REGFLAG_CMD,2,{0xB5,0x26 }},
+	// {REGFLAG_CMD,4,{0xB0,0x00, 0x91, 0xC3 }},
+	// {REGFLAG_CMD,4,{0xC3,0x0B, 0x00, 0x06 }},
+	// {REGFLAG_CMD,4,{0xB0,0x00, 0xA3, 0xC3 }},
+	// {REGFLAG_CMD,9,{0xC3,0x16, 0x14, 0x00, 0x15, 0x04, 0x0B, 0x11, 0x11 }},
+	// {REGFLAG_CMD,4,{0xB0,0x00, 0xB7, 0xC3 }},
+	// {REGFLAG_CMD,2,{0xC3,0x02 }},
+	// {REGFLAG_CMD,4,{0xB0,0x00, 0xBE, 0xC3 }},
+	// {REGFLAG_CMD,2,{0xC3,0x71 }},
+	// {REGFLAG_CMD,4,{0xB0,0x00, 0xEE, 0xC3 }},
+	// {REGFLAG_CMD,2,{0xC3,0x04 }},
+	// {REGFLAG_CMD,4,{0xB0,0x00, 0xF0, 0xC3 }},
+	// {REGFLAG_CMD,2,{0xC3,0x04 }},
+	// {REGFLAG_CMD,4,{0xB0,0x00, 0xF3, 0xC3 }},
+	// {REGFLAG_CMD,3,{0xC3,0x1D, 0x1D }},
+	// {REGFLAG_CMD,4,{0xB0,0x00, 0x2F, 0xF6 }},
+	// {REGFLAG_CMD,3,{0xF6,0x26, 0x28 }},
+	// {REGFLAG_CMD,4,{0xB0,0x00, 0x32, 0xF6 }},
+	// {REGFLAG_CMD,3,{0xF6,0x23, 0x10 }},
+	// {REGFLAG_CMD,4,{0xB0,0x00, 0x39, 0xF6 }},
+	// {REGFLAG_CMD,2,{0xF6,0x01 }},
+	// {REGFLAG_CMD,4,{0xB0,0x01, 0x61, 0xB2 }},
+	// {REGFLAG_CMD,2,{0xB2,0x00 }},
+	// {REGFLAG_CMD,4,{0xB0,0x00, 0x03, 0xCD }},
+	// {REGFLAG_CMD,2,{0xCD,0x14 }},
+	// {REGFLAG_CMD,2,{0xF7,0x0B }},
+	// {REGFLAG_CMD,3,{0xF0,0xA5, 0xA5 }},
+	// {REGFLAG_END_OF_TABLE, 0x00, {}}
 };
 
 static struct LCM_setting_table lcm_aod_low_mode[] = {
-	{REGFLAG_CMD, 4, {0xFF, 0x78, 0x38, 0x00}},
-	{REGFLAG_CMD, 1, {0x39}},
-	{REGFLAG_CMD, 4, {0xFF, 0x78, 0x38, 0x0C}},
-	{REGFLAG_CMD, 2, {0xBE, 0x00}},
-	{REGFLAG_CMD, 4, {0xFF, 0x78, 0x38, 0x00}},
+	{REGFLAG_CMD, 3, {0xF0, 0x5A, 0x5A}},
+	{REGFLAG_CMD, 2, {0x53, 0x28}},
+	{REGFLAG_CMD, 3, {0x51, 0x01, 0xFF}},
+	{REGFLAG_CMD, 3, {0xF0, 0xA5, 0xA5}},
 	{REGFLAG_END_OF_TABLE, 0x00, {}}
 };
 
-static struct LCM_setting_table lcm_normal_to_aod_sam_panel_init[] = {
-	{REGFLAG_CMD, 4, {0xFF,0x78,0x38,0x00}},
-	{REGFLAG_CMD, 1, {0x39}},
-	{REGFLAG_CMD, 4, {0xFF,0x78,0x38,0x0C}},
-	{REGFLAG_CMD, 2, {0xBE,0x01}},
-	{REGFLAG_CMD, 4, {0xFF,0x78,0x38,0x00}},
-	{REGFLAG_CMD, 1, {0x22}},
-	{REGFLAG_CMD, 4, {0xFF,0x78,0x38,0x00}},
-	//{REGFLAG_DELAY,20,{}},
+// static struct LCM_setting_table lcm_normal_to_aod_sam_panel_init[] = {
+// 	{REGFLAG_CMD, 4, {0xFF,0x78,0x38,0x00}},
+// 	{REGFLAG_CMD, 1, {0x39}},
+// 	{REGFLAG_CMD, 4, {0xFF,0x78,0x38,0x0C}},
+// 	{REGFLAG_CMD, 2, {0xBE,0x01}},
+// 	{REGFLAG_CMD, 4, {0xFF,0x78,0x38,0x00}},
+// 	{REGFLAG_CMD, 1, {0x22}},
+// 	{REGFLAG_CMD, 4, {0xFF,0x78,0x38,0x00}},
+// 	//{REGFLAG_DELAY,20,{}},
 
-	/* Display on */
-	//{REGFLAG_CMD, 1, {0x29}},
+// 	/* Display on */
+// 	//{REGFLAG_CMD, 1, {0x29}},
 
-	{REGFLAG_END_OF_TABLE, 0x00, {}}
-};
+// 	{REGFLAG_END_OF_TABLE, 0x00, {}}
+// };
 
 static struct LCM_setting_table lcm_normal_to_aod_sam[] = {
-	{REGFLAG_CMD, 4, {0xFF,0x78,0x38,0x00}},
-	{REGFLAG_CMD, 1, {0x39}},
-	{REGFLAG_CMD, 4, {0xFF,0x78,0x38,0x0C}},
-	{REGFLAG_CMD, 2, {0xBE,0x01}},
-	{REGFLAG_CMD, 4, {0xFF,0x78,0x38,0x00}},
+	{REGFLAG_CMD, 1, {0x11}},
+	{REGFLAG_DELAY, 20, {}},
 
+	{REGFLAG_CMD, 2, {0x35, 0x00}},
+
+	{REGFLAG_CMD, 3, {0xF0, 0x5A, 0x5A}},
+	{REGFLAG_CMD, 2, {0x60, 0x21}},
+	{REGFLAG_CMD, 3, {0xF7, 0x0B}},
+	{REGFLAG_CMD, 3, {0xF0, 0xA5, 0xA5}},
+
+	{REGFLAG_CMD, 3, {0xF0, 0x5A, 0x5A}},
+	{REGFLAG_CMD, 2, {0x53, 0x28}},
+	{REGFLAG_CMD, 3, {0x51, 0x03, 0xFF}},
+	{REGFLAG_CMD, 3, {0xF0, 0xA5, 0xA5}},
+	{REGFLAG_DELAY, 120,{}},
+	{REGFLAG_CMD, 1, {0x29}},
 	{REGFLAG_END_OF_TABLE, 0x00, {}}
+	//  {REGFLAG_CMD,2,{0x60,0x01 }}, 	//Frequency Select
+	//  {REGFLAG_CMD,4,{0xB0,0x01, 0x17, 0xB2 }},
+	//  {REGFLAG_CMD,2,{0xB2,0x01 }},
+	//  {REGFLAG_CMD,4,{0xB0,0x00, 0x03, 0xF4 }},
+	//  {REGFLAG_CMD,2,{0xF4,0x6C }},
+	//  {REGFLAG_CMD,4,{0xB0,0x00, 0x1B, 0xF4 }},
+	//  {REGFLAG_CMD,2,{0xF4,0x83 }},
+	//  {REGFLAG_CMD,4,{0xB0,0x00, 0x1D, 0xF4 }},
+	//  {REGFLAG_CMD,2,{0xF4,0x12 }},
+	//  {REGFLAG_CMD,4,{0xB0,0x00, 0x11, 0xB2 }},
+	//  {REGFLAG_CMD,2,{0xB2,0x1F }},
+	//  {REGFLAG_CMD,2,{0xB7,0x01 }},
+	//  {REGFLAG_CMD,4,{0xB0,0x00, 0x86, 0xB1 }},
+	//  {REGFLAG_CMD,2,{0xB1,0x01 }},
+	//  {REGFLAG_CMD,4,{0xB0,0x00, 0x88, 0xB1 }},
+	//  {REGFLAG_CMD,2,{0xB1,0x26 }},
+	//  {REGFLAG_CMD,4,{0xB0,0x00, 0x18, 0xB6 }},
+	//  {REGFLAG_CMD,2,{0xB6,0x81 }},
+	//  {REGFLAG_CMD,4,{0xB0,0x00, 0x2D, 0xB6 }},
+	//  {REGFLAG_CMD,2,{0xB6,0x01 }},
+	//  {REGFLAG_CMD,4,{0xB0,0x00, 0xBC, 0xB5 }},
+	//  {REGFLAG_CMD,2,{0xB5,0x25 }},
+	//  {REGFLAG_CMD,4,{0xB0,0x00, 0x91, 0xC3 }},
+	//  {REGFLAG_CMD,4,{0xC3,0x0F, 0x00, 0x02 }},
+	//  {REGFLAG_CMD,4,{0xB0,0x00, 0xA3, 0xC3 }},
+	//  {REGFLAG_CMD,9,{0xC3,0x70, 0x28, 0x00, 0x29, 0x04, 0x3F, 0x47,0x3F }},
+	//  {REGFLAG_CMD,4,{0xB0,0x00, 0XB7, 0xC3 }},
+	//  {REGFLAG_CMD,2,{0xC3,0x80 }},
+	//  {REGFLAG_CMD,4,{0xB0,0x00, 0xBE, 0xC3 }},
+	//  {REGFLAG_CMD,2,{0xC3,0x11 }},
+	//  {REGFLAG_CMD,4,{0xB0,0x00, 0xEE, 0xC3 }},
+	//  {REGFLAG_CMD,2,{0xC3,0x44 }},
+	//  {REGFLAG_CMD,4,{0xB0,0x00, 0xF0, 0xC3 }},
+	//  {REGFLAG_CMD,2,{0xC3,0xFF }},
+	//  {REGFLAG_CMD,4,{0xB0,0x00, 0xF3, 0xC3 }},
+	//  {REGFLAG_CMD,3,{0xC3,0x0A, 0x0A }},
+	//  {REGFLAG_CMD,4,{0xB0,0x00, 0x2F, 0xF6 }},
+	//  {REGFLAG_CMD,3,{0xF6,0x88, 0x8A }},
+	//  {REGFLAG_CMD,4,{0xB0,0x00, 0x32, 0xF6 }},
+	//  {REGFLAG_CMD,3,{0xF6,0x88, 0x45 }},
+	//  {REGFLAG_CMD,4,{0xB0,0x00, 0x39, 0xF6 }},
+	//  {REGFLAG_CMD,2,{0xF6,0x41 }},
+	//  {REGFLAG_CMD,4,{0xB0,0x01, 0x61, 0xB2 }},
+	//  {REGFLAG_CMD,4,{0xB2,0x01, 0x00, 0x14 }},	//30Hz High Mode(50nit)
+	//  {REGFLAG_CMD,4,{0xB0,0x00, 0x03, 0xCD }},
+	//  {REGFLAG_CMD,2,{0xCD,0x34 }},
+	//  {REGFLAG_CMD,2,{0xF7,0x0B }},
+	//  {REGFLAG_CMD, 3, {0xF0, 0xA5, 0xA5}},
+	//  {REGFLAG_DELAY, 17,{}},
+	//  {REGFLAG_CMD, 1, {0x29}},
+	//  {REGFLAG_END_OF_TABLE, 0x00, {}}
 };
 
 static struct LCM_setting_table lcm_seed_setting[] = {
@@ -273,16 +395,16 @@ static struct LCM_setting_table lcm_seed_mode3[] = {
 
 #define FRAME_WIDTH             (1080)
 #define FRAME_HEIGHT            (2400)
-#define HFP                     (120)
-#define HBP                     (120)
-#define HSA                     (28)
+#define HFP                     (60)
+#define HBP                     (60)
+#define HSA                     (12)
 #define VFP_60HZ                (2448)
 #define VFP_120HZ               (16)
 #define VBP                     (14)
 #define VSA                     (2)
 
 static const struct drm_display_mode default_mode = {
-	.clock = 196701, // ((FRAME_WIDTH + HFP + HBP + HSA) * (FRAME_HEIGHT + VFP + VBP + VSA) * 60) / 1000
+	.clock = 353710, // ((FRAME_WIDTH + HFP + HBP + HSA) * (FRAME_HEIGHT + VFP + VBP + VSA) * 60) / 1000
 	.hdisplay = FRAME_WIDTH,
 	.hsync_start = FRAME_WIDTH + HFP,
 	.hsync_end = FRAME_WIDTH + HFP + HSA,
@@ -295,7 +417,7 @@ static const struct drm_display_mode default_mode = {
 };
 
 static const struct drm_display_mode performance_mode_120hz = {
-	.clock = 393401, // ((FRAME_WIDTH + HFP + HBP + HSA) * (FRAME_HEIGHT + VFP + VBP + VSA) * 120) / 1000
+	.clock = 353710, // ((FRAME_WIDTH + HFP + HBP + HSA) * (FRAME_HEIGHT + VFP + VBP + VSA) * 120) / 1000
 	.hdisplay = FRAME_WIDTH,
 	.hsync_start = FRAME_WIDTH + HFP,
 	.hsync_end = FRAME_WIDTH + HFP + HSA,
@@ -308,33 +430,55 @@ static const struct drm_display_mode performance_mode_120hz = {
 };
 
 static struct mtk_panel_params ext_params = {
-	.pll_clk = 550,
-	.data_rate = 1100,
+	.pll_clk = 499,
+	.data_rate = 998,
+	.change_fps_by_vfp_send_cmd = 1,
 	.dyn_fps = {
 		.switch_en = 1,
 		.vact_timing_fps = 120,
+		// .send_mode = 1,
+		// .send_cmd_need_delay = 1,
+		.dfps_cmd_table[0] = {0, 3 , {0xF0, 0x5A, 0x5A}},
+		.dfps_cmd_table[1] = {0, 2 , {0x60, 0x21}},
+		.dfps_cmd_table[2] = {0, 2 , {0xF7, 0x0B}},
+		.dfps_cmd_table[3] = {0, 3 , {0xF0, 0xA5, 0xA5}},
 	},
 	.output_mode = MTK_PANEL_DSC_SINGLE_PORT,
 
-	.cust_esd_check = 1,
+	.cust_esd_check = 0,
 	.esd_check_enable = 1,
 	.lcm_esd_check_table[0] = {
 		.cmd = 0x0A, .count = 1, .para_list[0] = 0x9D, .mask_list[0] = 0x9D,
 	},
+	// .lcm_esd_check_table[1] = {
+	// 	.cmd = 0x05, .count = 1, .para_list[0] = 0x00,
+	// },
 
-	// #ifdef CONFIG_MTK_ROUND_CORNER_SUPPORT
-	// 	.round_corner_en = 1,
-	// 	.corner_pattern_height = ROUND_CORNER_H_TOP,
-	// 	.corner_pattern_height_bot = ROUND_CORNER_H_BOT,
-	// 	.corner_pattern_tp_size = sizeof(top_rc_pattern),
-	// 	.corner_pattern_lt_addr = (void *)top_rc_pattern,
-	// #endif
+
+	#ifdef CONFIG_MTK_ROUND_CORNER_SUPPORT
+		.round_corner_en = 1,
+		.corner_pattern_height = ROUND_CORNER_H_TOP,
+		.corner_pattern_height_bot = ROUND_CORNER_H_BOT,
+		.corner_pattern_tp_size = sizeof(top_rc_pattern),
+		.corner_pattern_lt_addr = (void *)top_rc_pattern,
+	#endif
 
 	.oplus_display_global_dre = 1,
+	.oplus_custom_hdr_color_tmp = true,
+	.oplus_custom_hdr_red = 950,
+	.oplus_custom_hdr_green = 1024,
+	.oplus_custom_hdr_blue = 800,
 	.oplus_panel_use_rgb_gain = true,
 
 	.vendor = "AMS643AG01_23687",
 	.manufacture = "samsung2048_23687",
+#ifdef CONFIG_OPLUS_OFP_V2
+	.oplus_ofp_need_keep_apart_backlight = true,
+	.oplus_ofp_hbm_on_delay = 11,
+	.oplus_ofp_pre_hbm_off_delay = 2,
+	.oplus_ofp_hbm_off_delay = 11,
+	.oplus_uiready_before_time = 17,
+#endif
 
 	.dsc_params = {
 		.enable = 1,
@@ -374,33 +518,54 @@ static struct mtk_panel_params ext_params = {
 };
 
 static struct mtk_panel_params ext_params_120hz = {
-	.pll_clk = 550,
-	.data_rate = 1100,
+	.pll_clk = 499,
+	.data_rate = 998,
+	.change_fps_by_vfp_send_cmd = 1,
 	.dyn_fps = {
 		.switch_en = 1,
 		.vact_timing_fps = 120,
+		// .send_mode = 1,
+		// .send_cmd_need_delay = 1,
+		.dfps_cmd_table[0] = {0, 3 , {0xF0, 0x5A, 0x5A}},
+		.dfps_cmd_table[1] = {0, 2 , {0x60, 0x01}},
+		.dfps_cmd_table[2] = {0, 2 , {0xF7, 0x0B}},
+		.dfps_cmd_table[3] = {0, 3 , {0xF0, 0xA5, 0xA5}},
 	},
 	.output_mode = MTK_PANEL_DSC_SINGLE_PORT,
 
-	.cust_esd_check = 1,
+	.cust_esd_check = 0,
 	.esd_check_enable = 1,
 	.lcm_esd_check_table[0] = {
 		.cmd = 0x0A, .count = 1, .para_list[0] = 0x9D, .mask_list[0] = 0x9D,
 	},
+	// .lcm_esd_check_table[1] = {
+	// 	.cmd = 0x05, .count = 1, .para_list[0] = 0x00,
+	// },
 
-	// #ifdef CONFIG_MTK_ROUND_CORNER_SUPPORT
-	// 	.round_corner_en = 1,
-	// 	.corner_pattern_height = ROUND_CORNER_H_TOP,
-	// 	.corner_pattern_height_bot = ROUND_CORNER_H_BOT,
-	// 	.corner_pattern_tp_size = sizeof(top_rc_pattern),
-	// 	.corner_pattern_lt_addr = (void *)top_rc_pattern,
-	// #endif
+	#ifdef CONFIG_MTK_ROUND_CORNER_SUPPORT
+		.round_corner_en = 1,
+		.corner_pattern_height = ROUND_CORNER_H_TOP,
+		.corner_pattern_height_bot = ROUND_CORNER_H_BOT,
+		.corner_pattern_tp_size = sizeof(top_rc_pattern),
+		.corner_pattern_lt_addr = (void *)top_rc_pattern,
+	#endif
 
 	.oplus_display_global_dre = 1,
+	.oplus_custom_hdr_color_tmp = true,
+	.oplus_custom_hdr_red = 950,
+	.oplus_custom_hdr_green = 1024,
+	.oplus_custom_hdr_blue = 800,
 	.oplus_panel_use_rgb_gain = true,
 
 	.vendor = "AMS643AG01_23687",
 	.manufacture = "samsung2048_23687",
+#ifdef CONFIG_OPLUS_OFP_V2
+	.oplus_ofp_need_keep_apart_backlight = true,
+	.oplus_ofp_hbm_on_delay = 11,
+	.oplus_ofp_pre_hbm_off_delay = 2,
+	.oplus_ofp_hbm_off_delay = 11,
+	.oplus_uiready_before_time = 17,
+#endif
 
 	.dsc_params = {
 		.enable = 1,
@@ -515,13 +680,45 @@ static void lcm_dcs_write(struct lcm *ctx, const void *data, size_t len)
 	}
 }
 
+static int panel_osc_freq_change(void *dsi, dcs_write_gce cb, void *handle, bool en)
+{
+	char osc_tb0[] = {0xF0, 0x5A, 0x5A};
+	char osc_tb1[] = {0xFC, 0x5A, 0x5A};
+	char osc_tb2[] = {0xDF, 0x09, 0x30, 0x95, 0x4E, 0x29, 0x4E, 0X29};	// OSC=96.3MHz@MIPI Speed=0.998Gbps
+	char osc_tb3[] = {0xF0, 0xA5, 0xA5};
+	char osc_tb4[] = {0xFC, 0xA5, 0xA5};
+
+	pr_info("debug for %s, %d\n", __func__, en);
+
+	if (en == 0) {            // OSC=96.3MHz@MIPI Speed=0.998Gbps
+		osc_tb2[4] = 0x4E;
+		osc_tb2[5] = 0x29;
+		osc_tb2[6] = 0x4E;
+		osc_tb2[7] = 0X29;
+	} else if (en == 1) {     // OSC=95.33MHz@MIPI Speed=0.998Gbps
+		osc_tb2[4] = 0x4D;
+		osc_tb2[5] = 0x5F;
+		osc_tb2[6] = 0x4D;
+		osc_tb2[7] = 0x5F;
+	}
+	cb(dsi, handle, osc_tb0, ARRAY_SIZE(osc_tb0));
+	cb(dsi, handle, osc_tb1, ARRAY_SIZE(osc_tb1));
+	cb(dsi, handle, osc_tb2, ARRAY_SIZE(osc_tb2));
+	cb(dsi, handle, osc_tb3, ARRAY_SIZE(osc_tb3));
+	cb(dsi, handle, osc_tb4, ARRAY_SIZE(osc_tb4));
+
+	osc_mipi_hopping_status = en;
+
+	return 0;
+}
+
 static void lcm_panel_init(struct lcm *ctx)
 {
 	pr_info("debug for %s+\n", __func__);
 	lcm_dcs_write_seq_static(ctx, 0x11, 0x00);
-	usleep_range(30*1000, 31*1000);
+	usleep_range(20*1000, 21*1000);
 
-	//DSC PPS Setting
+	// DSC PPS Setting
 	lcm_dcs_write_seq_static(ctx, 0x07, 0x01);
 	lcm_dcs_write_seq_static(ctx, 0x9D, 0x01);
 	lcm_dcs_write_seq_static(ctx, 0x9E, 0x11, 0x00, 0x00, 0x89, 0x30, 0x80, 0x09, 0x60, 0x04,
@@ -534,18 +731,53 @@ static void lcm_panel_init(struct lcm *ctx)
 								  0xFA, 0x19, 0xF8, 0x1A, 0x38, 0x1A, 0x78, 0x1A, 0xB6, 0x2A,
 								  0xF6, 0x2B, 0x34, 0x2B, 0x74, 0x3B, 0x74, 0x6B, 0xF4, 0x00);
 
-	//Frequency Change Setting
+	lcm_dcs_write_seq_static(ctx, 0x35, 0x00);
+
+	// Frequency Change Setting
 	lcm_dcs_write_seq_static(ctx, 0xF0, 0x5A, 0x5A);
-	lcm_dcs_write_seq_static(ctx, 0x60, 0x01);	//120hz
+	pr_info("debug for %s, fps:%d\n", __func__, current_fps);
+	if (current_fps == 60)
+		lcm_dcs_write_seq_static(ctx, 0x60, 0x21);	//60hz
+	else if (current_fps == 120)
+		lcm_dcs_write_seq_static(ctx, 0x60, 0x01);	//120hz
+	else
+		lcm_dcs_write_seq_static(ctx, 0x60, 0x21);	//60hz
 	lcm_dcs_write_seq_static(ctx, 0xF7, 0x0B);
 	lcm_dcs_write_seq_static(ctx, 0xF0, 0xA5, 0xA5);
-	//Brightness Control Dimming Setting
+
+	// Flat Mode Control
 	lcm_dcs_write_seq_static(ctx, 0xF0, 0x5A, 0x5A);
-	lcm_dcs_write_seq_static(ctx, 0x53, 0x20);
+	lcm_dcs_write_seq_static(ctx, 0xB0, 0x00, 0x89, 0xB1);
+	lcm_dcs_write_seq_static(ctx, 0xB1, 0x2F);
+	lcm_dcs_write_seq_static(ctx, 0xB0, 0x00, 0x03, 0xB8);
+	lcm_dcs_write_seq_static(ctx, 0xB8, 0xDF);
+	lcm_dcs_write_seq_static(ctx, 0xB0, 0x00, 0x06, 0xB8);
+	lcm_dcs_write_seq_static(ctx, 0xB8, 0xDF);
+	lcm_dcs_write_seq_static(ctx, 0xB0, 0x00, 0xF8, 0xB5);
+	lcm_dcs_write_seq_static(ctx, 0xB5, 0xE2, 0x0E, 0x0E, 0x0E, 0x92, 0x28, 0x76, 0x80, 0x00,
+								  0x00, 0x00, 0x00, 0xFF, 0x90, 0x00, 0x00);
+	lcm_dcs_write_seq_static(ctx, 0xF0, 0xA5, 0xA5);
+
+	// FFC Setting
+	lcm_dcs_write_seq_static(ctx, 0xF0, 0x5A, 0x5A);
+	lcm_dcs_write_seq_static(ctx, 0xFC, 0x5A, 0x5A);
+	lcm_dcs_write_seq_static(ctx, 0xB0, 0x00, 0x14, 0xDF);
+	lcm_dcs_write_seq_static(ctx, 0xDF, 0x01);
+	if (osc_mipi_hopping_status == 0) {
+		lcm_dcs_write_seq_static(ctx, 0xDF, 0x09, 0x30, 0x95, 0x4E, 0x29, 0x4E, 0X29);    // OSC=96.3MHz@MIPI Speed=0.998Gbps
+	} else if (osc_mipi_hopping_status == 1) {
+		lcm_dcs_write_seq_static(ctx, 0xDF, 0x09, 0x30, 0x95, 0x4D, 0x5F, 0x4D, 0X5F);    // OSC=95.33MHz@MIPI Speed=0.998Gbps
+	}
+	lcm_dcs_write_seq_static(ctx, 0xF0, 0xA5, 0xA5);
+	lcm_dcs_write_seq_static(ctx, 0xFC, 0xA5, 0xA5);
+
+	// Brightness Control Dimming Setting
+	lcm_dcs_write_seq_static(ctx, 0xF0, 0x5A, 0x5A);
+	lcm_dcs_write_seq_static(ctx, 0x53, 0x28);
 	lcm_dcs_write_seq_static(ctx, 0x51, 0x00, 0x00);
 	lcm_dcs_write_seq_static(ctx, 0xF0, 0xA5, 0xA5);
 
-	usleep_range(120*1000, 121*1000);
+	usleep_range(100*1000, 101*1000);
 	lcm_dcs_write_seq_static(ctx, 0x29, 0x00);
 
 	panel_init = true;
@@ -578,13 +810,14 @@ static int lcm_unprepare(struct drm_panel *panel)
 
 	pr_info("debug for %s+\n", __func__);
 
-	lcm_dcs_write_seq_static(ctx, MIPI_DCS_SET_DISPLAY_OFF);
-	msleep(20);
-	lcm_dcs_write_seq_static(ctx, MIPI_DCS_ENTER_SLEEP_MODE);
-	msleep(150);
+	lcm_dcs_write_seq_static(ctx, 0x28);
+	usleep_range(10000, 11000);
+	lcm_dcs_write_seq_static(ctx, 0x10);
+	usleep_range(150*1000, 151*1000);
 
 	ctx->error = 0;
 	ctx->prepared = false;
+	ctx->hbm_en = false;
 
 	pr_info("debug for %s-\n", __func__);
 
@@ -852,63 +1085,50 @@ dc_disable:
 
 static int lcm_setbacklight_cmdq(void *dsi, dcs_write_gce cb, void *handle, unsigned int level)
 {
-	// unsigned int mapped_level = 0;
+	unsigned int mapped_level = 0;
 	char bl_tb0[] = {0x51, 0x00, 0x00};
-	// char bl_tb1[] = {0x53, 0x20};
-	// char post_backlight_on1[] = {0x29};
+	char bl_tb1[] = {0x53, 0x20};
+	char post_backlight_on1[] = {0x29};
 
 	if (!cb)
 		return -1;
 
 	pr_info("debug for %s+, level = %d\n", __func__, level);
 
-	bl_tb0[1] = level >> 8;
-	bl_tb0[2] = level & 0xFF;
-
-	cb(dsi, handle, bl_tb0, ARRAY_SIZE(bl_tb0));
-
-	// if (level > 2047 && level <= 3727)
-	// 	level = 3727;
-
-	// if ((get_boot_mode() == KERNEL_POWER_OFF_CHARGING_BOOT) && (level > 1))
-	// 	level = 1223;
+	if ((get_boot_mode() == KERNEL_POWER_OFF_CHARGING_BOOT) && (level > 1))
+		level = 1023;
 
 	// mapped_level = oplus_lcm_dc_backlight(dsi,cb,handle, level, 0);
 	esd_brightness = level;
+	mapped_level = level;
 
-	// mapped_level = 1223;
+	bl_tb0[1] = mapped_level >> 8;
+	bl_tb0[2] = mapped_level & 0xFF;
 
-	// bl_tb0[1] = mapped_level >> 8;
-	// bl_tb0[2] = mapped_level & 0xFF;
+	if (mapped_level > 1) {
+		lcdinfo_notify(LCM_BRIGHTNESS_TYPE, &mapped_level);
+	}
 
-	// pr_info("debug for lcm %s, level = %d, mapped_level = %d\n", __func__, level, mapped_level);
-
-	// if (mapped_level > 1) {
-	// 	lcdinfo_notify(LCM_BRIGHTNESS_TYPE, &mapped_level);
-	// }
-
-	// if (level == 1 || mapped_level == 1) {
-	// 	pr_info("enter aod mode, ignore set backlight to 1\n");
-	// 	if (aod_state == 1) {
-	// 		cb(dsi, handle, post_backlight_on1, ARRAY_SIZE(post_backlight_on1));
-	// 	}
-	// } else if (level <= BRIGHTNESS_HALF) {
-	//     if (flag_hbm == 1) {
-	// 		bl_tb1[1] = 0x20;
-	// 		cb(dsi, handle, bl_tb1, ARRAY_SIZE(bl_tb1));
-	// 		flag_hbm = 0;
-	// 	}
-	//     cb(dsi, handle, bl_tb0, ARRAY_SIZE(bl_tb0));
-	// } else if (level > BRIGHTNESS_HALF && level <= BRIGHTNESS_MAX) {
-	//     if (flag_hbm == 0) {
-	// 		bl_tb1[1] = 0xE0;
-	// 		cb(dsi, handle, bl_tb1, ARRAY_SIZE(bl_tb1));
-	// 		flag_hbm = 1;
-	// 	}
-	    // cb(dsi, handle, bl_tb0, ARRAY_SIZE(bl_tb0));
-	// }
-
-	pr_info("debug for %s-\n", __func__);
+	if (level == 1 || mapped_level == 1) {
+		pr_info("enter aod mode, ignore set backlight to 1\n");
+		if (aod_state == 1) {
+			cb(dsi, handle, post_backlight_on1, ARRAY_SIZE(post_backlight_on1));
+		}
+	} else if (level <= BRIGHTNESS_HALF) {
+		if (flag_hbm == 1) {
+			bl_tb1[1] = 0x28;
+			cb(dsi, handle, bl_tb1, ARRAY_SIZE(bl_tb1));
+			flag_hbm = 0;
+		}
+		cb(dsi, handle, bl_tb0, ARRAY_SIZE(bl_tb0));
+	} else if (level > BRIGHTNESS_HALF && level <= BRIGHTNESS_MAX) {
+		if (flag_hbm == 0) {
+			bl_tb1[1] = 0xE8;
+			cb(dsi, handle, bl_tb1, ARRAY_SIZE(bl_tb1));
+			flag_hbm = 1;
+		}
+		cb(dsi, handle, bl_tb0, ARRAY_SIZE(bl_tb0));
+	}
 
 	return 0;
 }
@@ -918,23 +1138,33 @@ static void lcm_setbrightness(void *dsi,
 {
 	unsigned int BL_MSB = 0;
 	unsigned int BL_LSB = 0;
+	unsigned int hbm_brightness = 0;
 	int i = 0;
 
-	pr_info("debug for %s+\n", __func__);
+	printk("debug for %s level is %d\n", __func__, level);
 
-	if (level > 1 && level < 8)
-		level = 8;
-	BL_LSB = level >> 8;
-	BL_MSB = level & 0xFF;
+	if (level > BRIGHTNESS_HALF) {
+		hbm_brightness = level - BRIGHTNESS_HALF;
+		BL_LSB = hbm_brightness >> 8;
+		BL_MSB = hbm_brightness & 0xFF;
 
-	lcm_setbrightness_normal[0].para_list[1] = BL_LSB;
-	lcm_setbrightness_normal[0].para_list[2] = BL_MSB;
+		lcm_setbrightness_hbm[0].para_list[1] = BL_LSB;
+		lcm_setbrightness_hbm[0].para_list[2] = BL_MSB;
 
-	for (i = 0; i < sizeof(lcm_setbrightness_normal)/sizeof(struct LCM_setting_table); i++){
-		cb(dsi, handle, lcm_setbrightness_normal[i].para_list, lcm_setbrightness_normal[i].count);
+		for (i = 0; i < sizeof(lcm_setbrightness_hbm)/sizeof(struct LCM_setting_table); i++) {
+			cb(dsi, handle, lcm_setbrightness_hbm[i].para_list, lcm_setbrightness_hbm[i].count);
+		}
+	} else {
+		BL_LSB = level >> 8;
+		BL_MSB = level & 0xFF;
+
+		lcm_setbrightness_normal[1].para_list[1] = BL_LSB;
+		lcm_setbrightness_normal[1].para_list[2] = BL_MSB;
+
+		for (i = 0; i < sizeof(lcm_setbrightness_normal)/sizeof(struct LCM_setting_table); i++) {
+			cb(dsi, handle, lcm_setbrightness_normal[i].para_list, lcm_setbrightness_normal[i].count);
+		}
 	}
-
-	pr_info("debug for %s-\n", __func__);
 }
 
 static int oplus_send_cmd_before_dsi_read(struct drm_panel *panel)
@@ -951,25 +1181,18 @@ static int lcm_set_hbm(void *dsi, dcs_write_gce cb,
 		void *handle, unsigned int hbm_mode)
 {
 	int i = 0;
-
+	int level = 0;
 	if (!cb)
 		return -1;
 
-	pr_info("debug for %s+\n", __func__);
-
-	pr_err(" debug for lcm oplus_display_brightness = %ld, hbm_mode=%u\n", oplus_display_brightness, hbm_mode);
+	pr_err("oplus_display_brightness= %ld, hbm_mode=%u\n", oplus_display_brightness, hbm_mode);
 
 	if(hbm_mode == 1) {
 		for (i = 0; i < sizeof(lcm_finger_HBM_on_setting)/sizeof(struct LCM_setting_table); i++){
 			cb(dsi, handle, lcm_finger_HBM_on_setting[i].para_list, lcm_finger_HBM_on_setting[i].count);
 		}
-		msleep(10);
-		for (i = 0; i < sizeof(lcm_set_HBM_again)/sizeof(struct LCM_setting_table); i++){
-			cb(dsi, handle, lcm_set_HBM_again[i].para_list, lcm_set_HBM_again[i].count);
-		}
 	} else if (hbm_mode == 0) {
-		//level = oplus_lcm_dc_backlight(dsi,cb,handle, oplus_display_brightness, 0);
-		lcm_setbrightness(dsi, cb, handle, oplus_display_brightness);  //level
+		lcm_setbrightness(dsi, cb, handle, oplus_display_brightness);
 		printk("debug for %s : %d ! backlight %d !\n",__func__, hbm_mode, oplus_display_brightness);
 	}
 
@@ -979,45 +1202,62 @@ static int lcm_set_hbm(void *dsi, dcs_write_gce cb,
 static int panel_hbm_set_cmdq(struct drm_panel *panel, void *dsi,
 				  dcs_write_gce cb, void *handle, bool en)
 {
-	//char hbm_tb[] = {0x53, 0xe0};
-		char bl_aod1[] = {0xFF,0x78,0x38,0x00};
-		char bl_aod2[] = {0x13};
+	struct lcm *ctx = panel_to_lcm(panel);
 	int i = 0;
 	if (!cb)
 		return -1;
 
 	pr_err("debug for oplus_display_brightness= %ld, en=%u\n", oplus_display_brightness, en);
 
-	panel_init = false;
-	if (aod_after_panel_init == true) {
-		cb(dsi, handle, bl_aod1, ARRAY_SIZE(bl_aod1));
-				cb(dsi, handle, bl_aod2, ARRAY_SIZE(bl_aod2));
-				cb(dsi, handle, bl_aod1, ARRAY_SIZE(bl_aod1));
-				aod_after_panel_init = false;
-	}
-
 	if(en == 1) {
 		//oplus_lcm_dc_backlight(dsi,cb,handle, oplus_display_brightness, 1);
 		for (i = 0; i < sizeof(lcm_finger_HBM_on_setting)/sizeof(struct LCM_setting_table); i++){
 			cb(dsi, handle, lcm_finger_HBM_on_setting[i].para_list, lcm_finger_HBM_on_setting[i].count);
 		}
-		msleep(10);
-		for (i = 0; i < sizeof(lcm_set_HBM_again)/sizeof(struct LCM_setting_table); i++){
-			cb(dsi, handle, lcm_set_HBM_again[i].para_list, lcm_set_HBM_again[i].count);
-		}
 	} else if (en == 0) {
-		//level = oplus_lcm_dc_backlight(dsi,cb,handle, oplus_display_brightness, 0);
 		lcm_setbrightness(dsi, cb, handle, oplus_display_brightness);
-		printk("[soso] %s : %d ! backlight %d !\n",__func__, en, oplus_display_brightness);
 		if (oplus_display_brightness <= BRIGHTNESS_HALF)
 			flag_hbm = 0;
 		else
 			flag_hbm = 1;
+		lcm_setbacklight_cmdq(dsi, cb, handle, oplus_display_brightness);
+		printk("[soso] %s : %d !  backlight %d !\n",__func__, en, oplus_display_brightness);
 	}
-	//lcdinfo_notify(1, &en);
+	lcdinfo_notify(1, &en);
+	ctx->hbm_en = en;
+	ctx->hbm_wait = true;
 	return 0;
 }
 
+static void panel_hbm_get_state(struct drm_panel *panel, bool *state)
+{
+	struct lcm *ctx = panel_to_lcm(panel);
+
+	*state = ctx->hbm_en;
+}
+
+static void panel_hbm_set_state(struct drm_panel *panel, bool state)
+{
+	struct lcm *ctx = panel_to_lcm(panel);
+
+	ctx->hbm_en = state;
+}
+
+static void panel_hbm_get_wait_state(struct drm_panel *panel, bool *wait)
+{
+	struct lcm *ctx = panel_to_lcm(panel);
+
+	*wait = ctx->hbm_wait;
+}
+
+static bool panel_hbm_set_wait_state(struct drm_panel *panel, bool wait)
+{
+	struct lcm *ctx = panel_to_lcm(panel);
+	bool old = ctx->hbm_wait;
+
+	ctx->hbm_wait = wait;
+	return old;
+}
 
 static int lcm_esd_backlight_recovery(void *dsi, dcs_write_gce cb, void *handle)
 {
@@ -1054,10 +1294,7 @@ static int panel_doze_disable(struct drm_panel *panel, void *dsi, dcs_write_gce 
 	//struct lcm *ctx = panel_to_lcm(panel);
 	unsigned int i=0;
 
-	pr_err("debug for lcm %s+\n", __func__);
-
-	/*if (oplus_fp_notify_down_delay)
-		aod_finger_unlock_flag = 1;*/
+	pr_err("debug for lcm %s\n", __func__);
 
 	/* Switch back to VDO mode */
 	for (i = 0; i < (sizeof(lcm_aod_to_normal) / sizeof(struct LCM_setting_table)); i++) {
@@ -1078,75 +1315,55 @@ static int panel_doze_disable(struct drm_panel *panel, void *dsi, dcs_write_gce 
 				break;
 
 			default:
+
 				cb(dsi, handle, lcm_aod_to_normal[i].para_list, lcm_aod_to_normal[i].count);
 		}
 	}
-
-	pr_info("%s, call lpm_smc_spm_dbg keep vcore off for exit AOD!\n", __func__);
-
 	aod_state = false;
-	aod_flag = false;
 	return 0;
 }
 
 static int panel_doze_enable(struct drm_panel *panel, void *dsi, dcs_write_gce cb, void *handle)
 {
 	unsigned int i=0;
-	pr_err("debug for lcm %s+, panel_init = %d\n", __func__, panel_init);
+	pr_err("debug for lcm %s\n", __func__);
 	aod_state = true;
-	aod_flag = true;
 
-	if (panel_init == true) {
-		for (i = 0; i < (sizeof(lcm_normal_to_aod_sam_panel_init) / sizeof(struct LCM_setting_table)); i++) {
-			unsigned cmd;
-			cmd = lcm_normal_to_aod_sam_panel_init[i].cmd;
+	for (i = 0; i < (sizeof(lcm_normal_to_aod_sam) / sizeof(struct LCM_setting_table)); i++) {
+		unsigned cmd;
+		cmd = lcm_normal_to_aod_sam[i].cmd;
 
-			switch (cmd) {
-				case REGFLAG_DELAY:
-					msleep(lcm_normal_to_aod_sam_panel_init[i].count);
-					break;
+		switch (cmd) {
 
-				case REGFLAG_UDELAY:
-					udelay(lcm_normal_to_aod_sam_panel_init[i].count);
-					break;
+			case REGFLAG_DELAY:
+				msleep(lcm_normal_to_aod_sam[i].count);
+				break;
 
-				case REGFLAG_END_OF_TABLE:
-					break;
+			case REGFLAG_UDELAY:
+				udelay(lcm_normal_to_aod_sam[i].count);
+				break;
 
-				default:
-					cb(dsi, handle, lcm_normal_to_aod_sam_panel_init[i].para_list, lcm_normal_to_aod_sam_panel_init[i].count);
-			}
-		}
+			case REGFLAG_END_OF_TABLE:
+				break;
 
-		panel_init = false;
-		aod_after_panel_init = true;
-	} else {
-		for (i = 0; i < (sizeof(lcm_normal_to_aod_sam) / sizeof(struct LCM_setting_table)); i++) {
-			unsigned cmd;
-			cmd = lcm_normal_to_aod_sam[i].cmd;
-
-			switch (cmd) {
-				case REGFLAG_DELAY:
-					msleep(lcm_normal_to_aod_sam[i].count);
-					break;
-
-				case REGFLAG_UDELAY:
-					udelay(lcm_normal_to_aod_sam[i].count);
-					break;
-
-				case REGFLAG_END_OF_TABLE:
-					break;
-
-				default:
-					cb(dsi, handle, lcm_normal_to_aod_sam[i].para_list, lcm_normal_to_aod_sam[i].count);
-			}
+			default:
+				cb(dsi, handle, lcm_normal_to_aod_sam[i].para_list, lcm_normal_to_aod_sam[i].count);
 		}
 	}
 
-	/* keep vcore off */
-	// lpm_smc_spm_dbg(MT_SPM_DBG_SMC_UID_SUSPEND_PWR_CTRL, MT_LPM_SMC_ACT_SET, PW_REG_SPM_VCORE_REQ, 0x1);
-	pr_info("debug for lcm %s-, call lpm_smc_spm_dbg keep vcore on for enter AOD!\n", __func__);
+	return 0;
+}
 
+static int panel_doze_enable_start(struct drm_panel *panel, void *dsi, dcs_write_gce cb, void *handle)
+{
+	int cmd = 0;
+
+	pr_err("debug for lcm %s\n", __func__);
+	cmd = 0x28;
+	cb(dsi, handle, &cmd, 1);
+	//cmd = 0x10;
+	//cb(dsi, handle, &cmd, 1);
+	usleep_range(16*1000, 16*1000 + 100); //dalay 1 frame
 	return 0;
 }
 
@@ -1177,11 +1394,13 @@ static int mtk_panel_ext_param_set(struct drm_panel *panel, unsigned int mode)
 	if (ext == NULL)
 		return 1;
 
-	if (mode == 0)
+	if (mode == 0) {
 		ext->params = &ext_params;
-	else if (mode == 1)
+		current_fps = 60;
+	} else if (mode == 1) {
 		ext->params = &ext_params_120hz;
-	else
+		current_fps = 120;
+	} else
 		ret = 1;
 
 	return ret;
@@ -1268,15 +1487,22 @@ static struct mtk_panel_funcs ext_funcs = {
 	.panel_poweroff = lcm_panel_poweroff,
 	.ata_check = panel_ata_check,
 	.ext_param_set = mtk_panel_ext_param_set,
-	.mode_switch = mode_switch,
+	// .mode_switch = mode_switch,
 	.esd_backlight_recovery = lcm_esd_backlight_recovery,
 	.send_cmd_before_dsi_read = oplus_send_cmd_before_dsi_read,
-	// .hbm_set_cmdq = panel_hbm_set_cmdq,
-	// .set_hbm = lcm_set_hbm,
-	// .doze_enable = panel_doze_enable,
-	// .doze_disable = panel_doze_disable,
+	.hbm_set_cmdq = panel_hbm_set_cmdq,
+	.set_hbm = lcm_set_hbm,
+	.doze_enable = panel_doze_enable,
+	.doze_disable = panel_doze_disable,
+	.doze_enable_start = panel_doze_enable_start,
 	// .set_aod_light_mode = panel_set_aod_light_mode,
-	// .lcm_osc_change = oplus_panel_osc_change,
+	.lcm_osc_change = panel_osc_freq_change,
+	#ifndef CONFIG_OPLUS_OFP_V2
+	.hbm_get_state = panel_hbm_get_state,
+	.hbm_set_state = panel_hbm_set_state,
+	.hbm_get_wait_state = panel_hbm_get_wait_state,
+	.hbm_set_wait_state = panel_hbm_set_wait_state,
+	#endif
 };
 
 static const struct drm_panel_funcs lcm_drm_funcs = {
@@ -1398,8 +1624,9 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 
 	register_device_proc("lcd", "AMS643AG01_23687", "samsung2048_23687");
 	disp_aal_set_dre_en(1);
-
-	oplus_max_normal_brightness = BRIGHTNESS_MAX;
+	oplus_enhance_mipi_strength = 1;
+	ctx->hbm_en = false;
+	oplus_max_normal_brightness = MAX_NORMAL_BRIGHTNESS;
 
 	pr_err("debug for lcm %s-\n", __func__);
 

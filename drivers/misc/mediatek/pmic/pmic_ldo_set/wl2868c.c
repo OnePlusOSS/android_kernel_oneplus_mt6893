@@ -2,6 +2,7 @@
 /*
  * Copyright (C) 2018-2020 Oplus. All rights reserved.
  */
+#include <linux/mutex.h>
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/slab.h>
@@ -40,6 +41,8 @@
 #define PCB_PVT 10
 #define PVT_VIN1_VDD_CUSTOM 1375000
 #define PVT_VIN1_VDD_ORIGIN 1350000
+
+static DEFINE_MUTEX(gRegisterLocker);
 
 /*
 Hardware operate:
@@ -204,6 +207,7 @@ static int wl2868c_voltage_output_t(u8 ldo_num, int low_or_high, int vol, u8 ldo
 {
 	u8 ldo_vout_value = 0;
 	int ret = 0;
+	mutex_lock(&gRegisterLocker);
 	pr_err("%s,en = %d,set ldo_num = %d,vol = %d\n", __func__, wl2868c_data.ldo_en_select, ldo_num, vol);
 	if (low_or_high) {
 		if (vol > 0) {
@@ -236,10 +240,12 @@ static int wl2868c_voltage_output_t(u8 ldo_num, int low_or_high, int vol, u8 ldo
 			ret = wl2868c_write_reg(WL2868C_REG_LDOX_EN, wl2868c_data.ldo_en_select);
 		}
 	}
+	mutex_unlock(&gRegisterLocker);
 	return ret;
 
 vol_err:
 	pr_err("%s, set vol err vol:%d, ldo_num:%d\n", __func__, vol, ldo_num);
+	mutex_unlock(&gRegisterLocker);
 	return -1;
 }
 
@@ -253,15 +259,6 @@ vol_err:
 int wl2868c_voltage_output(unsigned int ldo_num, int vol)
 {
 	int ret = 0;
-	u8 ulvo_ctl_reg = 0x24;
-	u8 ulvo_ctl_reg_val = 0x00;
-	wl2868c_read_reg(ulvo_ctl_reg, &ulvo_ctl_reg_val);
-	pr_err("ulvo_ctl_reg_val:%x", ulvo_ctl_reg_val);
-	ulvo_ctl_reg_val |= 0x60;
-	wl2868c_write_reg(ulvo_ctl_reg, ulvo_ctl_reg_val);
-	ulvo_ctl_reg_val = 0x00;
-	wl2868c_read_reg(ulvo_ctl_reg, &ulvo_ctl_reg_val);
-	pr_err("ulvo_ctl_reg_val:%x", ulvo_ctl_reg_val);
 	switch (ldo_num) {
 	case WL2868C_LDO1:
 		ret = wl2868c_voltage_output_t(WL2868C_REG_LDO1_VOUT, 1, vol, 0x01);
@@ -448,7 +445,9 @@ static int wl2868c_probe(struct i2c_client *client, const struct i2c_device_id *
 	pr_err("wl2868c_probe strart attr ok!\n");
 	memset(&wl2868c_data, 0, sizeof(struct wl2868c_data_t));
 	wl2868c_data.i2c_client = client;
+	mutex_lock(&gRegisterLocker);
 	wl2868c_data.ldo_en_select = 0;
+	mutex_unlock(&gRegisterLocker);
 	ret = wl2868c_power_on(&client->dev);
 	if (ret) {
 		pr_err("wl2868c_power_on failed %d\n", ret);

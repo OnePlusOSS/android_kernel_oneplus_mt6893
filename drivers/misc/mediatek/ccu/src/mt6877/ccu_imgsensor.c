@@ -78,6 +78,8 @@ void ccu_get_sensor_i2c_slave_addr(int32_t *sensorI2cSlaveAddr)
 		g_ccu_sensor_info[IMGSENSOR_SENSOR_IDX_MAIN3].slave_addr;
 	sensorI2cSlaveAddr[4] =
 		g_ccu_sensor_info[IMGSENSOR_SENSOR_IDX_SUB2].slave_addr;
+        sensorI2cSlaveAddr[5] =
+		g_ccu_sensor_info[IMGSENSOR_SENSOR_IDX_MAIN4].slave_addr;
 }
 
 void ccu_get_sensor_name(char **sensor_name)
@@ -92,4 +94,6 @@ void ccu_get_sensor_name(char **sensor_name)
 	g_ccu_sensor_info[IMGSENSOR_SENSOR_IDX_MAIN3].sensor_name_string;
 	sensor_name[4] =
 	g_ccu_sensor_info[IMGSENSOR_SENSOR_IDX_SUB2].sensor_name_string;
+        sensor_name[5] =
+	g_ccu_sensor_info[IMGSENSOR_SENSOR_IDX_MAIN4].sensor_name_string;
 }

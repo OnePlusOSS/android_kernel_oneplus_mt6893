@@ -87,9 +87,9 @@
 		/*driver match info*/
 		tp_type = <3>; /*type:2 TRULY type:7 TIANMA type:3 BOE*/
 		firmware_name = "0xAA270BI01";
-		platform_support_project = <23053 23054 23253>;
-		platform_support_project_dir = <23053 23053 23053>;
-		platform_support_project_commandline = "default_commandline", "default_commandline", "default_commandline";
+		platform_support_project = <23053 23054 23055 23253>;
+		platform_support_project_dir = <23053 23053 23053 23053>;
+		platform_support_project_commandline = "default_commandline", "default_commandline", "default_commandline", "default_commandline";
 
 		touchpanel,smooth-level = <255 5 4 3 2 1>;
  		touchpanel,sensitive-level = <255 1 2 3 4 5>;
@@ -748,9 +748,9 @@
 			use_tristate_gpio;
 			compatible = "hw-match, main-sub";
 			aboard-gpio0 = <&pio 19 0x00>;
-			aboard-patterns = <0 0 1>;	/*0[high-resistance] 1[pull-down] 2[pull-up]*/
+			aboard-patterns = <0 0 0 1>;	/*0[high-resistance] 1[pull-down] 2[pull-up]*/
 			/*main board*/
-			match-projects = <23053 23054 23253>;
+			match-projects = <23053 23054 23055 23253>;
 		};
 	};
 /*#endif OPLUS_FEATURE_TP_BASIC*/
@@ -807,6 +807,8 @@
 		eint_num = <3>;
 		gyro_cali_version= <2>;
 		acc_cali_range= <300 300 300>; //300mg
+		stdev_xyz = <33>;
+		gyro_gain =<100>;
 	};
 	gsensor_2: gsensor_2 {
 		status = "okay";
@@ -818,6 +820,8 @@
 		eint_num = <3>;
 		gyro_cali_version= <2>;
 		acc_cali_range= <300 300 300>; //300mg
+		stdev_xyz = <18>;
+		gyro_gain =<100>;
 	};
 	/*
 	enum {

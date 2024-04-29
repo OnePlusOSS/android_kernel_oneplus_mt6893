@@ -926,6 +926,16 @@
 		hw-gyro-supported = <0>;
 	};
 /* sensor end */
+	pmic_history_count:pmic_history_count {
+	};
+	pmic_history0:pmic_history0 {
+	};
+	pmic_history1:pmic_history1 {
+	};
+	pmic_history2:pmic_history2 {
+	};
+	pmic_history3:pmic_history3 {
+	};
 };
 
 /* GPS GPIO standardization start */

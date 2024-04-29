@@ -649,14 +649,16 @@ int panel_serial_number_read(struct drm_crtc *crtc, char cmd, int num)
 		if (panel_serial_info.year <= 7) {
 			continue;
 		} else {
-			printk("%s year:0x%llx, month:0x%llx, day:0x%llx, hour:0x%llx, minute:0x%llx, second:0x%llx!\n",
+			printk("%s year:0x%llx, month:0x%llx, day:0x%llx, hour:0x%llx, minute:0x%llx, second:0x%llx, msecond:0x%llx, 0x%llx!\n",
 			           	__func__,
 			           	panel_serial_info.year,
 			           	panel_serial_info.month,
 			           	panel_serial_info.day,
 			           	panel_serial_info.hour,
 			           	panel_serial_info.minute,
-			           	panel_serial_info.second);
+			           	panel_serial_info.second,
+					panel_serial_info.reserved[0],
+			           	panel_serial_info.reserved[1]);
 			break;
 		}
 	}

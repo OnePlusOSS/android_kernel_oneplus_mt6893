@@ -101,7 +101,7 @@
 		pd,source-pdo-data = <0x00019064>; /* Fixed5V1A */
 
 		pd,sink-pdo-size = <3>;
-		pd,sink-pdo-data = <0x00019064 0x00190c8 0x0001912c>; /* Fixed5V1A Fied5V2A Fixed5V3A */
+		pd,sink-pdo-data = <0x00019064 0x000190c8 0x0001912c>; /* Fixed5V1A Fied5V2A Fixed5V3A */
 
 		pd,id-vdo-size = <3>;
 		pd,id-vdo-data = <0xd10029cf 0x0 0x63600000>; /* No DP, host + device */

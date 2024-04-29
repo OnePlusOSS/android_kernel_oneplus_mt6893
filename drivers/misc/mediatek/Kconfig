@@ -311,6 +311,7 @@ source "drivers/misc/mediatek/smi/Kconfig"
 source "drivers/misc/mediatek/jpeg/Kconfig"
 source "drivers/misc/mediatek/ccu/src/Kconfig"
 source "drivers/misc/mediatek/camera_security/Kconfig"
+source "drivers/misc/mediatek/aw37004/Kconfig"
 endmenu # MultiMedia
 
 menu "Sensors"

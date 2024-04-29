@@ -48,6 +48,8 @@
 #define REGFLAG_DELAY       0xFFFC
 #define REGFLAG_UDELAY  0xFFFB
 #define REGFLAG_END_OF_TABLE    0xFFFD
+#define PHYSICAL_WIDTH (69690)
+#define PHYSICAL_HEIGHT (155330)
 
 #define BRIGHTNESS_MAX    4095
 #define BRIGHTNESS_HALF   2047
@@ -56,6 +58,7 @@
 static unsigned int esd_brightness = 1023;
 extern unsigned long oplus_display_brightness;
 extern unsigned long oplus_max_normal_brightness;
+extern unsigned int oplus_lcm_display_on;
 static bool aod_state = false;
 
 extern void lcdinfo_notify(unsigned long val, void *v);
@@ -70,7 +73,32 @@ struct LCM_setting_table {
 };
 
 
-static struct LCM_setting_table init_setting[] = {
+static int get_mode_enum(struct drm_display_mode *m)
+{
+	int ret = 0;
+	int m_vrefresh = 0;
+
+	if (m == NULL) {
+		pr_info("get_mode_enum drm_display_mode *m is null ,default 60fps\n");
+		ret = 60;
+		return ret;
+	}
+
+		m_vrefresh = drm_mode_vrefresh(m);
+		DISP_INFO("m_vrefresh=%d\n", m_vrefresh);
+		if (m_vrefresh == 60) {
+			ret = 60;
+		} else if (m_vrefresh == 90) {
+			ret = 90;
+		} else if (m_vrefresh == 120) {
+			ret = 120;
+		} else {
+			ret = 60;
+		}
+	return ret;
+}
+
+static struct LCM_setting_table init_setting_60hz[] = {
 	/* last 1 bit esd check-burn code */
 	{REGFLAG_CMD, 4, {0xFF,0x08,0x38,0x06}},
 	{REGFLAG_CMD, 2, {0xC6,0x01}},
@@ -85,6 +113,9 @@ static struct LCM_setting_table init_setting[] = {
 	{REGFLAG_CMD, 4, {0xFF,0x08,0x38,0x06}},
 	{REGFLAG_CMD, 2, {0xD2,0x01}},
 	{REGFLAG_CMD, 2, {0xA1,0x00}},
+	/* SY7561 SWIRE Pules > 500us */
+	{REGFLAG_CMD, 4, {0xFF, 0x08, 0x38, 0x1F}},
+	{REGFLAG_CMD, 6, {0x89, 0x11, 0x01, 0x00, 0xF0, 0x44}},
 	/* Flash reload EN */
 	{REGFLAG_CMD, 4, {0xFF,0x08,0x38,0x21}},
 	{REGFLAG_CMD, 2, {0xA4,0x18}},
@@ -124,6 +155,8 @@ static struct LCM_setting_table init_setting[] = {
                         0x2a,0xbe,0x3a,0xfc,0x3a,0xfa,0x3a,0xf8,0x3b,0x38,
                         0x3b,0x78,0x3b,0xb6,0x4b,0xb6,0x4b,0xf4,0x4b,0xf4,
                         0x6c,0x34,0x84,0x74,0x00,0x00,0x00,0x00,0x00,0x00}},
+	/* wait 3ms for dsc to complete */
+	{REGFLAG_DELAY, 3, {}},
 	/* Frequence Transition 60Hz */
 	{REGFLAG_CMD, 4, {0xFF,0x08,0x38,0x2D}},
 	{REGFLAG_CMD, 2, {0x81,0x05}},
@@ -132,9 +165,172 @@ static struct LCM_setting_table init_setting[] = {
 	{REGFLAG_CMD, 2, {0x35,0x00}},
 	/* Dimmig off */
 	{REGFLAG_CMD, 2, {0x53,0x20}},
+	{REGFLAG_CMD, 3, {0x51,0x00,0x00}},
 	/* SleepOut+DELAY+DisplayOn */
 	{REGFLAG_CMD, 1, {0x11}},
 	{REGFLAG_DELAY, 120, {}},
+	/* TE lock */
+	{REGFLAG_CMD, 4, {0xFF,0x08,0x38,0x02}},
+	{REGFLAG_CMD, 2, {0xA7,0x16}},
+	{REGFLAG_CMD, 4, {0xFF,0x08,0x38,0x00}},
+	{REGFLAG_CMD, 1, {0x29}},
+	{REGFLAG_CMD, 4, {0xFF,0x08,0x38,0x20}},
+};
+
+static struct LCM_setting_table init_setting_90hz[] = {
+	/* last 1 bit esd check-burn code */
+	{REGFLAG_CMD, 4, {0xFF,0x08,0x38,0x06}},
+	{REGFLAG_CMD, 2, {0xC6,0x01}},
+	{REGFLAG_CMD, 4, {0xFF,0x08,0x38,0x08}},
+        {REGFLAG_CMD, 2, {0xD2,0x05}},
+	/* open CRC_V line esd */
+	{REGFLAG_CMD, 4, {0xFF,0x08,0x38,0x02}},
+	{REGFLAG_CMD, 2, {0xF8,0x01}},
+	{REGFLAG_CMD, 4, {0xFF,0x08,0x38,0x20}},
+	{REGFLAG_CMD, 2, {0xB3,0x50}},
+	{REGFLAG_CMD, 2, {0xB5,0x03}},
+	{REGFLAG_CMD, 4, {0xFF,0x08,0x38,0x06}},
+	{REGFLAG_CMD, 2, {0xD2,0x01}},
+	{REGFLAG_CMD, 2, {0xA1,0x00}},
+	/* SY7561 SWIRE Pules > 500us */
+	{REGFLAG_CMD, 4, {0xFF, 0x08, 0x38, 0x1F}},
+	{REGFLAG_CMD, 6, {0x89, 0x11, 0x01, 0x00, 0xF0, 0x44}},
+	/* Flash reload EN */
+	{REGFLAG_CMD, 4, {0xFF,0x08,0x38,0x21}},
+	{REGFLAG_CMD, 2, {0xA4,0x18}},
+	/* Demura data select */
+	{REGFLAG_CMD, 4, {0xFF,0x08,0x38,0x19}},
+	{REGFLAG_CMD, 2, {0xC5,0x00}},
+	/* Demura Setting */
+	{REGFLAG_CMD, 4, {0xFF,0x08,0x38,0x30}},
+	{REGFLAG_CMD, 2, {0x87,0x04}},
+	{REGFLAG_CMD, 2, {0xAE,0x01}},
+	{REGFLAG_CMD, 2, {0x80,0x01}},
+	/* OTP dont reload */
+	{REGFLAG_CMD, 4, {0xFF,0x08,0x38,0x08}},
+	{REGFLAG_CMD, 2, {0xC8,0x62}},
+	/* SPR on */
+	{REGFLAG_CMD, 4, {0xFF,0x08,0x38,0x14}},
+	{REGFLAG_CMD, 2, {0x80,0x01}},
+	/* Round off */
+	{REGFLAG_CMD, 4, {0xFF,0x08, 0x38, 0x17}},
+	{REGFLAG_CMD, 2, {0xA0,0x3D}},
+	{REGFLAG_CMD, 4, {0xFF,0x08, 0x38, 0x13}},
+	{REGFLAG_CMD, 2, {0xF9,0x00}},
+	/* IR Drop off */
+	{REGFLAG_CMD, 4, {0xFF,0x08, 0x38, 0x00}},
+	{REGFLAG_CMD, 2, {0x95,0x00}},
+	/* DSC SETTING 10Bit 3.75 v1.1 */
+	{REGFLAG_CMD, 4, {0xFF,0x08,0x38,0x07}},
+	{REGFLAG_CMD, 2, {0x8A,0x01}},
+	{REGFLAG_CMD, 3, {0x8B,0x11,0xE0}},
+	{REGFLAG_CMD, 100, {0x81,0x00,0x00,0x00,0x00,0x00,0x11,0x00,0x00,0xab,
+                        0x30,0x80,0x09,0x6c,0x04,0x38,0x00,0x0c,0x02,0x1c,
+                        0x02,0x1c,0x02,0x00,0x02,0x0e,0x00,0x20,0x01,0x1f,
+                        0x00,0x07,0x00,0x0c,0x08,0xbb,0x08,0x7a,0x18,0x00,
+                        0x10,0xf0,0x07,0x10,0x20,0x00,0x06,0x0f,0x0f,0x33,
+                        0x0e,0x1c,0x2a,0x38,0x46,0x54,0x62,0x69,0x70,0x77,
+                        0x79,0x7b,0x7d,0x7e,0x02,0x02,0x22,0x00,0x2a,0x40,
+                        0x2a,0xbe,0x3a,0xfc,0x3a,0xfa,0x3a,0xf8,0x3b,0x38,
+                        0x3b,0x78,0x3b,0xb6,0x4b,0xb6,0x4b,0xf4,0x4b,0xf4,
+                        0x6c,0x34,0x84,0x74,0x00,0x00,0x00,0x00,0x00,0x00}},
+	/* wait 3ms for dsc to complete */
+	{REGFLAG_DELAY, 3, {}},
+	/* Frequence Transition 90Hz */
+	{REGFLAG_CMD, 4, {0xFF,0x08,0x38,0x2D}},
+	{REGFLAG_CMD, 2, {0x81,0x04}},
+	/* TE on */
+	{REGFLAG_CMD, 4, {0xFF,0x08,0x38,0x00}},
+	{REGFLAG_CMD, 2, {0x35,0x00}},
+	/* Dimmig off */
+	{REGFLAG_CMD, 2, {0x53,0x20}},
+	{REGFLAG_CMD, 3, {0x51,0x00,0x00}},
+	/* SleepOut+DELAY+DisplayOn */
+	{REGFLAG_CMD, 1, {0x11}},
+	{REGFLAG_DELAY, 120, {}},
+	/* TE lock */
+	{REGFLAG_CMD, 4, {0xFF,0x08,0x38,0x02}},
+	{REGFLAG_CMD, 2, {0xA7,0x16}},
+	{REGFLAG_CMD, 4, {0xFF,0x08,0x38,0x00}},
+	{REGFLAG_CMD, 1, {0x29}},
+	{REGFLAG_CMD, 4, {0xFF,0x08,0x38,0x20}},
+};
+
+static struct LCM_setting_table init_setting_120hz[] = {
+	/* last 1 bit esd check-burn code */
+	{REGFLAG_CMD, 4, {0xFF,0x08,0x38,0x06}},
+	{REGFLAG_CMD, 2, {0xC6,0x01}},
+	{REGFLAG_CMD, 4, {0xFF,0x08,0x38,0x08}},
+        {REGFLAG_CMD, 2, {0xD2,0x05}},
+	/* open CRC_V line esd */
+	{REGFLAG_CMD, 4, {0xFF,0x08,0x38,0x02}},
+	{REGFLAG_CMD, 2, {0xF8,0x01}},
+	{REGFLAG_CMD, 4, {0xFF,0x08,0x38,0x20}},
+	{REGFLAG_CMD, 2, {0xB3,0x50}},
+	{REGFLAG_CMD, 2, {0xB5,0x03}},
+	{REGFLAG_CMD, 4, {0xFF,0x08,0x38,0x06}},
+	{REGFLAG_CMD, 2, {0xD2,0x01}},
+	{REGFLAG_CMD, 2, {0xA1,0x00}},
+	/* SY7561 SWIRE Pules > 500us */
+	{REGFLAG_CMD, 4, {0xFF, 0x08, 0x38, 0x1F}},
+	{REGFLAG_CMD, 6, {0x89, 0x11, 0x01, 0x00, 0xF0, 0x44}},
+	/* Flash reload EN */
+	{REGFLAG_CMD, 4, {0xFF,0x08,0x38,0x21}},
+	{REGFLAG_CMD, 2, {0xA4,0x18}},
+	/* Demura data select */
+	{REGFLAG_CMD, 4, {0xFF,0x08,0x38,0x19}},
+	{REGFLAG_CMD, 2, {0xC5,0x00}},
+	/* Demura Setting */
+	{REGFLAG_CMD, 4, {0xFF,0x08,0x38,0x30}},
+	{REGFLAG_CMD, 2, {0x87,0x04}},
+	{REGFLAG_CMD, 2, {0xAE,0x01}},
+	{REGFLAG_CMD, 2, {0x80,0x01}},
+	/* OTP dont reload */
+	{REGFLAG_CMD, 4, {0xFF,0x08,0x38,0x08}},
+	{REGFLAG_CMD, 2, {0xC8,0x62}},
+	/* SPR on */
+	{REGFLAG_CMD, 4, {0xFF,0x08,0x38,0x14}},
+	{REGFLAG_CMD, 2, {0x80,0x01}},
+	/* Round off */
+	{REGFLAG_CMD, 4, {0xFF,0x08, 0x38, 0x17}},
+	{REGFLAG_CMD, 2, {0xA0,0x3D}},
+	{REGFLAG_CMD, 4, {0xFF,0x08, 0x38, 0x13}},
+	{REGFLAG_CMD, 2, {0xF9,0x00}},
+	/* IR Drop off */
+	{REGFLAG_CMD, 4, {0xFF,0x08, 0x38, 0x00}},
+	{REGFLAG_CMD, 2, {0x95,0x00}},
+	/* DSC SETTING 10Bit 3.75 v1.1 */
+	{REGFLAG_CMD, 4, {0xFF,0x08,0x38,0x07}},
+	{REGFLAG_CMD, 2, {0x8A,0x01}},
+	{REGFLAG_CMD, 3, {0x8B,0x11,0xE0}},
+	{REGFLAG_CMD, 100, {0x81,0x00,0x00,0x00,0x00,0x00,0x11,0x00,0x00,0xab,
+                        0x30,0x80,0x09,0x6c,0x04,0x38,0x00,0x0c,0x02,0x1c,
+                        0x02,0x1c,0x02,0x00,0x02,0x0e,0x00,0x20,0x01,0x1f,
+                        0x00,0x07,0x00,0x0c,0x08,0xbb,0x08,0x7a,0x18,0x00,
+                        0x10,0xf0,0x07,0x10,0x20,0x00,0x06,0x0f,0x0f,0x33,
+                        0x0e,0x1c,0x2a,0x38,0x46,0x54,0x62,0x69,0x70,0x77,
+                        0x79,0x7b,0x7d,0x7e,0x02,0x02,0x22,0x00,0x2a,0x40,
+                        0x2a,0xbe,0x3a,0xfc,0x3a,0xfa,0x3a,0xf8,0x3b,0x38,
+                        0x3b,0x78,0x3b,0xb6,0x4b,0xb6,0x4b,0xf4,0x4b,0xf4,
+                        0x6c,0x34,0x84,0x74,0x00,0x00,0x00,0x00,0x00,0x00}},
+	/* wait 3ms for dsc to complete */
+	{REGFLAG_DELAY, 3, {}},
+	/* Frequence Transition 120Hz */
+	{REGFLAG_CMD, 4, {0xFF,0x08,0x38,0x2D}},
+	{REGFLAG_CMD, 2, {0x81,0x00}},
+	/* TE on */
+	{REGFLAG_CMD, 4, {0xFF,0x08,0x38,0x00}},
+	{REGFLAG_CMD, 2, {0x35,0x00}},
+	/* Dimmig off */
+	{REGFLAG_CMD, 2, {0x53,0x20}},
+	{REGFLAG_CMD, 3, {0x51,0x00,0x00}},
+	/* SleepOut+DELAY+DisplayOn */
+	{REGFLAG_CMD, 1, {0x11}},
+	{REGFLAG_DELAY, 120, {}},
+	/* TE lock */
+	{REGFLAG_CMD, 4, {0xFF,0x08,0x38,0x02}},
+	{REGFLAG_CMD, 2, {0xA7,0x16}},
+	{REGFLAG_CMD, 4, {0xFF,0x08,0x38,0x00}},
 	{REGFLAG_CMD, 1, {0x29}},
 	{REGFLAG_CMD, 4, {0xFF,0x08,0x38,0x20}},
 };
@@ -149,6 +345,7 @@ struct lcm {
 	struct gpio_desc *vddr1p2_enable_gpio;
 	struct gpio_desc *vddr_aod_enable_gpio;
 	struct gpio_desc *vci_enable_gpio;
+	struct drm_display_mode *m;
 	struct gpio_desc *te_switch_gpio,*te_out_gpio;
 	bool prepared;
 	bool enabled;
@@ -256,9 +453,25 @@ static void push_table(struct lcm *ctx, struct LCM_setting_table *table, unsigne
 
 static void lcm_panel_init(struct lcm *ctx)
 {
+	int mode_id = -1;
+	struct drm_display_mode *m = ctx->m;
+	mode_id = get_mode_enum(m);
 	DISP_INFO("%s +\n", __func__);
-
-	push_table(ctx, init_setting, sizeof(init_setting) / sizeof(struct LCM_setting_table));
+	switch (mode_id) {
+		DISP_DEBUG("%s:last_fps_mode=%d\n", __func__, mode_id);
+		case 120:
+			push_table(ctx, init_setting_120hz, sizeof(init_setting_120hz) / sizeof(struct LCM_setting_table));
+			break;
+		case 90:
+			push_table(ctx, init_setting_90hz, sizeof(init_setting_90hz) / sizeof(struct LCM_setting_table));
+			break;
+		case 60:
+			push_table(ctx, init_setting_60hz, sizeof(init_setting_60hz) / sizeof(struct LCM_setting_table));
+			break;
+		default:
+			push_table(ctx, init_setting_60hz, sizeof(init_setting_60hz) / sizeof(struct LCM_setting_table));
+			break;
+	}
 
 	DISP_INFO("%s -\n", __func__);
 }
@@ -306,6 +519,7 @@ static int lcm_unprepare(struct drm_panel *panel)
 	if (!ctx->prepared)
 		return 0;
 
+	oplus_lcm_display_on = 0;
 	lcm_dcs_write_seq_static(ctx, MIPI_DCS_SET_DISPLAY_OFF);
 	/* Wait 0ms, actual 15ms */
 	usleep_range(15000, 15100);
@@ -343,6 +557,7 @@ static int lcm_prepare(struct drm_panel *panel)
 	/* Wait > 20ms, actual 20ms */
 	usleep_range(20000, 20100);
 	lcm_panel_init(ctx);
+	oplus_lcm_display_on = 1;
 
 	ret = ctx->error;
 	if (ret < 0)
@@ -474,8 +689,10 @@ static struct mtk_panel_params ext_params = {
         .rc_tgt_offset_lo = 3,
 
 		},
+	.panel_bpp = 10,
 	.data_rate = 600,
 	.oplus_serial_para0 = 0x81,
+	.oplus_ofp_need_to_sync_data_in_aod_unlocking = true,
         .oplus_ofp_aod_off_insert_black = 2,
         .oplus_ofp_aod_off_black_frame_total_time = 67,
         .oplus_ofp_need_keep_apart_backlight = true,
@@ -485,6 +702,9 @@ static struct mtk_panel_params ext_params = {
         .dyn_fps = {
                 .switch_en = 1, .vact_timing_fps = 60,
         },
+		.skip_unnecessary_switch = true,
+	.physical_width_um = PHYSICAL_WIDTH,
+	.physical_height_um = PHYSICAL_HEIGHT,
 };
 
 static struct mtk_panel_params ext_params_90hz = {
@@ -565,8 +785,10 @@ static struct mtk_panel_params ext_params_90hz = {
         .rc_tgt_offset_hi = 3,
         .rc_tgt_offset_lo = 3,
 		},
+	.panel_bpp = 10,
 	.data_rate = 600,
 	.oplus_serial_para0 = 0x81,
+	.oplus_ofp_need_to_sync_data_in_aod_unlocking = true,
         .oplus_ofp_aod_off_insert_black = 2,
         .oplus_ofp_aod_off_black_frame_total_time = 56,
         .oplus_ofp_need_keep_apart_backlight = true,
@@ -576,6 +798,9 @@ static struct mtk_panel_params ext_params_90hz = {
         .dyn_fps = {
                 .switch_en = 1, .vact_timing_fps = 90,
         },
+		.skip_unnecessary_switch = true,
+	.physical_width_um = PHYSICAL_WIDTH,
+	.physical_height_um = PHYSICAL_HEIGHT,
 };
 
 static struct mtk_panel_params ext_params_120hz = {
@@ -658,8 +883,10 @@ static struct mtk_panel_params ext_params_120hz = {
         .rc_tgt_offset_hi = 3,
         .rc_tgt_offset_lo = 3,
 		},
+	.panel_bpp = 10,
 	.data_rate = 1107,
 	.oplus_serial_para0 = 0x81,
+	.oplus_ofp_need_to_sync_data_in_aod_unlocking = true,
         .oplus_ofp_aod_off_insert_black = 2,
         .oplus_ofp_aod_off_black_frame_total_time = 50,
         .oplus_ofp_need_keep_apart_backlight = true,
@@ -669,6 +896,9 @@ static struct mtk_panel_params ext_params_120hz = {
 	.dyn_fps = {
                 .switch_en = 1, .vact_timing_fps = 120,
         },
+	.skip_unnecessary_switch = true,
+	.physical_width_um = PHYSICAL_WIDTH,
+	.physical_height_um = PHYSICAL_HEIGHT,
 };
 
 static int panel_ata_check(struct drm_panel *panel)
@@ -752,7 +982,7 @@ static int lcm_set_hbm(void *dsi, dcs_write_gce cb,
 	if (!cb)
 		return -1;
 
-	DISP_DEBUG("oplus_display_brightness= %ld, hbm_mode=%u\n", oplus_display_brightness, hbm_mode);
+	DISP_INFO("oplus_display_brightness= %ld, hbm_mode=%u\n", oplus_display_brightness, hbm_mode);
 
 	if(hbm_mode == 1) {
 		for (i = 0; i < sizeof(lcm_finger_HBM_on_setting)/sizeof(struct LCM_setting_table); i++){
@@ -800,7 +1030,7 @@ static int oplus_esd_backlight_recovery(void *dsi, dcs_write_gce cb,
 	bl_tb0[2] = esd_brightness & 0xFF;
  	if (!cb)
 		return -1;
-	DISP_ERR(" bl_tb0[1]=%x, bl_tb0[2]=%x\n", bl_tb0[1], bl_tb0[2]);
+	DISP_INFO(" bl_tb0[1]=%x, bl_tb0[2]=%x\n", bl_tb0[1], bl_tb0[2]);
 	cb(dsi, handle, bl_tb0, ARRAY_SIZE(bl_tb0));
 
  	return 1;
@@ -825,6 +1055,7 @@ static struct LCM_setting_table lcm_aod_to_normal[] = {
 	{REGFLAG_CMD, 4, {0xFF,0x08,0x38,0x00}},
 	{REGFLAG_CMD, 1, {0x38}},
 	{REGFLAG_CMD, 4, {0xFF,0x08,0x38,0x20}},
+	{REGFLAG_CMD, 3, {0x51, 0x00, 0x00}},
 };
 
 static int panel_doze_disable(struct drm_panel *panel, void *dsi, dcs_write_gce cb, void *handle)
@@ -866,8 +1097,9 @@ static int panel_doze_disable(struct drm_panel *panel, void *dsi, dcs_write_gce 
 	aod_state = false;
 	/* keep vcore off */
 	mtk_lpm_smc_spm_dbg(MT_SPM_DBG_SMC_UID_SUSPEND_PWR_CTRL, MT_LPM_SMC_ACT_SET, PW_REG_SPM_VCORE_REQ, 0x0);
-	DISP_DEBUG(" call lpm_smc_spm_dbg keep vcore off for exit AOD!\n");
-	DISP_DEBUG("%s:success\n", __func__);
+	lcm_setbacklight_cmdq(dsi, cb, handle, oplus_display_brightness);
+	DISP_INFO(" call lpm_smc_spm_dbg keep vcore off for exit AOD!\n");
+	DISP_INFO("%s:success\n", __func__);
 
 	return 0;
 }
@@ -917,8 +1149,8 @@ static int panel_doze_enable(struct drm_panel *panel, void *dsi, dcs_write_gce c
 	}
 	/* keep vcore on */
 	mtk_lpm_smc_spm_dbg(MT_SPM_DBG_SMC_UID_SUSPEND_PWR_CTRL, MT_LPM_SMC_ACT_SET, PW_REG_SPM_VCORE_REQ, 0x1);
-	DISP_DEBUG("call lpm_smc_spm_dbg keep vcore on for enter AOD then Succ!\n");
-	DISP_DEBUG("%s:success\n", __func__);
+	DISP_INFO("call lpm_smc_spm_dbg keep vcore on for enter AOD then Succ!\n");
+	DISP_INFO("%s:success\n", __func__);
 
 	return 0;
 }
@@ -956,36 +1188,65 @@ static int panel_set_aod_light_mode(void *dsi, dcs_write_gce cb, void *handle, u
 }
 
 static struct regulator *mt6315_6_vbuck4;
+static int vddr6_buck4_regulator_init(struct device *dev)
+{
+	static int regulator_inited;
+	int ret = 0;
+
+	if (regulator_inited)
+		return ret;
+
+    pr_err("get vddr6_buck4_regulator_init\n");
+
+	/* please only get regulator once in a driver */
+	mt6315_6_vbuck4 = devm_regulator_get(dev, "6_vbuck4");
+	if (IS_ERR_OR_NULL(mt6315_6_vbuck4)) { /* handle return value */
+		ret = PTR_ERR(mt6315_6_vbuck4);
+		pr_err("get vddr6_buck4_optional fail, error: %d\n", ret);
+		//return ret;
+	}
+	regulator_inited = 1;
+	return ret; /* must be 0 */
+}
 static int vddr6_buck4_regulator_enable(struct device *dev)
 {
 	int ret = 0;
+	int retval = 0;
 
-    pr_err("get vddr6_buck4_regulator_init\n");
+	vddr6_buck4_regulator_init(dev);
 
-	mt6315_6_vbuck4 = devm_regulator_get_optional(dev, "6_vbuck4");
-	if (!IS_ERR(mt6315_6_vbuck4)) {
-        pr_err("get vddr6_buck4_optional success\n");
+	/* set voltage with min & max*/
+	if (!IS_ERR_OR_NULL(mt6315_6_vbuck4)) {
+		ret = regulator_set_voltage(mt6315_6_vbuck4, 1190000, 1193750);
+		if (ret < 0)
+			DISP_ERR("set voltage mt6315_6_vbuck4 fail, ret = %d\n", ret);
+		retval |= ret;
+	}
+
+	/* enable regulator */
+	if (!IS_ERR_OR_NULL(mt6315_6_vbuck4)) {
 		ret = regulator_enable(mt6315_6_vbuck4);
+		if (ret < 0)
+			DISP_ERR("enable regulator mt6315_6_vbuck4 fail, ret = %d\n", ret);
+		retval |= ret;
 	}
-	if (regulator_is_enabled(mt6315_6_vbuck4)) {
-        pr_err("get vddr6_buck4_regulator_enable success\n");
-	}
-    return ret;
+	DISP_INFO("get vddr6_buck4_regulator_enable\n");
+	return retval;
 }
-
 static int vddr6_buck4_regulator_disable(struct device *dev)
 {
 	int ret = 0;
+	int retval = 0;
 
-    pr_err("get vddr6_buck4_regulator_init\n");
+	vddr6_buck4_regulator_init(dev);
 
-	mt6315_6_vbuck4 = devm_regulator_get_optional(dev, "6_vbuck4");
-	if (!IS_ERR(mt6315_6_vbuck4)) {
-        pr_err("get vddr6_buck4_optional success\n");
+	if (!IS_ERR_OR_NULL(mt6315_6_vbuck4)) {
 		ret = regulator_disable(mt6315_6_vbuck4);
+		if (ret < 0)
+			DISP_ERR("disable regulator mt6315_6_vbuck4 fail, ret = %d\n", ret);
+		retval |= ret;
 	}
-    pr_err("get vddr6_buck4_regulator_enable success\n");
-    return ret;
+	return retval;
 }
 
 static int lcm_panel_poweron(struct drm_panel *panel)
@@ -1000,17 +1261,11 @@ static int lcm_panel_poweron(struct drm_panel *panel)
 	/* VDDI pmic always enable */
 	/* Wait > 0, actual 2ms */
 	usleep_range(2000, 2100);
-	/* VDDR LDO GPIO enable */
-	//ctx->vddr1p2_enable_gpio = devm_gpiod_get(ctx->dev, "vddr-enable", GPIOD_OUT_HIGH);
-	//gpiod_set_value(ctx->vddr1p2_enable_gpio, 1);
-	//devm_gpiod_put(ctx->dev, ctx->vddr1p2_enable_gpio);
+	/* VDDR LDO vBuck enable */
 	vddr6_buck4_regulator_enable(ctx->dev);
 	/* Wait > 0, actual 2ms */
 	usleep_range(2000, 2100);
-	/* VCI LDO GPIO enable */
-	//ctx->vci_enable_gpio = devm_gpiod_get(ctx->dev, "3p0-enable", GPIOD_OUT_HIGH);
-	//gpiod_set_value(ctx->vci_enable_gpio, 1);
-	//devm_gpiod_put(ctx->dev, ctx->vci_enable_gpio);
+	/* VCI LDO enable */
 	pmic_ldo_set_voltage_mv(3,3000);
 	/* Wait > 10ms, actual 15ms */
 	usleep_range(5000, 5100);
@@ -1039,17 +1294,11 @@ static int lcm_panel_poweroff(struct drm_panel *panel)
 	devm_gpiod_put(ctx->dev, ctx->reset_gpio);
 	/* Wait > 0, actual 5ms */
 	usleep_range(5000, 5100);
-	/* VCI LDO GPIO disable */
-	//ctx->vci_enable_gpio = devm_gpiod_get(ctx->dev, "3p0-enable", GPIOD_OUT_HIGH);
-	//gpiod_set_value(ctx->vci_enable_gpio, 0);
-	//devm_gpiod_put(ctx->dev, ctx->vci_enable_gpio);
+	/* VCI LDO disable */
 	pmic_ldo_set_disable(3);
 	/* Wait > 0, actual 5ms */
 	usleep_range(5000, 5100);
-	/* VDDR LDO GPIO disable */
-	//ctx->vddr1p2_enable_gpio = devm_gpiod_get(ctx->dev, "vddr-enable", GPIOD_OUT_HIGH);
-	//gpiod_set_value(ctx->vddr1p2_enable_gpio, 0);
-	//devm_gpiod_put(ctx->dev, ctx->vddr1p2_enable_gpio);
+	/* VDDR LDO vBuck disable */
 	vddr6_buck4_regulator_disable(ctx->dev);
 	/* Wait > 0, actual 15ms */
 	usleep_range(15000, 15100);
@@ -1148,6 +1397,7 @@ static int mode_switch(struct drm_panel *panel, unsigned int cur_mode,
 {
 	int ret = 0;
 	struct drm_display_mode *m = get_mode_by_id(panel, dst_mode);
+	struct lcm *ctx = panel_to_lcm(panel);
 	DISP_INFO("cur_mode = %d dst_mode %d\n", cur_mode, dst_mode);
 
 	if (drm_mode_vrefresh(m) == 60) {
@@ -1161,6 +1411,7 @@ static int mode_switch(struct drm_panel *panel, unsigned int cur_mode,
 		mode_switch_to_120(panel, stage);
 	} else
 		ret = 1;
+	ctx->m = m;
 
 	return ret;
 }
@@ -1246,9 +1497,6 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 	struct lcm *ctx;
 	struct device_node *backlight;
 	int ret;
-/* #ifdef OPLUS_FEATURE_ONSCREENFINGERPRINT */
-	//unsigned int fp_type = 0x08;
-/* #endif */ /* OPLUS_FEATURE_ONSCREENFINGERPRINT */
 
 	DISP_INFO("p_3 A0004 +\n");
 
@@ -1298,22 +1546,9 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 	devm_gpiod_put(dev, ctx->reset_gpio);
 
 	usleep_range(5000, 5100);
-	//ctx->vddr1p2_enable_gpio = devm_gpiod_get(dev, "vddr-enable", GPIOD_OUT_HIGH);
-	//if (IS_ERR(ctx->vddr1p2_enable_gpio)) {
-	//	DISP_ERR(" cannot get vddr1p2_enable_gpio %ld\n",PTR_ERR(ctx->vddr1p2_enable_gpio));
-	//	return PTR_ERR(ctx->vddr1p2_enable_gpio);
-	//}
-	//devm_gpiod_put(dev, ctx->vddr1p2_enable_gpio);
 	vddr6_buck4_regulator_enable(ctx->dev);
 
 	usleep_range(5000, 5100);
-
-	//ctx->vci_enable_gpio = devm_gpiod_get(ctx->dev, "3p0-enable", GPIOD_OUT_HIGH);
-	//if (IS_ERR(ctx->vci_enable_gpio)) {
-	//	DISP_ERR(" cannot get vci_enable_gpio %ld\n",PTR_ERR(ctx->vci_enable_gpio));
-	//	return PTR_ERR(ctx->vci_enable_gpio);
-	//}
-	//devm_gpiod_put(dev, ctx->vci_enable_gpio);
 	pmic_ldo_set_voltage_mv(3,3000);
 
 	ctx->prepared = true;
@@ -1336,14 +1571,9 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 
 #endif
 	register_device_proc("lcd", "A0004", "P_3");
-	//oplus_enhance_mipi_strength = 1;
-	//flag_silky_panel = BL_SETTING_DELAY_60HZ;
 	oplus_max_normal_brightness = MAX_NORMAL_BRIGHTNESS;
-/* #ifdef OPLUS_FEATURE_ONSCREENFINGERPRINT */
-	//oplus_ofp_set_fp_type(&fp_type);
-/* #endif */ /* OPLUS_FEATURE_ONSCREENFINGERPRINT */
 
-	DISP_ERR("%s:success\n", __func__);
+	DISP_INFO("success!\n");
 
 	return ret;
 }

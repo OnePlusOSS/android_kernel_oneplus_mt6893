@@ -1373,6 +1373,11 @@ void dlpt_notify_init(void)
 }
 
 #else
+
+void register_dlpt_notify(void (*dlpt_callback)(unsigned int val),
+       enum DLPT_PRIO_TAG prio_val)
+{ }
+
 int get_dlpt_imix_spm(void)
 {
 	return 1;

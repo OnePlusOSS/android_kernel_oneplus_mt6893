@@ -522,13 +522,11 @@ bool ufstw_need_flush(struct ufsf_feature *ufsf)
 
 	tw = ufsf->tw_lup[2];
 
-	if (atomic_read(&tw->tw_mode) == TW_MODE_DISABLED)
+	if (atomic_read(&tw->tw_mode) == TW_MODE_DISABLED
+		|| atomic_read(&tw->ufsf->tw_state) != TW_PRESENT)
 		goto out;
 
 	if (!tw->tw_enable)
-		goto out;
-
-	if (atomic_read(&tw->ufsf->tw_state) != TW_PRESENT)
 		goto out;
 
 	ufstw_lu_get(tw);
@@ -543,6 +541,19 @@ bool ufstw_need_flush(struct ufsf_feature *ufsf)
 	}
 
 	idx = ufstw_get_query_idx(tw);
+
+	if (ufsf_query_attr_retry(hba, UPIU_QUERY_OPCODE_READ_ATTR,
+				  QUERY_ATTR_CUR_TW_BUF_SIZE,
+				  idx,
+				  &tw->tw_current_tw_buffer_size)) {
+		ERR_MSG("ERROR: get current tw buffer size error");
+		goto out_put;
+	}
+
+	/* No need flush */
+	if (tw->tw_current_tw_buffer_size == 0)
+		goto out_put;
+
 	if (ufsf_query_attr_retry(hba, UPIU_QUERY_OPCODE_READ_ATTR,
 				  QUERY_ATTR_IDN_TW_BUF_SIZE,
 				  idx,
@@ -570,8 +581,6 @@ bool ufstw_need_flush(struct ufsf_feature *ufsf)
 			goto out_put;
 		}
 	} else {
-		/* Other device recover WB by hibernate */
-		schedule_delayed_work(&tw->tw_flush_h8_work, 0);
 		need_flush = true;
 	}
 

@@ -304,6 +304,33 @@ struct GPIO_PINCTRL gpio_pinctrl_list_cam_22629[
 #endif
 };
 
+struct GPIO_PINCTRL gpio_pinctrl_list_cam_23687[
+                        GPIO_CTRL_STATE_MAX_NUM_CAM] = {
+        /* Main */
+	{"pnd1"},
+	{"pnd0"},
+	{"rst1"},
+	{"rst0"},
+	{"ldo_vcama_1"},
+	{"ldo_vcama_0"},
+	{"ldo_vcamd_1"},
+	{"ldo_vcamd_0"},
+	{"ldo_vcamio_1"},
+	{"ldo_vcamio_0"},
+#ifdef OPLUS_FEATURE_CAMERA_COMMON
+	{"ldo_vcamaf_1"},
+	{"ldo_vcamaf_0"},
+	{"ldo_vcama1_1"},
+	{"ldo_vcama1_0"},
+	{"ldo_vcamd1_1"},
+	{"ldo_vcamd1_0"},
+	{"ldo_vcamois_1"},
+	{"ldo_vcamois_0"},
+	{"ldo_vcama1_1"},
+	{"ldo_vcama1_0"},
+#endif
+};
+
 struct GPIO_PINCTRL gpio_pinctrl_list_cam_blade[
 			GPIO_CTRL_STATE_MAX_NUM_CAM] = {
 	/* Main */
@@ -429,7 +456,7 @@ static enum IMGSENSOR_RETURN gpio_init(
 			} else if(is_project(22083) || is_project(22084) || is_project(22291) || is_project(22292)) {
 				lookup_names =
 				gpio_pinctrl_list_cam_lijing[i].ppinctrl_lookup_names;
-			} else if(is_project(23053) || is_project(23054) || is_project(23253)) {
+			} else if(is_project(23053) || is_project(23054) || is_project(23253) || is_project(23055)) {
 				lookup_names =
 				gpio_pinctrl_list_cam_lijinga[i].ppinctrl_lookup_names;
 			} else if(is_project(22087) || is_project(22088) || is_project(22331) || is_project(22332) || is_project(22333)
@@ -443,6 +470,10 @@ static enum IMGSENSOR_RETURN gpio_init(
 			   || is_project(22633) || is_project(22712) || is_project(22713)) {
 				lookup_names =
 				gpio_pinctrl_list_cam_22629[i].ppinctrl_lookup_names;
+			} else if(is_project(23613) || is_project(23686) || is_project(23687) || is_project(23689)
+			   || is_project(23707) || is_project(23709)) {
+				lookup_names =
+				gpio_pinctrl_list_cam_23687[i].ppinctrl_lookup_names;
 			} else if(is_project(21081)) {
 				lookup_names =
 				gpio_pinctrl_list_cam_dufu[i].ppinctrl_lookup_names;

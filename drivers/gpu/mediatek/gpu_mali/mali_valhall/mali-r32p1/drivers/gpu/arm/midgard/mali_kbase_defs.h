@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 /*
  *
- * (C) COPYRIGHT 2011-2021 ARM Limited. All rights reserved.
+ * (C) COPYRIGHT 2011-2023 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
@@ -777,8 +777,8 @@ struct kbase_process {
  * @cache_clean_in_progress: Set when a cache clean has been started, and
  *                         cleared when it has finished. This prevents multiple
  *                         cache cleans being done simultaneously.
- * @cache_clean_queued:    Set if a cache clean is invoked while another is in
- *                         progress. If this happens, another cache clean needs
+ * @cache_clean_queued:    Pended cache clean operations invoked while another is
+ *                         in progress. If this is not 0, another cache clean needs
  *                         to be triggered immediately after completion of the
  *                         current one.
  * @cache_clean_wait:      Signalled when a cache clean has finished.
@@ -1039,7 +1039,7 @@ struct kbase_device {
 	u32 reset_timeout_ms;
 
 	bool cache_clean_in_progress;
-	bool cache_clean_queued;
+	u32 cache_clean_queued;
 	wait_queue_head_t cache_clean_wait;
 
 	void *platform_context;
@@ -1214,6 +1214,9 @@ struct kbase_device {
 	struct job_status_qos job_status_addr;
 	struct v1_data* v1;
 #endif
+	struct work_struct work_js_scheduler;
+	bool js_timer_callback_running;
+	u32 js_timer_callback_delay_timers;
 };
 
 /**
@@ -1565,11 +1568,13 @@ struct kbase_sub_alloc {
  *                        is scheduled in and an atom is pulled from the context's per
  *                        slot runnable tree in JM GPU or GPU command queue
  *                        group is programmed on CSG slot in CSF GPU.
- * @mm_update_lock:       lock used for handling of special tracking page.
  * @process_mm:           Pointer to the memory descriptor of the process which
  *                        created the context. Used for accounting the physical
  *                        pages used for GPU allocations, done for the context,
- *                        to the memory consumed by the process.
+ *                        to the memory consumed by the process. A reference is taken
+ *                        on this descriptor for the Userspace created contexts so that
+ *                        Kbase can safely access it to update the memory usage counters.
+ *                        The reference is dropped on context termination.
  * @gpu_va_end:           End address of the GPU va space (in 4KB page units)
  * @jit_va:               Indicates if a JIT_VA zone has been created.
  * @mem_profile_data:     Buffer containing the profiling information provided by
@@ -1791,8 +1796,7 @@ struct kbase_context {
 
 	atomic_t refcount;
 
-	spinlock_t         mm_update_lock;
-	struct mm_struct __rcu *process_mm;
+	struct mm_struct *process_mm;
 	u64 gpu_va_end;
 	bool jit_va;
 
@@ -1854,6 +1858,8 @@ struct kbase_context {
 #if !MALI_USE_CSF
 	void *platform_data;
 #endif
+	struct task_struct *task;
+	//struct work_struct work_js_scheduler;
 };
 
 #ifdef CONFIG_MALI_CINSTR_GWT

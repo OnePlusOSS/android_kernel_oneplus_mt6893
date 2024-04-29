@@ -106,6 +106,8 @@ typedef enum {
 	ili7807s_csot,
 	icnl9911c_boe,
 	td4160_truly,
+	focal_ft3658u,
+	ili7807s_txd
 } TP_USED_INDEX;
 TP_USED_INDEX tp_used_index  = TP_INDEX_NULL;
 
@@ -229,6 +231,9 @@ bool __init tp_judge_ic_match(char *tp_ic_name)
 		if (strstr(tp_ic_name, "ilitek,ili7807s") && strstr(saved_command_line, "compare_id=0xa1")) {
 			return true;
 		}
+		if (strstr(tp_ic_name, "ilitek,ili7807s") && strstr(saved_command_line, "compare_id=0xa3")) {
+			return true;
+		}
 		pr_err("[TP] ERROR! ic is not match driver\n");
 		return false;
 	case 20131:
@@ -320,6 +325,7 @@ bool __init tp_judge_ic_match(char *tp_ic_name)
 		return false;
 	case 23053:
 	case 23054:
+	case 23055:
 	case 23253:
 		pr_info("tp judge ic forward for Lijing-A\n");
 		if (strstr(tp_ic_name, "ilitek,ili7807s") && strstr(saved_command_line, "ili9883c_boe")) {
@@ -588,6 +594,18 @@ bool __init tp_judge_ic_match(char *tp_ic_name)
 			return true;
 		}
 		return false;
+	/*BSP.TP.Function, 2023/07/28, add tp path for Tacoo.*/
+	case 23613:
+	case 23686:
+	case 23687:
+	case 23689:
+	case 23707:
+	case 23709:
+		pr_info("[TP] tp judge ic forward for 23613 23686 23687 23689 23707 23709 \n");
+		if (strstr(tp_ic_name, "focaltech-FT3658U") && strstr(saved_command_line, "oplus23687_samsung_ams667fk02_s6e8fc3_fhdp_dsi_vdo")) {
+			return true;
+		}
+		return false;
 	default:
 		break;
 	}
@@ -800,6 +818,11 @@ bool  tp_judge_ic_match_commandline(struct panel_info *panel_data)
 			pr_err("[TP] touch ic = ilt9883c_hlt\n");
 			tp_used_index = ili7807s_hlt;
 			g_tp_dev_vendor = TP_HLT;
+		}
+		if (strstr(saved_command_line, "compare_id=0xa3")) {
+			pr_err("[TP] touch ic = ilt9883c_txd\n");
+			tp_used_index = ili7807s_txd;
+			g_tp_dev_vendor = TP_TXD;
 		}
 		break;
 	case 22603:
@@ -1026,8 +1049,9 @@ bool  tp_judge_ic_match_commandline(struct panel_info *panel_data)
 		break;
 	case 23053:
 	case 23054:
+	case 23055:
 	case 23253:
-		pr_info("[TP] case 23053 23054 23253 Lijing-A\n");
+		pr_info("[TP] case 23053 23054 23055 23253 Lijing-A\n");
 		is_tp_type_got_in_match = true;
 		if (strstr(saved_command_line, "ili9883c_boe")) {
 			pr_info("[TP] touch ic = ili9883c_boe \n");
@@ -1043,6 +1067,19 @@ bool  tp_judge_ic_match_commandline(struct panel_info *panel_data)
 			pr_info("[TP] touch ic = td4160 \n");
 			tp_used_index = td4160_truly;
 			g_tp_dev_vendor = TP_TRULY;
+		}
+		break;
+	case 23613:
+	case 23686:
+	case 23687:
+	case 23689:
+	case 23707:
+	case 23709:
+		pr_info("[TP] case 23613 23686 23687 23689 23707 23709\n");
+		is_tp_type_got_in_match = true;
+		if (strstr(saved_command_line, "oplus23687_samsung_ams667fk02_s6e8fc3_fhdp_dsi_vdo")) {
+			tp_used_index = focal_ft3658u;
+			g_tp_dev_vendor = TP_SAMSUNG;
 		}
 		break;
 	case 22083:
@@ -1321,6 +1358,15 @@ int tp_util_get_vendor(struct hw_resource *hw_res, struct panel_info *panel_data
 			vendor = "TIANMA";
 		}
 	}
+
+	/*BSP.TP.Function, 2023/07/28, add  for Tacoo.*/
+	if (prj_id == 23613 || prj_id == 23686 || prj_id == 23687 || prj_id == 23689 || prj_id == 23707 || prj_id == 23709) {
+		pr_info("[TP] tp_util_get_vendor 23163 23636 23687 23689 23707 23709 rename vendor\n");
+		if (strstr(saved_command_line, "oplus23687_samsung_ams667fk02_s6e8fc3_fhdp_dsi_vdo")) {
+			vendor = "SAMSUNG";
+		}
+	}
+
 	strcpy(panel_data->manufacture_info.manufacture, vendor);
 	pr_err("[TP]tp_util_get_vendor line =%d\n", __LINE__);
 	pr_err("[TP] enter case %d\n", prj_id);
@@ -1963,6 +2009,22 @@ int tp_util_get_vendor(struct hw_resource *hw_res, struct panel_info *panel_data
 			panel_data->firmware_headfile.firmware_data = FW_22361_NF_ILI9883C_HLT;
 			panel_data->firmware_headfile.firmware_size = sizeof(FW_22361_NF_ILI9883C_HLT);
 		}
+		if ((tp_used_index == ili7807s_txd) && (g_tp_dev_vendor == TP_TXD)) {
+			snprintf(panel_data->fw_name, MAX_FW_NAME_LENGTH,
+					"tp/22361/FW_%s_%s.img",
+					"NF_ILI9883C", "TXD");
+			if (panel_data->test_limit_name) {
+				snprintf(panel_data->test_limit_name, MAX_LIMIT_DATA_LENGTH,
+						"tp/22361/LIMIT_%s_%s.ini",
+						"NF_ILI9883C", "TXD");
+			}
+			vendor = "ILI9883_TXD";
+			strcpy(panel_data->manufacture_info.manufacture, vendor);
+			panel_data->manufacture_info.fw_path = panel_data->fw_name;
+			memcpy(panel_data->manufacture_info.version, "0xAC114TI00", 11);
+			panel_data->firmware_headfile.firmware_data = FW_22361_NF_ILI9883C_TXD;
+			panel_data->firmware_headfile.firmware_size = sizeof(FW_22361_NF_ILI9883C_TXD);
+		}
 		break;
 	case 20171:
 	case 20172:
@@ -2269,6 +2331,7 @@ int tp_util_get_vendor(struct hw_resource *hw_res, struct panel_info *panel_data
 		break;
 	case 23053:
 	case 23054:
+	case 23055:
 	case 23253:
 		if (strstr(saved_command_line, "ili9883c_boe")) {
 			snprintf(panel_data->fw_name, MAX_FW_NAME_LENGTH,
@@ -2689,6 +2752,30 @@ int tp_util_get_vendor(struct hw_resource *hw_res, struct panel_info *panel_data
 				memcpy(panel_data->manufacture_info.version, "0xAB623001", 10);
 				panel_data->firmware_headfile.firmware_data = FW_22612_FT3681_TIANMA;
 				panel_data->firmware_headfile.firmware_size = sizeof(FW_22612_FT3681_TIANMA);
+			}
+		}
+		break;
+	/*BSP.TP.Function, 2023/07/28, add tp path for Tacoo.*/
+	case 23613:
+	case 23686:
+	case 23687:
+	case 23689:
+	case 23707:
+	case 23709:
+		pr_info("[TP] enter case 23613 23686 23687 23689 23707 23709\n");
+		if (tp_used_index == focal_ft3658u) {
+			if (g_tp_dev_vendor == TP_SAMSUNG) {
+				pr_info("[TP] 23613 23686 23687 23689  23707 23709 tp vendor samsung\n");
+				snprintf(panel_data->fw_name, MAX_FW_NAME_LENGTH,
+					"tp/23687/FW_%s_%s.img",
+					"FT3658U", vendor);
+				if (panel_data->test_limit_name) {
+				snprintf(panel_data->test_limit_name, MAX_LIMIT_DATA_LENGTH,
+					"tp/23687/LIMIT_%s_%s.img",
+					"FT3658U", vendor);
+				}
+				panel_data->manufacture_info.fw_path = panel_data->fw_name;
+				memcpy(panel_data->manufacture_info.version, "0xft3650022", 11);
 			}
 		}
 		break;

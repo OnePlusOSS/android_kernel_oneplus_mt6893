@@ -92,8 +92,11 @@
 
 #define CONFIG_TCPC_LOW_POWER_MODE
 #define CONFIG_TCPC_CLOCK_GATING
-
-/* #define CONFIG_TCPC_WATCHDOG_EN */
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/********* workaround MO.230913213000256759: sc6607 workaround for pd abnormal start*********/
+#define CONFIG_TCPC_WATCHDOG_EN
+/********* workaround MO.230913213000256759: sc6607 workaround for pd abnormal end*********/
+#endif
 /* #define CONFIG_TCPC_INTRST_EN */
 #define CONFIG_TCPC_I2CRST_EN
 
@@ -443,6 +446,11 @@
 
  /* FIXME : skip build error */
 /* #define CONFIG_CABLE_TYPE_DETECTION */
-
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/********* workaround MO.230913213000256759: sc6607 workaround for pd abnormal start*********/
+#define CONFIG_SOUTHCHIP_INT_INVAILD_RETRY_MAX 3
+#define CONFIG_SOUTHCHIP_ERROR_MSG_CNT_MAX 15
+/********* workaround MO.230913213000256759: sc6607 workaround for pd abnormal end*********/
+#endif /* OPLUS_FEATURE_CHG_BASIC */
 #endif /* CONFIG_TCPC_CLASS */
 #endif /* __LINUX_TCPC_CONFIG_H */

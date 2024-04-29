@@ -209,7 +209,7 @@ static enum IMGSENSOR_RETURN regulator_set(
 	atomic_t             *enable_cnt;
 #ifdef OPLUS_FEATURE_CAMERA_COMMON
 	if (is_project(22083) || is_project(22084) || is_project(22291) || is_project(22292) || is_project(22631) || is_project(22632) || is_project(23602)
-	|| is_project(23053) || is_project(23054) || is_project(23253)
+	|| is_project(23053) || is_project(23054) || is_project(23253) || is_project(23055)
 	|| is_project(21101) || is_project(21102) || is_project(21235) || is_project(21236) || is_project(21041) || is_project(21042)
 	|| is_project(22087) || is_project(22088) || is_project(22331) || is_project(22332) || is_project(22333) || is_project(22334) || is_project(22869)
 	|| is_project(0x216A0) || is_project(22610) || is_project(22705) || is_project(22706) || is_project(21831) || is_project(0x2163B) || is_project(0x2163C) || is_project(0x2163D)

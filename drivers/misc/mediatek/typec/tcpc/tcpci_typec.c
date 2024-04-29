@@ -2127,9 +2127,15 @@ int tcpc_typec_handle_cc_change(struct tcpc_device *tcpc)
 #endif /* CONFIG_WD_POLLING_ONLY */
 		}
 #endif /* CONFIG_WATER_DETECTION */
-	} else
+	} else {
 		typec_detach_wait_entry(tcpc);
-
+#ifdef OPLUS_FEATURE_CHG_BASIC
+/********* workaround MO.230913213000256759: sc6607 workaround for pd abnormal start*********/
+		tcpc->int_invaild_cnt = 0;
+		tcpc->recv_msg_cnt = 0;
+/********* workaround MO.230913213000256759: sc6607 workaround for pd abnormal end*********/
+#endif
+	}
 	return 0;
 }
 

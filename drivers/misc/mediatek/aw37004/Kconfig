@@ -1,0 +1,4 @@
+config LDO_AW37004
+	bool  "multi ldo AW37004"
+	---help---
+	  This option enables multi ldo AW37004.

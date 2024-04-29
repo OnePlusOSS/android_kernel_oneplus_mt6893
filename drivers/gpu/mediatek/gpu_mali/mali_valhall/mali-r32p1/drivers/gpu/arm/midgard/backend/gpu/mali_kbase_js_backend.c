@@ -96,6 +96,7 @@ static enum hrtimer_restart timer_callback(struct hrtimer *timer)
 	struct kbase_backend_data *backend;
 	int s;
 	bool reset_needed = false;
+	bool no_atom_on_slot = false;
 
 	KBASE_DEBUG_ASSERT(timer != NULL);
 
@@ -112,6 +113,10 @@ static enum hrtimer_restart timer_callback(struct hrtimer *timer)
 		if (kbase_backend_nr_atoms_on_slot(kbdev, s) > 0) {
 			atom = kbase_gpu_inspect(kbdev, s, 0);
 			KBASE_DEBUG_ASSERT(atom != NULL);
+		}
+		else //no atom on slot, trigger scheduling.
+		{
+			no_atom_on_slot = true;
 		}
 
 		if (atom != NULL) {
@@ -288,13 +293,51 @@ static enum hrtimer_restart timer_callback(struct hrtimer *timer)
 	/* the timer is re-issued if there is contexts in the run-pool */
 
 	if (backend->timer_running)
+    {
 		hrtimer_start(&backend->scheduling_timer,
 			HR_TIMER_DELAY_NSEC(js_devdata->scheduling_period_ns),
 			HRTIMER_MODE_REL);
+		kbdev->js_timer_callback_running = true;
+		/*
+		 set the delay to 2.
+		 */
+		kbdev->js_timer_callback_delay_timers = 2;
+	}
+	else
+	{
+		/*
+		 in case of no active context, still running the timer to schedule job 2 times.
+		*/
+		if(( kbdev->js_timer_callback_delay_timers --) == 0)
+		{
+			kbdev->js_timer_callback_running = false;
+		}
+		else
+		{
+			hrtimer_start(&backend->scheduling_timer,
+					HR_TIMER_DELAY_NSEC(js_devdata->scheduling_period_ns),
+					HRTIMER_MODE_REL);
+			kbdev->js_timer_callback_running = true;
+		}
+	}
 
 	backend->timeouts_updated = false;
 
 	spin_unlock_irqrestore(&kbdev->hwaccess_lock, flags);
+	/* In case of
+	 1: no atom on slot
+	 2: backend timer is about to stop.
+	 */
+	if(no_atom_on_slot || (!backend->timer_running))
+	{
+		/* Only do schedule action when normal schedule is not active. */
+		if (!down_trylock(&kbdev->js_data.schedule_sem))
+		{
+			up(&kbdev->js_data.schedule_sem);
+			/* Trigger job scheduler here in case of possible normal scheduler hanging.*/
+			queue_work(system_wq, &kbdev->work_js_scheduler);
+		}
+	}
 
 	return HRTIMER_NORESTART;
 }
@@ -306,6 +349,7 @@ void kbase_backend_ctx_count_changed(struct kbase_device *kbdev)
 	struct kbasep_js_device_data *js_devdata = &kbdev->js_data;
 	struct kbase_backend_data *backend = &kbdev->hwaccess.backend;
 	unsigned long flags;
+	bool need_restart_timer = false;
 
 	lockdep_assert_held(&js_devdata->runpool_mutex);
 
@@ -320,23 +364,36 @@ void kbase_backend_ctx_count_changed(struct kbase_device *kbdev)
 		 * with the runpool_mutex held, which the caller of this must
 		 * also hold
 		 */
-		hrtimer_cancel(&backend->scheduling_timer);
+		/* Do not cancel it here, let the timer callback handle it.*/
+		//hrtimer_cancel(&backend->scheduling_timer);
 	}
 
 	if (timer_callback_should_run(kbdev) && !backend->timer_running) {
 		/* Take spinlock to force synchronisation with timer */
 		spin_lock_irqsave(&kbdev->hwaccess_lock, flags);
 		backend->timer_running = true;
+		need_restart_timer = !kbdev->js_timer_callback_running;
 		spin_unlock_irqrestore(&kbdev->hwaccess_lock, flags);
-		hrtimer_start(&backend->scheduling_timer,
-			HR_TIMER_DELAY_NSEC(js_devdata->scheduling_period_ns),
-							HRTIMER_MODE_REL);
+		if(need_restart_timer)
+		{
+			hrtimer_start(&backend->scheduling_timer,
+				HR_TIMER_DELAY_NSEC(js_devdata->scheduling_period_ns),
+								HRTIMER_MODE_REL);
+			kbdev->js_timer_callback_running = true;
+		}
 
 		KBASE_KTRACE_ADD_JM(kbdev, JS_POLICY_TIMER_START, NULL, NULL, 0u, 0u);
 	}
 #else /* !MALI_USE_CSF */
 	CSTD_UNUSED(kbdev);
 #endif /* !MALI_USE_CSF */
+}
+
+static void js_scheduler_worker(struct work_struct *const data)
+{
+	struct kbase_device *const kbdev =
+		container_of(data, struct kbase_device, work_js_scheduler);
+	kbase_js_sched(kbdev,0x7);
 }
 
 int kbase_backend_timer_init(struct kbase_device *kbdev)
@@ -348,6 +405,9 @@ int kbase_backend_timer_init(struct kbase_device *kbdev)
 							HRTIMER_MODE_REL);
 	backend->scheduling_timer.function = timer_callback;
 	backend->timer_running = false;
+	INIT_WORK(&kbdev->work_js_scheduler, js_scheduler_worker);
+	kbdev->js_timer_callback_running = false;
+	kbdev->js_timer_callback_delay_timers = 2;
 #else /* !MALI_USE_CSF */
 	CSTD_UNUSED(kbdev);
 #endif /* !MALI_USE_CSF */
